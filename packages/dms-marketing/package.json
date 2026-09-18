@@ -1,0 +1,93 @@
+{
+  "name": "@antelopejs/dms-marketing",
+  "version": "0.2.2",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AntelopeJS/dms-marketing.git"
+  },
+  "files": [
+    "LICENSE",
+    "dist",
+    "frontend-vue",
+    "static"
+  ],
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true,
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "pnpm --filter @antelopejs/interface-dms-marketing build && rimraf dist && tsc -p tsconfig.build.json",
+    "test": "pnpm run test:backend && pnpm run test:layer",
+    "test:backend": "pnpm run build && ajs module test .",
+    "test:layer": "cd frontend-vue && pnpm test",
+    "test:frontend": "node scripts/check-frontend.mjs",
+    "dev": "ajs project run -w -p playground",
+    "frontend:dev": "cd playground && pnpm frontend:dev",
+    "lint": "oxlint && oxfmt --check . && cd frontend-vue && pnpm lint",
+    "lint:fix": "oxlint --fix --max-warnings=1000000 && oxfmt . && cd frontend-vue && pnpm lint:fix",
+    "format": "oxfmt . && cd frontend-vue && pnpm format",
+    "release": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --dir frontend-vue install --frozen-lockfile && pnpm run lint && release-it",
+    "prepack": "pnpm run build",
+    "typecheck": "tsc -p tsconfig.json",
+    "knip": "knip --dependencies",
+    "knip:all": "knip"
+  },
+  "dependencies": {
+    "@antelopejs/interface-api": ">=0.0.13 <1.0.0",
+    "@antelopejs/interface-api-util": ">=0.1.2 <1.0.0",
+    "@antelopejs/interface-core": ">=0.0.13 <1.0.0",
+    "@antelopejs/interface-data-api": ">=0.1.9 <1.0.0",
+    "@antelopejs/interface-database": ">=0.1.7 <1.0.0",
+    "@antelopejs/interface-database-decorators": ">=0.1.6 <1.0.0",
+    "@antelopejs/interface-dms": ">=0.1.0 <1.0.0",
+    "@antelopejs/interface-dms-marketing": ">=0.1.0 <1.0.0",
+    "defu": "^6.1.4",
+    "maxmind": "^5.0.7",
+    "node-cron": "^4.2.1",
+    "ua-parser-js": "^2.0.9",
+    "zod": "~3.24.4"
+  },
+  "devDependencies": {
+    "@antelopejs/core": ">=1.8.0 <2",
+    "@antelopejs/dms": ">=0.3.5 <1.0.0",
+    "@antelopejs/dms-frontend": ">=0.2.0 <1.0.0",
+    "@antelopejs/interface-mongodb": ">=0.0.3 <1.0.0",
+    "@antelopejs/mongodb": "1.3.0",
+    "@antelopejs/tooling-configs": ">=0.0.6 <1.0.0",
+    "@types/node": "^22.19.15",
+    "knip": "^6.34.0",
+    "mongodb": "^6.21.0",
+    "mongodb-memory-server-core": "^10.4.3",
+    "oxfmt": "^0.66.0",
+    "oxlint": "1.81.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "release-it": "^19.2.4",
+    "release-it-changelogen": "^0.1.0",
+    "rimraf": "^6.1.3",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@10.6.5",
+  "antelopeJs": {
+    "baseUrl": "dist",
+    "test": "antelope.test.ts",
+    "implements": [
+      "@antelopejs/interface-dms-marketing"
+    ],
+    "paths": {
+      "@/*": [
+        "*"
+      ]
+    }
+  }
+}

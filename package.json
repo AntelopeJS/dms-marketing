@@ -1,0 +1,19 @@
+{
+  "name": "dms-marketing-workspace",
+  "private": true,
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "pnpm --filter @antelopejs/dms-marketing build",
+    "lint": "pnpm --filter @antelopejs/interface-dms-marketing lint && pnpm --filter @antelopejs/dms-marketing lint",
+    "typecheck": "pnpm --filter @antelopejs/interface-dms-marketing typecheck && pnpm --filter @antelopejs/dms-marketing typecheck",
+    "knip": "pnpm --filter @antelopejs/dms-marketing knip",
+    "test": "pnpm --filter @antelopejs/dms-marketing test"
+  },
+  "devDependencies": {
+    "@antelopejs/tooling-configs": ">=0.0.6 <1.0.0",
+    "oxfmt": "^0.66.0",
+    "oxlint": "1.81.0",
+    "oxlint-tsgolint": "^7.0.2001"
+  },
+  "packageManager": "pnpm@10.6.5"
+}

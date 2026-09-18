@@ -1,0 +1,74 @@
+name: Release DMS marketing module
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: npm distribution channel
+        required: true
+        default: latest
+        type: choice
+        options: [latest, next]
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  validate:
+    name: Validate module release metadata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate release source and package metadata
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          test "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH"
+          case "$CHANNEL" in latest|next) ;; *) exit 1 ;; esac
+          node <<'NODE'
+          const pkg = require('./packages/dms-marketing/package.json')
+          const iface = require('./packages/interface-dms-marketing/package.json')
+          // The interface sitting in the tree only has to SATISFY the range the
+          // module publishes: a floor that lags it widens what consumers may
+          // install, it does not create a second copy. The fleet shape is
+          // `>=<floor> <1.0.0`, so the ceiling is out of reach for a 0.x
+          // interface and comparing the release triples is enough.
+          const compare = (a, b) => {
+            const parts = (v) => v.split('-')[0].split('.').map(Number)
+            const [x, y] = [parts(a), parts(b)]
+            return x[0] - y[0] || x[1] - y[1] || x[2] - y[2]
+          }
+          const satisfiesFleetRange = (version, range) => {
+            const floor = /^>=(\d+\.\d+\.\d+) <1\.0\.0$/.exec(range ?? '')?.[1]
+            return floor !== undefined && compare(version, floor) >= 0
+          }
+          if (pkg.name !== '@antelopejs/dms-marketing' || pkg.repository.url !== 'git+https://github.com/AntelopeJS/dms-marketing.git' || pkg.publishConfig.registry !== 'https://registry.npmjs.org/' || pkg.publishConfig.access !== 'public' || pkg.publishConfig.provenance !== true || JSON.stringify(pkg.antelopeJs.implements) !== JSON.stringify(['@antelopejs/interface-dms-marketing']) || !satisfiesFleetRange(iface.version, pkg.dependencies['@antelopejs/interface-dms-marketing'])) process.exit(1)
+          NODE
+      # This workflow never publishes the interface. The module depends on it
+      # through `>=<interface version> <1.0.0`, the floor being the interface
+      # version sitting in the tree. Releasing the module before that exact
+      # version exists on npm would publish a manifest nobody can install.
+      - name: Verify the interface version is resolvable on npm
+        run: |
+          name=$(node -p "require('./packages/interface-dms-marketing/package.json').name")
+          version=$(node -p "require('./packages/interface-dms-marketing/package.json').version")
+          # `npm view` exits non-zero on a 404, and the step runs under `bash -e`:
+          # without swallowing that status the job dies on npm's own error and
+          # never prints what the operator has to do next. npm's stderr still
+          # reaches the log, it is just not fatal here.
+          resolved=$(npm view "$name@$version" version --registry=https://registry.npmjs.org/) || resolved=""
+          test "$resolved" = "$version" || {
+            echo "$name@$version is not resolvable on https://registry.npmjs.org/; run \"Release DMS marketing interface\" first." >&2
+            exit 1
+          }
+
+  release:
+    needs: validate
+    uses: AntelopeJS/.github/.github/workflows/release-npm-public.yml@1df63ee37c5ecb869124cb58f199cef1e19dd138
+    with:
+      channel: ${{ inputs.channel }}
+      package-directory: packages/dms-marketing
+    secrets:
+      RELEASE_GITHUB_TOKEN: ${{ secrets.RELEASE_GITHUB_TOKEN }}

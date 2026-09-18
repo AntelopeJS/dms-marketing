@@ -1,0 +1,382 @@
+{
+  "page": {
+    "marketing": {
+      "category_name": "Marketing",
+      "errors": {
+        "invalid_body": "Le corps de la requête n'est pas un JSON valide.",
+        "invalid_steps": "Étapes de funnel invalides : vérifiez le type et la valeur de chaque étape — 1 à 10 étapes.",
+        "invalid_website": "Détails du site invalides : vérifiez le nom, le domaine et les domaines supplémentaires.",
+        "invalid_settings": "Réglages invalides : vérifiez que chaque valeur est dans les bornes autorisées.",
+        "website_not_found": "Ce site n'existe pas ou appartient à un autre espace de travail.",
+        "funnel_not_found": "Ce funnel n'existe plus.",
+        "missing_path": "Le chemin de la page est requis.",
+        "invalid_variations": "Variations invalides : 2 à 8 bras, clés uniques en minuscules, poids positifs ou nuls avec un total positif.",
+        "invalid_experiment_key": "Clé d'expérience invalide : uniquement minuscules, chiffres, tirets et tirets bas.",
+        "duplicate_experiment_key": "Une autre expérience de ce site utilise déjà cette clé.",
+        "experiment_locked": "Seuls le nom, les étapes, la fenêtre et le statut peuvent changer une fois la répartition A/B sortie du brouillon.",
+        "invalid_status_transition": "Ce changement de statut n'est pas autorisé : brouillon vers en cours, en cours vers arrêtée."
+      },
+      "overview": {
+        "title": "Vue d'ensemble",
+        "subtitle": "Trafic, acquisition et engagement de vos sites suivis.",
+        "description": "Statistiques marketing — trafic, funnels et rétention.",
+        "empty": {
+          "title": "Aucun site suivi pour le moment",
+          "description": "Ajoutez un site, puis intégrez le script de suivi sur le site pour démarrer la collecte."
+        },
+        "error": {
+          "title": "Vue d'ensemble indisponible",
+          "description": "Le chargement des données marketing a échoué. Les données collectées ne sont pas affectées."
+        },
+        "retry": "Réessayer",
+        "kpis": {
+          "pageviews": "Pages vues",
+          "sessions": "Sessions",
+          "new_visitors": "Nouveaux visiteurs",
+          "custom_events": "Événements personnalisés",
+          "bounce_rate": "Taux de rebond",
+          "avg_session_duration": "Durée moy. de session",
+          "pages_per_session": "Pages / session"
+        },
+        "traffic": {
+          "title": "Trafic",
+          "subtitle": "Pages vues et sessions par jour",
+          "pageviews": "Pages vues",
+          "sessions": "Sessions",
+          "empty": "Aucun trafic enregistré sur cette période."
+        },
+        "devices": {
+          "title": "Appareils",
+          "empty": "Aucune donnée d'appareil sur cette période."
+        },
+        "groups": {
+          "empty": "Rien d'enregistré sur cette période.",
+          "content": {
+            "title": "Contenu",
+            "view_all": "Voir les pages suivies",
+            "tabs": {
+              "pages": "Top pages",
+              "entry": "Entrées",
+              "exit": "Sorties"
+            }
+          },
+          "acquisition": {
+            "title": "Acquisition",
+            "view_all": "Voir les sources",
+            "tabs": {
+              "channels": "Canaux",
+              "referrers": "Référents"
+            }
+          },
+          "audience": {
+            "title": "Audience",
+            "tabs": {
+              "browsers": "Navigateurs",
+              "languages": "Langues",
+              "countries": "Pays"
+            }
+          },
+          "events": {
+            "title": "Événements",
+            "view_all": "Voir les funnels"
+          }
+        }
+      },
+      "campaigns": {
+        "title": "Sources",
+        "description": "Canaux d'acquisition et campagnes UTM de vos sites suivis.",
+        "subtitle": "D'où viennent les sessions : canaux et campagnes UTM.",
+        "empty": {
+          "title": "Aucun site suivi pour le moment",
+          "description": "Ajoutez un site, puis intégrez le script de suivi sur le site pour démarrer la collecte."
+        },
+        "error": {
+          "title": "Sources indisponibles",
+          "description": "Le chargement des données d'acquisition a échoué. Les données collectées ne sont pas affectées."
+        },
+        "retry": "Réessayer",
+        "channels": {
+          "title": "Canaux",
+          "subtitle": "Sessions par canal d'acquisition",
+          "empty": "Aucune donnée de canal sur cette période.",
+          "direct": "Direct",
+          "organic": "Recherche organique",
+          "social": "Réseaux sociaux",
+          "referral": "Sites référents",
+          "paid": "Payant"
+        },
+        "table": {
+          "title": "Campagnes UTM",
+          "subtitle": "Sessions par source, medium et campagne",
+          "source": "Source",
+          "medium": "Medium",
+          "campaign": "Campagne",
+          "sessions": "Sessions",
+          "search_placeholder": "Filtrer les campagnes…",
+          "empty": "Aucune session avec UTM sur cette période.",
+          "truncated": "Seules les premières campagnes sont affichées — affinez le filtre pour voir la suite."
+        },
+        "top": {
+          "referrers": "Meilleurs référents",
+          "terms": "Top termes UTM",
+          "contents": "Top contenus UTM",
+          "empty": "Rien d'enregistré sur cette période."
+        }
+      },
+      "pages": {
+        "title": "Pages suivies",
+        "subtitle": "Les pages que vos visiteurs ont réellement chargées, où ils ont cliqué et jusqu'où ils ont défilé.",
+        "description": "Pages suivies — chemins visités, clics et profondeur de défilement de chacun.",
+        "inventory": "Pages",
+        "search_placeholder": "Filtrer, ou saisir un chemin…",
+        "row_hint": {
+          "views": "{count} vue | {count} vues",
+          "sampled": "~{count} échantillonnée | ~{count} échantillonnées"
+        },
+        "select_hint": "Sélectionnez une page pour voir ses clics et sa profondeur de défilement.",
+        "to_funnels": "Funnels",
+        "clicks": "{count} clic | {count} clics",
+        "pageviews": "{count} vue | {count} vues",
+        "overlay": {
+          "clicks": "Clics",
+          "scroll": "Défilement"
+        },
+        "scroll": {
+          "views": "{count} vue avec défilement | {count} vues avec défilement",
+          "truncated": "Profondeur de défilement partielle",
+          "truncated_hint": "Cette page a enregistré plus de défilements qu'une lecture n'en parcourt. Réduisez la période pour tous les voir.",
+          "reach_line": "{percent} % des visiteurs voient jusqu'ici",
+          "fold_line": "Bas du premier écran"
+        },
+        "error": "Le chargement des pages suivies a échoué.",
+        "error_hint": "Les données collectées ne sont pas affectées.",
+        "retry": "Réessayer",
+        "truncated": "Heatmap partielle",
+        "truncated_hint": "Cette page a enregistré plus de clics qu'une heatmap n'en lit. Réduisez la période pour tous les voir.",
+        "list_truncated": "Inventaire tronqué",
+        "list_truncated_hint": "Plus de pages ont été visitées que cette liste n'en affiche. Filtrez pour atteindre les autres.",
+        "no_website": {
+          "title": "Aucun site suivi pour le moment",
+          "description": "Ajoutez un site, puis intégrez le script de suivi sur le site pour démarrer la collecte."
+        },
+        "no_pages": {
+          "title": "Aucune page visitée sur cette période",
+          "description": "Rien n'a été enregistré pour ce site sur la fenêtre sélectionnée. Vous pouvez tout de même saisir un chemin pour l'inspecter."
+        },
+        "tracking_off": {
+          "title": "La collecte est désactivée",
+          "description": "Le script de suivi est coupé dans les réglages du module : rien de nouveau n'est enregistré, pas d'instantané de page non plus."
+        },
+        "empty": {
+          "title": "Aucun clic enregistré sur cette page",
+          "no_clicks": "Des visiteurs ont chargé cette page mais aucun clic n'a été capturé sur la période sélectionnée.",
+          "scroll_title": "Aucun défilement mesuré sur cette page",
+          "no_scrolls": "Des visiteurs ont chargé cette page mais aucune profondeur n'a été mesurée sur la période — une page qui tient dans l'écran ne défile pas, et ne produit donc aucune mesure.",
+          "sampled_out": "Les clics et défilements sont échantillonnés sur {rate}% des chargements de page, et cette page est trop peu fréquentée pour que ce taux en ait capté. Augmentez l'échantillonnage dans les réglages, ou élargissez la période.",
+          "tracking_off": "La collecte est désactivée dans les réglages du module : ni clic ni défilement n'est enregistré."
+        },
+        "preview": {
+          "snapshots_off": "Les instantanés de page sont désactivés pour ce site",
+          "snapshots_off_hint": "Les clics et défilements sont toujours comptés, mais la heatmap ne se dessine que par-dessus un instantané de la page telle que les visiteurs la voient : son texte et ses images sont alors stockés, tous les champs de formulaire masqués, pendant la rétention des instantanés fixée dans les réglages du module. Activez-le si c'est compatible avec les engagements de confidentialité de ce site.",
+          "enable_snapshots": "Activer les instantanés de page",
+          "no_snapshot": "Aucun instantané de cette page pour le moment",
+          "no_snapshot_hint": "La prochaine visite échantillonnée en capturera un — les instantanés suivent l'échantillonnage des clics à {rate} % — et il sera rafraîchi chaque jour. La heatmap se dessine dès qu'il existe ; les chiffres ci-dessus sont déjà exacts.",
+          "approximate_layout": "Instantané d'une autre mise en page",
+          "approximate_layout_hint": "Aucun visiteur n'a encore été capturé à cette largeur : l'instantané {layout} est reflué ici. Les clics ancrés restent sur leur élément.",
+          "too_heavy": "Page trop lourde pour être capturée",
+          "too_heavy_hint": "La dernière visite échantillonnée a sérialisé {size} Mio de HTML et de CSS, au-delà du plafond d'envoi de {limit} Mio : cette page n'a donc pas de fond. Les chiffres de clics et de défilement ci-dessus n'en sont pas affectés. Une visite réessaie chaque jour : un balisage plus léger — ou une section lourde marquée data-dms-marketing-block — la ramène sous le plafond.",
+          "captured_at": "instantané du {date}",
+          "attempted_at": "capture tentée le {date}",
+          "options": "Options des instantanés",
+          "snapshots_enabled": "Instantanés de page",
+          "snapshots_enabled_hint": "Capturer la page telle que les visiteurs la voient, pour dessiner la heatmap par-dessus. Stocke du contenu de page ; changer ce réglage supprime les instantanés du site.",
+          "mask_text": "Masquer tout le texte",
+          "mask_text_hint": "Remplacer chaque caractère du texte capturé par un caractère de substitution. Les champs de formulaire sont toujours masqués.",
+          "options_error": "L'enregistrement des options a échoué. Réessayez dans un instant.",
+          "overflow": "Page plus large que la mise en page choisie",
+          "overflow_hint": "L'instantané se dispose sur {width}px. La superposition suit le document et reste donc alignée ; le fond, lui, peut être coupé.",
+          "layout_desktop": "Ordinateur",
+          "layout_tablet": "Tablette (portrait)",
+          "layout_phone": "Téléphone",
+          "height_override": "Hauteur de rendu (px)",
+          "open_in_tab": "Ouvrir",
+          "oversized": "Page trop haute pour un aperçu fidèle",
+          "oversized_hint": "Le document dépasse la plus grande surface dessinable : la superposition et le fond ne coïncident plus. Les chiffres de clics ne sont pas affectés."
+        },
+        "reset": {
+          "page_button": "Réinitialiser la heatmap de cette page",
+          "site_button": "Réinitialiser les heatmaps",
+          "page_title": "Réinitialiser la heatmap de cette page ?",
+          "page_description": "Tous les clics et profondeurs de défilement enregistrés sur {path} seront supprimés, quelle que soit la période — utile après une mise à jour de la page. Les pages vues, sessions et funnels ne sont pas affectés.",
+          "site_title": "Réinitialiser toutes les heatmaps du site ?",
+          "site_description": "Tous les clics et profondeurs de défilement enregistrés sur {name} seront supprimés, sur toutes les pages et quelle que soit la période. Les pages vues, sessions et funnels ne sont pas affectés.",
+          "confirm": "Supprimer les données",
+          "done": "{count} événement supprimé | {count} événements supprimés",
+          "error": "La réinitialisation a échoué. Réessayez dans un instant."
+        }
+      },
+      "funnels": {
+        "title": "Funnels & A/B",
+        "description": "Funnels de conversion — où les visiteurs décrochent, étape par étape — et les répartitions A/B mesurées contre eux.",
+        "subtitle": "Où les visiteurs décrochent, et quelle variation convertit.",
+        "list": "Funnels",
+        "summary": "{entered} session entrée · {rate}% convertie | {entered} sessions entrées · {rate}% converties",
+        "lost": "{count} session perdue | {count} sessions perdues",
+        "retained": "restant",
+        "sessions": "sessions",
+        "goal_suffix": "objectif",
+        "select_hint": "Sélectionnez un funnel pour voir sa figure.",
+        "see_heatmap": "Voir les clics sur cette page",
+        "results_error": "Le chargement des résultats du funnel a échoué.",
+        "error": "Le chargement des funnels a échoué.",
+        "error_hint": "Les données collectées ne sont pas affectées.",
+        "retry": "Réessayer",
+        "no_website": {
+          "title": "Aucun site suivi pour le moment",
+          "description": "Ajoutez un site, puis intégrez le script de suivi sur le site pour démarrer la collecte."
+        },
+        "empty": {
+          "title": "Aucun funnel sur ce site",
+          "description": "Créez votre premier funnel : chaque étape est une URL de page ou un événement personnalisé, apparié dans l'ordre au sein d'une session. Répartissez-le en variations A/B dès que vous voulez tester un changement contre lui."
+        },
+        "no_sessions": {
+          "title": "Aucune session n'est entrée dans ce funnel",
+          "description": "Aucune session ne correspond à la première étape sur la période sélectionnée."
+        },
+        "new": "Nouveau funnel",
+        "create_title": "Créer un funnel",
+        "edit_title": "Modifier le funnel",
+        "edit": "Modifier",
+        "start": "Lancer",
+        "stop": {
+          "button": "Arrêter",
+          "title": "Arrêter cette répartition ?",
+          "description": "Tous les visiteurs repassent sur la variation de contrôle en moins d'une minute, les pages déjà ouvertes à leur prochain rechargement. La mesure s'arrête, les résultats restent lisibles.",
+          "confirm": "Arrêter"
+        },
+        "resume": {
+          "button": "Relancer",
+          "title": "Relancer cette répartition ?",
+          "description": "La répartition repart avec les mêmes variations et garde les sessions déjà exposées ; relancer pour obtenir un autre verdict peut augmenter les faux positifs.",
+          "confirm": "Relancer"
+        },
+        "more_actions": "Plus d'actions",
+        "locked_hint": "Clé et variations sont gelées hors brouillon — des poids modifiés en cours de run réaffecteraient les visiteurs en silence.",
+        "status_updated": "Statut mis à jour.",
+        "status_error": "Le changement de statut a été refusé.",
+        "delete": {
+          "button": "Supprimer",
+          "title": "Supprimer ce funnel ?",
+          "description": "« {name} » et sa figure disparaîtront. Les événements et expositions collectés restent jusqu'à la fin de leur rétention.",
+          "confirm": "Supprimer",
+          "done": "Funnel supprimé.",
+          "error": "La suppression a échoué."
+        },
+        "steps_count": "{count} étape | {count} étapes",
+        "variations_count": "{count} variation | {count} variations",
+        "status": {
+          "draft": "Brouillon",
+          "running": "En cours",
+          "stopped": "Arrêté"
+        },
+        "step_kind": {
+          "url": "vue de page",
+          "custom": "événement"
+        },
+        "column": {
+          "website": "Site",
+          "name": "Nom",
+          "created": "Créé le"
+        },
+        "form": {
+          "name": "Nom du funnel",
+          "steps": "Étapes",
+          "steps_description": "Chaque étape est une URL de page ou un événement personnalisé, apparié dans l'ordre au sein d'une session — une seule étape compte les conversions à elle seule.",
+          "url_placeholder": "/pricing",
+          "event_placeholder": "signup_submitted",
+          "add_step": "Ajouter une étape",
+          "window": "Fenêtre de conversion (heures)",
+          "experiment": "Répartition A/B",
+          "experiment_description": "Servez des variations de la page aux visiteurs, affectées côté serveur, et mesurez chaque bras contre les étapes ci-dessus.",
+          "experiment_toggle": "Répartir le trafic entre des variations",
+          "key_label": "Clé de l'expérience",
+          "key": "hero-cta",
+          "key_description": "L'identifiant que le code de la page passe à dmsMarketing.variation(…). Minuscules, chiffres, tirets et tirets bas.",
+          "variations": "Variations",
+          "variations_description": "2 à 8 bras avec des poids relatifs ; le premier bras est le contrôle.",
+          "variation_key": "cle-variation",
+          "add_variation": "Ajouter une variation"
+        },
+        "results": {
+          "control": "contrôle",
+          "arm_control": "contrôle {letter}",
+          "arm_variation": "variation {letter}",
+          "end_to_end": "{value} de bout en bout",
+          "exposed": "{count} session exposée | {count} sessions exposées",
+          "meta_frozen": "répartition {split}, gelée",
+          "meta_draft": "répartition {split} · aucun trafic affecté",
+          "window_running": "en cours depuis le {since}",
+          "window_stopped": "test du {since} au {until}",
+          "window_runs": "{count} période | {count} périodes",
+          "verdict": {
+            "lift": "Lift relatif",
+            "confidence": "Confiance",
+            "sessions": "Sessions"
+          },
+          "reached_goal": "{count} session a atteint l'objectif | {count} sessions ont atteint l'objectif",
+          "significant": "Significatif à 95 %",
+          "not_significant": "Non significatif",
+          "insufficient": "Pas assez de données",
+          "insufficient_data": {
+            "title": "Pas encore assez de données",
+            "description": "Trop peu de sessions pour comparer les variantes — des taux sur un échantillon aussi mince seraient du bruit, pas un signal. Comptes bruts ci-dessous ; les verdicts apparaîtront quand chaque variante aura assez de résultats."
+          },
+          "srm_warning": {
+            "title": "Répartition anormale (SRM)",
+            "description": "La répartition observée entre les bras s'écarte fortement des poids configurés — l'affectation ou la remontée d'expositions est peut-être cassée ; lisez ces chiffres avec méfiance."
+          },
+          "truncated": {
+            "title": "Fenêtre tronquée",
+            "description": "La fenêtre d'événements bruts a atteint son plafond : les chiffres ne couvrent que la partie la plus ancienne de la période, et les verdicts A/B sont retenus."
+          },
+          "empty": {
+            "title": "Aucune exposition pour le moment",
+            "description": "Aucune session n'a été exposée à cette expérience pendant qu'elle tournait. Ses chiffres sont lus sur sa propre période de test, pas sur la période sélectionnée."
+          }
+        }
+      },
+      "settings": {
+        "title": "Réglages",
+        "description": "Configuration de la collecte, des rétentions et de l'échantillonnage.",
+        "tracker_enabled": "Collecte activée",
+        "tracker_enabled_description": "Interrupteur général de l'endpoint de collecte et du script de suivi.",
+        "raw_retention": "Rétention des événements bruts (jours)",
+        "raw_retention_description": "Durée de conservation des événements bruts. Les funnels et heatmaps lisent cette fenêtre ; les tableaux de bord utilisent les agrégats journaliers.",
+        "stats_retention": "Rétention des statistiques (jours)",
+        "stats_retention_description": "Durée de conservation des agrégats journaliers et des sessions. Plafonnée à 760 jours (25 mois, plafond usuel en mesure d'audience).",
+        "heatmap_sample": "Échantillonnage heatmap (%)",
+        "heatmap_sample_description": "Part des visites capturant les positions de clic et de défilement. À réduire sur les sites à fort trafic.",
+        "snapshot_retention": "Rétention des instantanés de page (jours)",
+        "snapshot_retention_description": "Durée de conservation d'un rendu de page capturé comme fond de heatmap. Les instantanés contiennent du contenu de page ; jamais conservés plus longtemps que les événements bruts."
+      },
+      "websites": {
+        "column": {
+          "name": "Nom",
+          "domain": "Domaine"
+        },
+        "create": "Ajouter un site",
+        "create_title": "Nouveau site",
+        "form": {
+          "name": "Site principal",
+          "domain": "exemple.com",
+          "domain_description": "Le domaine racine du site, sans schéma (exemple.com). Ses sous-domaines sont acceptés tels quels ; les autres hôtes — préproduction, autre extension — s'ajoutent via extraDomains dans l'API."
+        },
+        "snippet": {
+          "button": "Script de suivi",
+          "title": "Installer le script de suivi",
+          "description": "Ajoutez cette balise sur chaque page de {name}, juste avant la fermeture de body ou dans head. Elle est identique pour toutes les pages du site."
+        }
+      }
+    }
+  }
+}

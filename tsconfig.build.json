@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "compilerOptions": {
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "noEmit": false
+  }
+}

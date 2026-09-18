@@ -1,0 +1,67 @@
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Before setup-node: its pnpm cache resolves the store by running pnpm.
+      # No version input — the root package.json `packageManager` is the pin.
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          # The workspace lockfile. The frontend module and the playground are
+          # separate projects with lockfiles of their own, not installed here.
+          cache-dependency-path: pnpm-lock.yaml
+
+      # Everything installs from the public npm registry; the module resolves
+      # the interface to the workspace sibling through `link-workspace-packages`.
+      # `...` selects the module's dependencies, the workspace interface
+      # included; nothing else in the workspace is installed.
+      - run: pnpm install --filter @antelopejs/dms-marketing... --frozen-lockfile
+      # The Vue frontend module is a project of its own, with its own lockfile;
+      # the module's lint and layer tests both run from inside it.
+      - run: pnpm --dir packages/dms-marketing/frontend-vue install --frozen-lockfile
+
+      - run: pnpm --dir packages/interface-dms-marketing lint
+      - run: pnpm --dir packages/interface-dms-marketing typecheck
+      - run: pnpm --dir packages/interface-dms-marketing build
+      # Packs the interface and compiles a consumer against the tarball under
+      # the three resolvers with `skipLibCheck: false`: the exports map and
+      # `typesVersions` are a published contract no other gate exercises.
+      - run: pnpm --dir packages/interface-dms-marketing check:consumer
+
+      - run: pnpm --dir packages/dms-marketing lint
+      # tsconfig.json is the config the editors and oxlint's type-aware pass
+      # read; tsconfig.build.json is the one the build uses. Without this the
+      # first is never exercised, and a resolution failure there degrades every
+      # type-aware rule to `any` without failing anything.
+      - run: pnpm --dir packages/dms-marketing typecheck
+      # Unused dependencies only. `pnpm knip:all` also reports dead files and
+      # exports, which need a human to confirm, so they stay out of the gate.
+      - run: pnpm --dir packages/dms-marketing knip
+      - run: pnpm --dir packages/dms-marketing build
+      # `ajs module test .` boots the module against a real DMS, a
+      # mongodb-memory replica set and the api module, so it runs last.
+      - run: pnpm --dir packages/dms-marketing test
+      # Builds the frontend module through the real DMS frontend loader:
+      # client bundle, SSR bundle and vue-tsc.
+      - run: pnpm --dir packages/dms-marketing test:frontend
