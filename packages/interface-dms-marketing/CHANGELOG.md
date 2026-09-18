@@ -1,6 +1,29 @@
 # Changelog
 
 
+## v0.2.0
+
+
+### 💅 Refactors
+
+- ⚠️  Publish under the public @antelopejs scope ([47c6171](https://github.com/AntelopeJS/dms-marketing/commit/47c6171))
+
+### 🎨 Styles
+
+- Format the interface release configuration ([#2](https://github.com/AntelopeJS/dms-marketing/pull/2))
+
+### 🤖 CI
+
+- **release:** Skip the npm auth pre-flight for trusted publishing ([#1](https://github.com/AntelopeJS/dms-marketing/pull/1))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Publish under the public @antelopejs scope ([47c6171](https://github.com/AntelopeJS/dms-marketing/commit/47c6171))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.1.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.1.0...v0.1.0)
