@@ -1,0 +1,12 @@
+services:
+  dms-backend:
+    command: >-
+      pnpm --dir packages/dms-marketing dev
+    port: 5010
+    health: /api/onboarding/informations
+
+  dms-frontend:
+    command: >-
+      until curl -fsS http://127.0.0.1:5010/api/onboarding/informations >/dev/null; do sleep 0.5; done;
+      pnpm --dir packages/dms-marketing/playground frontend:dev
+    port: 3000
