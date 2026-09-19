@@ -51,7 +51,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/nodemailer",
-        version: "0.0.4",
+        version: "^0.0.5",
       },
       config: { host: "127.0.0.1", port: 1, secure: false },
     },
