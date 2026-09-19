@@ -16,12 +16,15 @@ interface PagesLink {
 }
 
 /** Query without the empty keys — a bare link must stay bare. */
-function withQuery(base: string, query: Record<string, string | null | undefined>) {
-  const entries = Object.entries(query).filter(([, value]) => !!value)
-  return {
-    path: base,
-    query: Object.fromEntries(entries) as Record<string, string>,
+function withQuery(base: string, query: Record<string, string | null | undefined>): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if (value) {
+      params.set(key, value)
+    }
   }
+  const suffix = params.toString()
+  return suffix ? `${base}?${suffix}` : base
 }
 
 /** The tracked-pages surface, optionally on a given site, path and window. */

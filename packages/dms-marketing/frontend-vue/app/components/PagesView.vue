@@ -81,6 +81,7 @@ let searchTimer: ReturnType<typeof setTimeout> | null = null
 const {
   data: inventory,
   loading: loadingPages,
+  settled: pagesSettled,
   failed: pagesFailed,
   run: loadPages,
 } = useLatestRequest<MarketingPages>(() =>
@@ -99,6 +100,16 @@ const trackerEnabled = computed(() => inventory.value?.trackerEnabled ?? true)
 // Two failures, two flags: the inventory fetch clears its own error on every
 // attempt, and must not clear the one that says the site list never loaded.
 const failed = computed(() => websitesFailed.value || pagesFailed.value)
+
+// A selected site means an inventory request is expected. Keep the surface
+// visibly loading through the first answer instead of rendering an empty
+// master/detail shell while websites, pages and the preview requests settle.
+const loading = computed(
+  () =>
+    loadingWebsites.value
+    || loadingPages.value
+    || (!!selectedWebsiteId.value && !pagesSettled.value),
+)
 
 // Land on something rather than on an empty pane, but never override a path
 // that was linked to or typed. Watching the answer rather than writing from
@@ -334,8 +345,10 @@ async function resetSiteHeatmaps() {
     />
 
     <template v-else>
+      <USkeleton v-if="loading" class="h-96 w-full" />
+
       <UAlert
-        v-if="truncated"
+        v-else-if="truncated"
         icon="i-ph-list"
         color="neutral"
         variant="subtle"
@@ -353,7 +366,7 @@ async function resetSiteHeatmaps() {
       />
 
       <DmsMasterDetail
-        v-else
+        v-else-if="!loading"
         v-model="selectedPath"
         :items="listItems"
         :list-label="t('page.marketing.pages.inventory')"
