@@ -1,6 +1,19 @@
 # Changelog
 
 
+## v0.2.5
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.2.4...v0.2.5)
+
+### 🩹 Fixes
+
+- Route playground through public gateway ([#7](https://github.com/AntelopeJS/dms-marketing/pull/7))
+- **marketing:** Stop shadowing the core MS_PER_DAY auto-import ([#8](https://github.com/AntelopeJS/dms-marketing/pull/8))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.2.4
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.2.3...v0.2.4)
