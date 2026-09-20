@@ -1,4 +1,5 @@
 import { computed, type ComputedRef } from 'vue'
+import { MS_PER_DAY } from '../constants'
 
 /**
  * Bridge between the DMS period selector and the marketing endpoints.
@@ -8,8 +9,6 @@ import { computed, type ComputedRef } from 'vue'
  * belongs in one place, not least because the deep links between those views
  * carry the window as a query parameter and have to map it back onto a preset.
  */
-
-export const MS_PER_DAY = 86_400_000
 
 export const DEFAULT_PERIOD_DAYS = 7
 export const DEFAULT_PERIOD = `${DEFAULT_PERIOD_DAYS}d`

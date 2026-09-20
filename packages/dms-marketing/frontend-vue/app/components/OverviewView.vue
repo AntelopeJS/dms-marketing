@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { useI18n } from '#dms/frontend-module'
+import { MS_PER_DAY } from '../constants'
 import { useChildId } from '../composables/useChildId'
 import { useLatestRequest } from '../composables/useLatestRequest'
 import {
@@ -10,7 +11,6 @@ import {
 import {
   DEFAULT_PERIOD_PRESET,
   MARKETING_PERIOD_PRESETS,
-  MS_PER_DAY,
   periodDays,
   useMarketingPeriod,
 } from '../composables/useMarketingPeriod'
