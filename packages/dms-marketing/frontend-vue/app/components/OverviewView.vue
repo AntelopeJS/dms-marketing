@@ -10,7 +10,6 @@ import {
 import {
   DEFAULT_PERIOD_PRESET,
   MARKETING_PERIOD_PRESETS,
-  MS_PER_DAY,
   periodDays,
   useMarketingPeriod,
 } from '../composables/useMarketingPeriod'
@@ -160,6 +159,8 @@ const kpis = computed<OverviewKpi[]>(() => {
 })
 
 // --- Traffic chart ----------------------------------------------------------
+
+const MS_PER_DAY = 86_400_000
 
 function utcMidnightToday(): number {
   const now = new Date()

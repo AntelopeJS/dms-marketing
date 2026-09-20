@@ -9,7 +9,10 @@ import { computed, type ComputedRef } from 'vue'
  * carry the window as a query parameter and have to map it back onto a preset.
  */
 
-export const MS_PER_DAY = 86_400_000
+// Local on purpose: everything this directory exports becomes a Nuxt
+// auto-import, and the dms-core period layer already publishes a
+// MS_PER_DAY under that same name.
+const MS_PER_DAY = 86_400_000
 
 export const DEFAULT_PERIOD_DAYS = 7
 export const DEFAULT_PERIOD = `${DEFAULT_PERIOD_DAYS}d`
