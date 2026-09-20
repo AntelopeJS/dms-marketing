@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { useI18n } from '#dms/frontend-module'
+import { MS_PER_DAY } from '../constants'
 import { useChildId } from '../composables/useChildId'
 import { useLatestRequest } from '../composables/useLatestRequest'
 import {
@@ -159,8 +160,6 @@ const kpis = computed<OverviewKpi[]>(() => {
 })
 
 // --- Traffic chart ----------------------------------------------------------
-
-const MS_PER_DAY = 86_400_000
 
 function utcMidnightToday(): number {
   const now = new Date()
