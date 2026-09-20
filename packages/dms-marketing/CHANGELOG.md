@@ -1,6 +1,24 @@
 # Changelog
 
 
+## v0.2.4
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.2.3...v0.2.4)
+
+### 🩹 Fixes
+
+- Align nodemailer test harness version ([#3](https://github.com/AntelopeJS/dms-marketing/pull/3))
+- **marketing:** Correct funnel links and page loading state ([#5](https://github.com/AntelopeJS/dms-marketing/pull/5))
+
+### 🏡 Chore
+
+- Add orb playground setup ([#4](https://github.com/AntelopeJS/dms-marketing/pull/4))
+- **playground:** Pin dms frontend 0.2.1 ([#6](https://github.com/AntelopeJS/dms-marketing/pull/6))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.2.3
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.2.0...v0.2.3)
