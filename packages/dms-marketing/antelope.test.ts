@@ -19,13 +19,24 @@ export default defineConfig({
       source: { type: "local", path: ".", installCommand: ["pnpm build"] },
     },
     dms: {
-      source: { type: "local", path: "node_modules/@antelopejs/dms" },
+      source: {
+        type: "package",
+        package: "@antelopejs/dms",
+        version: ">=0.3.5 <1.0.0",
+      },
       config: {
         auth: { jwtSecret: JWT_SECRET },
         frontend: { bootstrapSecret: JWT_SECRET },
       },
     },
     mongodb: {
+      // Deliberately a local source, not a package: `tests/retention.test.js`
+      // reaches into the running adapter through
+      // `@antelopejs/mongodb/dist/connection` to grab the collection the
+      // harness connected. A package source materialises a *second* copy under
+      // `.antelope/cache`, so the test would require an unconnected instance
+      // and fail with "MongoDB adapter is not connected". The
+      // `@antelopejs/mongodb` devDependency pins the version both sides share.
       source: { type: "local", path: "node_modules/@antelopejs/mongodb" },
     },
     api: {
