@@ -3,9 +3,7 @@
  *
  * The real module only exists inside the Vue workspace the DMS frontend
  * loader generates; these tests run the module's own sources directly, so the
- * few SDK helpers they reach are stubbed with the same shapes. The real
- * contract is checked by `pnpm test:frontend`, which builds this module
- * through the loader for real.
+ * few SDK helpers they reach are stubbed with the same shapes.
  */
 import type { Component, Plugin } from 'vue'
 

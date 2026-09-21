@@ -123,8 +123,7 @@ project whose root `dms.frontend.ts` registers every component under the
 `DmsMarketing` prefix, plus its own i18n catalogs. It is a separate project
 with a lockfile of its own, published inside this package's tarball and
 materialized by the DMS frontend loader (`ajs dms`) into the console's Inertia
-workspace. `pnpm --dir packages/dms-marketing test:frontend` builds it through
-the real loader — client bundle, SSR bundle and vue-tsc.
+workspace. Its own vitest suite runs through `pnpm test`.
 
 The interface this module implements is the workspace's other package,
 `packages/interface-dms-marketing`, published under the same `@antelopejs`

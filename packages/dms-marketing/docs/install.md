@@ -190,6 +190,4 @@ Lint with `pnpm lint`: oxlint and oxfmt over the backend, then eslint over
 first — the frontend module has a lockfile of its own). `pnpm typecheck`
 runs `tsc` over both packages and `pnpm knip` reports unused dependencies;
 CI gates on all three. `pnpm test` runs the
-backend suite and the frontend module's vitest suite; `pnpm test:frontend`
-builds the frontend module through the real loader (client bundle, SSR
-bundle, vue-tsc).
+backend suite and the frontend module's vitest suite.
