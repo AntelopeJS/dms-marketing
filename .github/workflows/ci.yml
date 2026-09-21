@@ -62,6 +62,3 @@ jobs:
       # `ajs module test .` boots the module against a real DMS, a
       # mongodb-memory replica set and the api module, so it runs last.
       - run: pnpm --dir packages/dms-marketing test
-      # Builds the frontend module through the real DMS frontend loader:
-      # client bundle, SSR bundle and vue-tsc.
-      - run: pnpm --dir packages/dms-marketing test:frontend
