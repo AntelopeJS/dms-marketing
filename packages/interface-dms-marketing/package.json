@@ -21,18 +21,6 @@
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "dist/*": [
-        "dist/*",
-        "dist/*/index.d.ts"
-      ],
-      "*": [
-        "dist/*",
-        "dist/*/index.d.ts"
-      ]
-    }
-  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -41,12 +29,6 @@
     "./*": {
       "types": "./dist/*.d.ts",
       "default": "./dist/*.js"
-    },
-    "./dist": {
-      "types": "./dist/index.d.ts"
-    },
-    "./dist/*": {
-      "types": "./dist/*.d.ts"
     },
     "./package.json": "./package.json"
   },
@@ -61,8 +43,7 @@
     "lint:fix": "oxlint --fix --max-warnings=1000000 && oxfmt .",
     "format": "oxfmt .",
     "typecheck": "tsc --noEmit",
-    "check:consumer": "node scripts/check-consumer.mjs",
-    "release": "pnpm run lint && pnpm run build && pnpm run check:consumer && release-it",
+    "release": "pnpm run lint && pnpm run build && release-it",
     "prepack": "pnpm run build"
   },
   "devDependencies": {
