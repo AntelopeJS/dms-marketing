@@ -9,6 +9,7 @@
   "files": [
     "LICENSE",
     "dist",
+    "!dist/.tsbuildinfo",
     "frontend-vue",
     "static"
   ],
@@ -27,7 +28,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "pnpm --filter @antelopejs/interface-dms-marketing build && rimraf dist && tsc -p tsconfig.build.json",
+    "build": "pnpm --filter @antelopejs/interface-dms-marketing build && rimraf dist && tsc",
     "test": "pnpm run test:backend && pnpm run test:layer",
     "test:backend": "pnpm run build && ajs module test .",
     "test:layer": "cd frontend-vue && pnpm test",
@@ -38,7 +39,7 @@
     "format": "oxfmt . && cd frontend-vue && pnpm format",
     "release": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --dir frontend-vue install --frozen-lockfile && pnpm run lint && release-it",
     "prepack": "pnpm run build",
-    "typecheck": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
     "knip": "knip --dependencies",
     "knip:all": "knip"
   },
@@ -72,7 +73,7 @@
     "release-it": "^19.2.4",
     "release-it-changelogen": "^0.1.0",
     "rimraf": "^6.1.3",
-    "typescript": "^5.9.3"
+    "typescript": "^6.0.3"
   },
   "packageManager": "pnpm@10.6.5",
   "antelopeJs": {
