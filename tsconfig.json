@@ -2,7 +2,7 @@
   "files": [],
   "compilerOptions": {
     "target": "esnext",
-    "module": "preserve",
+    "module": "commonjs",
     "moduleResolution": "bundler",
     "lib": ["esnext"],
     "strict": true,
@@ -10,7 +10,7 @@
     "esModuleInterop": true,
     "removeComments": true,
     "declaration": true,
-    "noEmit": true,
+    "incremental": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true
   }

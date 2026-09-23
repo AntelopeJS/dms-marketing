@@ -113,6 +113,8 @@ async function main() {
               strict: true,
               noEmit: true,
               skipLibCheck: false,
+              // TypeScript 6 deprecates `node` (node10); consumers on it still exist.
+              ...(moduleResolution === "node" && { ignoreDeprecations: "6.0" }),
             },
             files: ["consumer.ts"],
           },
