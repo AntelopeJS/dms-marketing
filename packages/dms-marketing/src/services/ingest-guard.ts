@@ -22,7 +22,7 @@ interface WindowEntry {
   count: number;
 }
 
-export class FixedWindowRateLimiter {
+class FixedWindowRateLimiter {
   private readonly entries = new Map<string, WindowEntry>();
 
   constructor(

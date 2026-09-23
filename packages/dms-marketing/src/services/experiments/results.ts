@@ -11,7 +11,7 @@ import type { ExposureEventData } from "@/types";
 import { normalizedWeights } from "./assign";
 import { type SrmCheck, sampleRatioCheck, twoProportionTest } from "./stats";
 
-export interface VariationResult {
+interface VariationResult {
   key: string;
   /** The arm's denominator: sessions exposed to it, converted or not. */
   exposedSessions: number;

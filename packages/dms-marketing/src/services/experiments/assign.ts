@@ -33,7 +33,7 @@ function bucketOf(visitorId: string, experimentKey: string): number {
 }
 
 /** Pure function of (visitor, experiment): no clock, no DB, no state. */
-export function assignVariation(
+function assignVariation(
   visitorId: string,
   experiment: FunnelExperiment,
 ): string | undefined {
