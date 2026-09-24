@@ -1,6 +1,6 @@
 {
   "name": "@antelopejs/interface-dms-marketing",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "AntelopeJS interface for the DMS marketing module: read aggregated first-party analytics from any module",
   "keywords": [
     "analytics",

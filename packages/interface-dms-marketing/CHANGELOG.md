@@ -1,6 +1,47 @@
 # Changelog
 
 
+## v0.3.0
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.2.0...v0.3.0)
+
+### 🩹 Fixes
+
+- Align nodemailer test harness version ([#3](https://github.com/AntelopeJS/dms-marketing/pull/3))
+- **marketing:** Correct funnel links and page loading state ([#5](https://github.com/AntelopeJS/dms-marketing/pull/5))
+- Route playground through public gateway ([#7](https://github.com/AntelopeJS/dms-marketing/pull/7))
+- **marketing:** Stop shadowing the core MS_PER_DAY auto-import ([#8](https://github.com/AntelopeJS/dms-marketing/pull/8))
+
+### 💅 Refactors
+
+- **build:** Merge tsconfig.build.json into tsconfig.json ([#13](https://github.com/AntelopeJS/dms-marketing/pull/13))
+- **package:** ⚠️  Drop moduleResolution node support and pack-based checks ([#16](https://github.com/AntelopeJS/dms-marketing/pull/16))
+- Remove dead exports reported by knip ([#17](https://github.com/AntelopeJS/dms-marketing/pull/17))
+
+### 🏡 Chore
+
+- **release:** @antelopejs/dms-marketing v0.2.3 ([2ec52e8](https://github.com/AntelopeJS/dms-marketing/commit/2ec52e8))
+- Add orb playground setup ([#4](https://github.com/AntelopeJS/dms-marketing/pull/4))
+- **playground:** Pin dms frontend 0.2.1 ([#6](https://github.com/AntelopeJS/dms-marketing/pull/6))
+- **release:** @antelopejs/dms-marketing v0.2.4 ([cde1f0d](https://github.com/AntelopeJS/dms-marketing/commit/cde1f0d))
+- **release:** @antelopejs/dms-marketing v0.2.5 ([acce4de](https://github.com/AntelopeJS/dms-marketing/commit/acce4de))
+- **agents:** Install Node 24 in setup script ([#9](https://github.com/AntelopeJS/dms-marketing/pull/9))
+- Remove the generated frontend check ([#10](https://github.com/AntelopeJS/dms-marketing/pull/10))
+- **test:** Resolve the dms harness module as a package ([#11](https://github.com/AntelopeJS/dms-marketing/pull/11))
+
+### 🤖 CI
+
+- **release:** Release next from a dedicated branch and restore requireCommits ([#14](https://github.com/AntelopeJS/dms-marketing/pull/14))
+- **release:** Reference the shared release workflows through v1 ([#15](https://github.com/AntelopeJS/dms-marketing/pull/15))
+
+#### ⚠️ Breaking Changes
+
+- **package:** ⚠️  Drop moduleResolution node support and pack-based checks ([#16](https://github.com/AntelopeJS/dms-marketing/pull/16))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.2.0
 
 
