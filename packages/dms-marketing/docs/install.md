@@ -176,8 +176,9 @@ pnpm frontend:dev                # DMS console (ajs dms dev)
 > deliberate; it can only move when `@antelopejs/dms` moves first.
 
 The playground expects a local MongoDB on `mongodb://localhost:27017`
-(database `playground-dms-marketing`) and declares CORS for the dev console
-ports (3000-3002).
+(database `playground-dms-marketing`), overridable through the `MONGO_URL`
+environment variable (`MONGO_URL=mongodb://127.0.0.1:27117 pnpm dev`), and
+declares CORS for the dev console ports (3000-3002).
 
 The demo site's website row is seeded by the playground itself at first
 start (`playground/src/seed.ts` in that project), since the demo pages embed

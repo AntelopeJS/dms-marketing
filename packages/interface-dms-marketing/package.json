@@ -47,7 +47,7 @@
     "prepack": "pnpm run build"
   },
   "devDependencies": {
-    "@antelopejs/interface-core": ">=0.0.13 <1.0.0",
+    "@antelopejs/interface-core": ">=0.1.1 <1.0.0",
     "@antelopejs/tooling-configs": ">=0.0.6 <1.0.0",
     "@types/node": "22.20.1",
     "oxfmt": "^0.66.0",
@@ -59,7 +59,7 @@
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
-    "@antelopejs/interface-core": ">=0.0.13 <1.0.0"
+    "@antelopejs/interface-core": ">=0.1.1 <1.0.0"
   },
   "packageManager": "pnpm@10.6.5",
   "antelopeJs": {}
