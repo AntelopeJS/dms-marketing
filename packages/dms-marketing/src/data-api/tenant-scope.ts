@@ -21,9 +21,7 @@ export type TenantGate = (ctx: RequestContext, id: string) => Promise<unknown>;
  * the server, whatever filters the client sends. The scoped table must carry
  * a `tenantId` field registered with HiddenStringFilter.
  */
-export function withTenantScope(
-  base: DataControllerCallback,
-): DataControllerCallback {
+function withTenantScope(base: DataControllerCallback): DataControllerCallback {
   return {
     ...base,
     func: async function (
@@ -55,7 +53,7 @@ export function withTenantScope(
  * list filter cannot protect direct reads): `gate` throws the anti-probing
  * 404 when the row is missing or belongs to another tenant.
  */
-export function withTenantGate(
+function withTenantGate(
   gate: TenantGate,
 ): (base: DataControllerCallback) => DataControllerCallback {
   return (base) => ({

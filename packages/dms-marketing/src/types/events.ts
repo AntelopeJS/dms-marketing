@@ -17,7 +17,7 @@ import {
  * for the audience-measurement consent exemptions.
  */
 
-export const EVENT_KINDS = [
+const EVENT_KINDS = [
   "pageview",
   "custom",
   "exposure",
@@ -30,7 +30,7 @@ export type EventKind = (typeof EVENT_KINDS)[number];
 /** Kinds the heatmap surface reads — sampled together, reset together. */
 export const HEATMAP_EVENT_KINDS: EventKind[] = ["click", "scroll"];
 
-export const trackedEventSchema = z.object({
+const trackedEventSchema = z.object({
   kind: z.enum(EVENT_KINDS),
   /** Full location as seen by the tracker; the server stores the path only. */
   url: z.string().min(1).max(MAX_URL_LENGTH),
@@ -51,7 +51,6 @@ export const collectRequestSchema = z.object({
 });
 
 export type TrackedEventInput = z.infer<typeof trackedEventSchema>;
-export type CollectRequestInput = z.infer<typeof collectRequestSchema>;
 
 /**
  * `data` payload of a "click" event. `x`/`y` are viewport-normalized (0-1):

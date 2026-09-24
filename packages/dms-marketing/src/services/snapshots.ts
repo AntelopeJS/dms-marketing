@@ -35,7 +35,7 @@ const promised = new BoundedCache<true>(
   SNAPSHOT_CACHE_MAX_ENTRIES,
 );
 
-export function snapshotId(
+function snapshotId(
   websiteId: string,
   layout: SnapshotLayout,
   url: string,

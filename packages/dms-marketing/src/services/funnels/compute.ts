@@ -4,7 +4,7 @@ import type { MarketingEvent } from "@/db/tables/marketing_events.table";
 /** What the counting core needs of a funnel. */
 export type FunnelDefinition = Pick<Funnel, "steps" | "conversionWindowMs">;
 
-export interface FunnelStepResult {
+interface FunnelStepResult {
   step: FunnelStep;
   sessions: number;
   conversionRate: number;

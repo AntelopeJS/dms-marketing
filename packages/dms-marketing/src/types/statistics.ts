@@ -9,7 +9,7 @@
  * source × medium × campaign triples (see `services/acquisition`) and
  * `topChannels` keys the MARKETING_CHANNELS classification.
  */
-export const TOP_DIMENSIONS = [
+const TOP_DIMENSIONS = [
   "topPages",
   "topEntryPages",
   "topExitPages",
@@ -34,7 +34,7 @@ export const TOP_DIMENSIONS = [
  * resolved when the session's rollup increment fires, so the mapping can
  * evolve without a migration.
  */
-export const MARKETING_CHANNELS = [
+const MARKETING_CHANNELS = [
   "direct",
   "organic",
   "social",

@@ -33,7 +33,7 @@ export function isSnapshotLayout(value: unknown): value is SnapshotLayout {
   return SNAPSHOT_LAYOUTS.includes(value as SnapshotLayout);
 }
 
-export const SNAPSHOT_COLOR_SCHEMES = ["light", "dark"] as const;
+const SNAPSHOT_COLOR_SCHEMES = ["light", "dark"] as const;
 
 export type SnapshotColorScheme = (typeof SNAPSHOT_COLOR_SCHEMES)[number];
 

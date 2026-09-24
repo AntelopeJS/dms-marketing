@@ -25,8 +25,8 @@ type ConfigKeysOfType<T> = {
   [K in keyof DmsMarketingConfig]: DmsMarketingConfig[K] extends T ? K : never;
 }[keyof DmsMarketingConfig];
 
-export type NumericConfigKey = ConfigKeysOfType<number>;
-export type BooleanConfigKey = ConfigKeysOfType<boolean>;
+type NumericConfigKey = ConfigKeysOfType<number>;
+type BooleanConfigKey = ConfigKeysOfType<boolean>;
 
 interface SettingBase {
   id: string;
