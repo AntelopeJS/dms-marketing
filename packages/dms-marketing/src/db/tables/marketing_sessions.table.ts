@@ -18,6 +18,13 @@ export const marketingSessionsTableName = "marketing_sessions";
 const VISITOR_SESSION_INDEX = "websiteId_visitorId_startedAt";
 
 /**
+ * Compound index for `getLastActivityByWebsites` (every website list of a
+ * tenant with several sites): each site's latest session is the first key of
+ * a backward walk, instead of a max over every retained session.
+ */
+const LAST_ACTIVITY_INDEX = "websiteId_lastSeenAt";
+
+/**
  * One visit: a run of events from the same visitor with less than the session
  * window between them. Carries the acquisition context (referrer, UTM) and
  * device triple so events stay thin; retention cohorts read this table alone
@@ -26,6 +33,7 @@ const VISITOR_SESSION_INDEX = "websiteId_visitorId_startedAt";
 @RegisterTable(marketingSessionsTableName, TENANT_SCHEMA_NAME)
 export class MarketingSession extends Table {
   @Index({ group: VISITOR_SESSION_INDEX })
+  @Index({ group: LAST_ACTIVITY_INDEX })
   @Field("string")
   declare websiteId: string;
 
@@ -37,7 +45,9 @@ export class MarketingSession extends Table {
   @Field("date")
   declare startedAt: Date;
 
-  /** Indexed on its own: the hourly retention delete bounds on it alone. */
+  /** Indexed on its own as well: the hourly retention delete bounds on it
+   * alone. */
+  @Index({ group: LAST_ACTIVITY_INDEX })
   @Index()
   @Field("date")
   declare lastSeenAt: Date;
