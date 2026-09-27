@@ -120,19 +120,29 @@ async function persistSettings(
   next: SettingsDocument,
   existing: MarketingSettings | undefined,
 ): Promise<void> {
-  // Re-fetch when the caller saw no row, to guard against a concurrent
-  // first-save race that would create a duplicate singleton.
-  const row = existing ?? (await model.getSingleton());
-  if (row) {
-    Object.assign(row, next);
-    await model.update(row);
-    return;
-  }
-  await model.insert({
-    ...next,
-    visitorHashSecret: cachedSecret || generateSecret(),
+  // A caller that saw no row goes through the fixed-key insert: a concurrent
+  // first save collides on the key and this write lands on the winner's row.
+  const row =
+    existing ??
+    (await model.getSingleton()) ??
+    (await createSingleton(model, next, cachedSecret || generateSecret()));
+  Object.assign(row, next);
+  await model.update(row);
+}
+
+/** The row in force after the insert — ours, or the instance's that won. */
+async function createSingleton(
+  model: MarketingSettingsModel,
+  doc: SettingsDocument,
+  visitorHashSecret: string,
+): Promise<MarketingSettings> {
+  const row = await model.insertSingleton({
+    ...doc,
+    visitorHashSecret,
     updatedAt: new Date(),
   } as MarketingSettings);
+  cachedSecret = row.visitorHashSecret;
+  return row;
 }
 
 /**
@@ -144,12 +154,9 @@ export async function loadSettings(
 ): Promise<void> {
   let doc = await model.getSingleton();
   if (!doc) {
-    doc = {
-      ...defaultDocument(),
-      visitorHashSecret: generateSecret(),
-      updatedAt: new Date(),
-    } as MarketingSettings;
-    await model.insert(doc);
+    // Every instance booting on an empty table races here; all of them end
+    // up caching the one secret that was stored.
+    doc = await createSingleton(model, defaultDocument(), generateSecret());
   } else if (!doc.visitorHashSecret) {
     doc.visitorHashSecret = generateSecret();
     await model.update(doc);
