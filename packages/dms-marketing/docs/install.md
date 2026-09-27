@@ -163,7 +163,7 @@ sites exercise it: through page snapshots, enabled on the seeded website.
 pnpm install --filter @antelopejs/dms-marketing...   # workspace root
 pnpm build                       # interface, then tsc → dist/
 cd packages/dms-marketing/playground
-pnpm install
+pnpm install --ignore-workspace  # its own lockfile, not the workspace
 pnpm dev                         # backend on :5010 (ajs project run -w)
 pnpm frontend:dev                # DMS console (ajs dms dev)
 ```

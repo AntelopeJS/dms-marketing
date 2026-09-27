@@ -9,7 +9,7 @@ export default defineConfig({
       source: {
         type: "local",
         path: ".",
-        installCommand: ["npx tsc"],
+        installCommand: ["pnpm build"],
       },
     },
     "dms-marketing": {
@@ -17,7 +17,9 @@ export default defineConfig({
         type: "local",
         path: "..",
         watchDir: ["src"],
-        installCommand: ["npx tsc"],
+        // The build script builds the interface package first: the module
+        // compiles against its `dist`, which a fresh clone does not have.
+        installCommand: ["pnpm build"],
       },
     },
     // Loaded so the playground exercises the console the module ships beside,
