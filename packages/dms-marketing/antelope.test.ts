@@ -37,6 +37,9 @@ export default defineConfig({
       // `.antelope/cache`, so the test would require an unconnected instance
       // and fail with "MongoDB adapter is not connected". The
       // `@antelopejs/mongodb` devDependency pins the version both sides share.
+      // Its locked `@antelopejs/interface-database` is the canonical copy the
+      // harness checks every module's range against, so it has to meet the
+      // floor of the dms release the range above resolves to.
       source: { type: "local", path: "node_modules/@antelopejs/mongodb" },
     },
     api: {

@@ -28,7 +28,11 @@ const {
 
 const ACTIVITY_SCHEMA = "activity_test";
 const SESSIONS_COLLECTION = `${ACTIVITY_SCHEMA}__${marketingSessionsTableName}`;
-const LAST_ACTIVITY_INDEX = "websiteId_lastSeenAt";
+// The driver leads every per-instance index with `_instance` and names it
+// `<index>__i`. Sessions are only read within one tenant instance, so no
+// index of theirs is declared crossInstance.
+const LAST_ACTIVITY_INDEX = "websiteId_lastSeenAt__i";
+const LAST_SEEN_INDEX = "lastSeenAt__i";
 const TENANT = "tenant-a";
 const OTHER_TENANT = "tenant-b";
 let client;
@@ -115,11 +119,12 @@ test("last activity is one indexed top-1 read per website", async () => {
   const indexes = await sessions.indexes();
   assert.deepEqual(
     indexes.find((index) => index.name === LAST_ACTIVITY_INDEX)?.key,
-    { websiteId: 1, lastSeenAt: 1 },
+    { _instance: 1, websiteId: 1, lastSeenAt: 1 },
   );
-  assert.deepEqual(indexes.find((index) => index.name === "lastSeenAt")?.key, {
-    lastSeenAt: 1,
-  });
+  assert.deepEqual(
+    indexes.find((index) => index.name === LAST_SEEN_INDEX)?.key,
+    { _instance: 1, lastSeenAt: 1 },
+  );
   await sessions.insertMany(
     [
       { _id: "a-old", websiteId: "a", lastSeenAt: new Date(1_000) },
