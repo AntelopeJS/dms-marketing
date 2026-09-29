@@ -1,6 +1,20 @@
 # Changelog
 
 
+## v0.3.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.3.0...v0.3.1)
+
+### 🩹 Fixes
+
+- **playground:** Build the interface package before the module ([#20](https://github.com/AntelopeJS/dms-marketing/pull/20))
+- **db:** Make the marketing settings singleton deterministic and index last-activity lookup ([#21](https://github.com/AntelopeJS/dms-marketing/pull/21))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Alessandro Aloisio ([@alessaloisio](http://github.com/alessaloisio))
+
 ## v0.3.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.2.5...v0.3.0)
