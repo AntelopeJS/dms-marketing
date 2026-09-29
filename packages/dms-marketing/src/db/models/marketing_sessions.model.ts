@@ -34,24 +34,32 @@ export class MarketingSessionsModel extends BasicDataModel(
     return results[0];
   }
 
-  /** One server-side group-max; websites with no session are absent. */
+  /**
+   * One top-1 read per website, served by the `websiteId_lastSeenAt` index: a
+   * group-max would fetch every retained session of every site. Websites with
+   * no session are absent.
+   */
   async getLastActivityByWebsites(
     websiteIds: string[],
   ): Promise<Map<string, number>> {
-    if (websiteIds.length === 0) {
-      return new Map();
-    }
-    const rows = await this.table
-      .getAll(websiteIds, "websiteId")
-      .group("websiteId", (stream, websiteId) => ({
-        websiteId,
-        lastSeenAt: stream.max("lastSeenAt"),
-      }))
-      .filter((row) => row.key("lastSeenAt").ne(null))
-      .run();
-    return new Map(
-      rows.map((row) => [row.websiteId, new Date(row.lastSeenAt).getTime()]),
+    const latest = await Promise.all(
+      websiteIds.map(async (websiteId) => {
+        const rows = await this.table
+          .getAll(websiteId, "websiteId")
+          .orderBy("lastSeenAt", "desc")
+          .slice(0, 1)
+          .pluck("lastSeenAt")
+          .run();
+        return [websiteId, rows[0]?.lastSeenAt] as const;
+      }),
     );
+    const activity = new Map<string, number>();
+    for (const [websiteId, lastSeenAt] of latest) {
+      if (lastSeenAt != null) {
+        activity.set(websiteId, new Date(lastSeenAt).getTime());
+      }
+    }
+    return activity;
   }
 
   /**
