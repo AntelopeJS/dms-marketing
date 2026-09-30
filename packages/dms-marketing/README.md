@@ -127,9 +127,11 @@ workspace. Its own vitest suite runs through `pnpm test`.
 
 The interface this module implements is the workspace's other package,
 `packages/interface-dms-marketing`, published under the same `@antelopejs`
-scope. This package consumes it through the fleet range
-`>=<interface version> <1.0.0`, which pnpm links to the sibling inside the
-workspace, so `pnpm build` builds the interface first.
+scope. This package implements it, so it caps it below the next minor,
+`>=<interface version> <0.<minor+1>.0`, rather than taking the fleet's
+`<1.0.0` ceiling: a breaking interface minor never reaches a module that does
+not implement it. pnpm links that range to the sibling inside the workspace,
+so `pnpm build` builds the interface first.
 Each is released on its own from GitHub Actions — `release-interface.yml`
 then `release.yml`; the module's workflow refuses to run until the interface
 version it links is resolvable on npm.
