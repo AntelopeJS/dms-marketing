@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.3.3
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.3.2...v0.3.3)
+
+### 🚀 Enhancements
+
+- **frontend-vue:** Declare the @antelopejs/dms-frontend releases the layer supports ([#22](https://github.com/AntelopeJS/dms-marketing/pull/22))
+
+### 🏡 Chore
+
+- **test:** Run the harness on @antelopejs/mongodb 1.4.0 ([#25](https://github.com/AntelopeJS/dms-marketing/pull/25))
+
+### ❤️ Contributors
+
+- Alessandro Aloisio ([@alessaloisio](http://github.com/alessaloisio))
+
 ## v0.3.2
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.3.1...v0.3.2)
