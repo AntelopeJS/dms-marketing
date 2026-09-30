@@ -475,7 +475,10 @@ The interface is published as a separate workspace package at
 `packages/interface-dms-marketing`, beside this module's own
 `packages/dms-marketing`. Local consumers get the workspace link, because
 `link-workspace-packages` makes pnpm resolve the module's
-`>=<interface version> <1.0.0` dependency to the sibling package. Each package
+`>=<interface version> <0.<minor+1>.0` dependency to the sibling package. The
+module implements the interface, so that range stops below the next minor
+instead of `<1.0.0`: a breaking interface minor never reaches a module that
+does not implement it, and `release.yml` refuses any other shape. Each package
 has its own manually dispatched release workflow, and the module's refuses to
 run until the interface version it links is resolvable on npm — so the
 interface is always released first.
