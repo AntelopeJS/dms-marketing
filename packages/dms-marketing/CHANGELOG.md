@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.3.2
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.3.1...v0.3.2)
+
+### 🩹 Fixes
+
+- **deps:** Cap @antelopejs/interface-dms-marketing below the next minor and check interface ranges ([#26](https://github.com/AntelopeJS/dms-marketing/pull/26))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.3.1
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.3.0...v0.3.1)

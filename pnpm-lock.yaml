@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@antelopejs/tooling-configs':
-        specifier: '>=0.0.6 <1.0.0'
-        version: 0.0.6(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
+        specifier: '>=0.0.7 <1.0.0'
+        version: 0.0.7(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
       oxfmt:
         specifier: ^0.66.0
         version: 0.66.0
@@ -36,7 +36,7 @@ importers:
         specifier: '>=0.1.9 <1.0.0'
         version: 0.1.9(@antelopejs/interface-api-util@0.1.2(@antelopejs/interface-api@0.0.13(@antelopejs/interface-core@0.1.1))(@antelopejs/interface-core@0.1.1))(@antelopejs/interface-api@0.0.13(@antelopejs/interface-core@0.1.1))(@antelopejs/interface-core@0.1.1)(@antelopejs/interface-database-decorators@0.1.6(@antelopejs/interface-api@0.0.13(@antelopejs/interface-core@0.1.1))(@antelopejs/interface-core@0.1.1)(@antelopejs/interface-database@0.1.8(@antelopejs/interface-core@0.1.1)))(@antelopejs/interface-database@0.1.8(@antelopejs/interface-core@0.1.1))
       '@antelopejs/interface-database':
-        specifier: '>=0.1.7 <1.0.0'
+        specifier: '>=0.1.8 <1.0.0'
         version: 0.1.8(@antelopejs/interface-core@0.1.1)
       '@antelopejs/interface-database-decorators':
         specifier: '>=0.1.6 <1.0.0'
@@ -45,7 +45,7 @@ importers:
         specifier: '>=0.2.0 <1.0.0'
         version: 0.2.0(ac4d53225c8f4299b063e73bd0608242)
       '@antelopejs/interface-dms-marketing':
-        specifier: '>=0.3.0 <1.0.0'
+        specifier: '>=0.3.1 <0.4.0'
         version: link:../interface-dms-marketing
       defu:
         specifier: ^6.1.4
@@ -73,8 +73,8 @@ importers:
         specifier: 1.4.0
         version: 1.4.0(socks@2.8.10)
       '@antelopejs/tooling-configs':
-        specifier: '>=0.0.6 <1.0.0'
-        version: 0.0.6(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
+        specifier: '>=0.0.7 <1.0.0'
+        version: 0.0.7(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
       '@types/node':
         specifier: ^22.19.15
         version: 22.20.1
@@ -115,8 +115,8 @@ importers:
         specifier: '>=0.1.1 <1.0.0'
         version: 0.1.1
       '@antelopejs/tooling-configs':
-        specifier: '>=0.0.6 <1.0.0'
-        version: 0.0.6(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
+        specifier: '>=0.0.7 <1.0.0'
+        version: 0.0.7(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
       '@types/node':
         specifier: 22.20.1
         version: 22.20.1
@@ -212,9 +212,10 @@ packages:
   '@antelopejs/mongodb@1.4.0':
     resolution: {integrity: sha512-Y70RDJk/e1wCsw5I/cayVEWcN9uO+uk0Ehu52wXXOCBgBlRfIZq5Hg+KrRKRstbfv8G1tLiHUhQl5WiTtxiLMQ==}
 
-  '@antelopejs/tooling-configs@0.0.6':
-    resolution: {integrity: sha512-K8ysTXwxfGRQpM1JxJMehbwmQZqkE+7hCJiGoL2G0n9ut5MyszCsychUhfG5e+N+/EOwZ4QPN1XwNw8qNnQT3w==}
+  '@antelopejs/tooling-configs@0.0.7':
+    resolution: {integrity: sha512-AMGItAsD++kaoMfo+AwUeju+fFoHUSmXjzmKqwi2pQOdQD0kv2OuovGTZy80Eu6LKKyeaW7Ua/aBcdkhODhoFA==}
     engines: {node: '>=22.18.0'}
+    hasBin: true
     peerDependencies:
       '@nuxt/eslint-config': '>=1.2.0'
       eslint-plugin-perfectionist: '>=5.0.0'
@@ -2722,7 +2723,7 @@ snapshots:
       - snappy
       - socks
 
-  '@antelopejs/tooling-configs@0.0.6(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
+  '@antelopejs/tooling-configs@0.0.7(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
     dependencies:
       '@oxlint/plugins': 1.81.0
     optionalDependencies:
