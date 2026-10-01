@@ -26,7 +26,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
           # The workspace lockfile. The frontend module and the playground are
           # separate projects with lockfiles of their own, not installed here.
