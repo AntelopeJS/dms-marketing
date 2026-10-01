@@ -43,7 +43,7 @@ export default defineConfig({
       source: { type: "local", path: "node_modules/@antelopejs/mongodb" },
     },
     api: {
-      source: { type: "package", package: "@antelopejs/api", version: "1.3.0" },
+      source: { type: "package", package: "@antelopejs/api", version: "1.3.1" },
       config: {
         servers: [{ protocol: "http", host: "127.0.0.1", port: 0 }],
         publicBaseUrl: "http://127.0.0.1",
