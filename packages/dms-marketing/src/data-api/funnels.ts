@@ -196,6 +196,29 @@ function resolveExperiment(
   };
 }
 
+/**
+ * The experiment an edit stores. A body without the `experiment` key leaves
+ * it unchanged: the stored one goes back through the same rules, so moving a
+ * non-draft split to another site is still refused, and it is written back
+ * explicitly whether or not the data-api writes the keys a body omits.
+ *
+ * @param parsed - The parsed edit body.
+ * @param current - The row being edited.
+ * @param websiteId - The site the row ends up on.
+ * @returns The experiment to write, or null for a plain funnel.
+ */
+export function editedExperiment(
+  parsed: Record<string, unknown>,
+  current: Funnel,
+  websiteId: string,
+): FunnelExperiment | null {
+  const requested =
+    "experiment" in parsed
+      ? parseExperiment(parsed)
+      : (current.experiment ?? null);
+  return resolveExperiment(requested, current, websiteId);
+}
+
 async function assertUniqueKey(
   ctx: RequestContext,
   websiteId: string,
@@ -270,11 +293,7 @@ function withEditChecks(base: DataControllerCallback): DataControllerCallback {
       typeof parsed.websiteId === "string"
         ? parsed.websiteId
         : current.websiteId;
-    const experiment = resolveExperiment(
-      parseExperiment(parsed),
-      current,
-      websiteId,
-    );
+    const experiment = editedExperiment(parsed, current, websiteId);
     if (experiment) {
       await assertUniqueKey(ctx, websiteId, experiment.key, current._id);
     }
