@@ -329,18 +329,6 @@ const tooHeavy = computed(
   () => snapshot.value !== null && backdrop.value === null,
 )
 const snapshotScheme = computed(() => snapshot.value?.colorScheme ?? 'light')
-const capturedAtLabel = computed(() => {
-  if (!snapshot.value) {
-    return ''
-  }
-  const date = new Date(snapshot.value.capturedAt).toLocaleString(locale.value)
-  return t(
-    tooHeavy.value
-      ? 'page.marketing.pages.preview.attempted_at'
-      : 'page.marketing.pages.preview.captured_at',
-    { date },
-  )
-})
 
 function mebibytes(bytes: number): string {
   return new Intl.NumberFormat(locale.value, {

@@ -26,4 +26,8 @@ export class MarketingPreferencesModel extends BasicDataModel(
       .insert({ _id: userId, websiteId, updatedAt: new Date() })
       .run();
   }
+
+  async forget(userId: string): Promise<void> {
+    await this.table.get(userId).delete().run();
+  }
 }

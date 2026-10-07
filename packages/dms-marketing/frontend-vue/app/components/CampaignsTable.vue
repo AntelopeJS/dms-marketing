@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from '#dms/frontend-module'
 import { channelStyle } from '../utils/channels'
 import { formatNumber, formatPercent } from '../utils/format'
@@ -55,7 +55,38 @@ const { data, isLoading, error, refresh } = useChartFetch<CampaignsResponse>({
 const search = ref('')
 const channel = ref(ALL)
 
-const rows = computed(() => data.value?.rows ?? [])
+// The first read holds the top rows only; past them, a filter has to ask the
+// route, which searches every combination of the period.
+const SEARCH_DEBOUNCE_MS = 300
+const scope = usePeriodScope(props.periodScope)
+const { $authFetch } = useAuthFetch()
+const searched = ref<CampaignsResponse | null>(null)
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+
+async function searchServer(needle: string): Promise<void> {
+  const url = `${props.fetchUrl}?search=${encodeURIComponent(needle)}`
+  try {
+    searched.value = await $authFetch<CampaignsResponse>(
+      appendPeriodToUrl(url, scope.value),
+    )
+  } catch {
+    searched.value = null
+  }
+}
+
+watch([search, () => data.value], ([value]) => {
+  if (searchTimer) {
+    clearTimeout(searchTimer)
+  }
+  const needle = value.trim()
+  if (!needle || !data.value?.truncated) {
+    searched.value = null
+    return
+  }
+  searchTimer = setTimeout(() => void searchServer(needle), SEARCH_DEBOUNCE_MS)
+})
+
+const rows = computed(() => (searched.value ?? data.value)?.rows ?? [])
 
 const channelTabs = computed(() => {
   const present = [...new Set(rows.value.map((row) => row.channel))]

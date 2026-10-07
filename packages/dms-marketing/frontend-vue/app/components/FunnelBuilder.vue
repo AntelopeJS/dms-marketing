@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import {
   useMarketingApi,
@@ -127,6 +127,8 @@ async function loadExisting(): Promise<void> {
     toast.add({ color: 'error', title: t('page.marketing.builder.load_error') })
   } finally {
     loading.value = false
+    // The watcher sees the loaded values on the next flush: clear after it.
+    await nextTick()
     dirty.value = false
   }
 }

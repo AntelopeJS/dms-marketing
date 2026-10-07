@@ -276,7 +276,8 @@
           "168": "7 jours",
           "24": "24 h",
           "720": "30 jours"
-        }
+        },
+        "page_title": "Éditeur de funnel"
       },
       "catalog": {
         "collecting": "Collecte active sur tous les sites",
@@ -451,7 +452,7 @@
           "error": "Le statut n'a pas pu être modifié.",
           "resume": "Reprendre le test",
           "resume_confirm": "Reprendre le test",
-          "resume_description": "Les visiteurs retrouvent leurs variantes, réparties comme avant. La pause ne compte pas dans les résultats.",
+          "resume_description": "Les visiteurs retrouvent leurs variantes, réparties comme avant ; la pause ne compte pas. Ne reprenez qu'un arrêt accidentel ou prématuré : relancer jusqu'à obtenir un résultat significatif rend le verdict sans valeur.",
           "resume_title": "Reprendre ce test ?",
           "running_done": "Test en cours",
           "start": "Lancer le test",
@@ -542,43 +543,8 @@
         "no_match": "Pas encore de funnel de ce type.",
         "note": "Les étapes sont cherchées dans l'ordre au sein d'une session. Les tests A/B sont lus sur leur propre durée, pas sur la période choisie.",
         "results": {
-          "arm_control": "contrôle {letter}",
-          "arm_variation": "variation {letter}",
-          "control": "contrôle",
-          "empty": {
-            "description": "Aucune session n'a été exposée à cette expérience pendant qu'elle tournait. Ses chiffres sont lus sur sa propre période de test, pas sur la période sélectionnée.",
-            "title": "Aucune exposition pour le moment"
-          },
-          "end_to_end": "{value} de bout en bout",
-          "exposed": "{count} session exposée | {count} sessions exposées",
-          "insufficient": "Pas assez de données",
-          "insufficient_data": {
-            "description": "Trop peu de sessions pour comparer les variantes — des taux sur un échantillon aussi mince seraient du bruit, pas un signal. Comptes bruts ci-dessous ; les verdicts apparaîtront quand chaque variante aura assez de résultats.",
-            "title": "Pas encore assez de données"
-          },
-          "meta_draft": "répartition {split} · aucun trafic affecté",
-          "meta_frozen": "répartition {split}, gelée",
-          "not_significant": "Non significatif",
-          "reached_goal": "{count} session a atteint l'objectif | {count} sessions ont atteint l'objectif",
-          "significant": "Significatif à 95 %",
-          "srm_warning": {
-            "description": "La répartition observée entre les bras s'écarte fortement des poids configurés — l'affectation ou la remontée d'expositions est peut-être cassée ; lisez ces chiffres avec méfiance.",
-            "title": "Répartition anormale (SRM)"
-          },
-          "truncated": {
-            "description": "La fenêtre d'événements bruts a atteint son plafond : les chiffres ne couvrent que la partie la plus ancienne de la période, et les verdicts A/B sont retenus.",
-            "title": "Fenêtre tronquée"
-          },
-          "verdict": {
-            "confidence": "Confiance",
-            "lift": "Lift relatif",
-            "sessions": "Sessions"
-          },
-          "window_running": "en cours depuis le {since}",
-          "window_runs": "{count} période | {count} périodes",
-          "window_stopped": "test du {since} au {until}"
+          "control": "contrôle"
         },
-        "results_error": "Le chargement des résultats du funnel a échoué.",
         "row": {
           "draft": "{key} · A/B · {count} variantes",
           "leader": "{key} · {letter} mène de +{lift}",
@@ -596,14 +562,12 @@
           "custom": "événement",
           "url": "vue de page"
         },
-        "steps_count": "{count} étape | {count} étapes",
         "tabs": {
           "ab": "Tests A/B",
           "all": "Tous",
           "funnels": "Funnels"
         },
         "title": "Funnels et tests A/B",
-        "variations_count": "{count} variation | {count} variations",
         "winner": {
           "description": "Significatif à 95 % (confiance {confidence}) sur {exposed} sessions exposées. Arrêtez le test, puis déployez le gagnant sur le site.",
           "review": "Voir les résultats",
@@ -762,7 +726,6 @@
           "tracking_off": "La collecte est désactivée dans les réglages du module : ni clic ni défilement n'est enregistré."
         },
         "list_truncated": "Inventaire tronqué",
-        "list_truncated_hint": "Plus de pages ont été visitées que cette liste n'en affiche. Filtrez pour atteindre les autres.",
         "missing_hint": "Une page manque ? Saisissez son chemin exact ci-dessus.",
         "most_clicked": "Les plus cliqués",
         "most_clicked_empty": "Aucun élément ancré pour l'instant : les clics s'affichent seulement sur la page.",
@@ -778,30 +741,24 @@
           "all_masked": "Tout le texte est masqué",
           "approximate_layout": "Capture {layout} affichée à {width}px",
           "approximate_layout_hint": "Aucun visiteur n'a encore été capturé à cette largeur : la mise en page est recalculée. Les clics restent sur leur élément.",
-          "attempted_at": "capture tentée le {date}",
-          "captured_at": "instantané du {date}",
           "enable_snapshots": "Activer les instantanés de page",
           "fields_masked": "Texte visible, champs de formulaire masqués",
-          "height_override": "Hauteur de rendu (px)",
           "layout": "Format",
           "layout_desktop": "Ordinateur",
           "layout_phone": "Téléphone",
           "layout_tablet": "Tablette (portrait)",
           "mask_text": "Masquer tout le texte",
-          "mask_text_hint": "Remplacer chaque caractère du texte capturé par un caractère de substitution. Les champs de formulaire sont toujours masqués.",
           "no_backdrop": "Rien sur quoi dessiner les clics pour l'instant",
           "no_backdrop_hint": "Les compteurs de l'en-tête sont exacts ; la heatmap apparaît dès qu'une capture est prise.",
           "no_snapshot": "Pas encore de capture de {path}",
           "no_snapshot_hint": "La prochaine visite échantillonnée en prendra une ({rate} % des visites). Les chiffres ci-dessus sont déjà exacts.",
           "open_in_tab": "Ouvrir",
-          "options": "Options des instantanés",
           "options_error": "L'enregistrement des options a échoué. Réessayez dans un instant.",
           "overflow": "Page plus large que la mise en page choisie",
           "overflow_hint": "L'instantané se dispose sur {width}px. La superposition suit le document et reste donc alignée ; le fond, lui, peut être coupé.",
           "oversized": "Page trop haute pour un aperçu fidèle",
           "oversized_hint": "Le document dépasse la plus grande surface dessinable : la superposition et le fond ne coïncident plus. Les chiffres de clics ne sont pas affectés.",
           "snapshots_enabled": "Instantanés de page",
-          "snapshots_enabled_hint": "Capturer la page telle que les visiteurs la voient, pour dessiner la heatmap par-dessus. Stocke du contenu de page ; changer ce réglage supprime les instantanés du site.",
           "snapshots_off": "Les instantanés de page sont désactivés pour ce site",
           "snapshots_off_hint": "Les clics et défilements sont toujours comptés, mais la heatmap ne se dessine que par-dessus un instantané de la page telle que les visiteurs la voient : son texte et ses images sont alors stockés, tous les champs de formulaire masqués, pendant la rétention des instantanés fixée dans les réglages du module. Activez-le si c'est compatible avec les engagements de confidentialité de ce site.",
           "status_line": "Capture du {date} · {layout} {width}px",
@@ -830,7 +787,6 @@
           "reach_line": "{percent} % des visiteurs voient jusqu'ici",
           "truncated": "Profondeur de défilement partielle",
           "truncated_hint": "Cette page a enregistré plus de défilements qu'une lecture n'en parcourt. Réduisez la période pour tous les voir.",
-          "views": "{count} vue avec défilement | {count} vues avec défilement",
           "views_unit": "vues avec défilement"
         },
         "search_placeholder": "Filtrer, ou saisir un chemin…",
@@ -937,11 +893,6 @@
           "snapshots_hint": "Capture la page telle que les visiteurs la voient pour y dessiner les heatmaps. Stocke textes et images ; les champs de formulaire sont toujours masqués."
         },
         "finish_install": "Terminer l'installation",
-        "form": {
-          "domain": "exemple.com",
-          "domain_description": "Le domaine racine du site, sans schéma (exemple.com). Ses sous-domaines sont acceptés tels quels ; les autres hôtes — préproduction, autre extension — s'ajoutent via extraDomains dans l'API.",
-          "name": "Site principal"
-        },
         "open_overview": "Ouvrir la vue d'ensemble",
         "privacy": "Aucun cookie ni adresse IP n'est stocké. Les visiteurs sont comptés avec une empreinte serveur salée chaque mois ; Do Not Track est respecté.",
         "refused": "{count} événement refusé depuis {host}, un hôte non déclaré | {count} événements refusés depuis {host}, un hôte non déclaré",

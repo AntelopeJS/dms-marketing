@@ -13,7 +13,7 @@ import { conversionCategory } from "../module";
 export class MarketingFunnelBuilderPage extends PageController(
   "funnel-builder",
   {
-    displayName: "$page.marketing.builder.title",
+    displayName: "$page.marketing.builder.page_title",
     description: "$page.marketing.builder.description",
     icon: "i-ph-funnel",
     module: MARKETING_MODULE_ID,

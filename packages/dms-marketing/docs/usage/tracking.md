@@ -19,7 +19,7 @@ page covers what it records and the JavaScript API it exposes to page code.
   `utm_*` parameters — source, medium, campaign, term, content — (extracted
   onto the session; query strings are dropped from stored paths). The
   acquisition channel shown on the dashboards is derived server-side from
-  referrer + `utm_medium` ([campaigns.md](campaigns.md)).
+  referrer, `utm_medium` and ad click ids ([acquisition.md](acquisition.md)).
   When the deployment configures a GeoIP database, the session also carries
   the visitor's country — derived server-side from the request IP, which is
   itself never stored.
@@ -49,9 +49,11 @@ window.dmsMarketing.track("signup_submitted", { plan: "pro" });
 - `data` — optional object, kind-specific, at most 4 KiB serialized. An
   oversized payload is dropped server-side (counted, not a 400).
 
-Custom events show up in the overview's KPI row and its **Top events** card
-(counts per name — which CTA gets clicked), and are the second kind of
-funnel step ([funnels.md](funnels.md)).
+Custom events show up in the overview's KPI cards and its **Custom events**
+card (counts per name — which CTA gets clicked), and are the second kind of
+funnel step ([funnels.md](funnels.md)); the funnel builder suggests the
+names the site already sends. An event that ends a funnel is tagged
+**Goal** on the overview.
 
 ## Experiment variations
 

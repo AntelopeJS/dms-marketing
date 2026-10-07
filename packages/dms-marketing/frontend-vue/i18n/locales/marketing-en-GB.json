@@ -276,7 +276,8 @@
           "168": "7 days",
           "24": "24 h",
           "720": "30 days"
-        }
+        },
+        "page_title": "Funnel builder"
       },
       "catalog": {
         "collecting": "Collecting on every website",
@@ -451,7 +452,7 @@
           "error": "The status could not be changed.",
           "resume": "Resume test",
           "resume_confirm": "Resume test",
-          "resume_description": "Visitors get their variations again, bucketed as before. The pause counts for nothing in the results.",
+          "resume_description": "Visitors get their variations again, bucketed as before; the pause counts for nothing. Resume an accidental or early stop only: resuming until the numbers look significant makes the verdict meaningless.",
           "resume_title": "Resume this test?",
           "running_done": "Test running",
           "start": "Start test",
@@ -542,43 +543,8 @@
         "no_match": "No funnel of this kind yet.",
         "note": "Steps match in order within one session. A/B tests are read over their own run, not the selected period.",
         "results": {
-          "arm_control": "control {letter}",
-          "arm_variation": "variation {letter}",
-          "control": "control",
-          "empty": {
-            "description": "No session was exposed to this experiment while it was running. Its numbers are read over its own run, not over the selected period.",
-            "title": "No exposure yet"
-          },
-          "end_to_end": "{value} end to end",
-          "exposed": "{count} exposed session | {count} exposed sessions",
-          "insufficient": "Not enough data",
-          "insufficient_data": {
-            "description": "Too few sessions to compare the arms — rates on a sample this thin would be noise, not signal. Raw counts below; verdicts appear once every arm has enough outcomes.",
-            "title": "Not enough data yet"
-          },
-          "meta_draft": "{split} split · no traffic assigned yet",
-          "meta_frozen": "{split} split, frozen",
-          "not_significant": "Not significant",
-          "reached_goal": "{count} session reached the goal | {count} sessions reached the goal",
-          "significant": "Significant at 95%",
-          "srm_warning": {
-            "description": "The observed split across arms is far from the configured weights — assignment or exposure reporting may be broken; read these numbers with suspicion.",
-            "title": "Sample ratio mismatch"
-          },
-          "truncated": {
-            "description": "The raw-event window hit its cap: numbers cover the oldest part of the period only, and A/B verdicts are withheld.",
-            "title": "Window truncated"
-          },
-          "verdict": {
-            "confidence": "Confidence",
-            "lift": "Relative lift",
-            "sessions": "Sessions"
-          },
-          "window_running": "running since {since}",
-          "window_runs": "{count} run | {count} runs",
-          "window_stopped": "run {since} – {until}"
+          "control": "control"
         },
-        "results_error": "Loading the funnel results failed.",
         "row": {
           "draft": "{key} · A/B · {count} variations",
           "leader": "{key} · {letter} leads by +{lift}",
@@ -596,14 +562,12 @@
           "custom": "event",
           "url": "page view"
         },
-        "steps_count": "{count} step | {count} steps",
         "tabs": {
           "ab": "A/B tests",
           "all": "All",
           "funnels": "Funnels"
         },
         "title": "Funnels & A/B tests",
-        "variations_count": "{count} variation | {count} variations",
         "winner": {
           "description": "Significant at 95% (confidence {confidence}) over {exposed} exposed sessions. Stop the test, then ship the winner on the site.",
           "review": "Review results",
@@ -762,7 +726,6 @@
           "tracking_off": "Collection is disabled in the module settings, so no click or scroll is being recorded."
         },
         "list_truncated": "Long inventory",
-        "list_truncated_hint": "More pages were visited than this list shows. Filter to reach the rest.",
         "missing_hint": "Missing a page? Type its exact path above.",
         "most_clicked": "Most clicked",
         "most_clicked_empty": "No element anchored yet: clicks show on the page only.",
@@ -778,30 +741,24 @@
           "all_masked": "All text masked",
           "approximate_layout": "Showing the {layout} snapshot at {width}px",
           "approximate_layout_hint": "No visitor has been captured at this width yet, so the layout is reflowed. Clicks still land on their element.",
-          "attempted_at": "capture attempted {date}",
-          "captured_at": "snapshot from {date}",
           "enable_snapshots": "Enable page snapshots",
           "fields_masked": "Text visible, form fields masked",
-          "height_override": "Render height (px)",
           "layout": "Layout",
           "layout_desktop": "Desktop",
           "layout_phone": "Phone",
           "layout_tablet": "Tablet (portrait)",
           "mask_text": "Mask all text",
-          "mask_text_hint": "Replace every character of captured text with a placeholder. Form fields are always masked.",
           "no_backdrop": "Nothing to draw the clicks on yet",
           "no_backdrop_hint": "The counts in the header are exact; the heatmap appears once a snapshot is captured.",
           "no_snapshot": "No snapshot of {path} yet",
           "no_snapshot_hint": "The next sampled visit captures one ({rate}% of visits). The numbers above are already exact.",
           "open_in_tab": "Open",
-          "options": "Snapshot options",
           "options_error": "Saving the snapshot options failed. Retry in a moment.",
           "overflow": "Page wider than the chosen layout",
           "overflow_hint": "The snapshot lays out at {width}px. The overlay follows the document, so it stays aligned; the backdrop may be cut off.",
           "oversized": "Page too tall to preview accurately",
           "oversized_hint": "The document exceeds the largest surface that can be drawn, so the overlay and the backdrop no longer line up. The click figures are unaffected.",
           "snapshots_enabled": "Page snapshots",
-          "snapshots_enabled_hint": "Capture the page as visitors see it, to draw the heatmap over it. Stores page content; changing this discards the site's snapshots.",
           "snapshots_off": "Page snapshots are off for this site",
           "snapshots_off_hint": "Clicks and scrolls are still counted, but the heatmap is only drawn over a snapshot of the page as visitors see it: its text and images are then stored, every form field masked, for the snapshot retention set in the module settings. Enable it if that fits this site's privacy commitments.",
           "status_line": "Snapshot captured {date} · {layout} {width}px",
@@ -830,7 +787,6 @@
           "reach_line": "{percent}% of visitors see down to here",
           "truncated": "Partial scroll depth",
           "truncated_hint": "This page recorded more scrolls than one read walks through. Narrow the period to see them all.",
-          "views": "{count} scrolled view | {count} scrolled views",
           "views_unit": "views that scrolled"
         },
         "search_placeholder": "Filter, or type a path…",
@@ -937,11 +893,6 @@
           "snapshots_hint": "Capture the page as visitors see it to draw heatmaps over it. Stores page text and images; form fields are always masked."
         },
         "finish_install": "Finish install",
-        "form": {
-          "domain": "example.com",
-          "domain_description": "The site's apex domain, without scheme (example.com). Its subdomains are accepted as they are; other hosts — a staging host, another TLD — are added through the API's extraDomains.",
-          "name": "Main site"
-        },
         "open_overview": "Open overview",
         "privacy": "No cookie and no IP address are stored. Visitors are counted with a server-side hash salted every month; Do Not Track is honoured.",
         "refused": "{count} event refused from {host}, an undeclared host | {count} events refused from {host}, an undeclared host",
