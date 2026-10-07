@@ -36,7 +36,7 @@ function buildPalette(): Uint8ClampedArray | null {
   const strip = document.createElement('canvas')
   strip.width = PALETTE_SIZE
   strip.height = 1
-  const ctx = strip.getContext('2d')
+  const ctx = strip.getContext('2d', { willReadFrequently: true })
   if (!ctx) {
     return null
   }
@@ -59,7 +59,12 @@ function drawIntensity(ctx: CanvasRenderingContext2D): void {
     gradient.addColorStop(0, `rgba(0, 0, 0, ${alpha})`)
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
     ctx.fillStyle = gradient
-    ctx.fillRect(px - POINT_RADIUS, py - POINT_RADIUS, POINT_RADIUS * 2, POINT_RADIUS * 2)
+    ctx.fillRect(
+      px - POINT_RADIUS,
+      py - POINT_RADIUS,
+      POINT_RADIUS * 2,
+      POINT_RADIUS * 2,
+    )
   }
 }
 
@@ -91,7 +96,7 @@ function render(): void {
   }
   canvas.width = props.width
   canvas.height = props.height
-  const ctx = canvas.getContext('2d')
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) {
     return
   }

@@ -31,8 +31,7 @@ function parseJsonValue(raw: unknown): unknown {
   }
   try {
     return raw ? JSON.parse(raw) : null
-  }
-  catch {
+  } catch {
     return null
   }
 }

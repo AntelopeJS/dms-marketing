@@ -57,7 +57,9 @@ const gradient = computed(() => {
   const colorFor = (fraction: number) => heatColorAt(fraction, OVERLAY_ALPHA)
   const stops = [`${colorFor(1)} 0%`]
   for (let depth = 0; depth <= DEPTH_SCALE; depth += GRADIENT_STEP) {
-    stops.push(`${colorFor(reachAt(depth))} ${(yRatio(depth) * 100).toFixed(2)}%`)
+    stops.push(
+      `${colorFor(reachAt(depth))} ${(yRatio(depth) * 100).toFixed(2)}%`,
+    )
   }
   return `linear-gradient(to bottom, ${stops.join(', ')})`
 })
@@ -73,12 +75,12 @@ function depthReachedBy(percent: number): number {
 }
 
 const marks = computed(() => {
-  const placed: Array<{ percent: number, y: number }> = []
+  const placed: Array<{ percent: number; y: number }> = []
   for (const percent of REACH_MARKS) {
     const y = yRatio(depthReachedBy(percent)) * props.height
     // Collapsed shares (everyone stops at one depth) would stack identical
     // lines; the strongest claim wins.
-    if (placed.every(mark => Math.abs(mark.y - y) > 1)) {
+    if (placed.every((mark) => Math.abs(mark.y - y) > 1)) {
       placed.push({ percent, y })
     }
   }
@@ -88,17 +90,23 @@ const marks = computed(() => {
 const foldY = computed(() => props.foldRatio * props.height)
 const showFold = computed(() => props.foldRatio > 0 && props.foldRatio < 1)
 
-const hover = ref<{ y: number, percent: number } | null>(null)
+const hover = ref<{ y: number; percent: number } | null>(null)
 
 function onPointerMove(event: PointerEvent): void {
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
   if (rect.height <= 0 || props.foldRatio >= 1) {
     return
   }
-  const ratio = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1)
-  const depth = ratio <= props.foldRatio
-    ? 0
-    : Math.round(((ratio - props.foldRatio) / (1 - props.foldRatio)) * DEPTH_SCALE)
+  const ratio = Math.min(
+    Math.max((event.clientY - rect.top) / rect.height, 0),
+    1,
+  )
+  const depth =
+    ratio <= props.foldRatio
+      ? 0
+      : Math.round(
+          ((ratio - props.foldRatio) / (1 - props.foldRatio)) * DEPTH_SCALE,
+        )
   hover.value = {
     y: ratio * props.height,
     percent: Math.round(reachAt(depth) * 100),
@@ -112,12 +120,18 @@ function onPointerMove(event: PointerEvent): void {
     @pointermove="onPointerMove"
     @pointerleave="hover = null"
   >
-    <div class="pointer-events-none absolute inset-0" :style="{ background: gradient }" />
+    <div
+      class="pointer-events-none absolute inset-0"
+      :style="{ background: gradient }"
+    />
 
     <div
       v-if="showFold"
       class="pointer-events-none absolute inset-x-0"
-      :style="{ top: `${foldY}px`, borderTop: '1px solid rgba(255, 255, 255, 0.55)' }"
+      :style="{
+        top: `${foldY}px`,
+        borderTop: '1px solid rgba(255, 255, 255, 0.55)',
+      }"
     >
       <span
         class="absolute left-2 top-0 -translate-y-1/2 rounded-full bg-default/90 px-2 py-0.5 text-xs text-muted shadow"
@@ -139,19 +153,28 @@ function onPointerMove(event: PointerEvent): void {
       <span
         class="absolute right-2 top-0 -translate-y-1/2 rounded-full bg-default/90 px-2 py-0.5 text-xs font-medium text-highlighted shadow"
       >
-        {{ t('page.marketing.pages.scroll.reach_line', { percent: mark.percent }) }}
+        {{
+          t('page.marketing.pages.scroll.reach_line', { percent: mark.percent })
+        }}
       </span>
     </div>
 
     <div
       v-if="hover"
       class="pointer-events-none absolute inset-x-0"
-      :style="{ top: `${hover.y}px`, borderTop: '1px solid rgba(255, 255, 255, 0.95)' }"
+      :style="{
+        top: `${hover.y}px`,
+        borderTop: '1px solid rgba(255, 255, 255, 0.95)',
+      }"
     >
       <span
         class="absolute left-2 top-0 -translate-y-1/2 rounded-full bg-default/90 px-2 py-0.5 text-xs font-medium text-highlighted shadow"
       >
-        {{ t('page.marketing.pages.scroll.reach_line', { percent: hover.percent }) }}
+        {{
+          t('page.marketing.pages.scroll.reach_line', {
+            percent: hover.percent,
+          })
+        }}
       </span>
     </div>
   </div>

@@ -120,6 +120,22 @@ const SOCIAL_DOMAINS = new Set([
   "pin.it",
 ]);
 
+/**
+ * Mediums mailing tools tag their links with. Read before the referrer rules:
+ * a click from a desktop mail client or a webmail sends no referrer, or the
+ * webmail's own host, and would otherwise count as direct or referral.
+ */
+const EMAIL_MEDIUMS = new Set([
+  "email",
+  "e-mail",
+  "e_mail",
+  "newsletter",
+  "mail",
+]);
+
+/** Mediums that declare a referral outright, referrer or not (partner links). */
+const REFERRAL_MEDIUMS = new Set(["referral", "affiliate", "partner"]);
+
 function hasListedLabel(
   domain: string | undefined,
   labels: ReadonlySet<string>,
@@ -166,11 +182,11 @@ function isSocialSource(domain: string | undefined, medium: string): boolean {
 }
 
 /**
- * The five-channel grouping of a session, from its referrer domain, utm_medium
- * and ad click-id parameter. Paid wins first: an ad click keeps its referrer
- * (google.com, facebook.com) and would otherwise read as organic or social. A
- * medium the mapping does not know (email, newsletter…) keeps referrer
- * semantics — referral with a referrer, direct without one.
+ * The channel grouping of a session, from its referrer domain, utm_medium and
+ * ad click-id parameter. Paid wins first: an ad click keeps its referrer
+ * (google.com, facebook.com) and would otherwise read as organic or social.
+ * Email comes next, on its medium alone. A medium the mapping does not know
+ * keeps referrer semantics — referral with a referrer, direct without one.
  */
 export function resolveChannel(
   referrerDomain: string | undefined,
@@ -182,13 +198,16 @@ export function resolveChannel(
   if (isPaidMedium(medium) || PAID_CLICK_IDS.has(clickId)) {
     return "paid";
   }
+  if (EMAIL_MEDIUMS.has(medium)) {
+    return "email";
+  }
   if (isSocialSource(referrerDomain, medium) || SOCIAL_CLICK_IDS.has(clickId)) {
     return "social";
   }
   if (medium === "organic" || isSearchDomain(referrerDomain)) {
     return "organic";
   }
-  return referrerDomain ? "referral" : "direct";
+  return referrerDomain || REFERRAL_MEDIUMS.has(medium) ? "referral" : "direct";
 }
 
 export interface CampaignUtm {

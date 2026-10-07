@@ -5,6 +5,9 @@
 export const MARKETING_MODULE_ID = "marketing";
 export const OVERVIEW_PAGE_ID = "overview";
 
+/** Where the DMS mounts the module's pages: `/modules/<module id>`. */
+export const MARKETING_MODULE_PATH = `/modules/${MARKETING_MODULE_ID}`;
+
 /** Package name of the Vue frontend module this package ships beside. */
 export const FRONTEND_MODULE_NAME = "@antelopejs/dms-marketing-frontend-vue";
 
@@ -12,7 +15,7 @@ export const FRONTEND_MODULE_NAME = "@antelopejs/dms-marketing-frontend-vue";
 // Time
 // =============================================================================
 
-const MS_PER_SECOND = 1_000;
+export const MS_PER_SECOND = 1_000;
 export const MS_PER_MINUTE = 60 * MS_PER_SECOND;
 export const MS_PER_HOUR = 60 * MS_PER_MINUTE;
 export const MS_PER_DAY = 24 * MS_PER_HOUR;

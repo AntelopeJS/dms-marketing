@@ -33,6 +33,21 @@ export class WebsiteStatisticsModel extends BasicDataModel(
       .run();
   }
 
+  /** Whole rows of the days `firstDay`..`lastDay` (UTC midnights), oldest first. */
+  async getDaysBetween(
+    websiteId: string,
+    firstDay: number,
+    lastDay: number,
+  ): Promise<WebsiteStatistics[]> {
+    return this.table
+      .getAll(websiteId, "websiteId")
+      .filter((doc) =>
+        doc.key("day").ge(firstDay).and(doc.key("day").le(lastDay)),
+      )
+      .orderBy("day", "asc")
+      .run();
+  }
+
   /**
    * The asked-for top maps alone, one entry per day of the window. A row
    * carries all sixteen dimensions in one `tops` field, and the surfaces that

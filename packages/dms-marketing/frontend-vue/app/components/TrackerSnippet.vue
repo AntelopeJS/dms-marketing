@@ -1,31 +1,60 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useDmsRuntimeConfig, useI18n } from '#dms/frontend-module'
-import type { MarketingWebsite } from '../composables/useMarketingApi'
+import { trackerSnippet, type SnippetFlavor } from '../utils/snippet'
 
-const props = defineProps<{ website: MarketingWebsite }>()
+/**
+ * The tracker tag of one website in its three shapes (plain HTML, Nuxt,
+ * Google Tag Manager), with a copy button.
+ */
+const props = defineProps<{ websiteId: string }>()
+
+const FLAVORS: SnippetFlavor[] = ['html', 'nuxt', 'gtm']
+const FILE_LABELS: Record<SnippetFlavor, string> = {
+  html: 'index.html',
+  nuxt: 'nuxt.config.ts',
+  gtm: 'Tag Manager',
+}
+
 const { t } = useI18n()
 const config = useDmsRuntimeConfig()
 
-const backendOrigin = computed(() =>
+const flavor = ref<SnippetFlavor>('html')
+
+const apiOrigin = computed(() =>
   String((config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? ''),
 )
 
-const CLOSING_TAG = '</' + 'script>'
+const code = computed(() =>
+  trackerSnippet(flavor.value, apiOrigin.value, props.websiteId),
+)
 
-const snippet = computed(() =>
-  `<script defer src="${backendOrigin.value}/api/marketing/tracker.js" data-website-id="${props.website._id}">${CLOSING_TAG}`,
+const items = computed(() =>
+  FLAVORS.map((value) => ({
+    value,
+    label: t(`page.marketing.install.flavors.${value}`),
+  })),
 )
 </script>
 
 <template>
-  <div class="space-y-4">
-    <p class="text-sm text-muted">
-      {{ t('page.marketing.websites.snippet.description', { name: website.name }) }}
-    </p>
-    <div class="flex items-start gap-2 rounded-lg bg-elevated p-3">
-      <pre class="min-w-0 flex-1 overflow-x-auto text-xs"><code>{{ snippet }}</code></pre>
-      <DmsCopyButton :value="snippet" />
+  <div class="flex flex-col gap-3">
+    <DmsSegmented
+      v-model="flavor"
+      :items="items"
+      size="sm"
+      class="self-start"
+    />
+    <div class="overflow-hidden rounded-lg border border-default">
+      <div
+        class="flex items-center justify-between border-b border-default px-3 py-1.5"
+      >
+        <DmsEyebrow :label="FILE_LABELS[flavor]" />
+        <DmsCopyButton :value="code" />
+      </div>
+      <pre
+        class="overflow-x-auto px-3 py-2.5 font-mono text-xs leading-relaxed text-toned"
+        >{{ code }}</pre>
     </div>
   </div>
 </template>

@@ -60,7 +60,7 @@ function parseValue(
 ): FunnelStepDraft[] {
   // Copies, not references: the drafts are mutated by the inputs below and
   // must never write through to the prop value.
-  const steps = parseFunnelStepsValue(raw).map(step => ({ ...step }))
+  const steps = parseFunnelStepsValue(raw).map((step) => ({ ...step }))
   while (steps.length < MIN_STEPS) {
     steps.push(emptyStep())
   }

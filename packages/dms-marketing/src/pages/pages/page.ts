@@ -1,14 +1,17 @@
-import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { MARKETING_MODULE_ID } from "@/types/constants";
+import {
+  MARKETING_PERIOD_SCOPE,
+  MarketingBlock,
+  MarketingContext,
+} from "../blocks";
+import { analyticsCategory } from "../module";
 
 /**
- * Tracked pages — the inventory of a site's visited paths, with the click
- * and scroll-depth overlays of the selected one as its detail pane. Named
- * after its subject, not its rendering: per-selector views land here as
- * further overlays. A single custom component renders both panes: they share
- * a selection, a period and a URL state no composition of blocks expresses.
+ * Pages & heatmaps — the paths visitors actually loaded, with the clicks and
+ * scroll depth of the selected one over its snapshot. One block renders both
+ * panes: they share a selection, a period and a URL state.
  */
 @RegisterPage()
 export class MarketingPagesPage extends PageController(
@@ -18,9 +21,15 @@ export class MarketingPagesPage extends PageController(
     description: "$page.marketing.pages.description",
     icon: "i-ph-cursor-click",
     module: MARKETING_MODULE_ID,
-    order: 4,
+    category: analyticsCategory,
+    order: 3,
   },
-  DefaultLayout({ fullWidth: true }),
+  DefaultLayout(),
 ) {
-  static content = CustomComponent("DmsMarketingPagesView");
+  static content = MarketingContext().child(
+    "explorer",
+    MarketingBlock("PagesExplorer", "pages_explorer", "i-ph-cursor-click", {
+      periodScope: MARKETING_PERIOD_SCOPE,
+    }),
+  );
 }

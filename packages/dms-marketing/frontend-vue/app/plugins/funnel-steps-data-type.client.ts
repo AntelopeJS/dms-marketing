@@ -21,7 +21,8 @@ const FunnelStepsDisplay = defineComponent({
   name: 'FunnelStepsDisplay',
   props: {
     modelValue: {
-      type: [Array, String] as unknown as () => FunnelStepDraft[] | string | null,
+      type: [Array, String] as unknown as () =>
+        FunnelStepDraft[] | string | null,
       default: null,
     },
   },

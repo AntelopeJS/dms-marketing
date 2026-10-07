@@ -65,6 +65,11 @@ export function applyConfigOverrides(
   mergeEffective();
 }
 
+/** The module configuration without the Settings-page overrides. */
+export function getBaseConfig(): DmsMarketingConfig {
+  return baseConfig;
+}
+
 export function getConfig(): DmsMarketingConfig {
   return globalConfig;
 }

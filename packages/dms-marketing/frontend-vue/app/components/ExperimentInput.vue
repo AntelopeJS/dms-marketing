@@ -57,7 +57,7 @@ function currentValue(): ExperimentDraft | null {
   }
   return {
     ...draft.value,
-    variations: draft.value.variations.map(variation => ({ ...variation })),
+    variations: draft.value.variations.map((variation) => ({ ...variation })),
   }
 }
 
