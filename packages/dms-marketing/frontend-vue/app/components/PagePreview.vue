@@ -990,27 +990,27 @@ const sampledVisits = computed(() =>
     </header>
 
     <!-- One status line, or the one strip that needs attention -->
-    <DmsBanner
-      v-if="statusStrip"
-      class="m-3 mb-0"
-      :tone="statusStrip.tone"
-      size="sm"
-      :icon="statusStrip.icon"
-      :title="statusStrip.title"
-      :description="statusStrip.description"
-    >
-      <template v-if="statusStrip.action" #actions>
-        <UButton
-          size="xs"
-          color="neutral"
-          variant="outline"
-          :loading="savingOptions"
-          :label="statusStrip.action.label"
-          :to="statusStrip.action.to"
-          @click="statusStrip.action.run?.()"
-        />
-      </template>
-    </DmsBanner>
+    <div v-if="statusStrip" class="px-3 pt-3">
+      <DmsBanner
+        :tone="statusStrip.tone"
+        size="sm"
+        :icon="statusStrip.icon"
+        :title="statusStrip.title"
+        :description="statusStrip.description"
+      >
+        <template v-if="statusStrip.action" #actions>
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="outline"
+            :loading="savingOptions"
+            :label="statusStrip.action.label"
+            :to="statusStrip.action.to"
+            @click="statusStrip.action.run?.()"
+          />
+        </template>
+      </DmsBanner>
+    </div>
     <p
       v-else-if="snapshot"
       class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-default px-4 py-2 text-xs text-muted"
