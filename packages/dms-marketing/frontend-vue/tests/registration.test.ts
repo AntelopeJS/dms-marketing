@@ -10,7 +10,6 @@ import frontendModule from '../dms.frontend'
  */
 const BACKEND_ADDRESSED = [
   'Context',
-  'ScopedStatGroup',
   'TopListTabs',
   'ChannelsCard',
   'CampaignsTable',

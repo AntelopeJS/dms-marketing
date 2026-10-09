@@ -303,6 +303,15 @@
         "retry": "Try again",
         "save_changes": "Save changes"
       },
+      "compose": {
+        "percent": "{value}%",
+        "points": "{value} pt",
+        "number": "{value}",
+        "duration_seconds": "{seconds}s",
+        "duration_minutes": "{minutes}m {seconds}s",
+        "duration_hours": "{hours}h {minutes}m",
+        "delta": "{sign}{value} · vs previous"
+      },
       "context": {
         "add_website": "Add a website",
         "comparison": "Comparison",

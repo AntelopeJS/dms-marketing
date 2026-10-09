@@ -4,6 +4,7 @@ import { ChartCard } from "@antelopejs/interface-dms/base/chart-card";
 import { Grid, GridRow } from "@antelopejs/interface-dms/base/grid";
 import { KpiCard } from "@antelopejs/interface-dms/base/kpi-card";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
+import { StatGroup } from "@antelopejs/interface-dms/base/stat-group";
 import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import {
@@ -14,6 +15,7 @@ import {
 import {
   BLOCKS_API,
   blockMeta,
+  contextUrl,
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
   MarketingContext,
@@ -95,11 +97,11 @@ export class MarketingOverviewPage extends PageController(
     )
     .child(
       "quality",
-      MarketingBlock("ScopedStatGroup", "quality", "i-ph-gauge", {
-        fetchUrl: `${BLOCKS_API}/quality`,
-        periodScope: MARKETING_PERIOD_SCOPE,
+      StatGroup({
+        fetchUrl: contextUrl(`${BLOCKS_API}/quality`),
         label: "$page.marketing.blocks.quality.name",
-      }),
+        skeletonCount: 3,
+      }).meta(blockMeta("quality", "i-ph-gauge")),
     )
     .child(
       "traffic",

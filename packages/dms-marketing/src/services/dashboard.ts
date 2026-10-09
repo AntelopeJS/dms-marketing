@@ -1,3 +1,4 @@
+import type { StatGroupItem } from "@antelopejs/interface-dms/base/stat-group";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { FunnelsModel } from "@/db";
 import type { WebsiteStatistics } from "@/db/tables/website_statistics.table";
@@ -8,6 +9,13 @@ import {
   MS_PER_DAY,
   MS_PER_SECOND,
 } from "@/types/constants";
+import {
+  decimalText,
+  deltaText,
+  deltaTone,
+  durationText,
+  percentText,
+} from "./composed";
 import { isGeoipActive } from "./geoip";
 import type { QueryWindow } from "./period";
 import {
@@ -126,20 +134,6 @@ export function trafficPayload(
   };
 }
 
-/** One cell of a scoped stat strip; the frontend formats it for the locale. */
-export interface StatItem {
-  id: string;
-  eyebrow: string;
-  icon: string;
-  value: number | null;
-  format: "percent" | "duration" | "number" | "text";
-  /** Change vs the comparison window, in `deltaFormat` units. */
-  delta?: number | null;
-  deltaFormat?: "points" | "seconds" | "number" | "percent";
-  /** A decrease is the good direction (bounce rate). */
-  invert?: boolean;
-}
-
 interface SessionQuality {
   bounceRate: number | null;
   averageDurationSeconds: number | null;
@@ -175,42 +169,48 @@ function difference(
 
 const QUALITY_PREFIX = "$page.marketing.overview.quality.";
 
-export function qualityItems(read: RollupRead): StatItem[] {
+/**
+ * The session quality strip, as stock `StatGroup` cells: values and changes
+ * are composed texts, written in the reader's language by the dashboard.
+ */
+export function qualityItems(read: RollupRead): StatGroupItem[] {
   const current = qualityOf(sumRollups(read.rows));
   const previous = read.compare
     ? qualityOf(sumRollups(read.compareRows))
     : undefined;
+  const bounce = difference(current.bounceRate, previous?.bounceRate);
+  const duration = difference(
+    current.averageDurationSeconds,
+    previous?.averageDurationSeconds,
+  );
+  const pages = difference(current.pagesPerSession, previous?.pagesPerSession);
   return [
     {
       id: "bounce-rate",
       eyebrow: `${QUALITY_PREFIX}bounce_rate`,
       icon: "i-ph-arrow-u-up-left",
-      value: current.bounceRate,
-      format: "percent",
-      delta: difference(current.bounceRate, previous?.bounceRate),
-      deltaFormat: "points",
-      invert: true,
+      value: percentText(current.bounceRate),
+      detail: deltaText(bounce, "points"),
+      detailTone: deltaTone(bounce, true),
     },
     {
       id: "duration",
       eyebrow: `${QUALITY_PREFIX}avg_session_duration`,
       icon: "i-ph-timer",
-      value: current.averageDurationSeconds,
-      format: "duration",
-      delta: difference(
-        current.averageDurationSeconds,
-        previous?.averageDurationSeconds,
-      ),
-      deltaFormat: "seconds",
+      value:
+        current.averageDurationSeconds === null
+          ? "—"
+          : durationText(current.averageDurationSeconds),
+      detail: deltaText(duration, "seconds"),
+      detailTone: deltaTone(duration),
     },
     {
       id: "pages-per-session",
       eyebrow: `${QUALITY_PREFIX}pages_per_session`,
       icon: "i-ph-stack",
-      value: current.pagesPerSession,
-      format: "number",
-      delta: difference(current.pagesPerSession, previous?.pagesPerSession),
-      deltaFormat: "number",
+      value: decimalText(current.pagesPerSession),
+      detail: deltaText(pages, "number"),
+      detailTone: deltaTone(pages),
     },
   ];
 }

@@ -74,3 +74,24 @@ test("the previous window has the same length and ends the day before", () => {
   assert.equal(previous.days, window.days);
   assert.equal(previous.lastDay, window.firstDay - DAY);
 });
+
+test("days in the page URL cover their whole UTC days", () => {
+  const window = resolveQueryWindow({ from: "2026-09-08", to: "2026-10-07" });
+  assert.equal(window.firstDay, utcMidnight("2026-09-08"));
+  assert.equal(window.lastDay, utcMidnight("2026-10-07"));
+  assert.equal(window.days, 30);
+});
+
+test("a comparison named in the page URL resolves next to the window", () => {
+  const query = { from: "2026-09-08", to: "2026-10-07" };
+  const previous = resolveCompareWindow({
+    ...query,
+    compare: "previous-period",
+  });
+  assert.equal(previous.firstDay, utcMidnight("2026-08-09"));
+  assert.equal(previous.lastDay, utcMidnight("2026-09-07"));
+  const lastYear = resolveCompareWindow({ ...query, compare: "previous-year" });
+  assert.equal(lastYear.firstDay, utcMidnight("2025-09-08"));
+  assert.equal(lastYear.lastDay, utcMidnight("2025-10-07"));
+  assert.equal(resolveCompareWindow({ ...query, compare: "none" }), null);
+});

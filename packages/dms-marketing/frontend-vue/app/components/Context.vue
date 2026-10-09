@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
-import { useDmsCookie, useI18n } from '#dms/frontend-module'
+import {
+  useDmsCookie,
+  useDmsRoute,
+  useDmsRouter,
+  useI18n,
+} from '#dms/frontend-module'
 import {
   contextScopeKey,
   MARKETING_CONTEXT_KEY,
@@ -140,6 +145,67 @@ watch(
 )
 
 onBeforeUnmount(() => releaseScope?.())
+
+// --- Page URL ----------------------------------------------------------------
+// The context is mirrored into the page URL (`website`, `from` and `to` as
+// local days, `compare`): stock blocks without a period scope read it through
+// `{{query.X}}` tokens, and a copied link opens on the same website and days.
+
+const route = useDmsRoute()
+const router = useDmsRouter()
+
+function localDay(date: Date): string {
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${date.getFullYear()}-${month}-${day}`
+}
+
+const contextQuery = computed(() => {
+  const site = selected.value
+  if (!site) {
+    return null
+  }
+  const { range, comparison } = period.state.value
+  return {
+    website: site.id,
+    from: localDay(range.from),
+    to: localDay(range.to),
+    compare: comparison,
+  }
+})
+
+// A link naming another website of the tenant selects it first.
+watch(
+  () => context.value?.selectedId,
+  (selectedId) => {
+    const linked = route.query.website
+    if (
+      selectedId &&
+      typeof linked === 'string' &&
+      linked !== selectedId &&
+      websites.value.some((site) => site.id === linked)
+    ) {
+      void select(linked)
+    }
+  },
+  { once: true },
+)
+
+watch(
+  contextQuery,
+  (next) => {
+    if (
+      !next ||
+      Object.entries(next).every(([key, value]) => route.query[key] === value)
+    ) {
+      return
+    }
+    void router.replace({ query: { ...route.query, ...next } })
+  },
+  { immediate: true },
+)
+
+watch(refreshToken, () => refreshPageBlocks())
 
 const periodDays = computed(() => {
   const { from, to } = period.state.value.range

@@ -68,7 +68,7 @@ test("a zero previous value gives no delta rather than an infinite one", () => {
   assert.equal(kpiPayload(read, "sessions").delta, undefined);
 });
 
-test("session quality reads bounce in points and is inverted", () => {
+test("session quality composes bounce in points, a drop reading as good", () => {
   const read = {
     window: window(1),
     rows: [row(0, { bouncedSessions: 5 })],
@@ -76,10 +76,25 @@ test("session quality reads bounce in points and is inverted", () => {
     compareRows: [row(-1, { bouncedSessions: 4 })],
   };
   const [bounce, duration, pages] = qualityItems(read);
-  assert.equal(bounce.value, 50);
-  assert.equal(bounce.delta, 10);
-  assert.equal(bounce.invert, true);
-  assert.equal(duration.value, 120);
+  assert.deepEqual(bounce.value, {
+    key: "$page.marketing.compose.percent",
+    params: { value: { type: "number", value: 50 } },
+  });
+  assert.deepEqual(bounce.detail, {
+    key: "$page.marketing.compose.delta",
+    params: {
+      sign: "+",
+      value: {
+        key: "$page.marketing.compose.points",
+        params: { value: { type: "number", value: 10 } },
+      },
+    },
+  });
+  assert.equal(bounce.detailTone, "error");
+  assert.deepEqual(duration.value, {
+    key: "$page.marketing.compose.duration_minutes",
+    params: { minutes: 2, seconds: 0 },
+  });
   assert.equal(pages.value, 3);
 });
 

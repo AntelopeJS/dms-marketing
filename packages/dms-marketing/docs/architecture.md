@@ -152,7 +152,7 @@ cleanup with an error, without retry or an unconditional-delete fallback.
 **Integration prerequisite:** the database interface and adapter must implement
 `deleteIfEqual`. Validation uses the published database interface, the
 MongoDB adapter 1.4.2 the package pins as a dev dependency and the DMS
-`>=0.6.0` release resolved at the time, without source overlays.
+`>=0.7.1` release resolved at the time, without source overlays.
 `pnpm test` loads the real modules through Antelope and exercises MongoDB with a
 disposable database (the first run downloads MongoDB unless
 `MONGOMS_SYSTEM_BINARY` is set). Marketing integration tests on PostgreSQL and
@@ -585,12 +585,17 @@ interface-dms blocks. The sidebar headings are three label categories with
 
 Stock blocks render whatever a stock block can — `KpiCard`, `ChartCard`,
 `TopListCard`, `Grid`, `KeyValueList`, `Section`, `FieldRow`, `Meter`,
-`Form` — the analytics ones bound to the `dms-marketing` period scope and
-reading the `/blocks/*` routes. Hidden pages are reached from the others,
+`Form`, `StatGroup` — the analytics ones bound to the `dms-marketing` period
+scope and reading the `/blocks/*` routes. A stock block without a period
+scope (the session quality `StatGroup`) reads the context from the page URL
+instead: the context bar mirrors it there (`?website=…&from=…&to=…&compare=…`,
+days and a DMS comparison name) and `contextUrl()` names it with
+`{{query.X}}` tokens; the routes accept those days and comparison names next
+to the period scope's instants. Hidden pages are reached from the others,
 never from the sidebar. The
 rest are module blocks, `CustomComponent("DmsMarketing<Name>")` built with
 `MarketingBlock()` (`src/pages/blocks.ts`): `Context` (the context bar and
-first-run gate), `ScopedStatGroup` (session quality), `TopListTabs`,
+first-run gate), `TopListTabs`,
 `ChannelsCard`, `CampaignsTable`, `PagesExplorer` (inventory and heatmap
 preview), `FunnelsTable`, `FunnelReport` (with `FunnelFigure` and
 `ExperimentReport`), `FunnelBuilder`, `WebsitesGrid`, `InstallGuide` and
