@@ -9,7 +9,6 @@ import {
   type MarketingWebsite,
 } from '../composables/useMarketingApi'
 import { useMarketingContext } from '../composables/useMarketingContext'
-import { pagesLink } from '../composables/useMarketingRoutes'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
 import { formatNumber, formatPercent } from '../utils/format'
 
@@ -118,8 +117,9 @@ watch(inventory, (data) => {
   }
 })
 
+// Keeps the rest of the query: the context bar mirrors its own state there.
 watch(selectedPath, (path) => {
-  void router.replace(pagesLink(path))
+  void router.replace({ query: { ...route.query, path: path ?? undefined } })
 })
 
 /** Enter inspects what was typed, listed or not. */

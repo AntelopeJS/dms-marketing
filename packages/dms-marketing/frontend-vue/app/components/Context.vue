@@ -191,9 +191,11 @@ watch(
   { once: true },
 )
 
+// Watched with the query too: a block rewriting the URL for its own state
+// (the heatmap path) must not drop the context from it.
 watch(
-  contextQuery,
-  (next) => {
+  [contextQuery, () => route.query],
+  ([next]) => {
     if (
       !next ||
       Object.entries(next).every(([key, value]) => route.query[key] === value)
