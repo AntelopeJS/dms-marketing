@@ -2,7 +2,9 @@ const assert = require("node:assert/strict");
 const test = it;
 const { resolveChannel } = require("../dist/services/acquisition");
 const {
+  campaignNotice,
   campaignsPayload,
+  campaignTablePayload,
   channelsPayload,
 } = require("../dist/services/acquisition-report");
 const { kpiPayload, qualityItems } = require("../dist/services/dashboard");
@@ -144,4 +146,12 @@ test("campaign rows carry their channel, daily sessions and the missing medium f
   assert.deepEqual(first.daily, [5, 3]);
   assert.equal(second.missingMedium, true);
   assert.equal(campaignsPayload(read, "AUTUMN").rows.length, 1);
+
+  const table = campaignTablePayload(payload, "email");
+  assert.equal(table.total, 1);
+  assert.equal(table.results[0]._id, sale);
+  assert.equal(table.results[0].medium, "email");
+  assert.equal(campaignTablePayload(payload, undefined).total, 2);
+  assert.equal(campaignNotice(payload, "missing").tone, "warning");
+  assert.equal(campaignNotice(payload, "truncated"), null);
 });

@@ -15,7 +15,6 @@ import {
 import {
   BLOCKS_API,
   blockMeta,
-  contextUrl,
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
   MarketingContext,
@@ -98,7 +97,8 @@ export class MarketingOverviewPage extends PageController(
     .child(
       "quality",
       StatGroup({
-        fetchUrl: contextUrl(`${BLOCKS_API}/quality`),
+        fetchUrl: `${BLOCKS_API}/quality`,
+        periodScope: MARKETING_PERIOD_SCOPE,
         label: "$page.marketing.blocks.quality.name",
         skeletonCount: 3,
       }).meta(blockMeta("quality", "i-ph-gauge")),

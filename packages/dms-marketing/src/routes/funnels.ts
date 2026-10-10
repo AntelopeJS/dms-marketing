@@ -19,13 +19,16 @@ import { resolveContextWebsite } from "@/services/context";
 import {
   funnelResultsIn,
   funnelSuggestions,
+  type FunnelSummaryRow,
   summarizeFunnel,
 } from "@/services/funnel-report";
+import { funnelTablePayload, winnerBanner } from "@/services/funnels-table";
 import {
   periodQueryOf,
   resolveCompareWindow,
   resolveQueryWindow,
 } from "@/services/period";
+import { queryString } from "@/services/query-param";
 import { requireTenantFunnel } from "@/services/tenant-funnel";
 import {
   API_BASE_PATH,
@@ -47,30 +50,54 @@ const previewSchema = z.object({
  * (data-api/funnels.ts). Results are computed over the raw event window so a
  * definition edit re-reads history instead of losing it.
  */
+/** Every funnel of the context's website, summarized over the request's period. */
+async function summarizeWebsiteFunnels(
+  context: RequestContext,
+  user: User,
+  website: unknown,
+): Promise<FunnelSummaryRow[]> {
+  const site = await resolveContextWebsite(context, user, website);
+  const query = periodQueryOf(context.url);
+  const window = resolveQueryWindow(query);
+  const compare = resolveCompareWindow(query);
+  const funnels = await GetModel(FunnelsModel, site.tenantId).listByWebsite(
+    site._id,
+  );
+  return Promise.all(
+    funnels.map((funnel) =>
+      summarizeFunnel(funnel, site.tenantId, window, compare),
+    ),
+  );
+}
+
 export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
   /**
-   * The funnels list of the selected website: one row per funnel with its
-   * entered sessions, conversion and change over the period scope's window.
+   * The funnels table (`TableView.fromSource`): one row per funnel with its
+   * entered sessions, conversion and change over the page's period, or its
+   * A/B test's state; `filter_kind` narrows to funnels or tests.
    */
-  @Get("/summary")
-  async summary(
+  @Get("/rows")
+  async rows(
+    @AuthTenantMember() user: User,
+    @Context() context: RequestContext,
+    @Parameter("filter_kind", "query") kindFilter?: string,
+    @Parameter("website", "query") website?: string,
+  ) {
+    const kind = queryString(kindFilter)?.replace(/^is:/, "");
+    return funnelTablePayload(
+      await summarizeWebsiteFunnels(context, user, website),
+      kind,
+    );
+  }
+
+  /** The test ready to decide, for the stock `Banner` above the table. */
+  @Get("/winner")
+  async winner(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
   ) {
-    const site = await resolveContextWebsite(context, user, website);
-    const query = periodQueryOf(context.url);
-    const window = resolveQueryWindow(query);
-    const compare = resolveCompareWindow(query);
-    const funnels = await GetModel(FunnelsModel, site.tenantId).listByWebsite(
-      site._id,
-    );
-    const rows = await Promise.all(
-      funnels.map((funnel) =>
-        summarizeFunnel(funnel, site.tenantId, window, compare),
-      ),
-    );
-    return { website: { id: site._id, name: site.name }, rows };
+    return winnerBanner(await summarizeWebsiteFunnels(context, user, website));
   }
 
   /** Pages and events a step can match, for the builder's autocomplete. */

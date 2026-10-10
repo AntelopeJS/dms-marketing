@@ -1,9 +1,10 @@
+import { Banner } from "@antelopejs/interface-dms/base/banner";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { Meter } from "@antelopejs/interface-dms/base/meter";
 import { FieldRow, Section } from "@antelopejs/interface-dms/base/section";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { API_BASE_PATH, MARKETING_MODULE_ID } from "@/types/constants";
-import { blockMeta, MarketingBlock } from "../blocks";
+import { blockMeta } from "../blocks";
 import { setupCategory } from "../module";
 import { retentionForm, samplingForm } from "./form";
 
@@ -47,9 +48,10 @@ export class MarketingSettingsPage extends PageController(
   })
     .child(
       "switch",
-      MarketingBlock("CollectionSwitch", "collection", "i-ph-broadcast", {
-        fetchUrl: `${API_BASE_PATH}/settings/collection`,
-      }),
+      Banner({
+        fetchUrl: `${API_BASE_PATH}/settings/collection/banner`,
+        size: "sm",
+      }).meta(blockMeta("collection", "i-ph-broadcast")),
     )
     .meta(blockMeta("settings_collection", "i-ph-broadcast"));
 

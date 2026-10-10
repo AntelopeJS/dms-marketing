@@ -10,7 +10,10 @@ import type { User } from "@antelopejs/interface-dms/auth/db";
 import { AuthTenantMember } from "@antelopejs/interface-dms/guards";
 import type { Website } from "@/db/tables/websites.table";
 import {
+  type CampaignNoticeKind,
+  campaignNotice,
   campaignsPayload,
+  campaignTablePayload,
   channelsPayload,
 } from "@/services/acquisition-report";
 import { resolveContextWebsite } from "@/services/context";
@@ -202,14 +205,38 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
     return channelsPayload(read);
   }
 
-  @Get("campaigns")
-  async campaigns(
+  /**
+   * The campaigns table (`TableView.fromSource`): `{ results, total }`, the
+   * search run over every combination of the period, `filter_channel` one
+   * channel's rows.
+   */
+  @Get("campaigns/rows")
+  async campaignRows(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
     @Parameter("search", "query") search?: string,
+    @Parameter("filter_channel", "query") channelFilter?: string,
     @Parameter("website", "query") website?: string,
   ) {
     const { read } = await readScope(context, user, website);
-    return campaignsPayload(read, queryString(search));
+    const channel = queryString(channelFilter)?.replace(/^is:/, "");
+    return campaignTablePayload(
+      campaignsPayload(read, queryString(search)),
+      channel,
+    );
+  }
+
+  /** A notice under the campaigns table, for a stock `Banner`: `?kind=missing|truncated`. */
+  @Get("campaigns/notice")
+  async campaignNoticeBanner(
+    @AuthTenantMember() user: User,
+    @Context() context: RequestContext,
+    @Parameter("kind", "query") kind?: string,
+    @Parameter("website", "query") website?: string,
+  ) {
+    const { read } = await readScope(context, user, website);
+    const noticeKind: CampaignNoticeKind =
+      queryString(kind) === "truncated" ? "truncated" : "missing";
+    return campaignNotice(campaignsPayload(read, undefined), noticeKind);
   }
 }

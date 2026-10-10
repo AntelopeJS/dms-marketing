@@ -16,6 +16,7 @@ import { MarketingSettingsModel } from "@/db";
 import { marketingSettingsFormSchema } from "@/pages/settings/form";
 import {
   applySettingsForm,
+  collectionBanner,
   collectionStatus,
   retentionGlance,
   settingsFormValues,
@@ -69,6 +70,18 @@ export class MarketingSettingsController extends Controller(
     @Context() context: RequestContext,
   ) {
     return collectionStatus(getRequestTenantId(context));
+  }
+
+  /** The Collection section as a stock `Banner`: state, coverage, pause or resume. */
+  @Get("collection/banner")
+  async getCollectionBanner(
+    @AuthOwnerOnly() _user: User,
+    @Context() context: RequestContext,
+  ) {
+    return collectionBanner(
+      await collectionStatus(getRequestTenantId(context)),
+      `${API_BASE_PATH}/settings/collection`,
+    );
   }
 
   @Post("collection")

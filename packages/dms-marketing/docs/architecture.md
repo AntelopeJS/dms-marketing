@@ -152,7 +152,7 @@ cleanup with an error, without retry or an unconditional-delete fallback.
 **Integration prerequisite:** the database interface and adapter must implement
 `deleteIfEqual`. Validation uses the published database interface, the
 MongoDB adapter 1.4.2 the package pins as a dev dependency and the DMS
-`>=0.7.1` release resolved at the time, without source overlays.
+`>=0.7.2` release resolved at the time, without source overlays.
 `pnpm test` loads the real modules through Antelope and exercises MongoDB with a
 disposable database (the first run downloads MongoDB unless
 `MONGOMS_SYSTEM_BINARY` is set). Marketing integration tests on PostgreSQL and
@@ -255,24 +255,27 @@ Kind-specific `data` payloads:
 | `GET /api/marketing/blocks/tops?group=` | tenant member | one tabbed top-list card: `content`, `acquisition`, `audience` or `events` (goal events flagged) |
 | `GET /api/marketing/blocks/top?dimension=&limit=` | tenant member | one `TopListCard` over a rollup dimension (referrers, UTM contents/terms…), `limit` 5 by default, at most 50 |
 | `GET /api/marketing/blocks/channels` | tenant member | sessions per channel with share and change |
-| `GET /api/marketing/blocks/campaigns?search=` | tenant member | the UTM campaign table: top 100 (source, medium, campaign) triples with share, daily sessions, derived channel and the missing-medium flag |
+| `GET /api/marketing/blocks/campaigns/rows?search=&filter_channel=is:<channel>` | tenant member | the UTM campaign table (`TableView.fromSource`), `{ results, total }`: top 100 (source, medium, campaign) triples with share, daily sessions, derived channel and the missing-medium flag |
+| `GET /api/marketing/blocks/campaigns/notice?kind=missing\|truncated` | tenant member | the notice under the campaign table for a stock `Banner`: sessions tagged without a medium, or the cut at 100 rows; `null` when there is none |
 | `GET /api/marketing/stats/overview?website=&period=Nd` | tenant member | rollup-backed dashboard read |
 | `GET /api/marketing/stats/campaigns?website=&period=Nd&search=&limit=` | tenant member | acquisition read: sessions by channel, UTM campaign table as (source, medium, campaign) triples, top referrers/terms/contents |
 | `GET /api/marketing/stats/pages?website=&period=Nd&search=&limit=` | tenant member | inventory of observed paths, plus `heatmapSampleRate` and `trackerEnabled` so the caller can explain an empty heatmap |
 | `GET /api/marketing/stats/heatmap?website=&path=&period=Nd` | tenant member | click heatmap (also served through the interface). `website` is optional and merges the tenant's sites when omitted — pass it |
 | `GET /api/marketing/stats/snapshot?website=&path=&layout=` | tenant member | the page snapshot the heatmap is drawn over: the capture at that layout, else the nearest one (`exact: false`), else `null`. A document always wins over a row recording an oversize capture, which comes back as `html: null` with the `bytes` it reached |
 | `DELETE /api/marketing/stats/heatmap?website=&path=` | tenant owner | heatmap reset: the clicks, scroll depths and snapshots of one path, or of the whole site without `path`; answers the number of events deleted |
-| `GET /api/marketing/funnels/summary` | tenant member | the funnels list: per funnel, entered sessions, conversion and its change in points, and the A/B summary |
+| `GET /api/marketing/funnels/rows?filter_kind=is:funnel\|ab` | tenant member | the funnels table (`TableView.fromSource`), `{ results, total }`: per funnel, entered sessions, conversion and its change in points, or the A/B test's state |
+| `GET /api/marketing/funnels/winner` | tenant member | the running test that reached significance, for a stock `Banner`; `null` when there is none |
 | `GET /api/marketing/funnels/suggestions` | tenant member | the site's top pages and custom events, for the builder's autocomplete and the empty-state templates |
 | `POST /api/marketing/funnels/preview` | tenant member | scores unsaved steps and window over the period, for the builder |
 | `GET /api/marketing/funnels/:id/results` | tenant member | read-time funnel computation, plus `previous`, the same computation over the comparison window (plain funnels only) — and, when the funnel carries an A/B split, the per-arm read through the same steps over the split's runs: exposed sessions, conversion, z-test verdicts, SRM check |
 | `/api/marketing/tables/funnels/*` | platform owner | funnels DataController (TableView CRUD, tenant-instance-scoped via `@TenantScopedModel`; enforces the split's `draft → running ⇄ stopped` lifecycle, stamps the runs it produces, and freezes key/variations outside draft) |
 | `/api/marketing/tables/websites/*` | platform owner | read-only websites DataController (relation picker; global table, column-scoped) |
 | `GET/POST /api/marketing/settings` | platform owner | settings form endpoints; `POST` merges a partial body (a key left out keeps its value, `null` clears it back to the config default) and refuses (400) a snapshot retention longer than the raw-event retention |
-| `GET/POST /api/marketing/settings/collection` | platform owner | the Collection section: the master switch, the websites and their 30-day sessions; `POST {enabled}` flips it |
+| `GET/POST /api/marketing/settings/collection` | platform owner | the master switch, the websites and their 30-day sessions; `POST {enabled}` flips it |
+| `GET /api/marketing/settings/collection/banner` | platform owner | the Collection section for a stock `Banner`: state, coverage and the pause (confirmed) or resume action |
 | `GET /api/marketing/settings/glance?item=` | platform owner | one `Meter` of *At a glance*: `raw`, `statistics` or `snapshots` retention on a shared scale |
 
-Routes marked tenant member under `/blocks`, `/funnels/summary`,
+Routes marked tenant member under `/blocks`, `/funnels/rows`, `/funnels/winner`,
 `/funnels/suggestions`, `/funnels/preview` and `/funnels/:id/results` read
 their window from the period scope (see *Context and period*); the older
 `/stats/*` reads take `period=Nd` only.
@@ -585,21 +588,23 @@ interface-dms blocks. The sidebar headings are three label categories with
 
 Stock blocks render whatever a stock block can — `KpiCard`, `ChartCard`,
 `TopListCard`, `Grid`, `KeyValueList`, `Section`, `FieldRow`, `Meter`,
-`Form`, `StatGroup` — the analytics ones bound to the `dms-marketing` period
-scope and reading the `/blocks/*` routes. A stock block without a period
-scope (the session quality `StatGroup`) reads the context from the page URL
-instead: the context bar mirrors it there (`?website=…&from=…&to=…&compare=…`,
-days and a DMS comparison name) and `contextUrl()` names it with
-`{{query.X}}` tokens; the routes accept those days and comparison names next
-to the period scope's instants. Hidden pages are reached from the others,
+`Form`, `StatGroup`, `Banner`, `TableView.fromSource` — the analytics ones
+bound to the `dms-marketing` period scope and reading the `/blocks/*` routes.
+A source table has no period scope: the campaigns table (and the notices
+under it) read the context from the page URL instead. The context bar
+mirrors it there (`?website=…&from=…&to=…&compare=…`, days and a DMS
+comparison name) and `contextUrl()` names it with `{{query.X}}` tokens; the
+routes accept those days and comparison names next to the period scope's instants. Hidden pages are reached from the others,
 never from the sidebar. The
 rest are module blocks, `CustomComponent("DmsMarketing<Name>")` built with
 `MarketingBlock()` (`src/pages/blocks.ts`): `Context` (the context bar and
 first-run gate), `TopListTabs`,
-`ChannelsCard`, `CampaignsTable`, `PagesExplorer` (inventory and heatmap
-preview), `FunnelsTable`, `FunnelReport` (with `FunnelFigure` and
-`ExperimentReport`), `FunnelBuilder`, `WebsitesGrid`, `InstallGuide` and
-`CollectionSwitch`. The Settings forms share their field definitions with
+`ChannelsCard`, `PagesExplorer` (inventory and heatmap
+preview), `FunnelTemplates` (the funnels table's first-run state), `FunnelReport` (with `FunnelFigure` and
+`ExperimentReport`), `FunnelBuilder`, `WebsitesGrid` and `InstallGuide`.
+The Collection section is a stock `Banner` the route words
+(`/settings/collection/banner`), with the pause behind a confirmation and
+the resume as its actions. The Settings forms share their field definitions with
 the endpoint's validation schema (`src/pages/settings/form.ts`).
 
 The DMS sidebar carries two counts (`navBadge`): the running A/B tests on

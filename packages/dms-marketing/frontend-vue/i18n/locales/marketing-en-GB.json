@@ -6,6 +6,7 @@
           "all": "All",
           "campaign": "Campaign",
           "channel": "Channel",
+          "count": "{count} campaign | {count} campaigns",
           "empty_description": "Sessions only land here when their URL carries utm_* parameters.",
           "empty_title": "No tagged campaign in this period",
           "filter": "Filter source, medium or campaign",
@@ -71,6 +72,14 @@
           "description": "Every source × medium × campaign of the period.",
           "name": "UTM campaigns"
         },
+        "campaigns_missing": {
+          "description": "Warns when tagged sessions carry no utm_medium and count as Direct.",
+          "name": "Missing medium notice"
+        },
+        "campaigns_truncated": {
+          "description": "Says when only the top campaigns of the period are listed.",
+          "name": "Top campaigns notice"
+        },
         "channel_rules": {
           "description": "How a session gets its channel.",
           "name": "Channel rules"
@@ -106,6 +115,10 @@
         "funnels_table": {
           "description": "Every funnel with its conversion and A/B status.",
           "name": "Funnels and A/B tests"
+        },
+        "funnels_winner": {
+          "description": "The running A/B test that reached significance, with a link to its report.",
+          "name": "Winning test"
         },
         "glance_raw": {
           "description": "Days of raw events kept.",
@@ -239,6 +252,7 @@
         "no_events": "No custom event yet.",
         "optional": "Optional",
         "or": "or",
+        "page_title": "Funnel builder",
         "preview": "Preview · last 30 days",
         "preview_empty": "Add a step to see how many sessions match.",
         "remove_step": "Remove step",
@@ -276,8 +290,7 @@
           "168": "7 days",
           "24": "24 h",
           "720": "30 days"
-        },
-        "page_title": "Funnel builder"
+        }
       },
       "catalog": {
         "collecting": "Collecting on every website",
@@ -304,13 +317,15 @@
         "save_changes": "Save changes"
       },
       "compose": {
+        "delta": "{sign}{value} · vs previous",
+        "duration_hours": "{hours}h {minutes}m",
+        "duration_minutes": "{minutes}m {seconds}s",
+        "duration_seconds": "{seconds}s",
+        "number": "{value}",
         "percent": "{value}%",
         "points": "{value} pt",
-        "number": "{value}",
-        "duration_seconds": "{seconds}s",
-        "duration_minutes": "{minutes}m {seconds}s",
-        "duration_hours": "{hours}h {minutes}m",
-        "delta": "{sign}{value} · vs previous"
+        "range": "{from} – {to}",
+        "signed": "{sign}{value}"
       },
       "context": {
         "add_website": "Add a website",
@@ -510,11 +525,13 @@
         "columns": {
           "conversion": "Conversion",
           "entered": "Entered",
+          "kind": "Kind",
           "name": "Name",
           "status": "Status",
           "steps": "Steps",
           "vs_previous": "vs prev."
         },
+        "count": "{count} funnel | {count} funnels",
         "description": "Where visitors drop off, step by step, and which variation converts. Results are computed from raw events, so a new funnel scores past traffic at once.",
         "empty": {
           "blank": "Blank",
@@ -523,7 +540,8 @@
           "scratch": "Start from scratch",
           "scratch_description": "Pick pages and events one by one, with a live count of sessions at each step.",
           "template": "Template",
-          "title": "No funnel on {website} yet"
+          "title": "No funnel on {website} yet",
+          "title_plain": "No funnel on this website yet"
         },
         "error": "Couldn't load the funnels",
         "footer": "{count} funnels on {website}",
@@ -551,6 +569,7 @@
         "new": "New funnel",
         "no_match": "No funnel of this kind yet.",
         "note": "Steps match in order within one session. A/B tests are read over their own run, not the selected period.",
+        "open": "Open report",
         "results": {
           "control": "control"
         },

@@ -7,7 +7,6 @@ import {
   initials,
 } from '../app/utils/format'
 import { sampleSizePerArm } from '../app/utils/sample-size'
-import { sparklinePath } from '../app/utils/sparkline'
 import { trackerSnippet } from '../app/utils/snippet'
 
 describe('formatting', () => {
@@ -44,11 +43,6 @@ describe('context scope key', () => {
 })
 
 describe('helpers', () => {
-  it('draws a flat line for an empty or flat series', () => {
-    expect(sparklinePath([], 10, 4)).toBe('M0,4 L10,4')
-    expect(sparklinePath([0, 0], 10, 4)).toBe('M0.0,4.0 L10.0,4.0')
-  })
-
   it('asks for more sessions on a rarer conversion', () => {
     expect(sampleSizePerArm(0.03, 0.2)).toBeGreaterThan(
       sampleSizePerArm(0.3, 0.2),

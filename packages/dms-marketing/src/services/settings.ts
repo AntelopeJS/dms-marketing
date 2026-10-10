@@ -1,3 +1,6 @@
+import type { BannerContent } from "@antelopejs/interface-dms/base/banner";
+import { ButtonVariant } from "@antelopejs/interface-dms/base/types/button";
+import type { ComposedText } from "@antelopejs/interface-dms/base/types/composed-text";
 import { randomBytes } from "node:crypto";
 import {
   applyConfigOverrides,
@@ -256,5 +259,75 @@ export function retentionGlance(item: unknown): RetentionMeter | null {
     value: days,
     max: MAX_STATISTICS_RETENTION_DAYS,
     valueLabel: `${days} d`,
+  };
+}
+
+const COLLECTION_PREFIX = "$page.marketing.settings.collection.";
+
+/**
+ * The Collection section as a stock `Banner`: whether the tracker collects,
+ * what it covers, and the one action that flips it — pausing behind a
+ * confirmation that says what stops, resuming in one press.
+ */
+export function collectionBanner(
+  status: CollectionStatus,
+  collectionUrl: string,
+): BannerContent {
+  const description: ComposedText = {
+    key: `${COLLECTION_PREFIX}summary`,
+    params: {
+      websites: { type: "count", value: status.websites },
+      sessions: { type: "number", value: status.sessions },
+    },
+  };
+  const write = (enabled: boolean, successMessage: string) => ({
+    type: "api" as const,
+    url: collectionUrl,
+    method: "POST" as const,
+    body: { enabled },
+    successMessage,
+  });
+  if (!status.enabled) {
+    return {
+      tone: "warning",
+      icon: "i-ph-pause-circle",
+      title: `${COLLECTION_PREFIX}paused`,
+      description,
+      actions: [
+        {
+          label: `${COLLECTION_PREFIX}resume`,
+          icon: "i-ph-play",
+          color: "success",
+          target: write(true, `${COLLECTION_PREFIX}resumed`),
+        },
+      ],
+    };
+  }
+  return {
+    tone: "success",
+    icon: "i-ph-broadcast",
+    title: `${COLLECTION_PREFIX}collecting`,
+    description,
+    actions: [
+      {
+        label: `${COLLECTION_PREFIX}pause`,
+        icon: "i-ph-pause",
+        color: "error",
+        variant: ButtonVariant.outline,
+        target: write(false, `${COLLECTION_PREFIX}paused_toast`),
+        confirm: {
+          title: `${COLLECTION_PREFIX}pause_title`,
+          description: `${COLLECTION_PREFIX}pause_description`,
+          color: "error",
+          icon: "i-ph-pause",
+          confirmLabel: `${COLLECTION_PREFIX}pause_confirm`,
+          impact: [
+            { icon: "i-ph-code", label: `${COLLECTION_PREFIX}impact_script` },
+            { icon: "i-ph-flask", label: `${COLLECTION_PREFIX}impact_tests` },
+            { icon: "i-ph-clock", label: `${COLLECTION_PREFIX}impact_delay` },
+          ],
+        },
+      },
+    ],
   };
 }

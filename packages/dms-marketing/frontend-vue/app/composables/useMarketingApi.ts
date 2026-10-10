@@ -54,12 +54,6 @@ export interface MarketingFunnelSuggestions {
   events: MarketingFunnelSuggestion[]
 }
 
-export interface MarketingCollectionStatus {
-  enabled: boolean
-  websites: number
-  sessions: number
-}
-
 export interface MarketingWebsite {
   _id: string
   name: string
@@ -455,20 +449,6 @@ export function useMarketingApi() {
         query: { website, period: '30d' },
         body: { steps, conversionWindowHours },
       }),
-
-    getCollection: () =>
-      $authFetch<MarketingCollectionStatus>(
-        '/api/marketing/settings/collection',
-      ),
-
-    setCollection: (enabled: boolean) =>
-      $authFetch<MarketingCollectionStatus>(
-        '/api/marketing/settings/collection',
-        {
-          method: 'POST',
-          body: { enabled },
-        },
-      ),
 
     updateWebsite: (id: string, patch: MarketingWebsitePatch) =>
       $authFetch<MarketingWebsite>(

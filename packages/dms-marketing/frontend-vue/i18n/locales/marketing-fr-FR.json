@@ -6,6 +6,7 @@
           "all": "Toutes",
           "campaign": "Campagne",
           "channel": "Canal",
+          "count": "{count} campagne | {count} campagnes",
           "empty_description": "Une session n'arrive ici que si son URL porte des paramètres utm_*.",
           "empty_title": "Aucune campagne balisée sur cette période",
           "filter": "Filtrer source, support ou campagne",
@@ -71,6 +72,14 @@
           "description": "Chaque source × support × campagne de la période.",
           "name": "Campagnes UTM"
         },
+        "campaigns_missing": {
+          "description": "Signale les sessions taguées sans utm_medium, comptées en Direct.",
+          "name": "Alerte medium manquant"
+        },
+        "campaigns_truncated": {
+          "description": "Indique quand seules les premières campagnes de la période sont listées.",
+          "name": "Alerte campagnes tronquées"
+        },
         "channel_rules": {
           "description": "Comment une session obtient son canal.",
           "name": "Règles des canaux"
@@ -106,6 +115,10 @@
         "funnels_table": {
           "description": "Chaque funnel avec sa conversion et son statut A/B.",
           "name": "Funnels et tests A/B"
+        },
+        "funnels_winner": {
+          "description": "Le test A/B en cours arrivé à significativité, avec un lien vers son rapport.",
+          "name": "Test gagnant"
         },
         "glance_raw": {
           "description": "Jours d'événements bruts conservés.",
@@ -239,6 +252,7 @@
         "no_events": "Pas encore d'événement personnalisé.",
         "optional": "Facultatif",
         "or": "ou",
+        "page_title": "Éditeur de funnel",
         "preview": "Aperçu · 30 derniers jours",
         "preview_empty": "Ajoutez une étape pour voir combien de sessions correspondent.",
         "remove_step": "Retirer l'étape",
@@ -276,8 +290,7 @@
           "168": "7 jours",
           "24": "24 h",
           "720": "30 jours"
-        },
-        "page_title": "Éditeur de funnel"
+        }
       },
       "catalog": {
         "collecting": "Collecte active sur tous les sites",
@@ -304,13 +317,15 @@
         "save_changes": "Enregistrer"
       },
       "compose": {
+        "delta": "{sign}{value} · vs précédente",
+        "duration_hours": "{hours} h {minutes} min",
+        "duration_minutes": "{minutes} min {seconds} s",
+        "duration_seconds": "{seconds} s",
+        "number": "{value}",
         "percent": "{value} %",
         "points": "{value} pt",
-        "number": "{value}",
-        "duration_seconds": "{seconds} s",
-        "duration_minutes": "{minutes} min {seconds} s",
-        "duration_hours": "{hours} h {minutes} min",
-        "delta": "{sign}{value} · vs précédente"
+        "range": "{from} – {to}",
+        "signed": "{sign}{value}"
       },
       "context": {
         "add_website": "Ajouter un site",
@@ -510,11 +525,13 @@
         "columns": {
           "conversion": "Conversion",
           "entered": "Entrées",
+          "kind": "Type",
           "name": "Nom",
           "status": "Statut",
           "steps": "Étapes",
           "vs_previous": "vs préc."
         },
+        "count": "{count} funnel | {count} funnels",
         "description": "Où les visiteurs décrochent, étape par étape, et quelle variante convertit. Les résultats sont calculés sur les événements bruts : un nouveau funnel note tout de suite le trafic passé.",
         "empty": {
           "blank": "Vierge",
@@ -523,7 +540,8 @@
           "scratch": "Partir de zéro",
           "scratch_description": "Choisissez pages et événements un par un, avec le nombre de sessions à chaque étape en direct.",
           "template": "Modèle",
-          "title": "Pas encore de funnel sur {website}"
+          "title": "Pas encore de funnel sur {website}",
+          "title_plain": "Aucun funnel sur ce site pour l’instant"
         },
         "error": "Impossible de charger les funnels",
         "footer": "{count} funnels sur {website}",
@@ -551,6 +569,7 @@
         "new": "Nouveau funnel",
         "no_match": "Pas encore de funnel de ce type.",
         "note": "Les étapes sont cherchées dans l'ordre au sein d'une session. Les tests A/B sont lus sur leur propre durée, pas sur la période choisie.",
+        "open": "Ouvrir le rapport",
         "results": {
           "control": "contrôle"
         },

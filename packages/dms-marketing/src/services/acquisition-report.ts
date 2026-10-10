@@ -1,3 +1,6 @@
+import type { BannerContent } from "@antelopejs/interface-dms/base/banner";
+import type { ComposedText } from "@antelopejs/interface-dms/base/types/composed-text";
+import { percentText } from "./composed";
 import type { WebsiteStatistics } from "@/db/tables/website_statistics.table";
 import { MARKETING_CHANNELS, type MarketingChannel } from "@/types";
 import { resolveChannel, splitCampaignKey } from "./acquisition";
@@ -125,4 +128,79 @@ export function campaignsPayload(
     taggedSessions: sum(all),
     missingMediumSessions: sum(all.filter((row) => row.missingMedium)),
   };
+}
+
+/** A row of the campaigns table, the shape `TableView.fromSource` lists. */
+export interface CampaignTableRow {
+  _id: string;
+  campaign: string | null;
+  source: string | null;
+  medium: string | null;
+  channel: MarketingChannel;
+  sessions: number;
+  /** The row's share of the period's sessions, under its sessions. */
+  share: ComposedText;
+  daily: number[];
+  missingMedium: boolean;
+}
+
+/** `{ results, total }` for the campaigns table, narrowed to one channel. */
+export function campaignTablePayload(
+  payload: CampaignsPayload,
+  channel: string | undefined,
+): { results: CampaignTableRow[]; total: number } {
+  const results = payload.rows
+    .filter((row) => !channel || row.channel === channel)
+    .map((row) => ({
+      _id: row.key,
+      campaign: row.campaign ?? null,
+      source: row.source ?? null,
+      medium: row.medium ?? null,
+      channel: row.channel,
+      sessions: row.sessions,
+      share: percentText(row.share) as ComposedText,
+      daily: row.daily,
+      missingMedium: row.missingMedium,
+    }));
+  return { results, total: results.length };
+}
+
+const CAMPAIGNS_PREFIX = "$page.marketing.acquisition.campaigns.";
+
+/** What a campaigns notice banner can tell. */
+export type CampaignNoticeKind = "missing" | "truncated";
+
+/**
+ * The banner under the campaigns table, as a stock `Banner` reads it: the
+ * sessions tagged without a medium, or the cut at the top rows; `null` when
+ * there is nothing to tell.
+ */
+export function campaignNotice(
+  payload: CampaignsPayload,
+  kind: CampaignNoticeKind,
+): BannerContent | null {
+  if (kind === "missing") {
+    return payload.missingMediumSessions > 0
+      ? {
+          tone: "warning",
+          size: "sm",
+          title: {
+            key: `${CAMPAIGNS_PREFIX}missing_title`,
+            params: {
+              count: { type: "count", value: payload.missingMediumSessions },
+            },
+          },
+          description: `${CAMPAIGNS_PREFIX}missing_description`,
+        }
+      : null;
+  }
+  return payload.truncated
+    ? {
+        tone: "info",
+        size: "sm",
+        icon: "i-ph-list",
+        title: `${CAMPAIGNS_PREFIX}truncated_title`,
+        description: `${CAMPAIGNS_PREFIX}truncated_description`,
+      }
+    : null;
 }
