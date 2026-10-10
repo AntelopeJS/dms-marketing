@@ -34,6 +34,14 @@ const { t, locale } = useI18n()
 const router = useDmsRouter()
 const api = useMarketingApi()
 const toast = useToast()
+// A field-tied error from the save shows under its field, the rest as a toast.
+const fieldErrors = useFieldErrors({
+  fields: {
+    name: 'website-name',
+    domain: 'website-domain',
+    extraDomains: 'website-hosts',
+  },
+})
 const { confirm } = useConfirm()
 
 void props
@@ -143,10 +151,9 @@ async function save(): Promise<void> {
     toast.add({ color: 'success', title: t('page.marketing.websites.saved') })
     editing.value = null
     await load()
-  } catch {
-    toast.add({
-      color: 'error',
-      title: t('page.marketing.websites.save_error'),
+  } catch (error) {
+    await fieldErrors.handleApiError(error, {
+      toastTitle: 'page.marketing.websites.save_error',
     })
   } finally {
     saving.value = false
@@ -435,42 +442,93 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
       <template #body>
         <div v-if="editing" class="flex flex-col gap-5">
           <template v-if="tab === 'general'">
-            <UFormField
-              :label="t('page.marketing.websites.fields.name')"
+            <DmsFieldRow
+              layout="stack"
+              spacing="list"
+              :inset="false"
+              label="$page.marketing.websites.fields.name"
+              label-for="website-name"
               required
             >
-              <UInput v-model="draftName" class="w-full" />
-            </UFormField>
-            <UFormField
-              :label="t('page.marketing.websites.fields.domain')"
-              :description="t('page.marketing.websites.fields.domain_hint')"
+              <UInput
+                id="website-name"
+                v-model="draftName"
+                class="w-full"
+                v-bind="fieldErrors.aria('name')"
+                @update:model-value="fieldErrors.clear('name')"
+              />
+              <DmsFieldError
+                :id="fieldErrors.errorId('name')"
+                :message="fieldErrors.errors.name"
+              />
+            </DmsFieldRow>
+            <DmsFieldRow
+              layout="stack"
+              spacing="list"
+              :inset="false"
+              label="$page.marketing.websites.fields.domain"
+              description="$page.marketing.websites.fields.domain_hint"
+              label-for="website-domain"
               required
             >
-              <UInput v-model="draftDomain" class="w-full font-mono" />
-            </UFormField>
-            <UFormField
-              :label="t('page.marketing.websites.fields.hosts')"
-              :description="t('page.marketing.websites.fields.hosts_hint')"
+              <UInput
+                id="website-domain"
+                v-model="draftDomain"
+                class="w-full font-mono"
+                v-bind="fieldErrors.aria('domain')"
+                @update:model-value="fieldErrors.clear('domain')"
+              />
+              <DmsFieldError
+                :id="fieldErrors.errorId('domain')"
+                :message="fieldErrors.errors.domain"
+              />
+            </DmsFieldRow>
+            <DmsFieldRow
+              layout="stack"
+              spacing="list"
+              :inset="false"
+              label="$page.marketing.websites.fields.hosts"
+              description="$page.marketing.websites.fields.hosts_hint"
+              label-for="website-hosts"
             >
               <UInputTags
+                id="website-hosts"
                 v-model="draftHosts"
                 class="w-full font-mono"
                 :placeholder="'staging.example.com'"
+                v-bind="fieldErrors.aria('extraDomains')"
+                @update:model-value="fieldErrors.clear('extraDomains')"
               />
-            </UFormField>
+              <DmsFieldError
+                :id="fieldErrors.errorId('extraDomains')"
+                :message="fieldErrors.errors.extraDomains"
+              />
+            </DmsFieldRow>
           </template>
           <template v-else-if="tab === 'capture'">
-            <USwitch
-              v-model="draftSnapshots"
-              :label="t('page.marketing.websites.fields.snapshots')"
-              :description="t('page.marketing.websites.fields.snapshots_hint')"
-            />
-            <USwitch
-              v-model="draftMask"
+            <DmsFieldRow
+              spacing="list"
+              :inset="false"
+              label="$page.marketing.websites.fields.snapshots"
+              description="$page.marketing.websites.fields.snapshots_hint"
+              label-for="website-snapshots"
+            >
+              <USwitch id="website-snapshots" v-model="draftSnapshots" />
+            </DmsFieldRow>
+            <DmsFieldRow
+              spacing="list"
+              :inset="false"
+              label="$page.marketing.websites.fields.mask"
+              description="$page.marketing.websites.fields.mask_hint"
+              label-for="website-mask"
               :disabled="!draftSnapshots"
-              :label="t('page.marketing.websites.fields.mask')"
-              :description="t('page.marketing.websites.fields.mask_hint')"
-            />
+            >
+              <USwitch
+                id="website-mask"
+                v-model="draftMask"
+                :disabled="!draftSnapshots"
+              />
+            </DmsFieldRow>
             <DmsBanner
               v-if="discardsSnapshots"
               tone="warning"

@@ -60,6 +60,10 @@ const route = useDmsRoute()
 const router = useDmsRouter()
 const api = useMarketingApi()
 const toast = useToast()
+// A field-tied error from the save shows under its field, the rest as a toast.
+const fieldErrors = useFieldErrors({
+  fields: { name: 'funnel-name', experiment: 'funnel-experiment-key' },
+})
 
 const funnelId = typeof route.query.id === 'string' ? route.query.id : ''
 const isEdit = funnelId !== ''
@@ -451,11 +455,8 @@ async function save(): Promise<void> {
     toast.add({ color: 'success', title: t('page.marketing.builder.saved') })
     await router.push(id ? funnelLink(id) : funnelsLink())
   } catch (error) {
-    const message = (error as { data?: { message?: string } })?.data?.message
-    toast.add({
-      color: 'error',
-      title: t('page.marketing.builder.save_error'),
-      description: message,
+    await fieldErrors.handleApiError(error, {
+      toastTitle: 'page.marketing.builder.save_error',
     })
   } finally {
     saving.value = false
@@ -516,21 +517,42 @@ const websiteItems = computed(() =>
             {{ t('page.marketing.builder.sections.basics') }}
           </h2>
           <div class="grid gap-4 md:grid-cols-2">
-            <UFormField :label="t('page.marketing.builder.name')" required>
+            <DmsFieldRow
+              layout="stack"
+              spacing="list"
+              :inset="false"
+              label="$page.marketing.builder.name"
+              label-for="funnel-name"
+              required
+            >
               <UInput
+                id="funnel-name"
                 v-model="name"
                 class="w-full"
                 :placeholder="t('page.marketing.builder.name_placeholder')"
+                v-bind="fieldErrors.aria('name')"
+                @update:model-value="fieldErrors.clear('name')"
               />
-            </UFormField>
-            <UFormField :label="t('page.marketing.builder.website')">
+              <DmsFieldError
+                :id="fieldErrors.errorId('name')"
+                :message="fieldErrors.errors.name"
+              />
+            </DmsFieldRow>
+            <DmsFieldRow
+              layout="stack"
+              spacing="list"
+              :inset="false"
+              label="$page.marketing.builder.website"
+              label-for="funnel-website"
+            >
               <USelect
+                id="funnel-website"
                 v-model="websiteId"
                 class="w-full"
                 :items="websiteItems"
                 :disabled="isEdit"
               />
-            </UFormField>
+            </DmsFieldRow>
           </div>
         </section>
 
@@ -773,17 +795,28 @@ const websiteItems = computed(() =>
               :title="t('page.marketing.builder.frozen_title')"
               :description="t('page.marketing.builder.frozen_description')"
             />
-            <UFormField
-              :label="t('page.marketing.builder.key')"
-              :description="t('page.marketing.builder.key_hint')"
+            <DmsFieldRow
+              layout="stack"
+              spacing="list"
+              :inset="false"
+              label="$page.marketing.builder.key"
+              description="$page.marketing.builder.key_hint"
+              label-for="funnel-experiment-key"
             >
               <UInput
+                id="funnel-experiment-key"
                 v-model="experimentKey"
                 class="w-72 font-mono"
                 placeholder="sale-hero"
                 :disabled="frozen"
+                v-bind="fieldErrors.aria('experiment')"
+                @update:model-value="fieldErrors.clear('experiment')"
               />
-            </UFormField>
+              <DmsFieldError
+                :id="fieldErrors.errorId('experiment')"
+                :message="fieldErrors.errors.experiment"
+              />
+            </DmsFieldRow>
             <div class="flex items-center justify-between">
               <span class="text-sm font-medium text-highlighted">
                 {{ t('page.marketing.builder.variations') }}

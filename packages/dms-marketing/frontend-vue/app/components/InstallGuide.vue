@@ -40,6 +40,10 @@ const router = useDmsRouter()
 const config = useDmsRuntimeConfig()
 const api = useMarketingApi()
 const toast = useToast()
+// A field-tied error from the creation shows under its field, the rest as a toast.
+const fieldErrors = useFieldErrors({
+  fields: { name: 'install-name', domain: 'install-domain' },
+})
 
 const websiteId = ref(
   typeof route.query.website === 'string' ? route.query.website : '',
@@ -65,10 +69,9 @@ async function createWebsite(): Promise<void> {
     websiteId.value = created._id
     await router.replace(installLink(created._id))
     await poll()
-  } catch {
-    toast.add({
-      color: 'error',
-      title: t('page.marketing.install.create_error'),
+  } catch (error) {
+    await fieldErrors.handleApiError(error, {
+      toastTitle: 'page.marketing.install.create_error',
     })
   } finally {
     creating.value = false
@@ -267,22 +270,48 @@ const stepTwoState = computed(() =>
               class="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end"
               @submit.prevent="createWebsite"
             >
-              <UFormField
-                :label="t('page.marketing.websites.fields.name')"
-                required
-              >
-                <UInput v-model="name" class="w-full" placeholder="Acme shop" />
-              </UFormField>
-              <UFormField
-                :label="t('page.marketing.websites.fields.domain')"
+              <DmsFieldRow
+                layout="stack"
+                spacing="list"
+                :inset="false"
+                label="$page.marketing.websites.fields.name"
+                label-for="install-name"
                 required
               >
                 <UInput
+                  id="install-name"
+                  v-model="name"
+                  class="w-full"
+                  placeholder="Acme shop"
+                  v-bind="fieldErrors.aria('name')"
+                  @update:model-value="fieldErrors.clear('name')"
+                />
+                <DmsFieldError
+                  :id="fieldErrors.errorId('name')"
+                  :message="fieldErrors.errors.name"
+                />
+              </DmsFieldRow>
+              <DmsFieldRow
+                layout="stack"
+                spacing="list"
+                :inset="false"
+                label="$page.marketing.websites.fields.domain"
+                label-for="install-domain"
+                required
+              >
+                <UInput
+                  id="install-domain"
                   v-model="domain"
                   class="w-full font-mono"
                   placeholder="shop.example.com"
+                  v-bind="fieldErrors.aria('domain')"
+                  @update:model-value="fieldErrors.clear('domain')"
                 />
-              </UFormField>
+                <DmsFieldError
+                  :id="fieldErrors.errorId('domain')"
+                  :message="fieldErrors.errors.domain"
+                />
+              </DmsFieldRow>
               <UButton
                 type="submit"
                 icon="i-ph-plus"
