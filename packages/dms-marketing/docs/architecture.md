@@ -152,7 +152,7 @@ cleanup with an error, without retry or an unconditional-delete fallback.
 **Integration prerequisite:** the database interface and adapter must implement
 `deleteIfEqual`. Validation uses the published database interface, the
 MongoDB adapter 1.4.2 the package pins as a dev dependency and the DMS
-`>=0.7.2` release resolved at the time, without source overlays.
+`>=0.7.4` release resolved at the time, without source overlays.
 `pnpm test` loads the real modules through Antelope and exercises MongoDB with a
 disposable database (the first run downloads MongoDB unless
 `MONGOMS_SYSTEM_BINARY` is set). Marketing integration tests on PostgreSQL and
