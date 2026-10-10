@@ -50,7 +50,7 @@
     "@antelopejs/interface-data-api": ">=0.2.0 <1.0.0",
     "@antelopejs/interface-database": ">=0.1.8 <1.0.0",
     "@antelopejs/interface-database-decorators": ">=0.1.7 <1.0.0",
-    "@antelopejs/interface-dms": ">=0.5.0 <1.0.0",
+    "@antelopejs/interface-dms": ">=0.5.1 <1.0.0",
     "@antelopejs/interface-dms-marketing": ">=0.3.1 <0.4.0",
     "defu": "^6.1.4",
     "maxmind": "^5.0.7",
