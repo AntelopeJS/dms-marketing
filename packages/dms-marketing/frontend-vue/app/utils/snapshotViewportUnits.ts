@@ -20,12 +20,17 @@ export interface SnapshotViewport {
   height: number
 }
 
-const VIEWPORT_UNIT = /(-?(?:\d+\.?\d*|\.\d+))(dvh|svh|lvh|vh|vmin|vmax)(?![\w-])/g
+const VIEWPORT_UNIT =
+  /(-?(?:\d+\.?\d*|\.\d+))(dvh|svh|lvh|vh|vmin|vmax)(?![\w-])/g
 const DECLARATION_VALUE = /((?<!\\):)([^;{}]*)/g
 const STYLE_BLOCK = /(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi
 const STYLE_ATTRIBUTE = /(\sstyle=")([^"]*)(")/gi
 
-function pixelsOf(amount: string, unit: string, viewport: SnapshotViewport): number {
+function pixelsOf(
+  amount: string,
+  unit: string,
+  viewport: SnapshotViewport,
+): number {
   const base = unit.endsWith('vh')
     ? viewport.height
     : unit === 'vmin'
@@ -37,18 +42,23 @@ function pixelsOf(amount: string, unit: string, viewport: SnapshotViewport): num
 function rewriteValue(value: string, viewport: SnapshotViewport): string {
   return value.replace(
     VIEWPORT_UNIT,
-    (_match, amount: string, unit: string) => `${pixelsOf(amount, unit, viewport)}px`,
+    (_match, amount: string, unit: string) =>
+      `${pixelsOf(amount, unit, viewport)}px`,
   )
 }
 
 function rewriteDeclarations(css: string, viewport: SnapshotViewport): string {
   return css.replace(
     DECLARATION_VALUE,
-    (_match, colon: string, value: string) => colon + rewriteValue(value, viewport),
+    (_match, colon: string, value: string) =>
+      colon + rewriteValue(value, viewport),
   )
 }
 
-export function rewriteViewportUnits(html: string, viewport: SnapshotViewport): string {
+export function rewriteViewportUnits(
+  html: string,
+  viewport: SnapshotViewport,
+): string {
   return html
     .replace(
       STYLE_BLOCK,

@@ -1,12 +1,25 @@
+import type { BannerContent } from "@antelopejs/interface-dms/base/banner";
+import { ButtonVariant } from "@antelopejs/interface-dms/base/types/button";
+import type { ComposedText } from "@antelopejs/interface-dms/base/types/composed-text";
 import { randomBytes } from "node:crypto";
 import {
   applyConfigOverrides,
   type DmsMarketingConfig,
+  getBaseConfig,
   getConfig,
 } from "@/config";
+import { HTTPResult } from "@antelopejs/interface-api";
 import type { MarketingSettingsModel } from "@/db";
 import type { MarketingSettings } from "@/db/tables/marketing_settings.table";
-import { VISITOR_SECRET_BYTES } from "@/types/constants";
+import {
+  HTTP_BAD_REQUEST,
+  MAX_STATISTICS_RETENTION_DAYS,
+  MS_PER_DAY,
+  VISITOR_SECRET_BYTES,
+} from "@/types/constants";
+import { resolveQueryWindow } from "./period";
+import { readRollups, sumRollups } from "./rollups";
+import { listTenantWebsites } from "./tenant-website";
 import {
   BOOLEAN_SETTINGS,
   NUMBER_SETTINGS,
@@ -21,6 +34,9 @@ import {
  * Which settings exist and their units come from `types/settings`; this file
  * owns the merge rules and the unit conversion, once each way.
  */
+
+const SNAPSHOT_ABOVE_RAW_MESSAGE =
+  "$page.marketing.errors.snapshot_retention_above_raw";
 
 type SettingsDocument = Pick<MarketingSettings, SettingsConfigKey>;
 
@@ -89,8 +105,9 @@ export function settingsFormValues(): SettingsFormValues {
 }
 
 /**
- * An empty numeric field is a deliberate clear: the override goes back to
- * null and the config default applies again.
+ * The body is partial (a form sends the fields the user changed): a key left
+ * out keeps its stored value, and an emptied numeric field arrives as `null`,
+ * a deliberate clear that puts the config default back in force.
  */
 function buildNextSettings(
   values: SettingsFormValues,
@@ -106,13 +123,31 @@ function buildNextSettings(
         : (existing?.[setting.configKey] ?? config[setting.configKey]);
   }
   for (const setting of NUMBER_SETTINGS) {
-    const submitted = values[setting.id];
-    doc[setting.configKey] =
-      typeof submitted === "number" && !Number.isNaN(submitted)
-        ? submitted * setting.unit
-        : null;
+    doc[setting.configKey] = Object.hasOwn(values, setting.id)
+      ? submittedNumber(values[setting.id], setting.unit)
+      : (existing?.[setting.configKey] ?? null);
   }
   return doc;
+}
+
+function submittedNumber(value: unknown, unit: number): number | null {
+  return typeof value === "number" && !Number.isNaN(value)
+    ? value * unit
+    : null;
+}
+
+/**
+ * Snapshots back the heatmaps drawn from raw events: one kept past the raw
+ * window would outlive every click it was captured for. Refused rather than
+ * clamped, so the form says why instead of saving another number.
+ */
+function assertCoherentRetention(next: SettingsDocument): void {
+  const base = getBaseConfig();
+  const raw = next.rawEventsRetention ?? base.rawEventsRetention;
+  const snapshots = next.snapshotRetention ?? base.snapshotRetention;
+  if (snapshots > raw) {
+    throw new HTTPResult(HTTP_BAD_REQUEST, SNAPSHOT_ABOVE_RAW_MESSAGE);
+  }
 }
 
 async function persistSettings(
@@ -171,7 +206,128 @@ export async function applySettingsForm(
 ): Promise<SettingsFormValues> {
   const existing = await model.getSingleton();
   const next = buildNextSettings(values, existing);
+  assertCoherentRetention(next);
   await persistSettings(model, next, existing);
   applyDocument(next);
   return settingsFormValues();
+}
+
+/** What the Collection section states next to the master switch. */
+export interface CollectionStatus {
+  enabled: boolean;
+  websites: number;
+  sessions: number;
+}
+
+const COLLECTION_WINDOW = "30d";
+
+export async function collectionStatus(
+  tenantId: string,
+): Promise<CollectionStatus> {
+  const websites = await listTenantWebsites(tenantId);
+  const window = resolveQueryWindow({ period: COLLECTION_WINDOW });
+  const rows = await Promise.all(
+    websites.map((website) => readRollups(website, window)),
+  );
+  return {
+    enabled: getConfig().trackerEnabled,
+    websites: websites.length,
+    sessions: rows.reduce((sum, days) => sum + sumRollups(days).sessions, 0),
+  };
+}
+
+/** The `Meter` payload of one retention, on the statistics ceiling's scale. */
+export interface RetentionMeter {
+  value: number;
+  max: number;
+  valueLabel: string;
+}
+
+const GLANCE_ITEMS = {
+  raw: "rawEventsRetention",
+  statistics: "statisticsRetention",
+  snapshots: "snapshotRetention",
+} as const;
+
+export function retentionGlance(item: unknown): RetentionMeter | null {
+  if (typeof item !== "string" || !Object.hasOwn(GLANCE_ITEMS, item)) {
+    return null;
+  }
+  const key = GLANCE_ITEMS[item as keyof typeof GLANCE_ITEMS];
+  const days = Math.round(getConfig()[key] / MS_PER_DAY);
+  return {
+    value: days,
+    max: MAX_STATISTICS_RETENTION_DAYS,
+    valueLabel: `${days} d`,
+  };
+}
+
+const COLLECTION_PREFIX = "$page.marketing.settings.collection.";
+
+/**
+ * The Collection section as a stock `Banner`: whether the tracker collects,
+ * what it covers, and the one action that flips it — pausing behind a
+ * confirmation that says what stops, resuming in one press.
+ */
+export function collectionBanner(
+  status: CollectionStatus,
+  collectionUrl: string,
+): BannerContent {
+  const description: ComposedText = {
+    key: `${COLLECTION_PREFIX}summary`,
+    params: {
+      websites: { type: "count", value: status.websites },
+      sessions: { type: "number", value: status.sessions },
+    },
+  };
+  const write = (enabled: boolean, successMessage: string) => ({
+    type: "api" as const,
+    url: collectionUrl,
+    method: "POST" as const,
+    body: { enabled },
+    successMessage,
+  });
+  if (!status.enabled) {
+    return {
+      tone: "warning",
+      icon: "i-ph-pause-circle",
+      title: `${COLLECTION_PREFIX}paused`,
+      description,
+      actions: [
+        {
+          label: `${COLLECTION_PREFIX}resume`,
+          icon: "i-ph-play",
+          color: "success",
+          target: write(true, `${COLLECTION_PREFIX}resumed`),
+        },
+      ],
+    };
+  }
+  return {
+    tone: "success",
+    icon: "i-ph-broadcast",
+    title: `${COLLECTION_PREFIX}collecting`,
+    description,
+    actions: [
+      {
+        label: `${COLLECTION_PREFIX}pause`,
+        icon: "i-ph-pause",
+        color: "error",
+        variant: ButtonVariant.outline,
+        target: write(false, `${COLLECTION_PREFIX}paused_toast`),
+        confirm: {
+          title: `${COLLECTION_PREFIX}pause_title`,
+          description: `${COLLECTION_PREFIX}pause_description`,
+          color: "error",
+          icon: "i-ph-pause",
+          confirmLabel: `${COLLECTION_PREFIX}pause_confirm`,
+          impact: [
+            { icon: "i-ph-code", label: `${COLLECTION_PREFIX}impact_script` },
+            { icon: "i-ph-flask", label: `${COLLECTION_PREFIX}impact_tests` },
+            { icon: "i-ph-clock", label: `${COLLECTION_PREFIX}impact_delay` },
+          ],
+        },
+      },
+    ],
+  };
 }

@@ -25,3 +25,177 @@ export function parsePeriodDays(period: unknown): number {
 export function periodStart(days: number): Date {
   return new Date(getUtcMidnight(new Date()) - (days - 1) * MS_PER_DAY);
 }
+
+/**
+ * A window of whole UTC days, the unit the rollups are stored in: `firstDay`
+ * and `lastDay` are the UTC midnights of its first and last day, `since` and
+ * `until` the instants a raw-event read covers.
+ */
+export interface QueryWindow {
+  firstDay: number;
+  lastDay: number;
+  days: number;
+  since: Date;
+  until: Date;
+}
+
+/** The query parameters a period-scoped block sends (see the DMS period scope). */
+export interface PeriodQuery {
+  from?: unknown;
+  to?: unknown;
+  compareFrom?: unknown;
+  compareTo?: unknown;
+  /**
+   * What the window is compared with when no `compareFrom`/`compareTo` came:
+   * `previous-period`, `previous-year` or `none`, the names of the DMS period
+   * comparisons. The context bar writes it into the page URL with `from` and
+   * `to` as days, so a stock block reads the period through `{{query.X}}`.
+   */
+  compare?: unknown;
+  period?: unknown;
+}
+
+/** The period scope's parameters, read off a request URL as the scope sent them. */
+export function periodQueryOf(url: URL): PeriodQuery {
+  const params = url.searchParams;
+  return {
+    from: params.get("from") ?? undefined,
+    to: params.get("to") ?? undefined,
+    compareFrom: params.get("compareFrom") ?? undefined,
+    compareTo: params.get("compareTo") ?? undefined,
+    compare: params.get("compare") ?? undefined,
+    period: params.get("period") ?? undefined,
+  };
+}
+
+const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * An instant of the query. A bare day (`2026-10-09`, as the page URL carries
+ * it) stands for that whole UTC day: its first millisecond as a start, its
+ * last as an end, the bounds the period scope sends for a local day.
+ */
+function parseInstant(
+  value: unknown,
+  bound: "start" | "end" = "start",
+): number | undefined {
+  const raw = queryString(value);
+  if (!raw) {
+    return undefined;
+  }
+  const time = Date.parse(raw);
+  if (!Number.isFinite(time)) {
+    return undefined;
+  }
+  return DAY_PATTERN.test(raw) && bound === "end"
+    ? time + MS_PER_DAY - 1
+    : time;
+}
+
+/**
+ * The period scope sends the bounds of local days (local midnight to local
+ * 23:59:59.999). Rounding each bound to the nearest UTC midnight maps them on
+ * the UTC day carrying the same date for any offset under twelve hours, which
+ * is what the rollups key their rows on.
+ */
+function firstDayOf(instant: number): number {
+  return Math.round(instant / MS_PER_DAY) * MS_PER_DAY;
+}
+
+function lastDayOf(instant: number): number {
+  return Math.round((instant + 1) / MS_PER_DAY) * MS_PER_DAY - MS_PER_DAY;
+}
+
+function windowOfDays(firstDay: number, lastDay: number): QueryWindow {
+  const capped = Math.max(
+    firstDay,
+    lastDay - (MAX_QUERY_PERIOD_DAYS - 1) * MS_PER_DAY,
+  );
+  const now = Date.now();
+  return {
+    firstDay: capped,
+    lastDay,
+    days: Math.round((lastDay - capped) / MS_PER_DAY) + 1,
+    since: new Date(capped),
+    until: new Date(Math.min(lastDay + MS_PER_DAY - 1, now)),
+  };
+}
+
+function boundedWindow(
+  from: number | undefined,
+  to: number | undefined,
+): QueryWindow | null {
+  if (from === undefined || to === undefined || to < from) {
+    return null;
+  }
+  return windowOfDays(firstDayOf(from), lastDayOf(to));
+}
+
+/**
+ * The window a read covers: `from`/`to` when a period scope sent them, else
+ * the legacy `period=Nd` ending today. Longer than MAX_QUERY_PERIOD_DAYS is
+ * cut at its start, so the most recent days always stay in.
+ */
+export function resolveQueryWindow(query: PeriodQuery): QueryWindow {
+  const bounded = boundedWindow(
+    parseInstant(query.from),
+    parseInstant(query.to, "end"),
+  );
+  if (bounded) {
+    return bounded;
+  }
+  const today = getUtcMidnight(new Date());
+  const days = parsePeriodDays(query.period);
+  return windowOfDays(today - (days - 1) * MS_PER_DAY, today);
+}
+
+/**
+ * The comparison window, or null when the scope compares with nothing: the
+ * `compareFrom`/`compareTo` a period scope sent, else the window `compare`
+ * names next to the read one.
+ */
+export function resolveCompareWindow(query: PeriodQuery): QueryWindow | null {
+  const bounded = boundedWindow(
+    parseInstant(query.compareFrom),
+    parseInstant(query.compareTo, "end"),
+  );
+  if (bounded) {
+    return bounded;
+  }
+  const compare = queryString(query.compare);
+  if (compare === "previous-period") {
+    return previousWindow(resolveQueryWindow(query));
+  }
+  if (compare === "previous-year") {
+    return previousYearWindow(resolveQueryWindow(query));
+  }
+  return null;
+}
+
+function previousYear(day: number): number {
+  const date = new Date(day);
+  date.setUTCFullYear(date.getUTCFullYear() - 1);
+  return date.getTime();
+}
+
+/** The same days a year earlier. */
+function previousYearWindow(window: QueryWindow): QueryWindow {
+  return windowOfDays(
+    previousYear(window.firstDay),
+    previousYear(window.lastDay),
+  );
+}
+
+/** The same number of days right before `window`. */
+export function previousWindow(window: QueryWindow): QueryWindow {
+  const lastDay = window.firstDay - MS_PER_DAY;
+  return windowOfDays(lastDay - (window.days - 1) * MS_PER_DAY, lastDay);
+}
+
+/** Every UTC midnight of the window, oldest first. */
+export function windowDays(window: QueryWindow): number[] {
+  return Array.from(
+    { length: window.days },
+    (_, index) => window.firstDay + index * MS_PER_DAY,
+  );
+}

@@ -1,23 +1,41 @@
 import { describe, expect, it } from 'vitest'
 import {
-  campaignsLink,
+  acquisitionLink,
+  funnelBuilderLink,
+  funnelLink,
   funnelsLink,
+  installLink,
   pagesLink,
 } from '../app/composables/useMarketingRoutes'
 
 describe('module links', () => {
   it('stay bare when nothing is selected', () => {
     expect(pagesLink()).toBe('/modules/marketing/pages')
-    expect(campaignsLink()).toBe('/modules/marketing/campaigns')
+    expect(acquisitionLink()).toBe('/modules/marketing/acquisition')
     expect(funnelsLink()).toBe('/modules/marketing/funnels')
+    expect(funnelBuilderLink()).toBe('/modules/marketing/funnel-builder')
+    expect(installLink()).toBe('/modules/marketing/install')
   })
 
-  it('serializes the exact button route and encodes selected values', () => {
-    expect(funnelsLink({ website: 'test-site-1' })).toBe(
-      '/modules/marketing/funnels?website=test-site-1',
+  it('encode the values they carry', () => {
+    expect(pagesLink('/pricing?x=1')).toBe(
+      '/modules/marketing/pages?path=%2Fpricing%3Fx%3D1',
     )
-    expect(pagesLink({ website: 'w 1', path: '/pricing?x=1', period: '7d' })).toBe(
-      '/modules/marketing/pages?website=w+1&path=%2Fpricing%3Fx%3D1&period=7d',
+    expect(funnelLink('f 1')).toBe('/modules/marketing/funnel?id=f+1')
+    expect(installLink('site-1')).toBe(
+      '/modules/marketing/install?website=site-1',
     )
+  })
+
+  it('carry a template and the split switch to the builder', () => {
+    const link = funnelBuilderLink(null, {
+      split: true,
+      steps: [{ kind: 'custom', value: 'signup' }],
+    })
+    const query = new URL(link, 'http://x').searchParams
+    expect(query.get('split')).toBe('1')
+    expect(JSON.parse(query.get('steps')!)).toEqual([
+      { kind: 'custom', value: 'signup' },
+    ])
   })
 })

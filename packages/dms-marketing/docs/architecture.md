@@ -83,12 +83,15 @@ All inherited from what worked (and failed) in this codebase:
   session and each rolls up as its own dimension; `topCampaigns` additionally
   keys full (source, medium, campaign) triples — joined on a control-character
   separator the stats read splits back, so the composite never leaks past the
-  storage layer. The channel grouping (direct / organic / social / referral /
-  paid) is nothing but a mapping of (referrer domain, `utm_medium`) resolved
-  when the session's rollup increment fires (`services/acquisition.ts`) —
-  never stored on the session, so the classifier can evolve without a
-  migration; sessions rolled up after the change just classify by the new
-  rules.
+  storage layer. The channel grouping (direct / organic / social / email /
+  referral / paid) is nothing but a mapping of (referrer domain,
+  `utm_medium`, ad click-id parameter) resolved when the session's rollup
+  increment fires (`services/acquisition.ts`) — never stored on the session,
+  so the classifier can evolve without a migration. The other side of that
+  choice: a change never reaches back. Sessions already rolled up keep the
+  channel they got in the `topChannels` counters, and only sessions rolled up
+  after the change classify by the new rules (the Email channel and the
+  referral mediums arrived that way).
 - **Sessions.** A session groups a visitor's events until
   `DEFAULT_SESSION_IDLE_TIMEOUT_MS` (30 min) of inactivity; acquisition
   context (referrer, UTM, device triple) lives on the session so events stay
@@ -98,7 +101,9 @@ All inherited from what worked (and failed) in this codebase:
 
 Analytics tables (`marketing_events`, `marketing_sessions`,
 `marketing_website_statistics`, `marketing_page_snapshots`,
-`marketing_funnels`) live in the DMS `dms-tenant` schema — one database instance per tenant, the
+`marketing_funnels`) and the members' console preferences
+(`marketing_preferences`, the website each member last selected) live in
+the DMS `dms-tenant` schema — one database instance per tenant, the
 same model as dms core and dms-saas — so isolation is the instance boundary,
 not a `tenantId` filter someone can forget.
 
@@ -113,8 +118,10 @@ Two tables are global (`dms-core` schema) on purpose:
 Everything else reads its tenant instance via `GetModel(Model, tenantId)` /
 `@TenantScopedModel`.
 
-**Tenant lifecycle contract.** `Hook.TENANT_DELETED` purges every marketing
-row of the tenant (instance tables + its websites); `Hook.TENANT_DATA_EXPORT`
+**Tenant lifecycle contract.** `Hook.TENANT_DELETED` purges the tenant's
+events, sessions, page snapshots, rollups, funnels and member preferences,
+then its websites; `Hook.USER_DELETED` forgets a deleted account's website
+selection in each of its workspaces; `Hook.TENANT_DATA_EXPORT`
 contributes websites, funnels and rollups to the workspace
 export (`src/hooks`; events, sessions and page snapshots are excluded —
 retention-bounded captures, not the durable data a workspace owns). Registered in `construct()`, the dms-saas pattern.
@@ -143,9 +150,9 @@ guarantee is required. Only `applied` counts as deletion. `unknown` stops that
 cleanup with an error, without retry or an unconditional-delete fallback.
 
 **Integration prerequisite:** the database interface and adapter must implement
-`deleteIfEqual`. Validation uses the published database interface 0.1.6,
-MongoDB adapter 1.3.0 and the DMS release published at the time, without
-source overlays.
+`deleteIfEqual`. Validation uses the published database interface, the
+MongoDB adapter 1.4.2 the package pins as a dev dependency and the DMS
+`>=0.7.4` release resolved at the time, without source overlays.
 `pnpm test` loads the real modules through Antelope and exercises MongoDB with a
 disposable database (the first run downloads MongoDB unless
 `MONGOMS_SYSTEM_BINARY` is set). Marketing integration tests on PostgreSQL and
@@ -156,12 +163,18 @@ RethinkDB remain pending; the MongoDB result is not a portability claim.
 Module pages (`/modules/marketing/*`) and the `/api/marketing/tables/*`
 DataControllers behind them are **platform-owner-only** (`@AuthOwnerOnly`) —
 the DMS convention that module surfaces are owner administration spaces. The
-REST reads and mutations (`/api/marketing/stats/*`, `/websites`,
-`/funnels/:id/results`) are **tenant-scoped**
+REST reads and mutations (`/api/marketing/blocks/*`, `/context`,
+`/stats/*`, `/websites`, `/funnels/*`) are **tenant-scoped**
 (`@AuthTenantMember` / `@AuthTenantOwner`): they answer for the caller's tenant claim, so the day a
 marketing surface moves to a tenant-reachable category, the API is already
 right and only the pages move. Settings stay owner-only at both levels — the
 row is deployment-global and drives cross-tenant prunes.
+
+Every module block carries `.meta()` with a translated name, description
+and icon (`page.marketing.blocks.<key>` in the frontend catalogs), and so do
+the stock blocks and containers the pages declare (`blockMeta()` in
+`src/pages/blocks.ts`), so a block's permission reads as a name in the roles
+tree, never as a component name. Layout rows (`GridRow`) carry none.
 
 ## Event contract
 
@@ -231,15 +244,41 @@ Kind-specific `data` payloads:
 | `GET /api/marketing/snapshot.js?website=&path=&width=` | public | snapshot negotiation: the capture script when the backend wants a snapshot of that path at that viewport width, an empty script otherwise (see *Snapshot contract*) |
 | `POST /api/marketing/snapshot` | public | snapshot upload — one serialized page rendering, capped and rate-limited |
 | `GET/POST/PUT/DELETE /api/marketing/websites` | tenant member / owner | website CRUD; the list comes back most-recently-active first, so a dashboard landing on the first entry lands on one with data. `snapshotsEnabled` / `snapshotMaskText` are the page-snapshot opt-in and masking options; changing either discards the site's snapshots. `DELETE /:id` purges the site's tracking data with it (see *Website lifecycle contract*) |
+| `GET /api/marketing/websites/summary` | tenant member | the Websites page cards: state, sessions / pages / funnels over 30 days, accepted hosts, snapshot and sampling state, recently refused hosts |
+| `GET /api/marketing/websites/:id/connection` | tenant member | the install guide's check: the site's state, its most recent visit (URL, browser, device) and its recently refused hosts |
+| `POST /api/marketing/websites/:id/allow-host` | tenant owner | adds a refused host to the site's `extraDomains` and forgets its refusals |
+| `GET/PUT /api/marketing/context` | tenant member | the context bar: the tenant's websites with their live state and the caller's selection; `PUT {website}` stores the selection (see *Context and period*) |
+| `GET /api/marketing/blocks/kpi?metric=` | tenant member | one `KpiCard`: `pageviews`, `sessions`, `new-visitors` or `custom-events`, with its change and sparkline |
+| `GET /api/marketing/blocks/traffic?metric=` | tenant member | the traffic `ChartCard`, the comparison window as a second series |
+| `GET /api/marketing/blocks/quality` | tenant member | bounce rate, average session duration and pages per session, with their change |
+| `GET /api/marketing/blocks/devices` | tenant member | the devices `TopListCard` |
+| `GET /api/marketing/blocks/tops?group=` | tenant member | one tabbed top-list card: `content`, `acquisition`, `audience` or `events` (goal events flagged) |
+| `GET /api/marketing/blocks/top?dimension=&limit=` | tenant member | one `TopListCard` over a rollup dimension (referrers, UTM contents/terms…), `limit` 5 by default, at most 50 |
+| `GET /api/marketing/blocks/channels` | tenant member | sessions per channel with share and change |
+| `GET /api/marketing/blocks/campaigns/rows?search=&filter_channel=is:<channel>` | tenant member | the UTM campaign table (`TableView.fromSource`), `{ results, total }`: top 100 (source, medium, campaign) triples with share, daily sessions, derived channel and the missing-medium flag |
+| `GET /api/marketing/blocks/campaigns/notice?kind=missing\|truncated` | tenant member | the notice under the campaign table for a stock `Banner`: sessions tagged without a medium, or the cut at 100 rows; `null` when there is none |
 | `GET /api/marketing/stats/overview?website=&period=Nd` | tenant member | rollup-backed dashboard read |
 | `GET /api/marketing/stats/campaigns?website=&period=Nd&search=&limit=` | tenant member | acquisition read: sessions by channel, UTM campaign table as (source, medium, campaign) triples, top referrers/terms/contents |
 | `GET /api/marketing/stats/pages?website=&period=Nd&search=&limit=` | tenant member | inventory of observed paths, plus `heatmapSampleRate` and `trackerEnabled` so the caller can explain an empty heatmap |
 | `GET /api/marketing/stats/heatmap?website=&path=&period=Nd` | tenant member | click heatmap (also served through the interface). `website` is optional and merges the tenant's sites when omitted — pass it |
 | `GET /api/marketing/stats/snapshot?website=&path=&layout=` | tenant member | the page snapshot the heatmap is drawn over: the capture at that layout, else the nearest one (`exact: false`), else `null`. A document always wins over a row recording an oversize capture, which comes back as `html: null` with the `bytes` it reached |
-| `GET /api/marketing/funnels/:id/results?period=Nd` | tenant member | read-time funnel computation — plus, when the funnel carries an A/B split, the per-arm read through the same steps: exposed sessions, conversion, z-test verdicts, SRM check |
+| `DELETE /api/marketing/stats/heatmap?website=&path=` | tenant owner | heatmap reset: the clicks, scroll depths and snapshots of one path, or of the whole site without `path`; answers the number of events deleted |
+| `GET /api/marketing/funnels/rows?filter_kind=is:funnel\|ab` | tenant member | the funnels table (`TableView.fromSource`), `{ results, total }`: per funnel, entered sessions, conversion and its change in points, or the A/B test's state |
+| `GET /api/marketing/funnels/winner` | tenant member | the running test that reached significance, for a stock `Banner`; `null` when there is none |
+| `GET /api/marketing/funnels/suggestions` | tenant member | the site's top pages and custom events, for the builder's autocomplete and the empty-state templates |
+| `POST /api/marketing/funnels/preview` | tenant member | scores unsaved steps and window over the period, for the builder |
+| `GET /api/marketing/funnels/:id/results` | tenant member | read-time funnel computation, plus `previous`, the same computation over the comparison window (plain funnels only) — and, when the funnel carries an A/B split, the per-arm read through the same steps over the split's runs: exposed sessions, conversion, z-test verdicts, SRM check |
 | `/api/marketing/tables/funnels/*` | platform owner | funnels DataController (TableView CRUD, tenant-instance-scoped via `@TenantScopedModel`; enforces the split's `draft → running ⇄ stopped` lifecycle, stamps the runs it produces, and freezes key/variations outside draft) |
 | `/api/marketing/tables/websites/*` | platform owner | read-only websites DataController (relation picker; global table, column-scoped) |
-| `GET/POST /api/marketing/settings` | platform owner | declarative settings form endpoints |
+| `GET/POST /api/marketing/settings` | platform owner | settings form endpoints; `POST` merges a partial body (a key left out keeps its value, `null` clears it back to the config default) and refuses (400) a snapshot retention longer than the raw-event retention |
+| `GET/POST /api/marketing/settings/collection` | platform owner | the master switch, the websites and their 30-day sessions; `POST {enabled}` flips it |
+| `GET /api/marketing/settings/collection/banner` | platform owner | the Collection section for a stock `Banner`: state, coverage and the pause (confirmed) or resume action |
+| `GET /api/marketing/settings/glance?item=` | platform owner | one `Meter` of *At a glance*: `raw`, `statistics` or `snapshots` retention on a shared scale |
+
+Routes marked tenant member under `/blocks`, `/funnels/rows`, `/funnels/winner`,
+`/funnels/suggestions`, `/funnels/preview` and `/funnels/:id/results` read
+their window from the period scope (see *Context and period*); the older
+`/stats/*` reads take `period=Nd` only.
 
 Client sites need no CORS grant: the tracker posts `text/plain` — a
 CORS-safelisted type, no preflight — and the backend parses the JSON body
@@ -249,6 +288,41 @@ property from the other direction: it is served as a **script** the page
 loads with `<script src>`, not JSON a page would need CORS to read. The
 `@antelopejs/api` CORS configuration only matters for the authenticated
 console origins.
+
+## Context and period
+
+The analytics pages share one context: a website and a period. Both live in
+the context container (`DmsMarketingContext`, `frontend-vue/app/components/Context.vue`)
+that wraps the blocks of each page.
+
+- **Period.** The container owns it through the DMS `usePeriod` — presets
+  Today / 7D / 30D / 90D, default 30 days; comparison with the previous
+  period (default), the previous year, or none — and persists the preset and
+  comparison in the `dms-marketing-period` cookie. It publishes the period
+  under the DMS period scope `dms-marketing`, which every stock block of the
+  pages binds to: the blocks append `from`/`to` (and
+  `compareFrom`/`compareTo`) to their fetch URL. The routes map these bounds
+  on the UTC days carrying the same dates — the days rollup rows are keyed
+  on — and cap a window at `MAX_QUERY_PERIOD_DAYS` (90), cut at its start so
+  the recent days stay in (`services/period.ts`). Without `from`/`to` they
+  fall back to the legacy `period=Nd` ending today.
+- **Website.** A stock block knows a period scope, not a website, so the
+  published scope key also carries the selected website (and the refresh
+  counter): a website switch changes the key, and every bound block
+  refetches. The selection itself is stored server-side per member, in
+  `marketing_preferences` (`PUT /api/marketing/context`, written before the
+  scope changes), because the blocks fetch from the API origin, which need
+  not share cookies with the console. A block route resolves its website as:
+  the `website` query parameter, else the caller's stored selection while it
+  still belongs to the tenant, else the most recently active site; 404 while
+  the tenant has none (`services/context.ts`).
+- **First run.** While the tenant has no website, the container renders a
+  first-run hero instead of its children, so no block fetches for a tenant
+  without a site.
+
+The context bar also shows each website's state from the same read:
+`live` once a pageview arrived, `waiting` before, `paused` when the site's
+own tracking switch is off.
 
 ## Snapshot contract
 
@@ -443,10 +517,12 @@ capture; nothing is inferred from `domain`, which is apex-only and
 scheme-less.
 
 **Overlay switching.** The click and scroll-depth overlays switch above one
-persistent iframe (plain buttons in `PagePreview.vue`), never a declarative
-`Tab` block — it unmounts hidden slots by default, which would tear down the
-frame and re-measure it on every switch. Later overlays
-(per-selector) join the same switch.
+persistent iframe (a segmented control in `PagePreview.vue`), never a
+declarative `Tab` block — it unmounts hidden slots by default, which would
+tear down the frame and re-measure it on every switch. Later overlays
+(per-selector) join the same switch. The "Most clicked" list and the count
+pins read the same anchored cells the overlay draws, resolved against the
+same frame, so they need no read of their own.
 
 **Scroll depth.** A `scroll` event stores the max depth reached per sampled
 view — an integer percent of the visitor's *scrollable range*, flushed on
@@ -459,8 +535,8 @@ scrolled, never all views. The overlay
 bottom of the probe viewport: the visitors' real viewports are unknowable
 here, so the gradient claims bands, not pixels — and it draws in the pane's
 scaled space, where depth only varies vertically and labels keep their font
-size at every zoom. Resetting a heatmap deletes clicks and scroll depths
-together.
+size at every zoom. Resetting a heatmap deletes clicks, scroll depths and
+the matching page snapshots together (`DELETE /api/marketing/stats/heatmap`).
 
 ## Inter-module interface
 
@@ -493,18 +569,64 @@ dms-api no longer consumes the marketing interface.
 
 ## Frontend layout
 
-The admin surfaces ship as a DMS frontend module: `frontend-vue/`, a Vue 3
-project whose root `dms.frontend.ts` registers every component of
-`app/components/` under the `DmsMarketing` prefix and the funnel-steps
-DataType plugin, exactly the names the page controllers address. i18n keys
-live under `page.marketing.*` (en-GB + fr-FR) in `frontend-vue/i18n/locales/`,
-which the loader merges into the console's catalog. `AddFrontendModule`
+The pages are declared backend-side (`src/pages/`) as DMS page controllers
+of the module `marketing` (`src/pages/module.ts`), each one a tree of
+interface-dms blocks. The sidebar headings are three label categories with
+`urlSlug: "/"`, so they group the pages without entering their URLs:
+
+| Heading | Page | URL |
+|---|---|---|
+| Analytics | Overview | `/modules/marketing/overview` |
+| Analytics | Acquisition | `/modules/marketing/acquisition` |
+| Analytics | Pages & heatmaps | `/modules/marketing/pages` (`?path=`) |
+| Conversion | Funnels & A/B tests | `/modules/marketing/funnels` |
+| Conversion (hidden) | Funnel report | `/modules/marketing/funnel?id=` |
+| Conversion (hidden) | Funnel builder | `/modules/marketing/funnel-builder` (`?id=` to edit, `?split=1`, `?steps=` template) |
+| Setup | Websites | `/modules/marketing/websites` |
+| Setup (hidden) | Install guide | `/modules/marketing/install` (`?website=`) |
+| Setup | Settings | `/modules/marketing/settings` |
+
+Stock blocks render whatever a stock block can — `KpiCard`, `ChartCard`,
+`TopListCard`, `Grid`, `KeyValueList`, `Section`, `FieldRow`, `Meter`,
+`Form`, `StatGroup`, `Banner`, `TableView.fromSource` — the analytics ones
+bound to the `dms-marketing` period scope and reading the `/blocks/*` routes.
+A source table has no period scope: the campaigns table (and the notices
+under it) read the context from the page URL instead. The context bar
+mirrors it there (`?website=…&from=…&to=…&compare=…`, days and a DMS
+comparison name) and `contextUrl()` names it with `{{query.X}}` tokens; the
+routes accept those days and comparison names next to the period scope's instants. Hidden pages are reached from the others,
+never from the sidebar. The
+rest are module blocks, `CustomComponent("DmsMarketing<Name>")` built with
+`MarketingBlock()` (`src/pages/blocks.ts`): `Context` (the context bar and
+first-run gate), `TopListTabs`,
+`ChannelsCard`, `PagesExplorer` (inventory and heatmap
+preview), `FunnelTemplates` (the funnels table's first-run state), `FunnelReport` (with `FunnelFigure` and
+`ExperimentReport`), `FunnelBuilder`, `WebsitesGrid` and `InstallGuide`.
+The Collection section is a stock `Banner` the route words
+(`/settings/collection/banner`), with the pause behind a confirmation and
+the resume as its actions. The Settings forms share their field definitions with
+the endpoint's validation schema (`src/pages/settings/form.ts`).
+
+The DMS sidebar carries two counts (`navBadge`): the running A/B tests on
+Funnels, and the websites still waiting for their first pageview on
+Websites. The module's catalog tile shows the package version, the
+*Analytics* catalog category, and a status and readout line that turn to
+`attention` / *Collection is paused* while collection is off
+(`src/services/catalog.ts`).
+
+The module blocks ship as a DMS frontend module: `frontend-vue/`, a Vue 3
+project whose root `dms.frontend.ts` declares `componentPrefix:
+"DmsMarketing"` and registers every component of `app/components/` under
+its bare file name (`Context`, `FunnelReport`…) — `@antelopejs/dms-frontend`
+0.5 adds the prefix, so the backend addresses them as `DmsMarketingContext`,
+`DmsMarketingFunnelReport`… It also registers the funnel-steps DataType
+plugin. Composables and utils are imported by path, not auto-imported, which
+keeps them testable with plain vitest. i18n keys live under
+`page.marketing.*` (en-GB + fr-FR) in `frontend-vue/i18n/locales/`, which
+the loader merges into the console's catalog. `AddFrontendModule`
 (`src/index.ts`) publishes the directory to the backend's frontend manifest,
 and `ajs dms` materializes it into the generated Inertia workspace it builds
-and serves. The five
-pages are declared backend-side (`src/pages/`) as DMS page controllers;
-Overview, Sources, Tracked pages and Funnels render custom components, Settings is a declarative form shared with its endpoint schema
-(`src/pages/settings/form.ts`).
+and serves.
 
 ## Phasing
 
@@ -544,12 +666,12 @@ Overview, Sources, Tracked pages and Funnels render custom components, Settings 
   — verdicts are then withheld, since the truncation keeps the oldest events
   and silently drops the recent ones. A funnel carrying a started split is
   read over the split's runs instead of the selected period, so its results
-  are the same whatever period the pane shows and a stopped one is final;
+  are the same whatever period the context bar shows and a stopped one is final;
   the read runs one conversion window past the last stop (late goals still
   count), while exposures landing there do not. One fetch spans first start
   to last stop, pauses included — a range scan per run would cost more than
   the rows a pause holds. A long-running split is therefore read over its
-  whole life — closer to the cap than a 7-day pane suggests, and still
+  whole life — closer to the cap than a 30-day period suggests, and still
   bounded by the raw-event retention.
 - Split analysis is per session, uncorrected for multiple comparisons
   (k arms each tested against the control at 95%), and bounded by the
@@ -557,8 +679,12 @@ Overview, Sources, Tracked pages and Funnels render custom components, Settings 
   SRM check answer null rather than a number whenever their approximation's
   validity floor is not met. Resuming a stopped split is allowed and cumulates
   its runs, which puts optional stopping within reach of anyone who reads a
-  p-value before deciding — the confirm dialog says so, nothing enforces it.
+  p-value before deciding — the Resume confirmation and the usage guide warn
+  against it, nothing enforces it.
 - Module pages are owner-only by DMS design; customer-facing dashboards must
   land in project pages (phase 1 decision).
-- One open defect found end-to-end, in the DMS core's `useForm` — see
+- The refused-host memory behind the install guide is per instance
+  and in memory (an hour, 5 hosts per site): behind a load balancer, the
+  instance answering the poll may not be the one that refused the beacon.
+- Defects found end-to-end and how they were closed are in
   [KNOWN-ISSUES.md](../KNOWN-ISSUES.md).

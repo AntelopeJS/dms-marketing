@@ -10,8 +10,15 @@ import {
   type MarketingSnapshotLayout,
   type MarketingWebsite,
   type MarketingWebsitePatch,
+  type MarketingFunnelListItem,
 } from '../composables/useMarketingApi'
+import { funnelLink, settingsLink } from '../composables/useMarketingRoutes'
+import { formatNumber, formatShortDate } from '../utils/format'
 import {
+  DEFAULT_RENDER_HEIGHT,
+  MAX_RENDER_HEIGHT,
+  MAX_RENDER_WIDTH,
+  MIN_RENDER_HEIGHT,
   useSnapshotFrame,
   type AnchorBox,
   type AnchorRequest,
@@ -61,6 +68,8 @@ const props = defineProps<{
   pageviews?: number
   /** Bumped by the parent when it resets clicks out from under this view. */
   refreshToken?: number
+  /** Funnels with a page step on this path. */
+  usedIn?: MarketingFunnelListItem[]
 }>()
 
 /** The site's snapshot options were changed here; the parent owns the row. */
@@ -79,9 +88,24 @@ interface LayoutPreset {
  * breakpoints already dress as desktop — the button would repeat 1280.
  */
 const LAYOUT_PRESETS: LayoutPreset[] = [
-  { width: 1280, layout: 'desktop', icon: 'i-ph-monitor', labelKey: 'page.marketing.pages.preview.layout_desktop' },
-  { width: 768, layout: 'tablet', icon: 'i-ph-device-tablet', labelKey: 'page.marketing.pages.preview.layout_tablet' },
-  { width: 390, layout: 'phone', icon: 'i-ph-device-mobile', labelKey: 'page.marketing.pages.preview.layout_phone' },
+  {
+    width: 1280,
+    layout: 'desktop',
+    icon: 'i-ph-monitor',
+    labelKey: 'page.marketing.pages.preview.layout_desktop',
+  },
+  {
+    width: 768,
+    layout: 'tablet',
+    icon: 'i-ph-device-tablet',
+    labelKey: 'page.marketing.pages.preview.layout_tablet',
+  },
+  {
+    width: 390,
+    layout: 'phone',
+    icon: 'i-ph-device-mobile',
+    labelKey: 'page.marketing.pages.preview.layout_phone',
+  },
 ]
 const DEFAULT_LAYOUT_WIDTH = 1280
 /** Viewport the snapshot is measured through when it recorded none. */
@@ -149,7 +173,12 @@ function ensureScrollDepth(): void {
   if (overlayMode.value !== 'scroll') {
     return
   }
-  const key = [props.website?._id, props.path, props.period, props.refreshToken].join('|')
+  const key = [
+    props.website?._id,
+    props.path,
+    props.period,
+    props.refreshToken,
+  ].join('|')
   if (key === scrollLoadedKey) {
     return
   }
@@ -158,7 +187,13 @@ function ensureScrollDepth(): void {
 }
 
 watch(
-  () => [props.website?._id, props.path, props.period, props.refreshToken, overlayMode.value],
+  () => [
+    props.website?._id,
+    props.path,
+    props.period,
+    props.refreshToken,
+    overlayMode.value,
+  ],
   ensureScrollDepth,
   { immediate: true },
 )
@@ -191,32 +226,47 @@ async function resetPageHeatmap() {
   if (!website) {
     return
   }
-  const confirmed = await confirm({
-    title: t('page.marketing.pages.reset.page_title'),
-    description: t('page.marketing.pages.reset.page_description', { path: props.path }),
-    confirmLabel: t('page.marketing.pages.reset.confirm'),
-    confirmColor: 'error',
+  const events = totalClicks.value + scrollViews.value
+  await confirm({
+    title: t('page.marketing.pages.reset.page_title', { path: props.path }),
+    description: t('page.marketing.pages.reset.page_description'),
+    color: 'error',
+    icon: 'i-ph-eraser',
+    confirmLabel:
+      events > 0
+        ? t('page.marketing.pages.reset.confirm_count', {
+            count: formatNumber(events, locale.value),
+          })
+        : t('page.marketing.pages.reset.confirm'),
+    confirmText: props.path,
+    impact: [
+      {
+        icon: 'i-ph-cursor-click',
+        label: t('page.marketing.pages.reset.impact_page'),
+      },
+      {
+        icon: 'i-ph-check',
+        label: t('page.marketing.pages.reset.impact_kept'),
+      },
+    ],
+    onConfirm: async () => {
+      resetting.value = true
+      try {
+        const { deleted } = await api.resetHeatmap(website._id, props.path)
+        toast.add({
+          color: 'success',
+          title: t('page.marketing.pages.reset.done', {
+            count: formatNumber(deleted, locale.value),
+          }),
+        })
+        scrollLoadedKey = ''
+        ensureScrollDepth()
+        await Promise.all([loadHeatmap(), loadSnapshot()])
+      } finally {
+        resetting.value = false
+      }
+    },
   })
-  if (!confirmed) {
-    return
-  }
-  resetting.value = true
-  try {
-    const { deleted } = await api.resetHeatmap(website._id, props.path)
-    toast.add({
-      color: 'success',
-      title: t('page.marketing.pages.reset.done', { count: deleted }, deleted),
-    })
-    scrollLoadedKey = ''
-    ensureScrollDepth()
-    await Promise.all([loadHeatmap(), loadSnapshot()])
-  }
-  catch {
-    toast.add({ color: 'error', title: t('page.marketing.pages.reset.error') })
-  }
-  finally {
-    resetting.value = false
-  }
 }
 
 // --- Snapshot ---------------------------------------------------------------
@@ -224,10 +274,14 @@ async function resetPageHeatmap() {
 const layoutWidth = ref(DEFAULT_LAYOUT_WIDTH)
 
 const layout = computed<MarketingSnapshotLayout>(
-  () => LAYOUT_PRESETS.find(preset => preset.width === layoutWidth.value)?.layout ?? 'desktop',
+  () =>
+    LAYOUT_PRESETS.find((preset) => preset.width === layoutWidth.value)
+      ?.layout ?? 'desktop',
 )
 
-const snapshotsEnabled = computed(() => props.website?.snapshotsEnabled ?? false)
+const snapshotsEnabled = computed(
+  () => props.website?.snapshotsEnabled ?? false,
+)
 
 // Not fetched while the site has snapshots off: the option's banner is the
 // whole story then, and a leftover capture must not contradict it.
@@ -242,7 +296,13 @@ const {
 )
 
 watch(
-  () => [props.website?._id, snapshotsEnabled.value, props.path, layout.value, props.refreshToken],
+  () => [
+    props.website?._id,
+    snapshotsEnabled.value,
+    props.path,
+    layout.value,
+    props.refreshToken,
+  ],
   () => void loadSnapshot(),
   { immediate: true },
 )
@@ -262,32 +322,25 @@ const frameDocument = computed(() =>
     : '',
 )
 const noSnapshotYet = computed(
-  () => snapshotsEnabled.value && snapshotSettled.value && snapshot.value === null,
+  () =>
+    snapshotsEnabled.value && snapshotSettled.value && snapshot.value === null,
 )
-const tooHeavy = computed(() => snapshot.value !== null && backdrop.value === null)
+const tooHeavy = computed(
+  () => snapshot.value !== null && backdrop.value === null,
+)
 const snapshotScheme = computed(() => snapshot.value?.colorScheme ?? 'light')
-const capturedAtLabel = computed(() => {
-  if (!snapshot.value) {
-    return ''
-  }
-  const date = new Date(snapshot.value.capturedAt).toLocaleString(locale.value)
-  return t(
-    tooHeavy.value
-      ? 'page.marketing.pages.preview.attempted_at'
-      : 'page.marketing.pages.preview.captured_at',
-    { date },
-  )
-})
 
 function mebibytes(bytes: number): string {
-  return new Intl.NumberFormat(locale.value, { maximumFractionDigits: 1 }).format(
-    bytes / (1024 * 1024),
-  )
+  return new Intl.NumberFormat(locale.value, {
+    maximumFractionDigits: 1,
+  }).format(bytes / (1024 * 1024))
 }
 
 const savingOptions = ref(false)
 
-async function updateSnapshotOptions(patch: MarketingWebsitePatch): Promise<void> {
+async function updateSnapshotOptions(
+  patch: MarketingWebsitePatch,
+): Promise<void> {
   const website = props.website
   if (!website) {
     return
@@ -296,59 +349,35 @@ async function updateSnapshotOptions(patch: MarketingWebsitePatch): Promise<void
   try {
     await api.updateWebsite(website._id, patch)
     emit('website-updated')
-  }
-  catch {
-    toast.add({ color: 'error', title: t('page.marketing.pages.preview.options_error') })
-  }
-  finally {
+  } catch {
+    toast.add({
+      color: 'error',
+      title: t('page.marketing.pages.preview.options_error'),
+    })
+  } finally {
     savingOptions.value = false
   }
 }
 
 // --- Frame geometry ---------------------------------------------------------
 
-/** Free text: an empty field must stay empty, not refill with the applied value. */
-const heightField = ref('')
-
-const heightOverride = computed(() => {
-  const typed = Number.parseInt(heightField.value, 10)
-  return Number.isFinite(typed) && typed > 0 ? typed : null
-})
-
 const frame = ref<HTMLIFrameElement | null>(null)
-const {
-  measuredWidth,
-  measuredHeight,
-  tier,
-  close: closeFrame,
-  measureAnchors,
-} = useSnapshotFrame(frame)
-
-// Typing a height resizes the frame by hand, so the next reading would
-// measure that — stop reading rather than latch it.
-watch(heightOverride, (value) => {
-  if (value !== null && tier.value === 'pending') {
-    closeFrame()
-  }
-})
-
-// A different width is a different rendering of the snapshot: the frame
-// remounts on the key change, and the composable re-arms on the new one.
-watch(layoutWidth, () => {
-  heightField.value = ''
-})
-
-// A typed height belongs to the page it was typed on.
-watch(() => [props.website?._id, props.path], () => {
-  heightField.value = ''
-})
+const { measuredWidth, measuredHeight, tier, measureAnchors } =
+  useSnapshotFrame(frame)
 
 const frameKey = computed(() =>
-  [props.path, snapshot.value?.layout, snapshot.value?.capturedAt, layoutWidth.value].join('|'),
+  [
+    props.path,
+    snapshot.value?.layout,
+    snapshot.value?.capturedAt,
+    layoutWidth.value,
+  ].join('|'),
 )
 
 /** Viewport the frame is pinned to until its size is read. */
-const probeHeight = computed(() => snapshot.value?.viewport.height ?? PROBE_VIEWPORT_HEIGHT)
+const probeHeight = computed(
+  () => snapshot.value?.viewport.height ?? PROBE_VIEWPORT_HEIGHT,
+)
 
 /**
  * Height of the drawn surface — the overlay's coordinate space. Falls back to
@@ -356,7 +385,7 @@ const probeHeight = computed(() => snapshot.value?.viewport.height ?? PROBE_VIEW
  * readable before (and without) any snapshot.
  */
 const renderHeight = computed(() => {
-  const chosen = heightOverride.value ?? measuredHeight.value
+  const chosen = measuredHeight.value
   if (chosen !== null) {
     return Math.min(Math.max(chosen, MIN_RENDER_HEIGHT), MAX_RENDER_HEIGHT)
   }
@@ -369,9 +398,6 @@ const renderHeight = computed(() => {
  * being waited on. An operator override takes it back by hand.
  */
 const frameHeight = computed(() => {
-  if (heightOverride.value !== null) {
-    return renderHeight.value
-  }
   if (measuredHeight.value !== null) {
     return measuredHeight.value
   }
@@ -386,7 +412,10 @@ const frameHeight = computed(() => {
  * part is clipped by the pane, exactly as it is clipped inside the frame.
  */
 const overlayWidth = computed(() =>
-  Math.min(Math.max(measuredWidth.value ?? 0, layoutWidth.value), MAX_RENDER_WIDTH),
+  Math.min(
+    Math.max(measuredWidth.value ?? 0, layoutWidth.value),
+    MAX_RENDER_WIDTH,
+  ),
 )
 
 // --- Element anchoring ------------------------------------------------------
@@ -458,7 +487,7 @@ async function refreshAnchorBoxes(): Promise<void> {
     return
   }
   await nextTick()
-  await new Promise(resolve => requestAnimationFrame(resolve))
+  await new Promise((resolve) => requestAnimationFrame(resolve))
   if (token !== measureToken) {
     return
   }
@@ -482,8 +511,8 @@ watch(
  */
 const oversized = computed(
   () =>
-    (measuredHeight.value ?? 0) > MAX_RENDER_HEIGHT
-    || (measuredWidth.value ?? 0) > MAX_RENDER_WIDTH,
+    (measuredHeight.value ?? 0) > MAX_RENDER_HEIGHT ||
+    (measuredWidth.value ?? 0) > MAX_RENDER_WIDTH,
 )
 
 const overflowing = computed(
@@ -524,7 +553,9 @@ const scale = computed(() =>
 
 /** Height of the zoomed surface in the pane's own pixels — the scroll range
  *  of the pane and the space the scroll-depth overlay draws in. */
-const scrolledHeight = computed(() => Math.round(renderHeight.value * scale.value))
+const scrolledHeight = computed(() =>
+  Math.round(renderHeight.value * scale.value),
+)
 
 // --- Emptiness, explained ---------------------------------------------------
 
@@ -544,7 +575,10 @@ function captureEmptyReason(fallbackKey: string): string {
   if (!props.trackerEnabled) {
     return t('page.marketing.pages.empty.tracking_off')
   }
-  if (expectedSampledPageLoads.value !== null && expectedSampledPageLoads.value < 1) {
+  if (
+    expectedSampledPageLoads.value !== null &&
+    expectedSampledPageLoads.value < 1
+  ) {
     return t('page.marketing.pages.empty.sampled_out', {
       rate: Math.round(props.sampleRate * 100),
     })
@@ -562,7 +596,11 @@ const emptyState = computed(() => {
       description: captureEmptyReason('page.marketing.pages.empty.no_clicks'),
     }
   }
-  if (loadingScroll.value || scrollDepth.value === null || scrollViews.value > 0) {
+  if (
+    loadingScroll.value ||
+    scrollDepth.value === null ||
+    scrollViews.value > 0
+  ) {
     return null
   }
   return {
@@ -613,303 +651,569 @@ const externalUrl = computed(() => {
   }
   try {
     return new URL(props.path, snapshot.value.origin).toString()
-  }
-  catch {
+  } catch {
     return ''
   }
 })
+
+// --- One status strip -------------------------------------------------------
+
+interface StripAction {
+  label: string
+  run?: () => void
+  to?: string
+}
+
+interface StatusStrip {
+  tone: 'error' | 'warning' | 'info' | 'primary' | 'success'
+  neutral?: boolean
+  icon: string
+  title: string
+  description: string
+  action?: StripAction
+}
+
+/**
+ * Highest priority first: one strip says what needs attention, instead of
+ * every applicable alert stacked above the page. The numbers in the header
+ * stay exact whatever it says.
+ */
+const statusStrip = computed<StatusStrip | null>(() => {
+  const rate = Math.round(props.sampleRate * 100)
+  const candidates: Array<StatusStrip | null> = [
+    !props.trackerEnabled
+      ? {
+          tone: 'error',
+          icon: 'i-ph-plugs',
+          title: t('page.marketing.pages.strip.collection_off'),
+          description: t('page.marketing.pages.strip.collection_off_hint'),
+          action: {
+            label: t('page.marketing.pages.strip.open_settings'),
+            to: settingsLink(),
+          },
+        }
+      : null,
+    !snapshotsEnabled.value
+      ? {
+          tone: 'info',
+          icon: 'i-ph-camera-slash',
+          title: t('page.marketing.pages.preview.snapshots_off'),
+          description: t('page.marketing.pages.preview.snapshots_off_hint'),
+          action: {
+            label: t('page.marketing.pages.preview.enable_snapshots'),
+            run: () => void updateSnapshotOptions({ snapshotsEnabled: true }),
+          },
+        }
+      : null,
+    noSnapshotYet.value
+      ? {
+          tone: 'primary',
+          icon: 'i-ph-hourglass',
+          title: t('page.marketing.pages.preview.no_snapshot', {
+            path: props.path,
+          }),
+          description: t('page.marketing.pages.preview.no_snapshot_hint', {
+            rate,
+          }),
+        }
+      : null,
+    snapshot.value && tooHeavy.value
+      ? {
+          tone: 'warning',
+          icon: 'i-ph-file-x',
+          title: t('page.marketing.pages.preview.too_heavy'),
+          description: t('page.marketing.pages.preview.too_heavy_hint', {
+            size: mebibytes(snapshot.value.bytes),
+            limit: mebibytes(SNAPSHOT_BYTE_CAP),
+          }),
+        }
+      : null,
+    truncatedState.value
+      ? {
+          tone: 'warning',
+          icon: 'i-ph-warning',
+          title: truncatedState.value.title,
+          description: truncatedState.value.description,
+        }
+      : null,
+    oversized.value
+      ? {
+          tone: 'warning',
+          icon: 'i-ph-arrows-out-line-vertical',
+          title: t('page.marketing.pages.preview.oversized'),
+          description: t('page.marketing.pages.preview.oversized_hint'),
+        }
+      : null,
+    snapshot.value && !snapshot.value.exact
+      ? {
+          tone: 'info',
+          neutral: true,
+          icon: 'i-ph-arrows-out-line-horizontal',
+          title: t('page.marketing.pages.preview.approximate_layout', {
+            layout: t(
+              `page.marketing.pages.preview.layout_${snapshot.value.layout}`,
+            ).toLowerCase(),
+            width: layoutWidth.value,
+          }),
+          description: t(
+            'page.marketing.pages.preview.approximate_layout_hint',
+          ),
+        }
+      : null,
+    overflowing.value
+      ? {
+          tone: 'info',
+          neutral: true,
+          icon: 'i-ph-arrows-horizontal',
+          title: t('page.marketing.pages.preview.overflow'),
+          description: t('page.marketing.pages.preview.overflow_hint', {
+            width: measuredWidth.value,
+          }),
+        }
+      : null,
+  ]
+  return candidates.find((candidate) => candidate !== null) ?? null
+})
+
+const statusLine = computed(() => {
+  if (!snapshot.value) {
+    return ''
+  }
+  const layoutLabel = t(
+    `page.marketing.pages.preview.layout_${snapshot.value.layout}`,
+  ).toLowerCase()
+  return t('page.marketing.pages.preview.status_line', {
+    date: formatShortDate(snapshot.value.capturedAt, locale.value),
+    layout: layoutLabel,
+    width: snapshot.value.viewport.width,
+  })
+})
+
+const maskLine = computed(() =>
+  t(
+    props.website?.snapshotMaskText
+      ? 'page.marketing.pages.preview.all_masked'
+      : 'page.marketing.pages.preview.fields_masked',
+  ),
+)
+
+// --- Most clicked -----------------------------------------------------------
+
+const MOST_CLICKED = 5
+
+interface ClickedElement {
+  key: string
+  selector: string
+  weight: number
+  text: string
+  box: AnchorBox | undefined
+}
+
+/** The anchored elements with the most clicks, the backend's own cells summed. */
+const mostClicked = computed<ClickedElement[]>(() => {
+  const groups = new Map<string, ClickedElement>()
+  for (const point of points.value) {
+    if (!point.anchor) {
+      continue
+    }
+    const key = anchorKey(point.anchor)
+    const existing = groups.get(key)
+    if (existing) {
+      existing.weight += point.weight
+      continue
+    }
+    const box = anchorBoxes.value.get(key)
+    groups.set(key, {
+      key,
+      selector: point.anchor.selector,
+      weight: point.weight,
+      text: box?.text ?? '',
+      box,
+    })
+  }
+  return [...groups.values()]
+    .sort((a, b) => b.weight - a.weight)
+    .slice(0, MOST_CLICKED)
+})
+
+/** Count badges pinned on the hottest elements, in the surface's own pixels. */
+const pins = computed(() =>
+  overlayMode.value === 'clicks'
+    ? mostClicked.value
+        .filter((element) => element.box)
+        .map((element) => ({
+          key: element.key,
+          weight: element.weight,
+          left: element.box!.x + element.box!.width,
+          top: element.box!.y,
+        }))
+    : [],
+)
+
+// --- Toolbar ------------------------------------------------------------------
+
+const overlayItems = computed(() => [
+  {
+    value: 'clicks',
+    label: t('page.marketing.pages.overlay.clicks'),
+    icon: 'i-ph-cursor-click',
+  },
+  {
+    value: 'scroll',
+    label: t('page.marketing.pages.overlay.scroll'),
+    icon: 'i-ph-caret-double-down',
+  },
+])
+
+const layoutItems = computed(() =>
+  LAYOUT_PRESETS.map((preset) => ({
+    value: preset.width,
+    label: '',
+    icon: preset.icon,
+  })),
+)
+
+const moreItems = computed(() => [
+  [
+    {
+      type: 'checkbox' as const,
+      label: t('page.marketing.pages.preview.snapshots_enabled'),
+      checked: snapshotsEnabled.value,
+      onUpdateChecked: (value: boolean) =>
+        void updateSnapshotOptions({ snapshotsEnabled: value }),
+    },
+    {
+      type: 'checkbox' as const,
+      label: t('page.marketing.pages.preview.mask_text'),
+      checked: props.website?.snapshotMaskText === true,
+      disabled: !snapshotsEnabled.value,
+      onUpdateChecked: (value: boolean) =>
+        void updateSnapshotOptions({ snapshotMaskText: value }),
+    },
+  ],
+  ...(externalUrl.value
+    ? [
+        [
+          {
+            label: t('page.marketing.pages.preview.open_in_tab'),
+            icon: 'i-ph-arrow-square-out',
+            to: externalUrl.value,
+            target: '_blank',
+          },
+        ],
+      ]
+    : []),
+  [
+    {
+      label: t('page.marketing.pages.reset.page_button'),
+      icon: 'i-ph-eraser',
+      color: 'error' as const,
+      onSelect: () => void resetPageHeatmap(),
+    },
+  ],
+])
+
+const sampledVisits = computed(() =>
+  expectedSampledPageLoads.value === null
+    ? null
+    : formatNumber(expectedSampledPageLoads.value, locale.value),
+)
 </script>
 
 <template>
-  <div class="flex flex-col gap-4 p-4">
+  <section class="dms-card flex min-w-0 flex-col overflow-hidden p-0">
     <!-- Toolbar -->
-    <div class="flex flex-wrap items-center justify-between gap-3">
+    <header
+      class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-4 py-3"
+    >
       <div class="min-w-0">
-        <p class="truncate font-mono text-sm text-highlighted">{{ props.path }}</p>
-        <p class="text-xs text-muted">
-          <template v-if="overlayMode === 'clicks'">
-            {{ t('page.marketing.pages.clicks', { count: totalClicks }, totalClicks) }}
-          </template>
-          <template v-else>
-            {{ t('page.marketing.pages.scroll.views', { count: scrollViews }, scrollViews) }}
-          </template>
-          <span v-if="props.pageviews">
-            · {{ t('page.marketing.pages.pageviews', { count: props.pageviews }, props.pageviews) }}
+        <p
+          class="flex items-center gap-2 truncate font-mono text-base font-semibold text-highlighted"
+        >
+          {{ props.path }}
+          <UButton
+            v-if="externalUrl"
+            :to="externalUrl"
+            target="_blank"
+            icon="i-ph-arrow-square-out"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            :aria-label="t('page.marketing.pages.preview.open_in_tab')"
+          />
+        </p>
+        <p class="flex flex-wrap gap-x-3 text-xs text-muted">
+          <span v-if="props.pageviews !== undefined">
+            <b class="font-mono text-highlighted">
+              {{ formatNumber(props.pageviews, locale) }}
+            </b>
+            {{ t('page.marketing.pages.views_unit') }}
           </span>
-          <span v-if="capturedAtLabel">
-            · {{ capturedAtLabel }}
+          <span v-if="overlayMode === 'clicks'">
+            <b class="font-mono text-highlighted">
+              {{ formatNumber(totalClicks, locale) }}
+            </b>
+            {{ t('page.marketing.pages.clicks_unit') }}
+          </span>
+          <span v-else>
+            <b class="font-mono text-highlighted">
+              {{ formatNumber(scrollViews, locale) }}
+            </b>
+            {{ t('page.marketing.pages.scroll.views_unit') }}
+          </span>
+          <span v-if="sampledVisits !== null">
+            ~
+            <b class="font-mono text-highlighted">{{ sampledVisits }}</b>
+            {{ t('page.marketing.pages.sampled_unit') }}
           </span>
         </p>
       </div>
       <div class="flex flex-wrap items-center gap-2">
-        <UFieldGroup size="sm">
-          <UButton
-            icon="i-ph-cursor-click"
-            :color="overlayMode === 'clicks' ? 'primary' : 'neutral'"
-            variant="subtle"
-            :label="t('page.marketing.pages.overlay.clicks')"
-            @click="overlayMode = 'clicks'"
-          />
-          <UButton
-            icon="i-ph-caret-double-down"
-            :color="overlayMode === 'scroll' ? 'primary' : 'neutral'"
-            variant="subtle"
-            :label="t('page.marketing.pages.overlay.scroll')"
-            @click="overlayMode = 'scroll'"
-          />
-        </UFieldGroup>
-        <UFieldGroup size="sm">
-          <UButton
-            v-for="preset in LAYOUT_PRESETS"
-            :key="preset.width"
-            :icon="preset.icon"
-            :color="layoutWidth === preset.width ? 'primary' : 'neutral'"
-            variant="subtle"
-            :title="`${t(preset.labelKey)} · ${preset.width}px`"
-            :aria-label="`${t(preset.labelKey)} · ${preset.width}px`"
-            :ui="{ leadingIcon: 'size-5' }"
-            @click="layoutWidth = preset.width"
-          />
-        </UFieldGroup>
-        <UInput
-          v-model="heightField"
-          type="number"
-          :min="MIN_RENDER_HEIGHT"
-          :placeholder="`${renderHeight}`"
-          step="200"
+        <DmsSegmented v-model="overlayMode" :items="overlayItems" size="xs" />
+        <DmsSegmented
+          v-model="layoutWidth"
+          :items="layoutItems"
           size="xs"
-          class="w-24"
-          :title="t('page.marketing.pages.preview.height_override')"
+          :aria-label="t('page.marketing.pages.preview.layout')"
         />
-        <UButton
-          v-if="externalUrl"
-          icon="i-ph-arrow-square-out"
-          :to="externalUrl"
-          target="_blank"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          :label="t('page.marketing.pages.preview.open_in_tab')"
-        />
-        <UPopover v-if="props.website">
+        <UDropdownMenu :items="moreItems" :content="{ align: 'end' }">
           <UButton
-            icon="i-ph-camera"
+            icon="i-ph-dots-three"
+            size="xs"
             color="neutral"
             variant="ghost"
-            size="xs"
-            :loading="savingOptions"
-            :title="t('page.marketing.pages.preview.options')"
-            :aria-label="t('page.marketing.pages.preview.options')"
+            :loading="savingOptions || resetting"
+            :aria-label="t('page.marketing.common.more')"
           />
-          <template #content>
-            <div class="flex w-80 flex-col gap-4 p-4">
-              <USwitch
-                :model-value="snapshotsEnabled"
-                :disabled="savingOptions"
-                :label="t('page.marketing.pages.preview.snapshots_enabled')"
-                :description="t('page.marketing.pages.preview.snapshots_enabled_hint')"
-                @update:model-value="(value: boolean) => updateSnapshotOptions({ snapshotsEnabled: value })"
-              />
-              <USwitch
-                :model-value="props.website.snapshotMaskText === true"
-                :disabled="savingOptions || !snapshotsEnabled"
-                :label="t('page.marketing.pages.preview.mask_text')"
-                :description="t('page.marketing.pages.preview.mask_text_hint')"
-                @update:model-value="(value: boolean) => updateSnapshotOptions({ snapshotMaskText: value })"
+        </UDropdownMenu>
+      </div>
+    </header>
+
+    <!-- One status line, or the one strip that needs attention -->
+    <div v-if="statusStrip" class="px-3 pt-3">
+      <DmsBanner
+        :tone="statusStrip.tone"
+        size="sm"
+        :icon="statusStrip.icon"
+        :title="statusStrip.title"
+        :description="statusStrip.description"
+      >
+        <template v-if="statusStrip.action" #actions>
+          <UButton
+            size="xs"
+            color="neutral"
+            variant="outline"
+            :loading="savingOptions"
+            :label="statusStrip.action.label"
+            :to="statusStrip.action.to"
+            @click="statusStrip.action.run?.()"
+          />
+        </template>
+      </DmsBanner>
+    </div>
+    <p
+      v-else-if="snapshot"
+      class="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-default px-4 py-2 text-xs text-muted"
+    >
+      <span class="flex items-center gap-1.5">
+        <UIcon name="i-ph-camera" class="size-3.5 text-success" />
+        {{ statusLine }}
+      </span>
+      <span class="text-dimmed">· {{ maskLine }}</span>
+    </p>
+
+    <div class="grid min-h-0 xl:grid-cols-[minmax(0,1fr)_15rem]">
+      <div class="min-w-0 p-3">
+        <DmsEmptyState
+          v-if="activeFailed"
+          variant="error"
+          size="sm"
+          :title="t('page.marketing.common.load_error')"
+        >
+          <template #actions>
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="outline"
+              icon="i-ph-arrow-clockwise"
+              :label="t('page.marketing.common.retry')"
+              @click="retryActive"
+            />
+          </template>
+        </DmsEmptyState>
+
+        <DmsEmptyState
+          v-else-if="emptyState && !(snapshot && backdrop !== null)"
+          :icon="
+            overlayMode === 'clicks'
+              ? 'i-ph-cursor-click'
+              : 'i-ph-caret-double-down'
+          "
+          hatched
+          :title="emptyState.title"
+          :description="emptyState.description"
+        />
+
+        <USkeleton
+          v-else-if="snapshotsEnabled && !snapshotSettled"
+          class="w-full rounded-lg"
+          :style="{ height: `${PANE_HEIGHT}px` }"
+        />
+
+        <!-- Kept mounted across refetches: tearing it down would re-render the
+             snapshot — and re-measure it — on every period change. -->
+        <div v-else-if="snapshot && backdrop !== null" class="relative">
+          <div
+            ref="container"
+            class="overflow-x-hidden overflow-y-scroll rounded-lg border border-default bg-elevated"
+            :style="{ height: `${PANE_HEIGHT}px` }"
+          >
+            <div class="relative" :style="{ height: `${scrolledHeight}px` }">
+              <div
+                class="absolute top-0 left-0"
+                :style="{
+                  width: `${layoutWidth}px`,
+                  height: `${renderHeight}px`,
+                  zoom: scale,
+                }"
+              >
+                <!-- Inert on purpose: pointer-events none means no link, form or
+                     hover state inside the snapshot can fire. The sandbox allows
+                     same-origin and nothing else — no script, no form, no
+                     navigation — which is what lets useSnapshotFrame read the
+                     document while a capture that arrived through a public
+                     endpoint stays inert. -->
+                <iframe
+                  :key="frameKey"
+                  ref="frame"
+                  :srcdoc="frameDocument"
+                  class="pointer-events-none absolute top-0 left-0 w-full border-0"
+                  :style="{
+                    height: `${frameHeight}px`,
+                    colorScheme: snapshotScheme,
+                    backgroundColor:
+                      snapshotScheme === 'dark' ? DARK_CANVAS : LIGHT_CANVAS,
+                  }"
+                  sandbox="allow-same-origin"
+                  scrolling="no"
+                  referrerpolicy="no-referrer"
+                  :title="props.path"
+                />
+                <DmsMarketingHeatmapCanvas
+                  v-if="overlayMode === 'clicks'"
+                  :points="drawnPoints"
+                  :max-weight="maxWeight"
+                  :width="overlayWidth"
+                  :height="renderHeight"
+                />
+                <span
+                  v-for="pin in pins"
+                  :key="pin.key"
+                  class="pointer-events-none absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-neutral-900/90 px-2 py-0.5 font-mono font-semibold text-white shadow"
+                  :style="{
+                    left: `${pin.left * scale}px`,
+                    top: `${pin.top * scale}px`,
+                    zoom: 1 / scale,
+                    fontSize: '12px',
+                  }"
+                >
+                  <span class="size-1.5 rounded-full bg-red-500" />
+                  {{ formatNumber(pin.weight, locale) }}
+                </span>
+              </div>
+
+              <!-- In the pane's scaled space, not the document's: depth only
+                   varies vertically, and the labels must not shrink with the
+                   page — see the component. -->
+              <DmsMarketingScrollDepthOverlay
+                v-if="overlayMode === 'scroll' && scrollViews > 0"
+                :reached="scrollReached"
+                :views="scrollViews"
+                :height="scrolledHeight"
+                :fold-ratio="scrollFoldRatio"
               />
             </div>
-          </template>
-        </UPopover>
-        <UButton
-          icon="i-ph-eraser"
-          color="error"
-          variant="ghost"
-          size="xs"
-          :loading="resetting"
-          :title="t('page.marketing.pages.reset.page_button')"
-          @click="resetPageHeatmap"
-        />
-      </div>
-    </div>
-
-    <!-- Backdrop-state banners. None of these affect the numbers below. -->
-    <UAlert
-      v-if="!snapshotsEnabled"
-      icon="i-ph-camera-slash"
-      color="neutral"
-      variant="subtle"
-      :title="t('page.marketing.pages.preview.snapshots_off')"
-      :description="t('page.marketing.pages.preview.snapshots_off_hint')"
-      :actions="[{
-        label: t('page.marketing.pages.preview.enable_snapshots'),
-        color: 'neutral',
-        variant: 'subtle',
-        loading: savingOptions,
-        onClick: () => updateSnapshotOptions({ snapshotsEnabled: true }),
-      }]"
-    />
-
-    <UAlert
-      v-else-if="noSnapshotYet"
-      icon="i-ph-camera"
-      color="neutral"
-      variant="subtle"
-      :title="t('page.marketing.pages.preview.no_snapshot')"
-      :description="t('page.marketing.pages.preview.no_snapshot_hint', { rate: Math.round(props.sampleRate * 100) })"
-    />
-
-    <UAlert
-      v-else-if="snapshot && tooHeavy"
-      icon="i-ph-file-x"
-      color="warning"
-      variant="subtle"
-      :title="t('page.marketing.pages.preview.too_heavy')"
-      :description="t('page.marketing.pages.preview.too_heavy_hint', {
-        size: mebibytes(snapshot.bytes),
-        limit: mebibytes(SNAPSHOT_BYTE_CAP),
-      })"
-    />
-
-    <UAlert
-      v-else-if="snapshot && !snapshot.exact"
-      icon="i-ph-arrows-out-line-horizontal"
-      color="neutral"
-      variant="subtle"
-      :title="t('page.marketing.pages.preview.approximate_layout')"
-      :description="t('page.marketing.pages.preview.approximate_layout_hint', {
-        layout: t(`page.marketing.pages.preview.layout_${snapshot.layout}`).toLowerCase(),
-      })"
-    />
-
-    <!-- Geometry banners stand on their own: a reflowed layout can overflow
-         too, and the second fact must not hide behind the first. -->
-    <UAlert
-      v-if="oversized"
-      icon="i-ph-arrows-out-line-vertical"
-      color="warning"
-      variant="subtle"
-      :title="t('page.marketing.pages.preview.oversized')"
-      :description="t('page.marketing.pages.preview.oversized_hint')"
-    />
-
-    <UAlert
-      v-else-if="overflowing"
-      icon="i-ph-arrows-horizontal"
-      color="neutral"
-      variant="subtle"
-      :title="t('page.marketing.pages.preview.overflow')"
-      :description="t('page.marketing.pages.preview.overflow_hint', { width: measuredWidth })"
-    />
-
-    <UAlert
-      v-if="truncatedState"
-      icon="i-ph-warning"
-      color="warning"
-      variant="subtle"
-      :title="truncatedState.title"
-      :description="truncatedState.description"
-    />
-
-    <UAlert
-      v-if="emptyState"
-      :icon="overlayMode === 'clicks' ? 'i-ph-cursor-click' : 'i-ph-caret-double-down'"
-      :title="emptyState.title"
-      :description="emptyState.description"
-    />
-
-    <!-- Surface: only over a snapshot. While the snapshot is being fetched
-         the space is reserved, so a page that has one does not jump. -->
-    <div v-if="activeFailed" class="flex flex-col items-start gap-3">
-      <p class="text-sm text-error">{{ t('page.marketing.pages.error') }}</p>
-      <UButton
-        icon="i-ph-arrow-clockwise"
-        :label="t('page.marketing.pages.retry')"
-        color="neutral"
-        variant="subtle"
-        size="sm"
-        @click="retryActive"
-      />
-    </div>
-
-    <USkeleton
-      v-else-if="snapshotsEnabled && !snapshotSettled"
-      class="w-full rounded-lg"
-      :style="{ height: `${PANE_HEIGHT}px` }"
-    />
-
-    <!-- Kept mounted across refetches: tearing it down would re-render the
-         snapshot — and re-measure it — on every period change. -->
-    <div v-else-if="snapshot && backdrop !== null" class="relative">
-      <div
-        ref="container"
-        class="overflow-y-scroll overflow-x-hidden rounded-lg border border-default bg-elevated"
-        :style="{ height: `${PANE_HEIGHT}px` }"
-      >
-        <div class="relative" :style="{ height: `${scrolledHeight}px` }">
-          <div
-            class="absolute left-0 top-0"
-            :style="{
-              width: `${layoutWidth}px`,
-              height: `${renderHeight}px`,
-              zoom: scale,
-            }"
-          >
-            <!-- Inert on purpose: pointer-events none means no link, form or
-                 hover state inside the snapshot can fire, and the wheel
-                 scrolls the pane instead of dying in the frame. The sandbox
-                 allows same-origin and nothing else — no script, no form,
-                 no navigation — which is what lets useSnapshotFrame read the
-                 document directly while a capture that arrived through a
-                 public endpoint stays inert. `color-scheme` and the canvas
-                 color follow the visitor's mode at capture: the page's
-                 media queries resolve the way they did for them, and a page
-                 with no background of its own stays on the canvas it had. -->
-            <iframe
-              :key="frameKey"
-              ref="frame"
-              :srcdoc="frameDocument"
-              class="pointer-events-none absolute left-0 top-0 w-full border-0"
-              :style="{
-                height: `${frameHeight}px`,
-                colorScheme: snapshotScheme,
-                backgroundColor: snapshotScheme === 'dark' ? DARK_CANVAS : LIGHT_CANVAS,
-              }"
-              sandbox="allow-same-origin"
-              scrolling="no"
-              referrerpolicy="no-referrer"
-              :title="props.path"
-            />
-            <DmsMarketingHeatmapCanvas
-              v-if="overlayMode === 'clicks'"
-              :points="drawnPoints"
-              :max-weight="maxWeight"
-              :width="overlayWidth"
-              :height="renderHeight"
-            />
           </div>
 
-          <!-- In the pane's scaled space, not the document's: depth only
-               varies vertically, and the labels must not shrink with the
-               page — see the component. -->
-          <DmsMarketingScrollDepthOverlay
-            v-if="overlayMode === 'scroll' && scrollViews > 0"
-            :reached="scrollReached"
-            :views="scrollViews"
-            :height="scrolledHeight"
-            :fold-ratio="scrollFoldRatio"
-          />
+          <!-- Outside the scrollport on purpose: inside, it is laid out at the
+               top of the content and scrolls out of sight on a tall page. -->
+          <div
+            v-if="activeLoading"
+            class="absolute inset-0 flex items-center justify-center rounded-lg bg-default/60"
+          >
+            <UIcon
+              name="i-ph-circle-notch"
+              class="size-6 animate-spin text-muted"
+            />
+          </div>
+        </div>
+
+        <DmsEmptyState
+          v-else
+          icon="i-ph-image-broken"
+          hatched
+          :title="t('page.marketing.pages.preview.no_backdrop')"
+          :description="t('page.marketing.pages.preview.no_backdrop_hint')"
+        />
       </div>
 
-      </div>
-
-      <!-- Outside the scrollport on purpose: inside, it is laid out at the top
-           of the content and scrolls out of sight on a tall page. -->
-      <div
-        v-if="activeLoading"
-        class="absolute inset-0 flex items-center justify-center rounded-lg bg-default/60"
+      <aside
+        class="flex flex-col gap-4 border-t border-default p-4 xl:border-t-0 xl:border-l"
       >
-        <UIcon name="i-ph-circle-notch" class="size-6 animate-spin text-muted" />
-      </div>
+        <div v-if="overlayMode === 'clicks'" class="flex flex-col gap-1.5">
+          <DmsEyebrow :label="t('page.marketing.pages.density')" />
+          <span
+            class="h-2 rounded-full bg-gradient-to-r from-cyan-400 via-yellow-300 to-red-500"
+          />
+          <span class="flex justify-between text-[10px] text-dimmed">
+            <span>{{ t('page.marketing.pages.density_few') }}</span>
+            <span>{{ t('page.marketing.pages.density_many') }}</span>
+          </span>
+        </div>
+        <div v-if="overlayMode === 'clicks'" class="flex flex-col gap-2">
+          <DmsEyebrow :label="t('page.marketing.pages.most_clicked')" />
+          <p v-if="mostClicked.length === 0" class="text-xs text-muted">
+            {{ t('page.marketing.pages.most_clicked_empty') }}
+          </p>
+          <ul v-else class="flex flex-col gap-2.5">
+            <li
+              v-for="element in mostClicked"
+              :key="element.key"
+              class="flex flex-col"
+            >
+              <span class="flex items-start justify-between gap-2">
+                <span class="truncate text-[13px] font-medium text-highlighted">
+                  {{ element.text ? `“${element.text}”` : element.selector }}
+                </span>
+                <span class="font-mono text-xs text-highlighted">
+                  {{ formatNumber(element.weight, locale) }}
+                </span>
+              </span>
+              <span class="truncate font-mono text-[10px] text-dimmed">
+                {{ element.selector }}
+              </span>
+            </li>
+          </ul>
+        </div>
+        <div v-if="usedIn && usedIn.length > 0" class="flex flex-col gap-2">
+          <DmsEyebrow :label="t('page.marketing.pages.used_in')" />
+          <DmsAutoLink
+            v-for="funnel in usedIn"
+            :key="funnel._id"
+            :to="funnelLink(funnel._id)"
+            class="flex items-center gap-2 rounded-lg border border-default p-2.5 transition-colors hover:border-primary"
+          >
+            <DmsIconWell icon="i-ph-funnel" size="sm" tone="primary" />
+            <span class="truncate text-sm font-medium text-highlighted">
+              {{ funnel.name }}
+            </span>
+          </DmsAutoLink>
+        </div>
+        <p class="mt-auto flex gap-1.5 text-xs text-dimmed">
+          <UIcon name="i-ph-crosshair" class="mt-0.5 size-3.5 shrink-0" />
+          {{ t('page.marketing.pages.anchoring_note') }}
+        </p>
+      </aside>
     </div>
-  </div>
+  </section>
 </template>

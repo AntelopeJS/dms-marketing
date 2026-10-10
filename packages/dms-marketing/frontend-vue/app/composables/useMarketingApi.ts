@@ -6,7 +6,53 @@
  * convention as dms-api's useApiIntrospection).
  */
 
+import type {
+  ContextWebsite,
+  MarketingContextPayload,
+} from './useMarketingContext'
+
 // --- Shapes mirrored from the backend ---------------------------------------
+
+export type {
+  ContextWebsite,
+  MarketingContextPayload,
+} from './useMarketingContext'
+
+export interface MarketingRejectedSource {
+  hostname: string
+  count: number
+  lastAt: number
+}
+
+/** One card of the Websites page (GET /api/marketing/websites/summary). */
+export interface MarketingWebsiteCard extends ContextWebsite {
+  extraDomains: string[]
+  snapshotsEnabled: boolean
+  snapshotMaskText: boolean
+  createdAt: number
+  sessions: number
+  pages: number
+  funnels: number
+  snapshots: number
+  sampleRate: number
+  rejected: MarketingRejectedSource[]
+}
+
+export interface MarketingConnectionStatus {
+  website: ContextWebsite
+  visit: MarketingConnectionVisit | null
+  rejected: MarketingRejectedSource[]
+}
+
+export interface MarketingFunnelSuggestion {
+  value: string
+  count: number
+}
+
+export interface MarketingFunnelSuggestions {
+  pages: MarketingFunnelSuggestion[]
+  events: MarketingFunnelSuggestion[]
+}
 
 export interface MarketingWebsite {
   _id: string
@@ -16,12 +62,29 @@ export interface MarketingWebsite {
   /** Opt-in: page snapshots store page content. */
   snapshotsEnabled: boolean
   snapshotMaskText?: boolean
+  extraDomains?: string[]
 }
 
 /** Editable website fields; only the keys present are touched. */
 export type MarketingWebsitePatch = Partial<
-  Pick<MarketingWebsite, 'name' | 'domain' | 'snapshotsEnabled' | 'snapshotMaskText'>
+  Pick<
+    MarketingWebsite,
+    'name' | 'domain' | 'extraDomains' | 'snapshotsEnabled' | 'snapshotMaskText'
+  >
 >
+
+export interface MarketingWebsiteInput {
+  name: string
+  domain: string
+  extraDomains?: string[]
+}
+
+export interface MarketingConnectionVisit {
+  at: number
+  url: string
+  browser?: string
+  deviceType?: string
+}
 
 export type MarketingSnapshotLayout = 'desktop' | 'tablet' | 'phone'
 
@@ -35,8 +98,8 @@ export interface MarketingPageSnapshot {
   exact: boolean
   capturedAt: number
   origin: string
-  viewport: { width: number, height: number }
-  document: { width: number, height: number }
+  viewport: { width: number; height: number }
+  document: { width: number; height: number }
   colorScheme?: 'light' | 'dark'
   bytes: number
   html: string | null
@@ -65,7 +128,8 @@ export interface MarketingPages {
 
 /** The five-way acquisition grouping the backend derives from referrer
  * domain + utm_medium at rollup time. */
-export type MarketingChannel = 'direct' | 'organic' | 'social' | 'referral' | 'paid'
+export type MarketingChannel =
+  'direct' | 'organic' | 'email' | 'social' | 'referral' | 'paid'
 
 export interface MarketingDayStatistics {
   day: number
@@ -195,7 +259,7 @@ export interface MarketingFunnel {
  * list's foreign join — the write path wants the bare id again. */
 export interface MarketingFunnelListItem {
   _id: string
-  websiteId: string | { _id: string, name?: string, domain?: string }
+  websiteId: string | { _id: string; name?: string; domain?: string }
   name: string
   steps: MarketingFunnelStep[] | string
   conversionWindowHours: number
@@ -268,7 +332,14 @@ export interface MarketingFunnelResults {
   /** Epoch ms bounds the numbers cover: the selected period on a plain
    * funnel, the experiment's own run once one is started — a running split
    * ends at "now", a stopped one at its stop. */
-  window: { since: number, until: number }
+  window: { since: number; until: number }
+  /** The same funnel over the comparison window; null on a split or without one. */
+  previous?: MarketingFunnelComputation | null
+}
+
+export interface MarketingFunnelPreview {
+  computation: MarketingFunnelComputation
+  truncated: boolean
 }
 
 /**
@@ -322,12 +393,61 @@ export function useMarketingApi() {
   const { $authFetch } = useAuthFetch()
 
   return {
-    listWebsites: () => $authFetch<MarketingWebsite[]>('/api/marketing/websites'),
+    listWebsites: () =>
+      $authFetch<MarketingWebsite[]>('/api/marketing/websites'),
 
-    createWebsite: (name: string, domain: string) =>
+    getContext: () =>
+      $authFetch<MarketingContextPayload>('/api/marketing/context'),
+
+    createWebsite: (input: MarketingWebsiteInput) =>
       $authFetch<MarketingWebsite>('/api/marketing/websites', {
         method: 'POST',
-        body: { name, domain },
+        body: input,
+      }),
+
+    selectContextWebsite: (website: string) =>
+      $authFetch<MarketingContextPayload>('/api/marketing/context', {
+        method: 'PUT',
+        body: { website },
+      }),
+
+    listWebsiteCards: () =>
+      $authFetch<MarketingWebsiteCard[]>('/api/marketing/websites/summary'),
+
+    getConnection: (website: string) =>
+      $authFetch<MarketingConnectionStatus>(
+        `/api/marketing/websites/${encodeURIComponent(website)}/connection`,
+      ),
+
+    allowHost: (website: string, hostname: string) =>
+      $authFetch<MarketingWebsite>(
+        `/api/marketing/websites/${encodeURIComponent(website)}/allow-host`,
+        { method: 'POST', body: { hostname } },
+      ),
+
+    deleteWebsite: (website: string) =>
+      $authFetch<{ deleted: string }>(
+        `/api/marketing/websites/${encodeURIComponent(website)}`,
+        { method: 'DELETE' },
+      ),
+
+    getFunnelSuggestions: (website: string) =>
+      $authFetch<MarketingFunnelSuggestions>(
+        '/api/marketing/funnels/suggestions',
+        {
+          query: { website, period: '30d' },
+        },
+      ),
+
+    previewFunnel: (
+      website: string,
+      steps: MarketingFunnelStep[],
+      conversionWindowHours: number,
+    ) =>
+      $authFetch<MarketingFunnelPreview>('/api/marketing/funnels/preview', {
+        method: 'POST',
+        query: { website, period: '30d' },
+        body: { steps, conversionWindowHours },
       }),
 
     updateWebsite: (id: string, patch: MarketingWebsitePatch) =>
@@ -362,10 +482,17 @@ export function useMarketingApi() {
         query: { website, path, period },
       }),
 
-    getSnapshot: (website: string, path: string, layout: MarketingSnapshotLayout) =>
-      $authFetch<MarketingPageSnapshotResponse>('/api/marketing/stats/snapshot', {
-        query: { website, path, layout },
-      }),
+    getSnapshot: (
+      website: string,
+      path: string,
+      layout: MarketingSnapshotLayout,
+    ) =>
+      $authFetch<MarketingPageSnapshotResponse>(
+        '/api/marketing/stats/snapshot',
+        {
+          query: { website, path, layout },
+        },
+      ),
 
     // Whole click and scroll history, every period: without `path` the whole
     // site's.
@@ -385,7 +512,7 @@ export function useMarketingApi() {
     // DataType compare mode — the data-api's own `eq` parses but matches
     // nothing. The list defaults to 10 rows, hence the explicit limit.
     listFunnels: (website: string) =>
-      $authFetch<{ results: MarketingFunnelListItem[], total: number }>(
+      $authFetch<{ results: MarketingFunnelListItem[]; total: number }>(
         '/api/marketing/tables/funnels/list',
         {
           query: {

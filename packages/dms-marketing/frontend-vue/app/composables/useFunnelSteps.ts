@@ -16,8 +16,7 @@ export function parseFunnelStepsValue(raw: unknown): FunnelStepDraft[] {
   if (typeof raw === 'string') {
     try {
       parsed = raw ? JSON.parse(raw) : []
-    }
-    catch {
+    } catch {
       parsed = []
     }
   }

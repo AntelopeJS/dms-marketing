@@ -46,6 +46,22 @@ export interface AnchorBox extends AnchorRequest {
   y: number
   width: number
   height: number
+  /** What the element reads, for the "Most clicked" list; empty on an image. */
+  text: string
+}
+
+const ANCHOR_TEXT_LENGTH = 40
+
+function readableText(element: Element): string {
+  const text = (element.textContent ?? '').replace(/\s+/g, ' ').trim()
+  const label =
+    text ||
+    element.getAttribute('aria-label') ||
+    element.getAttribute('alt') ||
+    ''
+  return label.length > ANCHOR_TEXT_LENGTH
+    ? `${label.slice(0, ANCHOR_TEXT_LENGTH - 1)}…`
+    : label
 }
 
 export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
@@ -143,12 +159,12 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
       let matches: NodeListOf<Element>
       try {
         matches = doc.querySelectorAll(anchor.selector)
-      }
-      catch {
+      } catch {
         continue
       }
-      const box = matches[anchor.nth]?.getBoundingClientRect()
-      if (!box || box.width <= 0 || box.height <= 0) {
+      const element = matches[anchor.nth]
+      const box = element?.getBoundingClientRect()
+      if (!element || !box || box.width <= 0 || box.height <= 0) {
         continue
       }
       boxes.push({
@@ -157,6 +173,7 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
         y: box.top + view.scrollY,
         width: box.width,
         height: box.height,
+        text: readableText(element),
       })
     }
     return boxes

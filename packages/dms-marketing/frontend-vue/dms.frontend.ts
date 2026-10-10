@@ -9,12 +9,13 @@ interface VueModule {
 /**
  * Every component of this module is addressed by name from the backend: the
  * pages declare `CustomComponent('DmsMarketing<Name>')` and the DataTypes
- * resolve their inputs the same way. Registering the whole directory under
- * that prefix keeps the two sides in sync without a manual list.
+ * resolve their inputs the same way. Registering the whole directory behind
+ * the module's prefix keeps the two sides in sync without a manual list.
  */
 const components = import.meta.glob<VueModule>('./app/components/**/*.vue')
 
 const frontendModule: DmsFrontendModule = {
+  componentPrefix: 'DmsMarketing',
   setup(sdk) {
     for (const [path, loader] of Object.entries(components).sort()) {
       const name = path
@@ -22,7 +23,7 @@ const frontendModule: DmsFrontendModule = {
         .at(-1)!
         .replace(/\.vue$/, '')
       sdk.registerComponent(
-        `DmsMarketing${name}`,
+        name,
         defineAsyncComponent(async () => (await loader()).default),
       )
     }

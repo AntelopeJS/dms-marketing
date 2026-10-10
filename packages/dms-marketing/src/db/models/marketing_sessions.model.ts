@@ -83,6 +83,16 @@ export class MarketingSessionsModel extends BasicDataModel(
       .run();
   }
 
+  /** The most recent session of a website, for the install check. */
+  async getLatest(websiteId: string): Promise<MarketingSession | undefined> {
+    const rows = await this.table
+      .getAll(websiteId, "websiteId")
+      .orderBy("lastSeenAt", "desc")
+      .slice(0, 1)
+      .run();
+    return rows[0];
+  }
+
   async deleteOlderThan(cutoff: Date): Promise<number> {
     return deleteExpiredRows(this.table, "lastSeenAt", cutoff);
   }

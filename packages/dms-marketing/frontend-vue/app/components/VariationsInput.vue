@@ -36,7 +36,7 @@ function parseValue(
 ): ExperimentVariationDraft[] {
   // Copies, not references: the drafts are mutated by the inputs below and
   // must never write through to the prop value.
-  const variations = parseExperimentVariationsValue(raw).map(variation => ({
+  const variations = parseExperimentVariationsValue(raw).map((variation) => ({
     ...variation,
   }))
   while (variations.length < MIN_VARIATIONS) {
@@ -70,7 +70,7 @@ function sharePercent(variation: ExperimentVariationDraft): number {
 function onEdit(): void {
   emit(
     'update:modelValue',
-    variations.value.map(variation => ({
+    variations.value.map((variation) => ({
       key: variation.key,
       weight: variation.weight,
     })),

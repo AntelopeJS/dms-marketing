@@ -34,17 +34,25 @@ const TOP_DIMENSIONS = [
  * resolved when the session's rollup increment fires, so the mapping can
  * evolve without a migration.
  */
-const MARKETING_CHANNELS = [
+export const MARKETING_CHANNELS = [
   "direct",
   "organic",
-  "social",
+  "email",
   "referral",
+  "social",
   "paid",
 ] as const;
 
 export type MarketingChannel = (typeof MARKETING_CHANNELS)[number];
 
 export type TopDimension = (typeof TOP_DIMENSIONS)[number];
+
+export function isTopDimension(value: unknown): value is TopDimension {
+  return (
+    typeof value === "string" &&
+    (TOP_DIMENSIONS as readonly string[]).includes(value)
+  );
+}
 
 /**
  * One value per dimension, keyed by dimension. The rollup maps, the collect

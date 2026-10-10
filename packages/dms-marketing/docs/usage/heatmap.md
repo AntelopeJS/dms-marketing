@@ -1,15 +1,16 @@
-# Tracked pages & heatmaps
+# Pages & heatmaps
 
-**Where:** `/modules/marketing/pages`.
+**Where:** `/modules/marketing/pages` — under **Analytics**.
 
-The page has two panes: on the left, the inventory of paths the tracker has
-reported for the selected website; on the right, the clicks and scroll depth
-of the selected path, drawn over a snapshot of the page. The toolbar
-switches the overlay between **Clicks** and **Scroll** above the same
-backdrop.
+The page has two panes under the [context bar](overview.md#the-context-bar):
+on the left, the inventory of paths the tracker has reported for the
+selected website; on the right, the clicks and scroll depth of the selected
+path, drawn over a snapshot of the page. The preview's toolbar switches the
+overlay between **Clicks** and **Scroll depth** above the same backdrop, and
+the layout between desktop, tablet and phone widths.
 
 <p align="center">
-  <img src="../screenshots/heatmap.png" alt="Tracked pages: the inventory of visited paths on the left, and on the right the click heatmap of the selected path drawn over a snapshot of the page" width="900">
+  <img src="../screenshots/heatmap.png" alt="Pages & heatmaps: the tracked pages with their views and heat bars on the left, and on the right the click heatmap of the selected page drawn over its snapshot, with count pins on the hottest elements and the Most clicked list beside it" width="900">
 </p>
 
 The surface is keyed on nothing but a website id and a bare pathname the
@@ -19,11 +20,19 @@ any way at all.
 
 ## Reading a heatmap
 
-1. Pick a **website**, a **period**, then a **path** in the inventory.
+1. Pick a **website** and a **period** in the context bar, then a **path**
+   in the inventory. Each row gives the page's views, an estimate of the
+   sampled visits behind its heatmap (views × sampling rate) and a heat bar
+   relative to the busiest page.
 2. The right pane renders the page's snapshot (see *Page snapshots* below)
-   and draws the recorded clicks over it.
+   and draws the recorded clicks over it, sized to the page's own height.
+   The hottest anchored elements carry a pin with their click count.
+3. Beside the preview, **Most clicked** lists the five anchored elements
+   with the most clicks, by their text, and **Used in** lists the funnels
+   that have a page step on this path.
 
-State lives in the URL, so a heatmap can be linked to.
+The selected path lives in the URL (`?path=`), so a heatmap can be linked
+to; the overview's content lists link here that way.
 
 ### Clicks stick to elements, not to screen positions
 
@@ -32,15 +41,9 @@ selector plus a 0–1 offset in the element's box), on top of plain document
 coordinates. The overlay projects from the element anchor whenever it can
 resolve it in the snapshot. The practical effect: clicks recorded through
 desktop windows still land on the right button when you view the page at
-mobile width, even though the layout moved everything around.
-
-<p align="center">
-  <img src="../screenshots/heatmap-viewport.png" alt="The same clicks shown in the 390px layout: the hot spot still sits exactly on the call-to-action button even though the narrow layout reflowed the page around it" width="900">
-</p>
-<p align="center">
-  <em>The same clicks in the 390&nbsp;px layout. They were captured through
-  wider windows, and they still land on the button — that is anchoring.</em>
-</p>
+phone width, even though the layout moved everything around. The **Most
+clicked** list and the pins are built from these anchored cells only; while
+a page has none, the list says so and the clicks show on the page only.
 
 Every way anchoring can fail (no snapshot yet, element gone, selector now
 ambiguous) falls back to document fractions — which is also all that clicks
@@ -49,7 +52,7 @@ mechanism is detailed in [architecture.md](../architecture.md#heatmap-anchoring)
 
 ## Scroll depth
 
-The **Scroll** overlay shades the page by how many of the measured views saw
+The **Scroll depth** overlay shades the page by how many of the measured views saw
 each band — warm at the top, cold where almost nobody went — with labelled
 lines at fixed shares (*"50% of visitors see down to here"*) and a readout
 following the pointer.
@@ -67,7 +70,8 @@ Three things to keep in mind when reading it:
 - **Same sampling, same window as clicks** — one draw per page load decides
   both, and both read the raw events retention.
 
-Resetting a heatmap deletes clicks, scroll depths and snapshots together.
+Resetting a heatmap deletes clicks, scroll depths and snapshots together
+(see [Resetting heatmaps](#resetting-heatmaps)).
 
 ## Page snapshots
 
@@ -81,11 +85,12 @@ the console no signal at all: a blank panel and a guess.
 How a snapshot comes to exist:
 
 1. **Opt-in, per website.** Snapshots store page content, which nothing else
-   in the module does. They are off until the site enables them: the banner
-   on Tracked pages carries the switch, and the camera button in the toolbar
-   holds both options (snapshots on/off, mask all text). Over the API the
-   fields are `snapshotsEnabled` and `snapshotMaskText` on the website
-   (`PUT /api/marketing/websites/:id`).
+   in the module does. They are off until the site enables them: while they
+   are off, the preview's status strip carries **Enable page snapshots**;
+   the preview's **More** menu holds both options (page snapshots on/off,
+   mask all text), and so does the **Capture** tab of the website's drawer
+   on the Websites page. Over the API the fields are `snapshotsEnabled` and
+   `snapshotMaskText` on the website (`PUT /api/marketing/websites/:id`).
 2. **Negotiated capture.** On a visit already sampled for clicks (the same
    draw, 10 % by default), once the page has loaded and gone idle, the
    tracker asks the backend whether a capture of this path at this layout
@@ -105,25 +110,45 @@ How a snapshot comes to exist:
    script runs in it, nothing in it can be clicked, hovered or navigated —
    a stray click would take the backdrop to a page the numbers are not
    about — and its geometry is read directly to place anchored clicks.
-   Interacting with the real page goes through the "open in a new tab"
-   button, which targets the origin the snapshot was captured on.
+   Interacting with the real page goes through **Open** in the preview's
+   More menu, which opens a new tab on the origin the snapshot was captured
+   on.
 
 One snapshot is kept per (website, path, layout), the layout being the
 visitor's viewport width bucketed as desktop (≥ 1024 px), tablet (≥ 600 px)
 or phone. Asking for a layout nobody has been captured at reflows the
-nearest one at that width, with a banner saying so; anchored clicks still
-land on their element.
+nearest one at that width, and the status strip says so; anchored clicks
+still land on their element.
 
 **The numbers never degrade, and nothing is drawn without a page.** Points
 and totals come from the database; the snapshot is the surface they are
 drawn on. Snapshots off for the site, no sampled visit captured yet, a page
 too heavy to capture — the click and scroll counts stay in the header, the
-banner says why there is no backdrop and when there will be one, and no
-empty pane pretends to be a page:
+status strip says why there is no backdrop and when there will be one, and
+no empty pane pretends to be a page. Otherwise a status line under the
+toolbar gives when and at which layout the snapshot was captured, and what
+it masks.
 
-<p align="center">
-  <img src="../screenshots/heatmap-fallback.png" alt="A page without a snapshot yet: the click count is in the header and a banner explains that the next sampled visit will capture one; no backdrop is drawn" width="900">
-</p>
+### The status strip
+
+When something needs attention, the preview shows **one** strip under its
+toolbar, the highest-priority one, with its own action where there is one:
+
+1. **Collection is off** — the tracker is switched off in the settings;
+   links to them.
+2. **Page snapshots are off for this site** — with **Enable page
+   snapshots**.
+3. **No snapshot of this path yet** — the next sampled visit captures one.
+4. **Page too heavy to capture** — see *Retention and size* below.
+5. **Partial heatmap / partial scroll depth** — the page recorded more
+   clicks or scrolls than one read covers; narrow the period.
+6. **Page too tall to preview accurately** — the document exceeds the
+   largest surface the browser draws, so the overlay and the backdrop no
+   longer line up; the figures are unaffected.
+7. **Approximate layout** — no visitor has been captured at the chosen
+   width, so the nearest snapshot is reflowed.
+8. **Page wider than the chosen layout** — the backdrop may be cut off;
+   the overlay follows the document and stays aligned.
 
 ### What is and is not captured
 
@@ -203,13 +228,26 @@ scrolls (configurable — see [settings.md](settings.md), or per site with
 legitimately have nothing to show; the empty state says so and suggests the
 two levers that actually produced the silence — sampling rate and period.
 
-<p align="center">
-  <img src="../screenshots/heatmap-empty.png" alt="A page with no click recorded: the panel explains that clicks are sampled on 10% of page loads and that this page was too quiet, and suggests raising the sampling or widening the period" width="900">
-</p>
-
 Heatmaps also read the **raw events window**: clicks older than the raw
-events retention (90 days by default) are gone even if the period selector
+events retention (90 days by default) are gone even if the context bar
 allows the range.
+
+## Resetting heatmaps
+
+When pages are redesigned, old clicks land on elements that no longer
+exist. Two resets, both irreversible and both behind a confirmation that
+asks you to type a name:
+
+- **Reset every heatmap…**, in the **More** menu beside the list's filter, deletes
+  every click, scroll depth and snapshot of the website, whatever the
+  period. Type the website's domain to confirm.
+- **Reset this page…**, in the preview's **More** menu, deletes the clicks,
+  scroll depths and snapshots of the selected path, whatever the period. Type
+  the path to confirm; the confirm button gives the number of events the
+  preview counts over the selected period.
+
+Both say what they keep: traffic, sessions and funnels are not affected, and
+the toast after the reset gives the number of events deleted.
 
 ## Paths: two ways they can collapse
 
@@ -224,6 +262,6 @@ Both worth knowing before reading a heatmap:
 
 The inventory is built from the daily rollups, which keep at most 50 paths
 per day (and older days keep scalar counters only) — so the inventory is
-lossy while the heatmap query is not. That is why the search box is also a
-path field: a typed path is matched exactly like a picked one. If you know a
-path had traffic, type it.
+lossy while the heatmap query is not. That is why the filter is also a path
+field: type a path starting with `/` and press Enter, and it is inspected
+exactly like a picked one. If you know a path had traffic, type it.

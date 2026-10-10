@@ -22,21 +22,11 @@ export default defineConfig({
         installCommand: ["pnpm build"],
       },
     },
-    // Loaded so the playground exercises the console the module ships beside,
-    // not because either depends on the other: the heatmap surface is entirely
-    // this module's, and dms-api does not consume the marketing interface.
-    "dms-api": {
-      source: {
-        type: "package",
-        package: "@antelopejs/dms-api",
-        version: ">=0.1.3 <1.0.0",
-      },
-    },
     dms: {
       source: {
         type: "package",
         package: "@antelopejs/dms",
-        version: ">=0.5.0 <1.0.0",
+        version: ">=0.7.4 <1.0.0",
       },
       config: {
         homepage: "/modules/marketing/overview",
@@ -51,7 +41,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/mongodb",
-        version: "^1.4.0",
+        version: "^1.4.2",
       },
       config: {
         url: process.env.MONGO_URL ?? "mongodb://localhost:27017",

@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  HTTPResult,
   JSONBody,
   Parameter,
   Post,
@@ -29,8 +30,12 @@ import {
   requireTenantWebsite,
 } from "@/services/tenant-website";
 import { invalidateWebsiteCache } from "@/services/website-cache";
+import { forgetRejectedSources } from "@/services/origin-guard";
+import { toBareHostname } from "@/services/url";
+import { connectionStatus, websiteCards } from "@/services/website-report";
 import {
   API_BASE_PATH,
+  HTTP_BAD_REQUEST,
   MAX_DOMAIN_LENGTH,
   MAX_EXTRA_DOMAINS,
   MAX_NAME_LENGTH,
@@ -48,6 +53,10 @@ const websiteCreateSchema = z.object({
   extraDomains: extraDomainsSchema.optional(),
   snapshotsEnabled: z.boolean().optional(),
   snapshotMaskText: z.boolean().optional(),
+});
+
+const allowHostSchema = z.object({
+  hostname: z.string().min(1).max(MAX_DOMAIN_LENGTH),
 });
 
 const websiteUpdateSchema = z.object({
@@ -68,6 +77,56 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     return listTenantWebsites(getRequestTenantId(context));
+  }
+
+  /** The Websites page: one card per site with its state and volumes. */
+  @Get("summary")
+  async summary(
+    @AuthTenantMember() _user: User,
+    @Context() context: RequestContext,
+  ) {
+    const tenantId = getRequestTenantId(context);
+    return websiteCards(tenantId, await listTenantWebsites(tenantId));
+  }
+
+  /** What the install guide polls: the latest visit and the refused hosts. */
+  @Get("/:id/connection")
+  async connection(
+    @AuthTenantMember() _user: User,
+    @Parameter("id") id: string,
+    @Context() context: RequestContext,
+  ) {
+    return connectionStatus(await requireTenantWebsite(context, id));
+  }
+
+  /** The install guide's "Allow this host": a refused host joins extraDomains. */
+  @Post("/:id/allow-host")
+  async allowHost(
+    @AuthTenantOwner() _user: User,
+    @Parameter("id") id: string,
+    @JSONBody() body: unknown,
+    @Context() context: RequestContext,
+  ) {
+    const website = await requireTenantWebsite(context, id);
+    const data = assertValidation(
+      body,
+      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
+      // reference passed here is not actually unbound.
+      // oxlint-disable-next-line typescript/unbound-method
+      allowHostSchema.parse,
+      () => INVALID_WEBSITE_MESSAGE,
+    );
+    const hostname = toBareHostname(data.hostname) ?? data.hostname;
+    const hosts = new Set(website.extraDomains ?? []);
+    if (!hosts.has(hostname) && hosts.size >= MAX_EXTRA_DOMAINS) {
+      throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_WEBSITE_MESSAGE);
+    }
+    hosts.add(hostname);
+    website.extraDomains = [...hosts];
+    await GetModel(WebsitesModel).update(website);
+    invalidateWebsiteCache(id);
+    forgetRejectedSources(id);
+    return website;
   }
 
   @Post("")
@@ -129,6 +188,7 @@ export class WebsitesController extends Controller(
     }
     if (data.extraDomains !== undefined) {
       website.extraDomains = data.extraDomains;
+      forgetRejectedSources(id);
     }
     const snapshotOptionsChanged =
       (data.snapshotsEnabled !== undefined &&
