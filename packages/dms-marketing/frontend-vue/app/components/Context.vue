@@ -1,31 +1,26 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import {
-  useDmsCookie,
-  useDmsRoute,
-  useDmsRouter,
-  useI18n,
-} from '#dms/frontend-module'
-import {
-  contextScopeKey,
   MARKETING_CONTEXT_KEY,
   type ContextWebsite,
   type MarketingContextPayload,
 } from '../composables/useMarketingContext'
 import { useMarketingApi } from '../composables/useMarketingApi'
 import { installLink } from '../composables/useMarketingRoutes'
-import { formatDateRange, formatRelativeTime, initials } from '../utils/format'
+import { formatRelativeTime, initials } from '../utils/format'
 import { MS_PER_DAY } from '../constants'
 
 /**
  * The context bar of every analytics page and the gate in front of its blocks.
  *
- * It owns the period (presets, comparison) through the DMS `usePeriod` and
- * publishes it under `periodScope`, the scope every block of the page binds
- * to. The published key also carries the selected website and a refresh
- * counter: the stock blocks know a period, not a website, and a changed key is
- * what makes them refetch. The selection itself is stored server-side before
- * the key changes, so the refetch reads the new website.
+ * The period is the DMS `PeriodSelector` in the bar, publishing under
+ * `periodScope`, the scope every block of the page binds to: it keeps the
+ * period in the page URL (`?<scope>.period=…&<scope>.compare=…`) and the
+ * user's last choice. The website is this bar's own: stored server-side per
+ * member, so every route reads it without a parameter, and mirrored into the
+ * URL (`?website=`) so a copied link opens on the same site. A switch asks the
+ * page's blocks to read again once the selection is stored.
  *
  * Its children render only once the tenant has a website; before that the
  * first-run hero takes their place.
@@ -36,53 +31,20 @@ const props = withDefaults(
     componentId?: string
     pageId?: string
   }>(),
-  { periodScope: 'dms-marketing', componentId: undefined, pageId: undefined },
+  { periodScope: 'marketing', componentId: undefined, pageId: undefined },
 )
 
-const PRESETS = [
-  'today',
-  'last-7-days',
-  'last-30-days',
-  'last-90-days',
-] as const
-const COMPARISONS = ['previous-period', 'previous-year', 'none'] as const
-const PRESET_LABELS: Record<(typeof PRESETS)[number], string> = {
-  today: 'page.marketing.context.presets.today',
+const PRESETS = ['today', 'last-7-days', 'last-30-days', 'last-90-days']
+const COMPARISONS = ['previous-period', 'previous-year', 'none']
+const PRESET_LABELS = {
   'last-7-days': '7D',
   'last-30-days': '30D',
   'last-90-days': '90D',
 }
-const COOKIE_MAX_AGE_S = 60 * 60 * 24 * 365
 const CLOCK_TICK_MS = 15_000
-
-interface StoredPeriod {
-  preset: (typeof PRESETS)[number]
-  comparison: (typeof COMPARISONS)[number]
-}
 
 const { t, locale } = useI18n()
 const api = useMarketingApi()
-
-const stored = useDmsCookie<StoredPeriod>('dms-marketing-period', {
-  default: () => ({ preset: 'last-30-days', comparison: 'previous-period' }),
-  maxAge: COOKIE_MAX_AGE_S,
-  sameSite: 'lax',
-})
-
-const period = usePeriod({
-  defaultPreset: PRESETS.includes(stored.value.preset)
-    ? stored.value.preset
-    : 'last-30-days',
-  defaultComparison: COMPARISONS.includes(stored.value.comparison)
-    ? stored.value.comparison
-    : 'previous-period',
-  presets: [...PRESETS],
-  comparisons: [...COMPARISONS],
-})
-
-watch([period.preset, period.comparison], ([preset, comparison]) => {
-  stored.value = { preset, comparison } as StoredPeriod
-})
 
 const context = ref<MarketingContextPayload | null>(null)
 const loading = ref(true)
@@ -116,63 +78,20 @@ async function select(id: string): Promise<void> {
   switching.value = true
   try {
     context.value = await api.selectContextWebsite(id)
+    refreshToken.value++
   } finally {
     switching.value = false
   }
 }
 
-const published = computed(() => ({
-  ...period.state.value,
-  key: contextScopeKey(
-    period.state.value.key,
-    context.value?.selectedId ?? null,
-    refreshToken.value,
-  ),
-}))
+// Blocks know a period, not a website: a switch or the refresh button reads
+// them again, the selection already stored.
+watch(refreshToken, () => refreshPageBlocks())
 
-let releaseScope: (() => void) | null = null
-
-// Published once the selection is known: a block fetching before would read
-// the server's fallback website, then again the moment the selection lands.
-watch(
-  selected,
-  (site) => {
-    if (site && !releaseScope) {
-      releaseScope = registerPeriodScope(props.periodScope, published)
-    }
-  },
-  { immediate: true },
-)
-
-onBeforeUnmount(() => releaseScope?.())
-
-// --- Page URL ----------------------------------------------------------------
-// The context is mirrored into the page URL (`website`, `from` and `to` as
-// local days, `compare`): stock blocks without a period scope read it through
-// `{{query.X}}` tokens, and a copied link opens on the same website and days.
+// --- Website in the page URL -------------------------------------------------
 
 const route = useDmsRoute()
 const router = useDmsRouter()
-
-function localDay(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
-}
-
-const contextQuery = computed(() => {
-  const site = selected.value
-  if (!site) {
-    return null
-  }
-  const { range, comparison } = period.state.value
-  return {
-    website: site.id,
-    from: localDay(range.from),
-    to: localDay(range.to),
-    compare: comparison,
-  }
-})
 
 // A link naming another website of the tenant selects it first.
 watch(
@@ -192,26 +111,31 @@ watch(
 )
 
 // Watched with the query too: a block rewriting the URL for its own state
-// (the heatmap path) must not drop the context from it.
+// (the heatmap path, the period) must not drop the website from it.
 watch(
-  [contextQuery, () => route.query],
-  ([next]) => {
-    if (
-      !next ||
-      Object.entries(next).every(([key, value]) => route.query[key] === value)
-    ) {
-      return
+  [() => selected.value?.id, () => route.query],
+  ([website]) => {
+    if (website && route.query.website !== website) {
+      void router.replace({ query: { ...route.query, website } })
     }
-    void router.replace({ query: { ...route.query, ...next } })
   },
   { immediate: true },
 )
 
-watch(refreshToken, () => refreshPageBlocks())
+// --- Period, for the module's own reads -----------------------------------------
 
+const period = usePeriodScope(props.periodScope)
+
+/** Days of the period, as the `Nd` window the older routes read. */
 const periodDays = computed(() => {
-  const { from, to } = period.state.value.range
-  return `${Math.max(1, Math.round((to.getTime() - from.getTime()) / MS_PER_DAY))}d`
+  const range = period.value?.range
+  if (!range) {
+    return '30d'
+  }
+  const days = Math.round(
+    (range.to.getTime() - range.from.getTime()) / MS_PER_DAY,
+  )
+  return `${Math.max(1, days)}d`
 })
 
 provide(MARKETING_CONTEXT_KEY, {
@@ -266,32 +190,6 @@ const websiteItems = computed(() => [
     },
   ],
 ])
-
-const presetItems = computed(() =>
-  PRESETS.map((preset) => ({
-    value: preset,
-    label: PRESET_LABELS[preset].startsWith('page.')
-      ? t(PRESET_LABELS[preset])
-      : PRESET_LABELS[preset],
-  })),
-)
-
-const comparisonItems = computed(() =>
-  COMPARISONS.map((comparison) => ({
-    value: comparison,
-    label: t(`page.marketing.context.comparisons.${comparison}`),
-  })),
-)
-
-const rangeLabel = computed(() => {
-  const { from, to } = period.state.value.range
-  return formatDateRange(from, to, locale.value)
-})
-
-const compareLabel = computed(() => {
-  const range = period.state.value.compareRange
-  return range ? formatDateRange(range.from, range.to, locale.value) : ''
-})
 </script>
 
 <template>
@@ -350,41 +248,19 @@ const compareLabel = computed(() => {
 
         <span class="hidden h-5 w-px bg-(--ui-border) md:block" />
 
-        <DmsSegmented
-          :model-value="period.preset.value"
-          :items="presetItems"
-          variant="mono"
+        <DmsPeriodSelector
+          :id="periodScope"
+          :page-id="pageId"
+          variant="segmented"
           size="xs"
-          :aria-label="t('page.marketing.context.period')"
-          @update:model-value="
-            (value: string) =>
-              period.setPreset(value as (typeof PRESETS)[number])
-          "
+          align="left"
+          default-preset="last-30-days"
+          default-comparison="previous-period"
+          :presets="PRESETS"
+          :comparisons="COMPARISONS"
+          :preset-labels="PRESET_LABELS"
+          show-range-label
         />
-
-        <USelect
-          :model-value="period.comparison.value"
-          :items="comparisonItems"
-          size="xs"
-          variant="ghost"
-          icon="i-ph-arrows-left-right"
-          class="w-48"
-          :aria-label="t('page.marketing.context.comparison')"
-          @update:model-value="
-            (value: string) =>
-              period.setComparison(value as (typeof COMPARISONS)[number])
-          "
-        />
-
-        <span class="font-mono text-xs text-highlighted">
-          {{ rangeLabel }}
-          <template v-if="compareLabel">
-            <span class="ms-2 text-primary">
-              {{ t('page.marketing.context.vs') }}
-            </span>
-            <span class="ms-1 text-dimmed">{{ compareLabel }}</span>
-          </template>
-        </span>
 
         <UButton
           class="ms-auto"

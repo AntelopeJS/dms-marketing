@@ -6,27 +6,14 @@ import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
 import { API_BASE_PATH } from "@/types/constants";
 
 /**
- * The period scope every analytics block of the module binds to. The context
- * bar publishes it, its key carrying the selected website as well, so a stock
- * `KpiCard` refetches on a website switch like on a period change.
+ * The period scope every analytics block of the module binds to: the id of
+ * the DMS `PeriodSelector` in the context bar, and the prefix of its keys in
+ * the page URL (`?marketing.period=…`). The bar asks the blocks to read again
+ * on a website switch.
  */
-export const MARKETING_PERIOD_SCOPE = "dms-marketing";
+export const MARKETING_PERIOD_SCOPE = "marketing";
 
 export const BLOCKS_API = `${API_BASE_PATH}/blocks`;
-
-/**
- * The context the bar mirrors into the page URL (`?website=…&from=…&to=…&
- * compare=…`), as the route tokens a stock block without a period scope
- * reads it through. Such a block reads again when the bar changes the URL,
- * and requests nothing before the bar wrote it.
- */
-const CONTEXT_QUERY =
-  "website={{query.website}}&from={{query.from}}&to={{query.to}}&compare={{query.compare}}";
-
-/** A route of the module read in the page's context, for a stock block. */
-export function contextUrl(path: string): string {
-  return `${path}${path.includes("?") ? "&" : "?"}${CONTEXT_QUERY}`;
-}
 
 /** Options every module block reads its data with. */
 export interface ScopedBlockOptions {

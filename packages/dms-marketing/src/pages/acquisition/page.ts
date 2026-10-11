@@ -12,7 +12,6 @@ import { MARKETING_MODULE_ID } from "@/types/constants";
 import {
   BLOCKS_API,
   blockMeta,
-  contextUrl,
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
   MarketingContext,
@@ -50,13 +49,13 @@ const monoText = () => ({
 
 /**
  * Every UTM-tagged source × medium × campaign of the period: a stock source
- * table over `/blocks/campaigns/rows`, which reads the context the bar
- * mirrors into the page URL. The route searches every combination of the
+ * table over `/blocks/campaigns/rows`, on the context bar's period. The route searches every combination of the
  * period and narrows on a channel tab; the browser sorts.
  */
 const campaignsTable = TableView.fromSource({
   caption: `${CAMPAIGNS_PREFIX}title`,
-  fetchUrl: contextUrl(`${BLOCKS_API}/campaigns/rows`),
+  fetchUrl: `${BLOCKS_API}/campaigns/rows`,
+  periodScope: MARKETING_PERIOD_SCOPE,
   capabilities: { search: true, filter: true },
   searchPlaceholder: `${CAMPAIGNS_PREFIX}filter`,
   pageSize: 25,
@@ -140,7 +139,8 @@ const campaignsTable = TableView.fromSource({
 /** A notice under the campaigns table, shown only when the route has one. */
 function campaignNotice(kind: "missing" | "truncated") {
   return Banner({
-    fetchUrl: contextUrl(`${BLOCKS_API}/campaigns/notice?kind=${kind}`),
+    fetchUrl: `${BLOCKS_API}/campaigns/notice?kind=${kind}`,
+    periodScope: MARKETING_PERIOD_SCOPE,
   });
 }
 

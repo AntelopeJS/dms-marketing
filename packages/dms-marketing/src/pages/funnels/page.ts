@@ -15,7 +15,7 @@ import {
   MARKETING_MODULE_ID,
   MARKETING_MODULE_PATH,
 } from "@/types/constants";
-import { blockMeta, contextUrl, MarketingContext } from "../blocks";
+import { blockMeta, MARKETING_PERIOD_SCOPE, MarketingContext } from "../blocks";
 import { conversionCategory } from "../module";
 
 const FUNNELS_API = `${API_BASE_PATH}/funnels`;
@@ -35,7 +35,8 @@ const STATUS_TONES = {
  */
 const funnelsTable = TableView.fromSource({
   caption: `${FUNNELS_PREFIX}list_title`,
-  fetchUrl: contextUrl(`${FUNNELS_API}/rows`),
+  fetchUrl: `${FUNNELS_API}/rows`,
+  periodScope: MARKETING_PERIOD_SCOPE,
   capabilities: { filter: true },
   defaultSort: { field: "conversion", desc: true },
   columns: {
@@ -179,9 +180,10 @@ export class MarketingFunnelsPage extends PageController(
   static content = MarketingContext()
     .child(
       "winner",
-      Banner({ fetchUrl: contextUrl(`${FUNNELS_API}/winner`) }).meta(
-        blockMeta("funnels_winner", "i-ph-flask"),
-      ),
+      Banner({
+        fetchUrl: `${FUNNELS_API}/winner`,
+        periodScope: MARKETING_PERIOD_SCOPE,
+      }).meta(blockMeta("funnels_winner", "i-ph-flask")),
     )
     .child(
       "list",

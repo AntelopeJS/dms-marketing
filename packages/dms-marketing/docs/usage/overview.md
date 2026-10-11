@@ -27,9 +27,10 @@ opens on the same bar, and every block of the page reads what it picks:
   earlier, or none. The bar shows the resolved ranges of both.
 - **Refresh** — refetches every block of the page.
 
-The period and comparison persist in the browser (cookie
-`dms-marketing-period`), so they survive navigation between the module's
-pages. While the workspace has no website, a first-run screen with **Add a
+The website, period and comparison are in the page URL
+(`?website=…&marketing.period=…&marketing.compare=…`), so a copied link opens
+on the same view; the period and comparison also follow you between the
+module's pages, as the DMS keeps your last choice. While the workspace has no website, a first-run screen with **Add a
 website** replaces the page's blocks.
 
 ## What it shows

@@ -55,15 +55,3 @@ function detachedContext(): MarketingContextState {
     reload: async () => {},
   }
 }
-
-/**
- * The key the container publishes its period under: the period's own key and
- * the website, so a block bound to the scope refetches on either.
- */
-export function contextScopeKey(
-  periodKey: string,
-  websiteId: string | null,
-  refreshToken: number,
-): string {
-  return `${periodKey}|website:${websiteId ?? ''}|refresh:${refreshToken}`
-}

@@ -152,7 +152,7 @@ cleanup with an error, without retry or an unconditional-delete fallback.
 **Integration prerequisite:** the database interface and adapter must implement
 `deleteIfEqual`. Validation uses the published database interface, the
 MongoDB adapter 1.4.2 the package pins as a dev dependency and the DMS
-`>=0.7.4` release resolved at the time, without source overlays.
+`>=0.7.8` release resolved at the time, without source overlays.
 `pnpm test` loads the real modules through Antelope and exercises MongoDB with a
 disposable database (the first run downloads MongoDB unless
 `MONGOMS_SYSTEM_BINARY` is set). Marketing integration tests on PostgreSQL and
@@ -295,27 +295,28 @@ The analytics pages share one context: a website and a period. Both live in
 the context container (`DmsMarketingContext`, `frontend-vue/app/components/Context.vue`)
 that wraps the blocks of each page.
 
-- **Period.** The container owns it through the DMS `usePeriod` — presets
-  Today / 7D / 30D / 90D, default 30 days; comparison with the previous
-  period (default), the previous year, or none — and persists the preset and
-  comparison in the `dms-marketing-period` cookie. It publishes the period
-  under the DMS period scope `dms-marketing`, which every stock block of the
-  pages binds to: the blocks append `from`/`to` (and
-  `compareFrom`/`compareTo`) to their fetch URL. The routes map these bounds
-  on the UTC days carrying the same dates — the days rollup rows are keyed
-  on — and cap a window at `MAX_QUERY_PERIOD_DAYS` (90), cut at its start so
-  the recent days stay in (`services/period.ts`). Without `from`/`to` they
-  fall back to the legacy `period=Nd` ending today.
-- **Website.** A stock block knows a period scope, not a website, so the
-  published scope key also carries the selected website (and the refresh
-  counter): a website switch changes the key, and every bound block
-  refetches. The selection itself is stored server-side per member, in
-  `marketing_preferences` (`PUT /api/marketing/context`, written before the
-  scope changes), because the blocks fetch from the API origin, which need
-  not share cookies with the console. A block route resolves its website as:
-  the `website` query parameter, else the caller's stored selection while it
-  still belongs to the tenant, else the most recently active site; 404 while
-  the tenant has none (`services/context.ts`).
+- **Period.** The bar holds the DMS `PeriodSelector` (id `marketing`) —
+  presets Today / 7D / 30D / 90D, default 30 days; comparison with the
+  previous period (default), the previous year, or none. The DMS keeps it in
+  the page URL (`?marketing.period=…&marketing.compare=…`) and the user's last
+  choice, and publishes it under the period scope `marketing`, which every
+  stock block of the pages binds to, source tables and banners included: the
+  blocks append `from`/`to` (and `compareFrom`/`compareTo`) to their fetch
+  URL. The routes map these bounds on the UTC days carrying the same dates —
+  the days rollup rows are keyed on — and cap a window at
+  `MAX_QUERY_PERIOD_DAYS` (90), cut at its start so the recent days stay in
+  (`services/period.ts`). Without `from`/`to` they fall back to the legacy
+  `period=Nd` ending today.
+- **Website.** A stock block knows a period scope, not a website. The
+  selection is stored server-side per member, in `marketing_preferences`
+  (`PUT /api/marketing/context`), because the blocks fetch from the API
+  origin, which need not share cookies with the console; once it is stored,
+  the bar asks the page's blocks to read again (`refreshPageBlocks()`). It
+  also mirrors the selection into the page URL (`?website=`), and a link
+  naming another site of the tenant selects it on load. A block route
+  resolves its website as: the `website` query parameter, else the caller's
+  stored selection while it still belongs to the tenant, else the most
+  recently active site; 404 while the tenant has none (`services/context.ts`).
 - **First run.** While the tenant has no website, the container renders a
   first-run hero instead of its children, so no block fetches for a tenant
   without a site.
@@ -589,12 +590,7 @@ interface-dms blocks. The sidebar headings are three label categories with
 Stock blocks render whatever a stock block can — `KpiCard`, `ChartCard`,
 `TopListCard`, `Grid`, `KeyValueList`, `Section`, `FieldRow`, `Meter`,
 `Form`, `StatGroup`, `Banner`, `TableView.fromSource` — the analytics ones
-bound to the `dms-marketing` period scope and reading the `/blocks/*` routes.
-A source table has no period scope: the campaigns table (and the notices
-under it) read the context from the page URL instead. The context bar
-mirrors it there (`?website=…&from=…&to=…&compare=…`, days and a DMS
-comparison name) and `contextUrl()` names it with `{{query.X}}` tokens; the
-routes accept those days and comparison names next to the period scope's instants. Hidden pages are reached from the others,
+bound to the `marketing` period scope and reading the `/blocks/*` routes. Hidden pages are reached from the others,
 never from the sidebar. The
 rest are module blocks, `CustomComponent("DmsMarketing<Name>")` built with
 `MarketingBlock()` (`src/pages/blocks.ts`): `Context` (the context bar and

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { contextScopeKey } from '../app/composables/useMarketingContext'
 import {
   displayName,
   formatDuration,
@@ -30,15 +29,6 @@ describe('formatting', () => {
   it('falls back to the raw code on a malformed region', () => {
     expect(displayName('FR', 'region', 'en')).toBe('France')
     expect(displayName('not a code!', 'region', 'en')).toBe('not a code!')
-  })
-})
-
-describe('context scope key', () => {
-  it('changes with the website and the refresh counter', () => {
-    const base = contextScopeKey('p', 'site-a', 0)
-    expect(contextScopeKey('p', 'site-b', 0)).not.toBe(base)
-    expect(contextScopeKey('p', 'site-a', 1)).not.toBe(base)
-    expect(contextScopeKey('p', 'site-a', 0)).toBe(base)
   })
 })
 
