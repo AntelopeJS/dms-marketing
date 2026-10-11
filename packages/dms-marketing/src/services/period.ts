@@ -45,13 +45,6 @@ export interface PeriodQuery {
   to?: unknown;
   compareFrom?: unknown;
   compareTo?: unknown;
-  /**
-   * What the window is compared with when no `compareFrom`/`compareTo` came:
-   * `previous-period`, `previous-year` or `none`, the names of the DMS period
-   * comparisons. The context bar writes it into the page URL with `from` and
-   * `to` as days, so a stock block reads the period through `{{query.X}}`.
-   */
-  compare?: unknown;
   period?: unknown;
 }
 
@@ -63,33 +56,17 @@ export function periodQueryOf(url: URL): PeriodQuery {
     to: params.get("to") ?? undefined,
     compareFrom: params.get("compareFrom") ?? undefined,
     compareTo: params.get("compareTo") ?? undefined,
-    compare: params.get("compare") ?? undefined,
     period: params.get("period") ?? undefined,
   };
 }
 
-const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-/**
- * An instant of the query. A bare day (`2026-10-09`, as the page URL carries
- * it) stands for that whole UTC day: its first millisecond as a start, its
- * last as an end, the bounds the period scope sends for a local day.
- */
-function parseInstant(
-  value: unknown,
-  bound: "start" | "end" = "start",
-): number | undefined {
+function parseInstant(value: unknown): number | undefined {
   const raw = queryString(value);
   if (!raw) {
     return undefined;
   }
   const time = Date.parse(raw);
-  if (!Number.isFinite(time)) {
-    return undefined;
-  }
-  return DAY_PATTERN.test(raw) && bound === "end"
-    ? time + MS_PER_DAY - 1
-    : time;
+  return Number.isFinite(time) ? time : undefined;
 }
 
 /**
@@ -139,7 +116,7 @@ function boundedWindow(
 export function resolveQueryWindow(query: PeriodQuery): QueryWindow {
   const bounded = boundedWindow(
     parseInstant(query.from),
-    parseInstant(query.to, "end"),
+    parseInstant(query.to),
   );
   if (bounded) {
     return bounded;
@@ -149,40 +126,11 @@ export function resolveQueryWindow(query: PeriodQuery): QueryWindow {
   return windowOfDays(today - (days - 1) * MS_PER_DAY, today);
 }
 
-/**
- * The comparison window, or null when the scope compares with nothing: the
- * `compareFrom`/`compareTo` a period scope sent, else the window `compare`
- * names next to the read one.
- */
+/** The comparison window, or null when the scope compares with nothing. */
 export function resolveCompareWindow(query: PeriodQuery): QueryWindow | null {
-  const bounded = boundedWindow(
+  return boundedWindow(
     parseInstant(query.compareFrom),
-    parseInstant(query.compareTo, "end"),
-  );
-  if (bounded) {
-    return bounded;
-  }
-  const compare = queryString(query.compare);
-  if (compare === "previous-period") {
-    return previousWindow(resolveQueryWindow(query));
-  }
-  if (compare === "previous-year") {
-    return previousYearWindow(resolveQueryWindow(query));
-  }
-  return null;
-}
-
-function previousYear(day: number): number {
-  const date = new Date(day);
-  date.setUTCFullYear(date.getUTCFullYear() - 1);
-  return date.getTime();
-}
-
-/** The same days a year earlier. */
-function previousYearWindow(window: QueryWindow): QueryWindow {
-  return windowOfDays(
-    previousYear(window.firstDay),
-    previousYear(window.lastDay),
+    parseInstant(query.compareTo),
   );
 }
 
