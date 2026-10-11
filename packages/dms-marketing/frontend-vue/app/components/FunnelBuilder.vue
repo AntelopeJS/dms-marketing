@@ -554,6 +554,10 @@ const websiteItems = computed(() =>
               />
             </DmsFieldRow>
           </div>
+          <p class="text-xs text-dimmed">
+            <span class="text-error" aria-hidden="true">*</span>
+            {{ t('dms.form.required_legend') }}
+          </p>
         </section>
 
         <section class="flex flex-col gap-3 p-5">

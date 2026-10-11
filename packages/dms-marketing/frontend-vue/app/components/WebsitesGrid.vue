@@ -504,6 +504,11 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
                 :message="fieldErrors.errors.extraDomains"
               />
             </DmsFieldRow>
+            <!-- The legend every DMS form shows under starred fields. -->
+            <p class="text-xs text-dimmed">
+              <span class="text-error" aria-hidden="true">*</span>
+              {{ t('dms.form.required_legend') }}
+            </p>
           </template>
           <template v-else-if="tab === 'capture'">
             <DmsFieldRow

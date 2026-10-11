@@ -319,6 +319,10 @@ const stepTwoState = computed(() =>
                 :disabled="!name.trim() || !domain.trim()"
                 :label="t('page.marketing.install.add')"
               />
+              <p class="text-xs text-dimmed md:col-span-3">
+                <span class="text-error" aria-hidden="true">*</span>
+                {{ t('dms.form.required_legend') }}
+              </p>
             </form>
           </div>
         </li>
