@@ -188,19 +188,27 @@ test("the campaign key keeps the channel the session was counted under", () => {
   assert.equal(campaignKey({ referrerDomain: "google.com" }), undefined);
 });
 
-test("older keys take their medium's channel and merge with their normalized spelling", () => {
+test("a campaign key without its channel is left out, values read as stored", () => {
   const keys = {
-    [["qa-mail", "Email", "X"].join(SEPARATOR)]: 2,
-    [["qa-mail", "email ", "X"].join(SEPARATOR)]: 3,
+    [["qa-mail", "email", "X"].join(SEPARATOR)]: 2,
     [["qa-mail", "email", "X", "email"].join(SEPARATOR)]: 4,
+    [["qa-mail", "Email", "X", "email"].join(SEPARATOR)]: 1,
   };
+  assert.equal(
+    splitCampaignKey(["qa-mail", "email", "X"].join(SEPARATOR)),
+    undefined,
+  );
   const report = campaignsReport({
     window: window(1),
     rows: [row(0, { sessions: 20, tops: { topCampaigns: keys } })],
   });
-  assert.equal(report.rows.length, 1);
-  assert.equal(report.rows[0].sessions, 9);
-  assert.equal(report.rows[0].channel, "email");
+  assert.deepEqual(
+    report.rows.map((entry) => [entry.medium, entry.channel, entry.sessions]),
+    [
+      ["email", "email", 4],
+      ["Email", "email", 1],
+    ],
+  );
 });
 
 test("tabs and filters narrow every row before the page is cut", () => {

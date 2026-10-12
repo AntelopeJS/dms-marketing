@@ -280,7 +280,7 @@ Kind-specific `data` payloads:
 | `GET /api/marketing/blocks/top?dimension=&limit=` | tenant member | one `TopListCard` over a rollup dimension (referrers, UTM contents/terms…), `limit` 5 by default, at most 50 |
 | `GET /api/marketing/blocks/channels` | tenant member | sessions per channel with share and change |
 | `GET /api/marketing/blocks/campaigns/rows?search=&filter_channel=is:<channel>` | tenant member | the UTM campaign table (`TableView.fromSource`), `{ results, total }`: top 100 (source, medium, campaign) triples with share, daily sessions, derived channel and the missing-medium flag |
-| `GET /api/marketing/blocks/campaigns/notice?kind=missing\|truncated` | tenant member | the notice under the campaign table for a stock `Banner`: sessions tagged without a medium, or the cut at 100 rows; `null` when there is none |
+| `GET /api/marketing/blocks/campaigns/notice?kind=tagged\|missing` | tenant member | a notice by the campaign table for a stock `Banner`: the share of sessions tagged, or the sessions tagged without a medium; `null` when there is none |
 | `GET /api/marketing/blocks/collection-notice` | tenant member | the "collection paused" notice over the Websites grid and in the install guide, for a stock `Banner`; `null` while the module collects |
 | `GET /api/marketing/stats/overview?website=&from=&to=` (`period=Nd` as a fallback) | tenant member | rollup-backed dashboard read |
 | `GET /api/marketing/stats/pages?website=&period=Nd&search=&limit=` | tenant member | inventory of observed paths, plus `heatmapSampleRate` and `trackerEnabled` so the caller can explain an empty heatmap |

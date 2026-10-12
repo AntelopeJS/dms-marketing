@@ -4,8 +4,7 @@ import type { Website } from "@/db/tables/websites.table";
 import { BoundedCache } from "./bounded-cache";
 import { percentText } from "./composed";
 import { MARKETING_CHANNELS, type MarketingChannel } from "@/types";
-import { CAMPAIGN_KEY_SEPARATOR } from "@/types/constants";
-import { resolveChannel, splitCampaignKey } from "./acquisition";
+import { splitCampaignKey } from "./acquisition";
 import {
   mergeDimension,
   percentChange,
@@ -93,9 +92,7 @@ export interface CampaignsReport {
 
 /**
  * Every campaign row of the window, one per source × medium × campaign and
- * the channel its sessions were counted under. A key rolled up before the
- * channel joined it takes the channel its medium maps to, and values stored
- * before they were normalized merge with their normalized spelling.
+ * the channel its sessions were counted under.
  */
 export function campaignsReport(
   read: Pick<RollupRead, "rows" | "window">,
@@ -106,16 +103,14 @@ export function campaignsReport(
   const byKey = new Map<string, CampaignRow>();
   for (const day of read.rows) {
     const index = dayIndex.get(day.day);
-    for (const [raw, count] of Object.entries(day.tops?.topCampaigns ?? {})) {
-      const { channel: stored, ...parts } = splitCampaignKey(raw);
-      const channel = stored ?? resolveChannel(undefined, parts.medium);
-      const key = [parts.source, parts.medium, parts.campaign, channel]
-        .map((part) => part ?? "")
-        .join(CAMPAIGN_KEY_SEPARATOR);
+    for (const [key, count] of Object.entries(day.tops?.topCampaigns ?? {})) {
+      const parts = splitCampaignKey(key);
+      if (!parts) {
+        continue;
+      }
       const row = byKey.get(key) ?? {
         key,
         ...parts,
-        channel,
         sessions: 0,
         share: 0,
         daily: days.map(() => 0),

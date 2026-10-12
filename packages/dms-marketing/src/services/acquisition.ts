@@ -267,8 +267,7 @@ export interface CampaignKeyParts {
   source?: string;
   medium?: string;
   campaign?: string;
-  /** Undefined on keys rolled up before the channel joined the key. */
-  channel?: MarketingChannel;
+  channel: MarketingChannel;
 }
 
 function isChannel(value: string | undefined): value is MarketingChannel {
@@ -277,13 +276,19 @@ function isChannel(value: string | undefined): value is MarketingChannel {
   );
 }
 
-/** A key split back, its values normalized: older keys kept them raw. */
-export function splitCampaignKey(key: string): CampaignKeyParts {
+/**
+ * A key `campaignKey` minted, split back: blank slots read as undefined.
+ * Undefined for a key without its channel, which the table cannot place.
+ */
+export function splitCampaignKey(key: string): CampaignKeyParts | undefined {
   const [source, medium, campaign, channel] = key.split(CAMPAIGN_KEY_SEPARATOR);
+  if (!isChannel(channel)) {
+    return undefined;
+  }
   return {
-    source: normalizeUtm("source", source),
-    medium: normalizeUtm("medium", medium),
-    campaign: normalizeUtm("campaign", campaign),
-    channel: isChannel(channel) ? channel : undefined,
+    source: source || undefined,
+    medium: medium || undefined,
+    campaign: campaign || undefined,
+    channel,
   };
 }

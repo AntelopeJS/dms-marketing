@@ -83,8 +83,7 @@ the same caveats apply ([overview.md](overview.md#where-the-numbers-come-from)):
 
 - A day keeps at most `MAX_ENTRIES_PER_TOP_MAP` (50) campaign triples;
   long-tail campaigns on high-cardinality days are approximate. Campaign
-  keys rolled up before the channel joined them show the channel their
-  medium maps to.
+  keys rolled up before the channel joined them are left out of the table.
 - Top maps are kept `TOP_MAPS_RETENTION_DAYS` (a year plus 90 days), long
   enough for a 90-day window compared with the previous year. A comparison
   reaching days whose maps were emptied earlier shows no change, and the
