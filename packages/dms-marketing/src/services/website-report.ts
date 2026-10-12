@@ -14,11 +14,11 @@ import {
   toContextWebsite,
 } from "./context";
 import { listRejectedSources, type RejectedSource } from "./origin-guard";
-import { periodStart, resolveQueryWindow } from "./period";
+import { periodStart, trailingWindow } from "./period";
 import { mergeDimension, readRollups, sumRollups } from "./rollups";
 import { lastAcceptedSource } from "./website-hosts";
 
-const CARD_WINDOW_DAYS = "30d";
+const CARD_WINDOW_DAYS = 30;
 
 /** One card of the Websites page. */
 export interface WebsiteCard extends ContextWebsite {
@@ -41,10 +41,7 @@ async function cardOf(
   website: Website,
   activity: ReadonlyMap<string, number>,
 ): Promise<WebsiteCard> {
-  const rows = await readRollups(
-    website,
-    resolveQueryWindow({ period: CARD_WINDOW_DAYS }),
-  );
+  const rows = await readRollups(website, trailingWindow(CARD_WINDOW_DAYS));
   const [funnels, snapshots] = await Promise.all([
     GetModel(FunnelsModel, website.tenantId).listByWebsite(website._id),
     GetModel(PageSnapshotsModel, website.tenantId).countByWebsite(website._id),

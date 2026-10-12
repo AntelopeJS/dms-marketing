@@ -30,7 +30,7 @@ const {
   PageSnapshot,
   pageSnapshotsTableName,
 } = require("../dist/db/tables/page_snapshots.table");
-const { resolveQueryWindow } = require("../dist/services/period");
+const { trailingWindow } = require("../dist/services/period");
 
 const SCHEMA = "heatmap_counts_test";
 const TENANT = "tenant-a";
@@ -143,7 +143,7 @@ test("page activity counts clicks and sampled views per path, and reads the decl
     rows.push(event(`p${index}`, "pageview", index % 2 ? "/a" : "/b"));
   }
   await collection("marketing_events").insertMany(rows);
-  const window = resolveQueryWindow({ period: "7d" });
+  const window = trailingWindow(7);
 
   const quiet = await computePageActivity(TENANT, SITE, window);
   assert.equal(quiet.clicks.get("/a"), 2);
@@ -160,11 +160,7 @@ test("page activity counts clicks and sampled views per path, and reads the decl
   }
   await collection("marketing_events").insertMany(more);
   // A window ends at the instant it is resolved: resolve a fresh one.
-  const busy = await computePageActivity(
-    TENANT,
-    SITE,
-    resolveQueryWindow({ period: "7d" }),
-  );
+  const busy = await computePageActivity(TENANT, SITE, trailingWindow(7));
   // Declared, not measured: 2 scroll events over 49 pageviews would say 4 %.
   assert.equal(busy.sampleRate, (30 + 10 * 0.5) / 40);
 });

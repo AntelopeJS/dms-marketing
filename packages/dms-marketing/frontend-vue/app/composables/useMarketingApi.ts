@@ -521,7 +521,7 @@ export function useMarketingApi() {
       $authFetch<MarketingFunnelSuggestions>(
         '/api/marketing/funnels/suggestions',
         {
-          query: { website, period: '30d' },
+          query: { website },
         },
       ),
 
@@ -532,7 +532,7 @@ export function useMarketingApi() {
     ) =>
       $authFetch<MarketingFunnelPreview>('/api/marketing/funnels/preview', {
         method: 'POST',
-        query: { website, period: '30d' },
+        query: { website },
         body: { steps, conversionWindowHours },
       }),
 

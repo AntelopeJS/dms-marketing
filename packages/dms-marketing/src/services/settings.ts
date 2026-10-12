@@ -20,7 +20,7 @@ import {
   MS_PER_MINUTE,
   VISITOR_SECRET_BYTES,
 } from "@/types/constants";
-import { resolveQueryWindow } from "./period";
+import { trailingWindow } from "./period";
 import {
   countRawEventsBefore,
   countSnapshotsBefore,
@@ -400,13 +400,14 @@ export interface CollectionStatus {
   sessions: number;
 }
 
-const COLLECTION_WINDOW = "30d";
+/** Days the Collection section counts sessions over. */
+const COLLECTION_WINDOW_DAYS = 30;
 
 export async function collectionStatus(
   tenantId: string,
 ): Promise<CollectionStatus> {
   const websites = await listTenantWebsites(tenantId);
-  const window = resolveQueryWindow({ period: COLLECTION_WINDOW });
+  const window = trailingWindow(COLLECTION_WINDOW_DAYS);
   const rows = await Promise.all(
     websites.map((website) => readRollups(website, window)),
   );

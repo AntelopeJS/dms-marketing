@@ -282,17 +282,17 @@ Kind-specific `data` payloads:
 | `GET /api/marketing/blocks/campaigns/rows?search=&filter_channel=is:<channel>` | tenant member | the UTM campaign table (`TableView.fromSource`), `{ results, total }`: top 100 (source, medium, campaign) triples with share, daily sessions, derived channel and the missing-medium flag |
 | `GET /api/marketing/blocks/campaigns/notice?kind=tagged\|missing` | tenant member | a notice by the campaign table for a stock `Banner`: the share of sessions tagged, or the sessions tagged without a medium; `null` when there is none |
 | `GET /api/marketing/blocks/collection-notice` | tenant member | the "collection paused" notice over the Websites grid and in the install guide, for a stock `Banner`; `null` while the module collects |
-| `GET /api/marketing/stats/overview?website=&from=&to=` (`period=Nd` as a fallback) | tenant member | rollup-backed dashboard read |
-| `GET /api/marketing/stats/pages?website=&period=Nd&search=&limit=` | tenant member | inventory of observed paths, plus `heatmapSampleRate` and `trackerEnabled` so the caller can explain an empty heatmap |
-| `GET /api/marketing/stats/heatmap?website=&path=&period=Nd` | tenant member | click heatmap (also served through the interface). `website` is optional and merges the tenant's sites when omitted — pass it |
+| `GET /api/marketing/stats/overview?website=&from=&to=` | tenant member | rollup-backed dashboard read |
+| `GET /api/marketing/stats/pages?website=&from=&to=&search=&limit=` | tenant member | inventory of observed paths, plus `heatmapSampleRate` and `trackerEnabled` so the caller can explain an empty heatmap |
+| `GET /api/marketing/stats/heatmap?website=&path=&from=&to=` | tenant member | click heatmap (also served through the interface). `website` is optional and merges the tenant's sites when omitted — pass it |
 | `GET /api/marketing/stats/snapshot?website=&path=&layout=` | tenant member | the page snapshot the heatmap is drawn over: the capture at that layout, else the nearest one (`exact: false`), else `null`. A document always wins over a row recording an oversize capture, which comes back as `html: null` with the `bytes` it reached |
-| `DELETE /api/marketing/stats/heatmap?website=&path=` | tenant owner | heatmap reset: the clicks, scroll depths and snapshots of one path, or of the whole site without `path`; answers the number of events deleted |
+| `DELETE /api/marketing/stats/heatmap?website=&path=` | tenant owner | heatmap reset: the clicks, scroll depths and snapshots of one path, or of the whole site without `path`; answers `{events, snapshots}` deleted |
 | `GET /api/marketing/funnels/rows?filter_kind=is:funnel\|ab` | tenant member | the funnels table (`TableView.fromSource`), `{ results, total }`: per funnel, entered sessions, conversion and its change in points, or the A/B test's state |
 | `GET /api/marketing/funnels/winner` | tenant member | the banner above the funnels table, for a stock `Banner`: days of the period raw events do not cover, else the running test ready to decide (significant, leader ahead, 7 days served, 50 conversions per arm), else a comparison left out; `null` otherwise |
 | `GET /api/marketing/funnels/templates?website=` | tenant member | first-run templates from the period's raw journeys: top custom events, each led by the page viewed most often before it, with the sessions that would enter |
 | `GET /api/marketing/funnels/:id/delete-confirmation` | tenant member | the list's delete dialog worded for the row (a running test says it stops) |
-| `GET /api/marketing/funnels/suggestions` | tenant member | the site's top pages and custom events, for the builder's autocomplete |
-| `POST /api/marketing/funnels/preview` | tenant member | scores unsaved steps and window over the period, for the builder |
+| `GET /api/marketing/funnels/suggestions` | tenant member | the site's top pages and custom events of the last 30 days, for the builder's autocomplete |
+| `POST /api/marketing/funnels/preview` | tenant member | scores unsaved steps and window over the last 30 days, for the builder |
 | `GET /api/marketing/funnels/:id/results` | tenant member | read-time funnel computation (each step with the events it `matches`, 0 for a step never sent), plus `previous`, the same computation over the comparison window (plain funnels and drafts, and only when raw events cover it — `coverage` says what they cover) — and, when the funnel carries an A/B split, the per-arm read through the same steps over the split's runs: exposed sessions, conversion, z-test verdicts with the lift interval (Bonferroni past two arms), SRM check, `decision` (days served, ready), and `verdict` — the one reading the report, its stop dialog and the list share: `kind` (winner, loser, flat, early, withheld) and the `leader` arm it names |
 | `/api/marketing/tables/funnels/*` | platform owner | funnels DataController (TableView CRUD, tenant-instance-scoped via `@TenantScopedModel`; enforces the split's `draft → running ⇄ stopped` lifecycle, stamps the runs it produces, and freezes key/variations outside draft) |
 | `/api/marketing/tables/websites/*` | platform owner | read-only websites DataController (relation picker; global table, column-scoped) |
@@ -301,10 +301,10 @@ Kind-specific `data` payloads:
 | `GET /api/marketing/settings/collection/banner` | platform owner | the Collection section for a stock `Banner`: state, coverage and the pause (confirmed) or resume action |
 | `GET /api/marketing/settings/glance?item=` | platform owner | one `Meter` of *At a glance*: `raw`, `statistics` or `snapshots` retention on a shared scale |
 
-Routes marked tenant member under `/blocks`, `/funnels/rows`, `/funnels/winner`,
-`/funnels/suggestions`, `/funnels/preview` and `/funnels/:id/results` read
-their window from the period scope (see *Context and period*); the older
-`/stats/*` reads take `period=Nd` only.
+Routes marked tenant member under `/blocks`, `/stats`, `/funnels/rows`,
+`/funnels/winner`, `/funnels/templates` and `/funnels/:id/results` read their
+window from the period scope (see *Context and period*); without `from`/`to`
+they read the last 7 days.
 
 Client sites need no CORS grant: the tracker posts `text/plain` — a
 CORS-safelisted type, no preflight — and the backend parses the JSON body
@@ -332,8 +332,8 @@ that wraps the blocks of each page.
   `comparison`) to their fetch URL. The routes map these bounds on the UTC
   days carrying the same dates — the days rollup rows are keyed on — and cap
   a window at `MAX_QUERY_PERIOD_DAYS` (90), cut at its start so the recent
-  days stay in (`services/period.ts`). Without `from`/`to` they fall back to
-  the legacy `period=Nd` ending today.
+  days stay in (`services/period.ts`). Without `from`/`to` they read the last
+  7 days.
 - **Days are UTC days.** East of UTC, between local midnight and the UTC one,
   a window ending on the local today would name a UTC day nothing was
   counted in yet: it is moved back to end on the current UTC day. The bar

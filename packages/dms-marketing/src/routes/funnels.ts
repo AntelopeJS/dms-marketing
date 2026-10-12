@@ -40,6 +40,7 @@ import {
   type QueryWindow,
   resolveCompareWindow,
   resolveQueryWindow,
+  trailingWindow,
 } from "@/services/period";
 import { queryString } from "@/services/query-param";
 import { requireTenantFunnel } from "@/services/tenant-funnel";
@@ -53,6 +54,11 @@ import { parseFunnelSteps } from "@/utils/funnel-steps-type";
 
 const INVALID_STEPS_MESSAGE = "$page.marketing.errors.invalid_steps";
 const DELETE_PREFIX = "$page.marketing.funnel.delete.";
+/**
+ * Days the builder reads its suggestions and preview over: it has no period
+ * of its own.
+ */
+const BUILDER_WINDOW_DAYS = 30;
 
 const previewSchema = z.object({
   steps: z.unknown(),
@@ -186,10 +192,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
     @Parameter("website", "query") website?: string,
   ) {
     const site = await resolveContextWebsite(context, user, website);
-    return funnelSuggestions(
-      site,
-      resolveQueryWindow(periodQueryOf(context.url)),
-    );
+    return funnelSuggestions(site, trailingWindow(BUILDER_WINDOW_DAYS));
   }
 
   /** Scores a definition being edited, without saving it. */
@@ -218,7 +221,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
     const results = await funnelResultsIn(
       draft,
       site.tenantId,
-      resolveQueryWindow(periodQueryOf(context.url)),
+      trailingWindow(BUILDER_WINDOW_DAYS),
     );
     return { computation: results.computation, truncated: results.truncated };
   }

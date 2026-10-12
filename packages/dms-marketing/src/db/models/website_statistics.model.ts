@@ -62,7 +62,7 @@ export class WebsiteStatisticsModel extends BasicDataModel(
     websiteId: string,
     cutoff: number,
     dimensions: readonly TopDimension[],
-    lastDay = Number.MAX_SAFE_INTEGER,
+    lastDay: number,
   ): Promise<DayTops[]> {
     return this.table
       .getAll(websiteId, "websiteId")

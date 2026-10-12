@@ -6,6 +6,7 @@ const {
   previousWindow,
   resolveCompareWindow,
   resolveQueryWindow,
+  trailingWindow,
   windowDays,
 } = require("../dist/services/period");
 
@@ -46,8 +47,8 @@ test("a window longer than the cap keeps its most recent days", () => {
   assert.equal(window.lastDay, utcMidnight("2026-09-30"));
 });
 
-test("the legacy Nd parameter still ends today", () => {
-  const window = resolveQueryWindow({ period: "7d" });
+test("a trailing window ends today", () => {
+  const window = trailingWindow(30);
   const now = new Date();
   const today = Date.UTC(
     now.getUTCFullYear(),
@@ -55,8 +56,16 @@ test("the legacy Nd parameter still ends today", () => {
     now.getUTCDate(),
   );
   assert.equal(window.lastDay, today);
-  assert.equal(window.days, 7);
-  assert.equal(windowDays(window).length, 7);
+  assert.equal(window.days, 30);
+  assert.equal(windowDays(window).length, 30);
+});
+
+test("a read without bounds covers the last 7 days, a legacy Nd ignored", () => {
+  const window = resolveQueryWindow({ period: "30d" });
+  assert.deepEqual(
+    [window.firstDay, window.lastDay, window.days],
+    [trailingWindow(7).firstDay, trailingWindow(7).lastDay, 7],
+  );
 });
 
 test("no comparison bounds means no comparison window", () => {

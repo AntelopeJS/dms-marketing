@@ -170,7 +170,7 @@ async function resolveHeatmapScope(
   return { tenantId, websiteIds };
 }
 
-/** The days a heatmap-family read covers: the page's `from`/`to`, else `period`. */
+/** The days a heatmap-family read covers: the page's `from`/`to`. */
 function requestWindow(context: RequestContext): QueryWindow {
   return resolveQueryWindow(periodQueryOf(context.url));
 }
@@ -399,7 +399,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
    * a surprise. Without `path` the whole site's click and scroll history goes
    * — the "pages were redesigned" case the reset exists for; a blank `path`
    * is refused rather than read as "no path". Answers `{events, snapshots}`
-   * deleted (`deleted` repeats `events` for older callers).
+   * deleted.
    */
   @Delete("heatmap")
   async resetHeatmap(
@@ -412,11 +412,6 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
       context,
       queryString(website),
     );
-    const deleted = await resetHeatmapEvents(
-      websiteDoc.tenantId,
-      websiteDoc._id,
-      path,
-    );
-    return { ...deleted, deleted: deleted.events };
+    return resetHeatmapEvents(websiteDoc.tenantId, websiteDoc._id, path);
   }
 }

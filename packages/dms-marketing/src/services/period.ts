@@ -6,21 +6,6 @@ import {
 import { queryString } from "./query-param";
 import { getUtcMidnight } from "./rollup-write";
 
-const PERIOD_PATTERN = /^(\d{1,3})d$/;
-
-/**
- * "Nd" → clamped day count; anything else falls back to the default. Takes
- * `unknown` because it sits directly behind a query parameter, and an empty
- * one does not arrive as a string (see {@link queryString}).
- */
-export function parsePeriodDays(period: unknown): number {
-  const match = queryString(period)?.match(PERIOD_PATTERN);
-  if (!match) {
-    return DEFAULT_QUERY_PERIOD_DAYS;
-  }
-  return Math.min(Math.max(Number(match[1]), 1), MAX_QUERY_PERIOD_DAYS);
-}
-
 /** First UTC midnight of an N-day window ending today. */
 export function periodStart(days: number): Date {
   return new Date(getUtcMidnight(new Date()) - (days - 1) * MS_PER_DAY);
@@ -63,7 +48,6 @@ export interface PeriodQuery {
    * (`previous-period`, `previous-year`, `none`), sent beside them.
    */
   comparison?: unknown;
-  period?: unknown;
 }
 
 /** The period scope's parameters, read off a request URL as the scope sent them. */
@@ -76,7 +60,6 @@ export function periodQueryOf(url: URL): PeriodQuery {
     compareTo: params.get("compareTo") ?? undefined,
     preset: params.get("preset") ?? undefined,
     comparison: params.get("comparison") ?? undefined,
-    period: params.get("period") ?? undefined,
   };
 }
 
@@ -192,9 +175,15 @@ function readBounds(query: PeriodQuery): DayBounds | null {
   return boundedDays(parseInstant(query.from), parseInstant(query.to));
 }
 
+/** The last `days` UTC days, today included. */
+export function trailingWindow(days: number): QueryWindow {
+  const today = getUtcMidnight(new Date());
+  return windowOfDays(today - (days - 1) * MS_PER_DAY, today);
+}
+
 /**
  * The window a read covers: `from`/`to` when a period scope sent them, else
- * the legacy `period=Nd` ending today. Longer than MAX_QUERY_PERIOD_DAYS is
+ * the last DEFAULT_QUERY_PERIOD_DAYS. Longer than MAX_QUERY_PERIOD_DAYS is
  * cut at its start, so the most recent days always stay in. The rollups keep
  * UTC days: a local day reads the UTC day of the same date (see
  * {@link firstDayOf} and {@link daysAhead}).
@@ -204,9 +193,7 @@ export function resolveQueryWindow(query: PeriodQuery): QueryWindow {
   if (bounds) {
     return shiftedWindow(bounds, daysAhead(bounds));
   }
-  const today = getUtcMidnight(new Date());
-  const days = parsePeriodDays(query.period);
-  return windowOfDays(today - (days - 1) * MS_PER_DAY, today);
+  return trailingWindow(DEFAULT_QUERY_PERIOD_DAYS);
 }
 
 /**

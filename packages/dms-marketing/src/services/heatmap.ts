@@ -424,6 +424,6 @@ export async function buildTenantHeatmap(
     query.tenantId,
     websiteIds,
     query.path,
-    resolveQueryWindow({ period: query.period }),
+    resolveQueryWindow({ from: query.from, to: query.to }),
   );
 }
