@@ -140,6 +140,57 @@ function shopVolume(dayIndex: number, rnd: () => number): DayVolume {
   return { sessions: Math.round(base + spike), spike };
 }
 
+/** The channel a demo campaign's sessions land in: its medium alone, as they carry no referrer. */
+function mediumChannel(key: string): string {
+  const medium = key.split(SEPARATOR)[1];
+  if (medium === "cpc" || medium.startsWith("paid")) return "paid";
+  if (medium === "email" || medium === "social" || medium === "referral") return medium;
+  return "direct";
+}
+
+/** The channel an untagged session with this referrer lands in. */
+function referrerChannel(domain: string): string {
+  if (/google|bing|duckduckgo/.test(domain)) return "organic";
+  return /linkedin|facebook/.test(domain) ? "social" : "referral";
+}
+
+/** Only the counted keys: a zero would still take a line in a top. */
+function counted(map: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(Object.entries(map).filter(([, count]) => count > 0));
+}
+
+/**
+ * Each session of a day in exactly one channel, so the channels add up to
+ * the sessions: the tagged ones by their medium (they carry no referrer), the
+ * untagged referred ones by their referrer, the rest Direct.
+ */
+function channelsOf(
+  sessions: number,
+  campaigns: Record<string, number>,
+  referrers: Record<string, number>,
+): Record<string, number> {
+  const channels: Record<string, number> = { direct: sessions, paid: 0, email: 0, social: 0, referral: 0, organic: 0 };
+  const take = (channel: string, count: number) => {
+    channels[channel] += count;
+    channels.direct -= count;
+  };
+  for (const [key, count] of Object.entries(campaigns)) {
+    if (mediumChannel(key) !== "direct") take(mediumChannel(key), count);
+  }
+  for (const [domain, count] of Object.entries(referrers)) take(referrerChannel(domain), count);
+  return counted(channels);
+}
+
+/** One UTM field of the tagged sessions, read off their campaign keys. */
+function utmTop(campaigns: Record<string, number>, field: number): Record<string, number> {
+  const top: Record<string, number> = {};
+  for (const [key, count] of Object.entries(campaigns)) {
+    const value = key.split(SEPARATOR)[field];
+    if (value) top[value] = (top[value] ?? 0) + count;
+  }
+  return top;
+}
+
 function rollupRow(
   websiteId: string,
   day: number,
@@ -151,15 +202,16 @@ function rollupRow(
   const pageviews = Math.round(sessions * (3.1 + rnd() * 0.3));
   const campaigns = { ...SHOP_CAMPAIGNS };
   campaigns[["newsletter", "email", "autumn-sale"].join(SEPARATOR)] = spike > 0 ? spike * 1.2 : 0.4;
-  const tagged = Math.round(sessions * 0.27 + spike * 0.9);
-  const channels = spread(sessions, {
-    direct: 33,
-    organic: 29,
-    email: 9 + (spike > 0 ? 40 : 0),
-    referral: 11,
-    social: 6.6,
-    paid: 4,
-  });
+  // The newsletter spike arrives tagged; referrers only reach the sessions
+  // left, so tagged + referred never exceeds the day.
+  const base = sessions - spike;
+  const tagged = Math.min(sessions, Math.round(base * 0.27 + spike * 0.9));
+  const taggedCampaigns = counted(spread(tagged, campaigns));
+  const referrers = counted(spread(Math.min(sessions - tagged, Math.round(base * 0.45)), SHOP_REFERRERS));
+  const channels = channelsOf(sessions, taggedCampaigns, referrers);
+  const paidClicks = Object.entries(taggedCampaigns)
+    .filter(([key]) => mediumChannel(key) === "paid")
+    .reduce((sum, [, count]) => sum + count, 0);
   return {
     _id: `${websiteId}:${day}`,
     websiteId,
@@ -174,13 +226,16 @@ function rollupRow(
       topPages: spread(pageviews, SHOP_PAGES),
       topEntryPages: spread(sessions, { "/": 40, "/sale/office-chairs": 30, "/products/standing-desks": 15, "/blog/desk-setup-guide": 9, "/pricing/b2b": 6 }),
       topExitPages: spread(sessions, { "/": 25, "/cart": 20, "/checkout": 18, "/sale/office-chairs": 22, "/pricing/b2b": 15 }),
-      topReferrers: spread(Math.round(sessions * 0.45), SHOP_REFERRERS),
-      topUtmSources: spread(tagged, { newsletter: 50, linkedin: 20, google: 20, facebook: 5, northwind: 5 }),
-      topUtmMediums: spread(tagged, { email: 55, social: 20, cpc: 20, referral: 5 }),
-      topUtmCampaigns: spread(tagged, { "autumn-sale": spike > 0 ? 60 : 5, "b2b-desks-q3": 20, "ergonomic-chairs": 15, "weekly-digest": 12 }),
-      topUtmTerms: spread(Math.round(sessions * 0.04), { "ergonomic office chair": 49, "standing desk b2b": 26, "office chair bulk": 17, "cable tray desk": 8 }),
-      topUtmContents: spread(Math.round(sessions * 0.15), { "hero-button": 50, "product-grid": 24, "carousel-2": 15, "footer-link": 11 }),
-      topCampaigns: spread(tagged, campaigns),
+      topReferrers: referrers,
+      topUtmSources: utmTop(taggedCampaigns, 0),
+      topUtmMediums: utmTop(taggedCampaigns, 1),
+      topUtmCampaigns: utmTop(taggedCampaigns, 2),
+      // Terms come with the paid search clicks, contents with any tagged link.
+      topUtmTerms: counted(spread(Math.min(paidClicks, Math.round(sessions * 0.04)), { "ergonomic office chair": 49, "standing desk b2b": 26, "office chair bulk": 17, "cable tray desk": 8 })),
+      topUtmContents: counted(spread(Math.min(tagged, Math.round(sessions * 0.15)), { "hero-button": 50, "product-grid": 24, "carousel-2": 15, "footer-link": 11 })),
+      topCampaigns: Object.fromEntries(
+        Object.entries(taggedCampaigns).map(([key, count]) => [`${key}${SEPARATOR}${mediumChannel(key)}`, count]),
+      ),
       topChannels: channels,
       topDevices: spread(sessions, { desktop: 68, mobile: 27, tablet: 5 }),
       topBrowsers: spread(sessions, { Chrome: 61, Safari: 22, Firefox: 9, Edge: 8 }),

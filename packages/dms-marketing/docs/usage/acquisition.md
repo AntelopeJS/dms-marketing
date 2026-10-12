@@ -20,24 +20,33 @@ and UTM details behind them. It reads the website and period of the
   not something the tracker sends: it is a pure mapping of the session's
   referrer domain, `utm_medium` and ad click id, applied when the session is
   counted (see below). Beside the card, **How a session gets its channel**
-  states the rules.
+  states the rules. A channel's row opens that channel's tab of the
+  campaigns table (`?campaigns.tab=<channel>`, a link that can be shared).
 - **UTM campaigns table** — one row per **(source, medium, campaign)**
-  triple observed on new sessions, ranked by sessions, with its share of the
-  period's sessions, a sessions-per-day sparkline and the channel its medium
-  maps to. A blank cell is a UTM parameter the landing URL did not carry —
-  `?utm_source=newsletter` alone is a real campaign row with an empty medium
-  and campaign. The filter matches across the three columns, and asks the
-  route itself once the table is cut at its top 100 rows; the tabs
-  narrow the table to one channel. The card's header gives the
-  tagged sessions and their share of all traffic.
+  triple observed on new sessions and the channel those sessions were
+  counted under (referrer and click id included, so a row agrees with the
+  channels card), ranked by sessions, with its share of the period's
+  sessions and a sessions-per-day sparkline. A triple whose sessions landed
+  in two channels — `utm_source=facebook` from the app (Direct) and from
+  facebook.com (Social) — takes two rows. "not set" is a UTM parameter the
+  landing URL did not carry — `?utm_source=newsletter` alone is a real
+  campaign row. UTM values are trimmed, and source and medium lower-cased,
+  so `Email` and `email ` are one medium. The route searches, filters,
+  sorts and pages every row of the period: the tabs, their counters and the
+  footer count cover all of them. A banner above the table gives the tagged
+  sessions and their share of all traffic.
 - **Missing medium** — a row tagged without `utm_medium` is flagged, and a
   banner above the table counts its sessions: with no medium they classify
   by referrer alone, which makes them Direct when the link carried no
   referrer — a mail client never sends one. Adding `utm_medium` to the link
   fixes it for the sessions to come.
+- **No visit yet** — while the website has sent no pageview, a banner over
+  the page says so and links to the install guide.
 - **Top referrers / UTM contents / UTM terms** — the external referrer
   domains counted on new sessions (all channels, not just the referral
-  slice), plus `utm_content` and `utm_term`, the two parameters that do not
+  slice; link-shim and mobile hosts such as `l.facebook.com` or
+  `m.youtube.com` count as their network), each with its share of the
+  period's sessions, plus `utm_content` and `utm_term`, the two parameters that do not
   take part in the triple, as top lists.
 
 ## How channels are classified
@@ -61,7 +70,7 @@ would read as direct or referral. A medium the mapping does not know keeps
 referrer semantics — referral with a referrer, direct without one.
 
 The mapping runs when the session's rollup fires, and the channel is stored
-nowhere else — so refining the mapping needs no migration, but it never
+nowhere but in the campaign key of the rollup — so refining the mapping needs no migration, but it never
 reclassifies the past either: sessions already rolled up keep the channel
 they got, and only sessions counted after the change classify by the new
 rules. Email and the referral mediums arrived that way; days rolled up
@@ -73,10 +82,13 @@ Same source as the overview — the **daily rollups**, never raw events — so
 the same caveats apply ([overview.md](overview.md#where-the-numbers-come-from)):
 
 - A day keeps at most `MAX_ENTRIES_PER_TOP_MAP` (50) campaign triples;
-  long-tail campaigns on high-cardinality days are approximate. The table
-  holds the top 100 rows of the period and says when more combinations were
-  seen; a filter then searches every combination through the route's
-  `search=` parameter, which filters before that cut.
+  long-tail campaigns on high-cardinality days are approximate. Campaign
+  keys rolled up before the channel joined them show the channel their
+  medium maps to.
+- Top maps are kept `TOP_MAPS_RETENTION_DAYS` (a year plus 90 days), long
+  enough for a 90-day window compared with the previous year. A comparison
+  reaching days whose maps were emptied earlier shows no change, and the
+  channels card says why.
 - **Dimensions start at their ship date.** Days rolled up before the
   campaign and channel dimensions existed contribute nothing to this page;
   a window overlapping that boundary undercounts campaigns, never traffic.

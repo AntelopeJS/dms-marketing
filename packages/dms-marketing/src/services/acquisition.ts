@@ -1,4 +1,4 @@
-import type { MarketingChannel } from "@/types";
+import { MARKETING_CHANNELS, type MarketingChannel } from "@/types";
 import { CAMPAIGN_KEY_SEPARATOR } from "@/types/constants";
 
 /**
@@ -216,31 +216,74 @@ export interface CampaignUtm {
   utmCampaign?: string;
 }
 
+/** What a campaign key reads off its session: the triple and its channel. */
+export interface CampaignSession extends CampaignUtm {
+  referrerDomain?: string;
+  clickIdParam?: string;
+}
+
 /**
- * One `topCampaigns` map key per (source, medium, campaign) triple. Blank
- * slots stay blank — the split answers them as undefined — and a session
- * carrying none of the three contributes nothing: the campaigns table lists
- * campaigns, not traffic.
+ * How a UTM value is compared and stored: trimmed, and source and medium in
+ * lower case — "Email", "email" and "email " are one medium to a marketer,
+ * while a campaign keeps the case it was named with.
  */
-export function campaignKey(utm: CampaignUtm): string | undefined {
-  const parts = [utm.utmSource, utm.utmMedium, utm.utmCampaign];
+export function normalizeUtm(
+  field: "source" | "medium" | "campaign" | "term" | "content",
+  value: string | undefined,
+): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return field === "source" || field === "medium"
+    ? trimmed.toLowerCase()
+    : trimmed;
+}
+
+/**
+ * One `topCampaigns` map key per (source, medium, campaign) triple and the
+ * channel its session was counted under: without referrer or click id, the
+ * table could only guess the channel from the medium. Blank slots stay blank
+ * — the split answers them as undefined — and a session carrying none of the
+ * three contributes nothing: the campaigns table lists campaigns, not
+ * traffic.
+ */
+export function campaignKey(session: CampaignSession): string | undefined {
+  const parts = [session.utmSource, session.utmMedium, session.utmCampaign];
   if (parts.every((part) => !part)) {
     return undefined;
   }
-  return parts.map((part) => part ?? "").join(CAMPAIGN_KEY_SEPARATOR);
+  const channel = resolveChannel(
+    session.referrerDomain,
+    session.utmMedium,
+    session.clickIdParam,
+  );
+  return [...parts.map((part) => part ?? ""), channel].join(
+    CAMPAIGN_KEY_SEPARATOR,
+  );
 }
 
 export interface CampaignKeyParts {
   source?: string;
   medium?: string;
   campaign?: string;
+  /** Undefined on keys rolled up before the channel joined the key. */
+  channel?: MarketingChannel;
 }
 
+function isChannel(value: string | undefined): value is MarketingChannel {
+  return (MARKETING_CHANNELS as readonly (string | undefined)[]).includes(
+    value,
+  );
+}
+
+/** A key split back, its values normalized: older keys kept them raw. */
 export function splitCampaignKey(key: string): CampaignKeyParts {
-  const [source, medium, campaign] = key.split(CAMPAIGN_KEY_SEPARATOR);
+  const [source, medium, campaign, channel] = key.split(CAMPAIGN_KEY_SEPARATOR);
   return {
-    source: source || undefined,
-    medium: medium || undefined,
-    campaign: campaign || undefined,
+    source: normalizeUtm("source", source),
+    medium: normalizeUtm("medium", medium),
+    campaign: normalizeUtm("campaign", campaign),
+    channel: isChannel(channel) ? channel : undefined,
   };
 }

@@ -1,12 +1,20 @@
 const assert = require("node:assert/strict");
 const test = it;
-const { resolveChannel } = require("../dist/services/acquisition");
+const {
+  campaignKey,
+  resolveChannel,
+  splitCampaignKey,
+} = require("../dist/services/acquisition");
 const {
   campaignNotice,
-  campaignsPayload,
+  campaignsReport,
   campaignTablePayload,
   channelsPayload,
 } = require("../dist/services/acquisition-report");
+const {
+  extractReferrerDomain,
+  parseTrackedUrl,
+} = require("../dist/services/url");
 const { kpiPayload, qualityItems } = require("../dist/services/dashboard");
 
 const SEPARATOR = "\u001f";
@@ -123,8 +131,8 @@ test("every channel is listed, sorted by sessions, with its share", () => {
 });
 
 test("campaign rows carry their channel, daily sessions and the missing medium flag", () => {
-  const sale = ["newsletter", "email", "autumn-sale"].join(SEPARATOR);
-  const untagged = ["newsletter", "", ""].join(SEPARATOR);
+  const sale = ["newsletter", "email", "autumn-sale", "email"].join(SEPARATOR);
+  const untagged = ["newsletter", "", "", "direct"].join(SEPARATOR);
   const read = {
     window: window(2),
     rows: [
@@ -134,24 +142,148 @@ test("campaign rows carry their channel, daily sessions and the missing medium f
       }),
       row(1, { sessions: 20, tops: { topCampaigns: { [sale]: 3 } } }),
     ],
-    compare: null,
-    compareRows: [],
   };
-  const payload = campaignsPayload(read, undefined);
-  assert.equal(payload.taggedSessions, 9);
-  assert.equal(payload.missingMediumSessions, 1);
-  const [first, second] = payload.rows;
+  const report = campaignsReport(read);
+  const [first, second] = report.rows;
   assert.equal(first.campaign, "autumn-sale");
   assert.equal(first.channel, "email");
   assert.deepEqual(first.daily, [5, 3]);
   assert.equal(second.missingMedium, true);
-  assert.equal(campaignsPayload(read, "AUTUMN").rows.length, 1);
 
-  const table = campaignTablePayload(payload, "email");
-  assert.equal(table.total, 1);
-  assert.equal(table.results[0]._id, sale);
-  assert.equal(table.results[0].medium, "email");
-  assert.equal(campaignTablePayload(payload, undefined).total, 2);
-  assert.equal(campaignNotice(payload, "missing").tone, "warning");
-  assert.equal(campaignNotice(payload, "truncated"), null);
+  const all = { offset: 0, limit: 25 };
+  const email = campaignTablePayload(report, { ...all, channel: "is:email" });
+  assert.equal(email.total, 1);
+  assert.equal(email.results[0]._id, sale);
+  assert.equal(email.results[0].medium, "email");
+  assert.equal(campaignTablePayload(report, all).total, 2);
+  assert.equal(
+    campaignTablePayload(report, { ...all, search: "AUTUMN" }).total,
+    1,
+  );
+  assert.equal(campaignNotice(report, "missing").tone, "warning");
+  assert.deepEqual(campaignNotice(report, "tagged").title.params.count, {
+    type: "count",
+    value: 9,
+  });
+});
+
+test("the campaign key keeps the channel the session was counted under", () => {
+  const key = campaignKey({
+    utmSource: "facebook",
+    utmCampaign: "launch",
+    referrerDomain: "facebook.com",
+  });
+  assert.deepEqual(splitCampaignKey(key), {
+    source: "facebook",
+    medium: undefined,
+    campaign: "launch",
+    channel: "social",
+  });
+  const paid = campaignKey({
+    utmSource: "news",
+    utmMedium: "email",
+    clickIdParam: "gclid",
+  });
+  assert.equal(splitCampaignKey(paid).channel, "paid");
+  assert.equal(campaignKey({ referrerDomain: "google.com" }), undefined);
+});
+
+test("older keys take their medium's channel and merge with their normalized spelling", () => {
+  const keys = {
+    [["qa-mail", "Email", "X"].join(SEPARATOR)]: 2,
+    [["qa-mail", "email ", "X"].join(SEPARATOR)]: 3,
+    [["qa-mail", "email", "X", "email"].join(SEPARATOR)]: 4,
+  };
+  const report = campaignsReport({
+    window: window(1),
+    rows: [row(0, { sessions: 20, tops: { topCampaigns: keys } })],
+  });
+  assert.equal(report.rows.length, 1);
+  assert.equal(report.rows[0].sessions, 9);
+  assert.equal(report.rows[0].channel, "email");
+});
+
+test("tabs and filters narrow every row before the page is cut", () => {
+  const topCampaigns = {};
+  for (let index = 0; index < 120; index++) {
+    topCampaigns[["g", "cpc", `c${index}`, "paid"].join(SEPARATOR)] = 10;
+  }
+  for (let index = 0; index < 5; index++) {
+    topCampaigns[["n", "email", `e${index}`, "email"].join(SEPARATOR)] = 1;
+  }
+  const report = campaignsReport({
+    window: window(1),
+    rows: [row(0, { sessions: 2000, tops: { topCampaigns } })],
+  });
+  const page = { offset: 0, limit: 25 };
+  assert.equal(campaignTablePayload(report, page).total, 125);
+  assert.equal(campaignTablePayload(report, page).results.length, 25);
+  const email = campaignTablePayload(report, { ...page, channel: "is:email" });
+  assert.equal(email.total, 5);
+  assert.equal(email.results.length, 5);
+  assert.equal(
+    campaignTablePayload(report, { ...page, channel: "is_not:paid" }).total,
+    5,
+  );
+  assert.equal(
+    campaignTablePayload(report, { ...page, channel: "is_empty:" }).total,
+    0,
+  );
+  assert.equal(
+    campaignTablePayload(report, { ...page, channel: "is_not_empty:" }).total,
+    125,
+  );
+  const sorted = campaignTablePayload(report, {
+    ...page,
+    channel: "is:email",
+    sortKey: "campaign",
+    sortDirection: "desc",
+  });
+  assert.equal(sorted.results[0].campaign, "e4");
+  // A tab counter asks for one row and reads the total.
+  assert.equal(
+    campaignTablePayload(report, { offset: 0, limit: 1, channel: "is:email" })
+      .total,
+    5,
+  );
+});
+
+test("comparison days whose top maps were emptied give no channel delta", () => {
+  const read = {
+    window: window(1),
+    rows: [row(0, { sessions: 10, tops: { topChannels: { direct: 10 } } })],
+    compare: window(1, -1),
+    compareRows: [row(-1, { sessions: 8, tops: {} })],
+  };
+  const payload = channelsPayload(read);
+  assert.equal(payload.compareUnavailable, true);
+  assert.ok(payload.items.every((item) => item.delta === null));
+});
+
+test("UTM values are trimmed, source and medium lower-cased", () => {
+  const { utm } = parseTrackedUrl(
+    "/?utm_source=%20News%20&utm_medium=Email%20&utm_campaign=%20Black-Friday",
+  );
+  assert.deepEqual(utm, {
+    source: "news",
+    medium: "email",
+    campaign: "Black-Friday",
+  });
+});
+
+test("link-shim and mobile hosts collapse onto their network", () => {
+  const own = new Set(["shop.example"]);
+  assert.equal(
+    extractReferrerDomain("https://l.facebook.com/l.php?u=x", own),
+    "facebook.com",
+  );
+  assert.equal(
+    extractReferrerDomain("https://m.youtube.com/watch", own),
+    "youtube.com",
+  );
+  assert.equal(extractReferrerDomain("https://t.co/abc", own), "t.co");
+  assert.equal(
+    extractReferrerDomain("https://m.shop.example/", own),
+    undefined,
+  );
 });

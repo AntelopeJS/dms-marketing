@@ -15,6 +15,7 @@ import {
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
   MarketingContext,
+  websiteUrl,
 } from "../blocks";
 import { analyticsCategory } from "../module";
 
@@ -31,47 +32,49 @@ const CHANNEL_ICONS: Record<MarketingChannel, string> = {
 const RULES_PREFIX = "$page.marketing.acquisition.rules.";
 
 /** Why a session lands in a channel, in the order the classifier checks. */
-const CHANNEL_RULES = ["paid", "email", "social", "organic", "referral"].map(
-  (channel) => ({
-    id: channel,
-    label: `$page.marketing.channels.${channel}`,
-    value: `${RULES_PREFIX}${channel}`,
-  }),
-);
+const CHANNEL_RULES = [
+  "paid",
+  "email",
+  "social",
+  "organic",
+  "referral",
+  "direct",
+].map((channel) => ({
+  id: channel,
+  label: `$page.marketing.channels.${channel}`,
+  value: `${RULES_PREFIX}${channel}`,
+}));
 
 const CAMPAIGNS_PREFIX = "$page.marketing.acquisition.campaigns.";
 
-const monoText = () => ({
+/** A UTM parameter: "not set" when the landing URL did not carry it. */
+const utmText = () => ({
   type: new DefaultDataTypes.StringType(),
-  display: new DefaultDisplays.MonoDisplay(),
+  display: new DefaultDisplays.TwoLineDisplay({
+    emptyLabel: `${CAMPAIGNS_PREFIX}not_set`,
+  }),
   sortable: true,
 });
 
 /**
- * Every UTM-tagged source × medium × campaign of the period: a stock source
- * table over `/blocks/campaigns/rows`, on the context bar's period. The route searches every combination of the
- * period and narrows on a channel tab; the browser sorts.
+ * Every UTM-tagged source × medium × campaign of the period, one row per
+ * channel its sessions were counted under: a stock source table over
+ * `/blocks/campaigns/rows`, on the context bar's website and period. The
+ * route searches, filters, sorts and pages every row of the period, so tabs
+ * and counters cover all of them.
  */
 const campaignsTable = TableView.fromSource({
   caption: `${CAMPAIGNS_PREFIX}title`,
-  fetchUrl: `${BLOCKS_API}/campaigns/rows`,
+  fetchUrl: websiteUrl(`${BLOCKS_API}/campaigns/rows`),
   periodScope: MARKETING_PERIOD_SCOPE,
-  capabilities: { search: true, filter: true },
+  capabilities: { search: true, filter: true, sort: true, paginate: true },
   searchPlaceholder: `${CAMPAIGNS_PREFIX}filter`,
   pageSize: 25,
   defaultSort: { field: "sessions", desc: true },
   columns: {
-    campaign: {
-      name: `${CAMPAIGNS_PREFIX}campaign`,
-      order: 1,
-      type: new DefaultDataTypes.StringType(),
-      display: new DefaultDisplays.TwoLineDisplay({
-        emptyLabel: `${CAMPAIGNS_PREFIX}not_set`,
-      }),
-      sortable: true,
-    },
-    source: { name: `${CAMPAIGNS_PREFIX}source`, order: 2, ...monoText() },
-    medium: { name: `${CAMPAIGNS_PREFIX}medium`, order: 3, ...monoText() },
+    campaign: { name: `${CAMPAIGNS_PREFIX}campaign`, order: 1, ...utmText() },
+    source: { name: `${CAMPAIGNS_PREFIX}source`, order: 2, ...utmText() },
+    medium: { name: `${CAMPAIGNS_PREFIX}medium`, order: 3, ...utmText() },
     channel: {
       name: `${CAMPAIGNS_PREFIX}channel`,
       order: 4,
@@ -105,7 +108,7 @@ const campaignsTable = TableView.fromSource({
         onLabel: `${CAMPAIGNS_PREFIX}missing_medium`,
         onIcon: "i-ph-warning",
         onTone: "warning",
-        offLabel: "—",
+        offLabel: "",
         offIcon: "",
       }),
     },
@@ -136,10 +139,10 @@ const campaignsTable = TableView.fromSource({
   },
 });
 
-/** A notice under the campaigns table, shown only when the route has one. */
-function campaignNotice(kind: "missing" | "truncated") {
+/** A notice above the campaigns table, shown only when the route has one. */
+function campaignNotice(kind: "tagged" | "missing") {
   return Banner({
-    fetchUrl: `${BLOCKS_API}/campaigns/notice?kind=${kind}`,
+    fetchUrl: websiteUrl(`${BLOCKS_API}/campaigns/notice?kind=${kind}`),
     periodScope: MARKETING_PERIOD_SCOPE,
   });
 }
@@ -147,7 +150,7 @@ function campaignNotice(kind: "missing" | "truncated") {
 function topDimension(dimension: string, key: string, icon: string) {
   return TopListCard({
     title: `$page.marketing.acquisition.tops.${key}`,
-    fetchUrl: `${BLOCKS_API}/top?dimension=${dimension}&limit=5`,
+    fetchUrl: websiteUrl(`${BLOCKS_API}/top?dimension=${dimension}&limit=5`),
     periodScope: MARKETING_PERIOD_SCOPE,
     valueFormat: "number",
     showRank: true,
@@ -177,8 +180,16 @@ export class MarketingAcquisitionPage extends PageController(
 ) {
   static content = MarketingContext()
     .child(
+      "waiting",
+      Banner({ fetchUrl: websiteUrl(`${BLOCKS_API}/website-notice`) }).meta(
+        blockMeta("website_waiting", "i-ph-plugs"),
+      ),
+    )
+    .child(
       "channels",
-      Grid({ minColumnWidth: "320px" })
+      // Three 280px tracks fit the content of a 1280px window, so the wide card
+      // keeps its side card on the same row on a laptop.
+      Grid({ minColumnWidth: "280px" })
         .child(
           "row",
           GridRow()
@@ -189,7 +200,7 @@ export class MarketingAcquisitionPage extends PageController(
                 "channels",
                 "i-ph-chart-bar-horizontal",
                 {
-                  fetchUrl: `${BLOCKS_API}/channels`,
+                  fetchUrl: websiteUrl(`${BLOCKS_API}/channels`),
                   periodScope: MARKETING_PERIOD_SCOPE,
                 },
               ),
@@ -205,19 +216,17 @@ export class MarketingAcquisitionPage extends PageController(
         )
         .meta(blockMeta("channels_row", "i-ph-chart-bar-horizontal")),
     )
-    .child("campaigns", campaignsTable.meta(blockMeta("campaigns", "i-ph-tag")))
+    .child(
+      "tagged",
+      campaignNotice("tagged").meta(blockMeta("campaigns_tagged", "i-ph-tag")),
+    )
     .child(
       "missing_medium",
       campaignNotice("missing").meta(
         blockMeta("campaigns_missing", "i-ph-warning"),
       ),
     )
-    .child(
-      "truncated",
-      campaignNotice("truncated").meta(
-        blockMeta("campaigns_truncated", "i-ph-list"),
-      ),
-    )
+    .child("campaigns", campaignsTable.meta(blockMeta("campaigns", "i-ph-tag")))
     .child(
       "tops",
       Grid({ minColumnWidth: "280px" })
