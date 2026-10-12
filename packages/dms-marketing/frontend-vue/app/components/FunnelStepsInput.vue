@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '#dms/frontend-module'
+import { MAX_STEP_VALUE_LENGTH } from '../utils/funnel-draft'
 import {
   parseFunnelStepsValue,
   type FunnelStepDraft,
@@ -125,6 +126,7 @@ watch(
       <UInput
         v-model="step.value"
         :placeholder="stepKindMeta[step.kind].placeholder"
+        :maxlength="MAX_STEP_VALUE_LENGTH"
         :disabled="props.disabled"
         class="flex-1"
         size="sm"

@@ -30,6 +30,7 @@ export interface MarketingWebsiteCard extends ContextWebsite {
   snapshotsEnabled: boolean
   snapshotMaskText: boolean
   createdAt: number
+  /** Over the last 30 days, like `pages` (distinct paths). */
   sessions: number
   pages: number
   funnels: number
@@ -38,10 +39,34 @@ export interface MarketingWebsiteCard extends ContextWebsite {
   rejected: MarketingRejectedSource[]
 }
 
+/** The Websites page (GET /api/marketing/websites/summary). */
+export interface MarketingWebsitesSummary {
+  websites: MarketingWebsiteCard[]
+  /** The module-wide collection switch; off, no site records anything. */
+  trackerEnabled: boolean
+}
+
+/** What deleting a website discards (GET /websites/:id/deletion). */
+export interface MarketingWebsiteDeletionImpact {
+  /** Every stored day, not a window. */
+  sessions: number
+  pageviews: number
+  /** Oldest stored day; null when nothing was recorded. */
+  since: number | null
+  funnels: number
+  snapshots: number
+}
+
 export interface MarketingConnectionStatus {
   website: ContextWebsite
+  createdAt: number
+  /** Server time of the check: the `since` of a later "check again". */
+  checkedAt: number
+  /** Newest pageview since `since` (the site's creation by default). */
   visit: MarketingConnectionVisit | null
+  lastActivityAt: number | null
   rejected: MarketingRejectedSource[]
+  trackerEnabled: boolean
 }
 
 export interface MarketingFunnelSuggestion {
@@ -69,7 +94,12 @@ export interface MarketingWebsite {
 export type MarketingWebsitePatch = Partial<
   Pick<
     MarketingWebsite,
-    'name' | 'domain' | 'extraDomains' | 'snapshotsEnabled' | 'snapshotMaskText'
+    | 'name'
+    | 'domain'
+    | 'extraDomains'
+    | 'trackingEnabled'
+    | 'snapshotsEnabled'
+    | 'snapshotMaskText'
   >
 >
 
@@ -81,7 +111,10 @@ export interface MarketingWebsiteInput {
 
 export interface MarketingConnectionVisit {
   at: number
+  /** Path only. */
   url: string
+  /** The host the beacons came from, when the backend saw it. */
+  host?: string
   browser?: string
   deviceType?: string
 }
@@ -114,14 +147,36 @@ export interface MarketingPageSnapshotResponse {
 export interface MarketingPageEntry {
   path: string
   pageviews: number
+  clicks: number
+  /** Page loads sampled for clicks and scrolls, as counted. */
+  sampled: number
+}
+
+/** The days a period-scoped read covers, local `YYYY-MM-DD`, both included. */
+export interface MarketingDayRange {
+  from: string
+  to: string
+}
+
+export type MarketingPagesSort = 'views' | 'clicks'
+
+/** Clicks and scrolls (`events`) and captures of a page or a whole site. */
+export interface MarketingHeatmapData {
+  events: number
+  snapshots: number
 }
 
 export interface MarketingPages {
   pages: MarketingPageEntry[]
+  /** Paths matching the search, listed or not. */
+  total: number
   /** The inventory hit its cap; narrow the search to see the rest. */
   truncated: boolean
-  /** Share of visits capturing clicks — what makes a heatmap sparse. */
-  heatmapSampleRate: number
+  /**
+   * Measured share of page loads sampled for clicks — what makes a heatmap
+   * sparse. Null while the site has too few pageviews to tell.
+   */
+  sampleRate: number | null
   /** Global collection switch; off means nothing new is being recorded. */
   trackerEnabled: boolean
 }
@@ -282,10 +337,15 @@ export interface MarketingFunnelStepResult {
   step: MarketingFunnelStep
   sessions: number
   conversionRate: number
+  /** Events of the window matching the step, in order or not: 0 means the
+   * site never sent it. */
+  matches: number
 }
 
 export interface MarketingFunnelComputation {
   totalSessions: number
+  /** Events read: 0 means the site sent nothing over the window. */
+  events: number
   steps: MarketingFunnelStepResult[]
 }
 
@@ -297,8 +357,13 @@ export interface MarketingVariationResult {
   exposedSessions: number
   computation: MarketingFunnelComputation
   conversionRate: number
+  /** Exposed sessions that reached the goal. */
+  conversions: number
   /** Relative to the control's conversion; null on the control itself. */
   uplift: number | null
+  /** Bounds of `uplift` at the test's level; null wherever pValue is. */
+  upliftLow: number | null
+  upliftHigh: number | null
   /** Two-sided p-value vs the control; null on the control, when the sample
    * is too small, or when the window is truncated. */
   pValue: number | null
@@ -317,8 +382,34 @@ export interface MarketingExperimentSrm {
 export interface MarketingExperimentResults {
   /** Key of the control arm — the experiment's first variation. */
   control: string
+  /** Level each challenger is tested at: .05, split past two arms. */
+  alpha: number
   variations: MarketingVariationResult[]
   srm: MarketingExperimentSrm
+  /** A verdict waits for a full week and a conversions floor per arm. */
+  decision: {
+    days: number
+    minDays: number
+    minConversions: number
+    ready: boolean
+  }
+}
+
+/** What raw events cover of the period and its comparison. */
+export interface MarketingFunnelCoverage {
+  /** First instant covered (epoch ms), null without any raw event. */
+  since: number | null
+  /** The period starts before it. */
+  period: boolean
+  /** The comparison starts before it: `previous` is left out. */
+  previous: boolean
+}
+
+/** A funnel the site's own journeys suggest, for the first-run state. */
+export interface MarketingFunnelTemplate {
+  steps: MarketingFunnelStep[]
+  /** Sessions of the period that matched step 1. */
+  entering: number
 }
 
 export interface MarketingFunnelResults {
@@ -333,8 +424,10 @@ export interface MarketingFunnelResults {
    * funnel, the experiment's own run once one is started — a running split
    * ends at "now", a stopped one at its stop. */
   window: { since: number; until: number }
-  /** The same funnel over the comparison window; null on a split or without one. */
+  /** The same funnel over the comparison window; null on a split, without
+   * one, or when raw events do not cover it. */
   previous?: MarketingFunnelComputation | null
+  coverage?: MarketingFunnelCoverage
 }
 
 export interface MarketingFunnelPreview {
@@ -371,10 +464,9 @@ export interface MarketingHeatmap {
 }
 
 /**
- * Scroll-depth distribution of one path. `views` counts only sampled views
- * that scrolled at all — a view that never scrolls (every page that fits its
- * screen included) emits no depth — so shares read "of the views that
- * scrolled", never "of all views".
+ * Scroll-depth distribution of one path. Every sampled view reports one
+ * depth, scrolled or not, so `views` is the number of sampled views (events
+ * stored before the tracker did so only cover views that scrolled).
  */
 export interface MarketingScrollDepth {
   views: number
@@ -412,11 +504,18 @@ export function useMarketingApi() {
       }),
 
     listWebsiteCards: () =>
-      $authFetch<MarketingWebsiteCard[]>('/api/marketing/websites/summary'),
+      $authFetch<MarketingWebsitesSummary>('/api/marketing/websites/summary'),
 
-    getConnection: (website: string) =>
+    // `since` (epoch ms, server clock): only a pageview from then on counts.
+    getConnection: (website: string, since?: number) =>
       $authFetch<MarketingConnectionStatus>(
         `/api/marketing/websites/${encodeURIComponent(website)}/connection`,
+        { query: { since } },
+      ),
+
+    getWebsiteDeletionImpact: (website: string) =>
+      $authFetch<MarketingWebsiteDeletionImpact>(
+        `/api/marketing/websites/${encodeURIComponent(website)}/deletion`,
       ),
 
     allowHost: (website: string, hostname: string) =>
@@ -429,6 +528,15 @@ export function useMarketingApi() {
       $authFetch<{ deleted: string }>(
         `/api/marketing/websites/${encodeURIComponent(website)}`,
         { method: 'DELETE' },
+      ),
+
+    // A period as the context bar holds it (`from`/`to` local days).
+    getFunnelTemplates: (website: string, from: string, to: string) =>
+      $authFetch<MarketingFunnelTemplate[]>(
+        '/api/marketing/funnels/templates',
+        {
+          query: { website, from, to },
+        },
       ),
 
     getFunnelSuggestions: (website: string) =>
@@ -457,9 +565,14 @@ export function useMarketingApi() {
       ),
 
     // Query strings via ofetch's `query` option — encoding is its job.
-    listPages: (website: string, period = '7d', search = '') =>
+    listPages: (
+      website: string,
+      range: MarketingDayRange,
+      search = '',
+      sort: MarketingPagesSort = 'views',
+    ) =>
       $authFetch<MarketingPages>('/api/marketing/stats/pages', {
-        query: { website, period, search },
+        query: { website, ...range, search, sort },
       }),
 
     getOverview: (website: string, period = '7d') =>
@@ -472,14 +585,14 @@ export function useMarketingApi() {
         query: { website, period, search },
       }),
 
-    getHeatmap: (website: string, path: string, period = '7d') =>
+    getHeatmap: (website: string, path: string, range: MarketingDayRange) =>
       $authFetch<MarketingHeatmap>('/api/marketing/stats/heatmap', {
-        query: { website, path, period },
+        query: { website, path, ...range },
       }),
 
-    getScrollDepth: (website: string, path: string, period = '7d') =>
+    getScrollDepth: (website: string, path: string, range: MarketingDayRange) =>
       $authFetch<MarketingScrollDepth>('/api/marketing/stats/scroll', {
-        query: { website, path, period },
+        query: { website, path, ...range },
       }),
 
     getSnapshot: (
@@ -497,8 +610,14 @@ export function useMarketingApi() {
     // Whole click and scroll history, every period: without `path` the whole
     // site's.
     resetHeatmap: (website: string, path?: string) =>
-      $authFetch<{ deleted: number }>('/api/marketing/stats/heatmap', {
+      $authFetch<MarketingHeatmapData>('/api/marketing/stats/heatmap', {
         method: 'DELETE',
+        query: { website, path },
+      }),
+
+    /** What `resetHeatmap` would delete with the same arguments. */
+    countHeatmap: (website: string, path?: string) =>
+      $authFetch<MarketingHeatmapData>('/api/marketing/stats/heatmap/count', {
         query: { website, path },
       }),
 
@@ -523,6 +642,12 @@ export function useMarketingApi() {
           },
         },
       ),
+
+    // One definition, as the builder edits it: no results computed.
+    getFunnel: (id: string) =>
+      $authFetch<MarketingFunnelListItem>('/api/marketing/tables/funnels/get', {
+        query: { id },
+      }),
 
     // The insert answers the generated keys, an array — not the row.
     createFunnel: (input: MarketingFunnelInput) =>

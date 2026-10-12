@@ -17,43 +17,77 @@ arm, under a significance verdict.
 ## The funnels list
 
 One row per funnel of the website picked in the
-[context bar](overview.md#the-context-bar): its steps, the sessions that
-entered it, its end-to-end conversion as a bar, the change of that
-conversion against the comparison window (in points, plain funnels only),
-and its status — the A/B split's state and leader, when it has one. The tabs
-narrow the table to **Funnels** or **A/B tests**. When a running test has
-reached significance, a banner above the table names it and leads to its
-report. The sidebar badge on the page counts the running A/B tests.
+[context bar](overview.md#the-context-bar): its end-to-end conversion with
+its change against the comparison window (in points, plain funnels and draft
+splits), the sessions that completed out of those that entered as a bar, its
+status, and its steps as pills (pages outlined, events in the primary
+colour). Under the name: the steps and window, the A/B split's state and
+leader (by its own letter, only when it is ahead of the control), or a step
+the site never sent over the period, in amber. The row's arrow opens the
+report in one click; its menu edits, duplicates or deletes the funnel (the
+name must be typed, and a running test is said to stop). The tabs narrow the
+table to **Funnels** or **A/B tests**.
+
+The banner above the table shows one thing: days of the period the raw
+events do not cover (funnels then count nothing for them), else a running
+test ready to decide (significant, its leader ahead, a full week served and
+50 conversions in every arm), else a comparison window left out because the
+raw events do not cover it — rather than a +1,000 % change. The sidebar badge
+on the page counts the running A/B tests of the workspace.
 
 A website without any funnel shows templates instead, built from its own
-most visited pages and most frequent custom events, each with the number of
-sessions that would enter it; one click opens the builder prefilled with its
-steps (`?steps=`), or **Start from scratch** opens it empty.
+journeys over the period: its custom events triggered by the most sessions,
+each led by the page those sessions viewed most often before it, with the
+number of sessions that would enter it. One click opens the builder
+prefilled with its steps (`?steps=`), or **Start from scratch** opens it empty.
 
 ## Defining a funnel
 
 **New funnel** in the page header opens the builder; **Edit** on a report
-opens it on that funnel (`?id=`).
+opens it on that funnel (`?id=`). **Duplicate** in the builder's header opens
+a new funnel prefilled with a copy of it (`?copy=<id>`): the name becomes
+*Copy of …*, the steps, window and arms are kept, and the experiment key is
+left empty — keys are unique per site, and a new hypothesis is a new key.
 
 <p align="center">
   <img src="../screenshots/builder.png" alt="Funnel builder: the name and website, the steps with page and event autocomplete and a live count per step, the conversion window presets, and beside them the live preview of the last 30 days" width="900">
 </p>
 
 - **Steps** — 1 to 10, each either a **page URL** (a path the visitor must
-  view) or a **custom event** (a name reported through
+  view; a pasted URL, query string, fragment or trailing slash comes down to
+  the path, the case is ignored, and a final `*` matches every path that
+  starts with it, as in `/blog/*`) or a **custom event** (a name reported through
   `window.dmsMarketing.track(...)` — see [tracking.md](tracking.md)). The
   fields autocomplete from the site's tracked pages and custom events, with
   their views or triggers. A single step is a conversion counter on its own;
   the last step is the goal.
 - **Conversion window** — how long a session has to complete the journey
-  after entering step 1: 1 h, 24 h, 7 days, 30 days, or any number of hours.
-  Default 24 h, maximum 720 h (30 days).
-- **Website** — a funnel belongs to one website.
+  after entering step 1: 1 h, **Whole session** (24 h) or any number of
+  hours. Default 24 h, maximum 720 h. A funnel is matched within **one
+  session**, and a session ends after 30 minutes without activity (by
+  default): a window longer than the session changes nothing, which is why
+  the builder no longer offers 7 or 30 days. Journeys across visits would
+  need a per-visitor read — the visitor hash is salted per month, so such a
+  read would also break at each month boundary.
+- **Website** — a funnel belongs to one website. A plain funnel or a draft
+  split can move to another website; a started split stays on its own.
 - **A/B split** — off by default; see [below](#splitting-a-funnel-into-ab-variations).
 
 While you edit, the **preview** scores the definition over the last 30 days
-(`POST /api/marketing/funnels/preview`, nothing saved): sessions at each step
-and end to end.
+(`POST /api/marketing/funnels/preview`, nothing saved): sessions at each step,
+the share of the previous step that reached it, and end to end. Invalid steps
+answer `400`, never a server error.
+
+The builder follows the DMS form contract. **Unsaved changes** appear only
+once a value differs from what the page opened on (putting it back clears
+them); **Discard** restores it, and leaving with changes — Cancel, the back
+arrow, the sidebar, the browser's Back, a reload — asks first. **Save** checks
+the form before sending it and shows each problem under its field (name of
+100 characters max, steps of 500, a window of 1–720 whole hours, keys and
+weights below); what the server refuses lands under its field too. Changing
+the steps or the window of a split that has started warns, then asks for a
+confirmation on save: every arm is re-scored over the whole test with the new
+goal.
 
 Steps are matched **in order within a session**: a session counts for step N
 only if it already matched steps 1…N-1, earlier in time.
@@ -87,15 +121,20 @@ cannot reach past the raw events retention (90 days by default).
 
 Turn on **Split traffic between variations** in the builder (or **Split
 into A/B test** on a report, which opens the builder with it on,
-`?split=1`). The split is a **key** (the slug page code asks for) and 2–8
-**variations** `{key, weight}` — weights are relative and normalized, and
+`?split=1`). The split is a **key** (the slug page code asks for:
+lowercase letters, digits, `-` and `_`, starting with a letter or a digit,
+64 characters max — variation keys follow the same rule) and 2–8
+**variations** `{key, weight}` — weights are relative and normalized (0 or
+more, at least one above 0), and
 the builder shows each as its share of traffic; the **first variation is the
 control**. The funnel's own steps are the goal every arm is scored against;
 nothing else needs to exist anywhere. The builder also shows the
 `variation()` snippet for the key, and a sample-size hint: how many entered
 sessions detecting a +20% relative lift at the preview's conversion rate
-would take (two-proportion test, 95% confidence, 80% power), and how many
-months that is at the site's current traffic.
+would take (two-proportion test, 95% confidence, 80% power) — sized on the
+arm with the smallest share of the traffic, so uneven weights take longer —
+and how many months that is at the site's current traffic. The hint is hidden
+once the split has started.
 
 ```
 marketing_funnels ──► GET /api/marketing/experiments.js?website=<id>
@@ -153,11 +192,15 @@ notice.
 One call, where the variation is applied:
 
 ```js
-const arm = await window.dmsMarketing?.variation("hero-cta");
-if (arm === "b") {
-  showAlternateHero();
-}
+window.dmsMarketing?.variation("hero-cta").then((arm) => {
+  if (arm === "b") {
+    showAlternateHero();
+  }
+});
 ```
+
+Promise-based, so it runs as is in a classic `<script>` (a top-level
+`await` only works in a module script); the builder's snippet has this shape.
 
 - **Assignment is server-side and deterministic** —
   `sha256(visitorId : experiment key)` against the normalized weights. The
@@ -200,9 +243,20 @@ draft.
 The report opens on the verdict, as a sentence with its next action —
 *Variation B converts 12% better than the control … Stop the test, then ship
 b on the site* — and beside it the **relative lift** of the best-converting
-challenger at the goal, the **confidence** (1 − p of a two-sided z-test,
-significant at 95%) and the **exposed sessions**. Past one challenger the
-verdict judges only the best arm; every arm keeps its own figures below.
+challenger at the goal with its 95% interval (*+23% to +101%*), the
+**p-value** of a two-sided z-test (significant below 0.05) and the **exposed
+sessions** with the days served. Past one challenger the verdict judges only
+the best arm, and each challenger is tested at 0.05 divided by the number of
+challengers (Bonferroni): three arms are significant at 97.5%. Every arm
+keeps its own figures below.
+
+A significant reading only reads **Ready to decide** once the split has
+served a full week and every arm has 50 conversions; before that it is *Too
+early to call* — checked every day, a p-value crosses 0.05 by chance long
+before the test has its sample. The banner of the list follows the same rule.
+A stopped test says what to do on the site (ship the winner, remove the
+`variation()` call); a running one nobody was exposed to says to check the
+call instead of showing 0% rates.
 
 Then each arm, step by step, so the arms compare at every step of the way
 and not only at the goal. Every figure is a share of that arm's **exposed
