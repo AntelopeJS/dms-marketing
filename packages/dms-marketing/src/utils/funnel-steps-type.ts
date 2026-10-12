@@ -4,16 +4,25 @@ import {
   RegisterDataType,
 } from "@antelopejs/interface-dms/base/data-types";
 import { z } from "zod";
+import { normalizeStepPath } from "@/services/funnels/step-path";
 import {
   MAX_FUNNEL_STEP_VALUE_LENGTH,
   MAX_FUNNEL_STEPS,
   MIN_FUNNEL_STEPS,
 } from "@/types/constants";
 
-const stepSchema = z.object({
-  kind: z.enum(["url", "custom"]),
-  value: z.string().trim().min(1).max(MAX_FUNNEL_STEP_VALUE_LENGTH),
-});
+/** A page step is stored as the path the collector records: a pasted URL,
+ * query string or trailing slash would otherwise match nothing. */
+const stepSchema = z
+  .object({
+    kind: z.enum(["url", "custom"]),
+    value: z.string().trim().min(1).max(MAX_FUNNEL_STEP_VALUE_LENGTH),
+  })
+  .transform((step) =>
+    step.kind === "url"
+      ? { ...step, value: normalizeStepPath(step.value) }
+      : step,
+  );
 
 /** Direct API callers may send a JSON string; accept both string and array. */
 const funnelStepsSchema = z

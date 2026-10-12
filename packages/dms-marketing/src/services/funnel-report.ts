@@ -1,9 +1,22 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
+import { getConfig } from "@/config";
 import { MarketingEventsModel } from "@/db";
 import type { Funnel, FunnelStep } from "@/db/tables/funnels.table";
 import type { Website } from "@/db/tables/websites.table";
-import { MS_PER_HOUR } from "@/types/constants";
-import { computeFunnelResults, type FunnelResults } from "./funnels";
+import {
+  FUNNEL_SUMMARY_CACHE_TTL_MS,
+  MAX_FUNNEL_EVENTS,
+  MS_PER_DAY,
+  MS_PER_HOUR,
+  RAW_COVERAGE_CACHE_TTL_MS,
+} from "@/types/constants";
+import { BoundedCache } from "./bounded-cache";
+import {
+  computeFunnelResults,
+  type FunnelEvent,
+  type FunnelResults,
+  groupBySession,
+} from "./funnels";
 import type { QueryWindow } from "./period";
 import {
   mergeDimension,
@@ -14,13 +27,14 @@ import {
 
 export type FunnelKind = "funnel" | "ab";
 
-/** The leading arm of a split, when one is ahead of the control. */
+/** The challenger the report names: same rule here and in the report. */
 export interface ExperimentLeader {
   key: string;
-  /** Relative lift over the control, in percent. */
+  /** Position among the arms, the control being 0: its letter. */
+  index: number;
+  /** Relative lift over the control, in percent; ≤ 0 when the control leads. */
   uplift: number;
   significant: boolean;
-  confidence: number | null;
 }
 
 export interface ExperimentSummary {
@@ -31,6 +45,12 @@ export interface ExperimentSummary {
   until: number | null;
   leader: ExperimentLeader | null;
   exposed: number;
+  /** Significant, ahead, and past the decision rule (a week, a sample). */
+  ready: boolean;
+  /** Lift bounds of the leader in percent, with `days` served. */
+  upliftLow: number | null;
+  upliftHigh: number | null;
+  days: number;
 }
 
 interface FunnelTotals {
@@ -51,6 +71,8 @@ export interface FunnelSummaryRow {
   conversion: number | null;
   /** Conversion change vs the comparison window, in points. */
   deltaPoints: number | null;
+  /** A step the site never sent over the window while it sent other events. */
+  unseenStep: string | null;
   experiment: ExperimentSummary | null;
 }
 
@@ -70,20 +92,74 @@ function conversionOf(results: FunnelResults | null): number | null {
   return entered > 0 ? (completed / entered) * 100 : null;
 }
 
-function leaderOf(results: FunnelResults): ExperimentLeader | null {
-  const arms = results.experiment?.variations.slice(1) ?? [];
-  const best = arms
-    .filter((arm) => arm.uplift !== null)
-    .sort((a, b) => (b.uplift ?? 0) - (a.uplift ?? 0))[0];
+/**
+ * The first step no event of the window matched, while the site did send
+ * something: an event nobody tracks yet, or a path that matches no page. A
+ * site that sent nothing at all has no traffic, not a broken step.
+ */
+export function unseenStepOf(results: FunnelResults): string | null {
+  const computation = results.computation;
+  if (computation.events === 0) {
+    return null;
+  }
+  return (
+    computation.steps.find((step) => step.matches === 0)?.step.value ?? null
+  );
+}
+
+type ArmResult = NonNullable<FunnelResults["experiment"]>["variations"][number];
+
+/**
+ * The challenger with the best rate among those the test could score: the
+ * one the report's verdict names. It may trail the control.
+ */
+export function pickLeader(arms: ArmResult[]): number {
+  let best = -1;
+  arms.forEach((arm, index) => {
+    if (index === 0 || arm.pValue === null) {
+      return;
+    }
+    if (best === -1 || arm.conversionRate > arms[best].conversionRate) {
+      best = index;
+    }
+  });
+  return best;
+}
+
+type ExperimentRead = NonNullable<FunnelResults["experiment"]>;
+
+function leaderOf(arms: ArmResult[]): ExperimentLeader | null {
+  const index = pickLeader(arms);
+  const best = index === -1 ? null : arms[index];
   if (!best || best.uplift === null) {
     return null;
   }
   return {
     key: best.key,
+    index,
     uplift: best.uplift * 100,
     significant: best.significant === true,
-    confidence: best.pValue === null ? null : (1 - best.pValue) * 100,
   };
+}
+
+/** Significant, ahead, and past the decision rule; no warning voiding it. */
+function isReady(
+  results: FunnelResults,
+  read: ExperimentRead,
+  leader: ExperimentLeader | null,
+): boolean {
+  return (
+    !results.truncated &&
+    !read.srm.mismatch &&
+    read.decision.ready &&
+    leader !== null &&
+    leader.significant &&
+    leader.uplift > 0
+  );
+}
+
+function percentOrNull(ratio: number | null | undefined): number | null {
+  return ratio === null || ratio === undefined ? null : ratio * 100;
 }
 
 function experimentSummary(
@@ -95,18 +171,22 @@ function experimentSummary(
     return null;
   }
   const started = experiment.runs.length > 0;
+  const read = started ? results.experiment : undefined;
+  const arms = read?.variations ?? [];
+  const leader = leaderOf(arms);
+  const best = leader ? arms[leader.index] : undefined;
   return {
     key: experiment.key,
     status: experiment.status,
     variations: experiment.variations.length,
     since: started ? results.window.since : null,
     until: experiment.status === "stopped" ? results.window.until : null,
-    leader: started ? leaderOf(results) : null,
-    exposed:
-      results.experiment?.variations.reduce(
-        (sum, arm) => sum + arm.exposedSessions,
-        0,
-      ) ?? 0,
+    leader,
+    exposed: arms.reduce((sum, arm) => sum + arm.exposedSessions, 0),
+    ready: read ? isReady(results, read, leader) : false,
+    upliftLow: percentOrNull(best?.upliftLow),
+    upliftHigh: percentOrNull(best?.upliftHigh),
+    days: read?.decision.days ?? 0,
   };
 }
 
@@ -123,22 +203,111 @@ export async function funnelResultsIn(
   );
 }
 
-/**
- * The previous period of a plain funnel only: a split is read over its own
- * runs, so it has no "previous window" to compare with.
- */
-async function previousConversion(
-  funnel: Funnel,
-  tenantId: string,
-  compare: QueryWindow | null,
-): Promise<number | null> {
-  if (!compare || funnel.experiment) {
-    return null;
-  }
-  return conversionOf(await funnelResultsIn(funnel, tenantId, compare));
+/** A split read over its runs has no "previous window"; a draft is still a
+ * plain funnel over the period. */
+export function readsPeriod(funnel: Funnel): boolean {
+  return !funnel.experiment || funnel.experiment.status === "draft";
 }
 
-export async function summarizeFunnel(
+// --- Raw-event coverage ------------------------------------------------------
+
+const coverageCache = new BoundedCache<number | null>(
+  RAW_COVERAGE_CACHE_TTL_MS,
+);
+
+/**
+ * The first instant a website's raw events cover: the retention cutoff, or
+ * its oldest stored event when that is later (a site installed last week, a
+ * retention raised since). Null when it has none. Funnels read raw events
+ * only, so a window starting before it counts nothing for its first days.
+ */
+export async function rawCoverageStart(
+  tenantId: string,
+  websiteId: string,
+): Promise<number | null> {
+  const key = `${tenantId}:${websiteId}`;
+  const hit = coverageCache.get(key);
+  if (hit) {
+    return hit.value;
+  }
+  const now = Date.now();
+  const [first] = await GetModel(MarketingEventsModel, tenantId).queryRange({
+    websiteIds: [websiteId],
+    since: new Date(now - getConfig().rawEventsRetention),
+    until: new Date(now),
+    limit: 1,
+    fields: [],
+  });
+  const start = first ? first.timestamp.getTime() : null;
+  coverageCache.set(key, start);
+  return start;
+}
+
+/**
+ * Whether raw events cover a window, its first day aside: the oldest event
+ * rarely falls on a midnight, and a window short of a few hours on its first
+ * day still reads true enough.
+ */
+export function coversWindow(
+  window: QueryWindow,
+  coverage: number | null,
+): boolean {
+  return coverage !== null && window.since.getTime() + MS_PER_DAY > coverage;
+}
+
+// --- Summaries ---------------------------------------------------------------
+
+/**
+ * Per funnel and window, the promise itself: the list's rows, its tab
+ * counters and its banner arrive together and share one computation. The
+ * definition is part of the key, so an edit is never served stale.
+ */
+const summaryCache = new BoundedCache<Promise<FunnelSummaryRow>>(
+  FUNNEL_SUMMARY_CACHE_TTL_MS,
+);
+
+function summaryKey(
+  funnel: Funnel,
+  tenantId: string,
+  window: QueryWindow,
+  compare: QueryWindow | null,
+): string {
+  return JSON.stringify([
+    tenantId,
+    funnel._id,
+    funnel.name,
+    funnel.steps,
+    funnel.conversionWindowMs,
+    funnel.experiment,
+    window.firstDay,
+    window.lastDay,
+    compare?.firstDay ?? null,
+    compare?.lastDay ?? null,
+  ]);
+}
+
+/**
+ * One row of the list. `compare` is the comparison window, already dropped
+ * by the caller when raw events do not cover it.
+ */
+export function summarizeFunnel(
+  funnel: Funnel,
+  tenantId: string,
+  window: QueryWindow,
+  compare: QueryWindow | null,
+): Promise<FunnelSummaryRow> {
+  const key = summaryKey(funnel, tenantId, window, compare);
+  const hit = summaryCache.get(key);
+  if (hit) {
+    return hit.value;
+  }
+  const pending = computeSummary(funnel, tenantId, window, compare);
+  summaryCache.set(key, pending);
+  pending.catch(() => summaryCache.delete(key));
+  return pending;
+}
+
+async function computeSummary(
   funnel: Funnel,
   tenantId: string,
   window: QueryWindow,
@@ -146,10 +315,13 @@ export async function summarizeFunnel(
 ): Promise<FunnelSummaryRow> {
   const [results, previous] = await Promise.all([
     funnelResultsIn(funnel, tenantId, window),
-    previousConversion(funnel, tenantId, compare),
+    compare && readsPeriod(funnel)
+      ? funnelResultsIn(funnel, tenantId, compare)
+      : Promise.resolve(null),
   ]);
   const { entered, completed } = endToEnd(results);
   const conversion = conversionOf(results);
+  const before = conversionOf(previous);
   return {
     id: funnel._id,
     name: funnel.name,
@@ -161,10 +333,13 @@ export async function summarizeFunnel(
     completed,
     conversion,
     deltaPoints:
-      conversion !== null && previous !== null ? conversion - previous : null,
+      conversion !== null && before !== null ? conversion - before : null,
+    unseenStep: unseenStepOf(results),
     experiment: experimentSummary(funnel, results),
   };
 }
+
+// --- Suggestions and templates -------------------------------------------------
 
 export interface FunnelSuggestion {
   value: string;
@@ -196,4 +371,101 @@ export async function funnelSuggestions(
       toSuggestion,
     ),
   };
+}
+
+/** A funnel the site's own journeys suggest, with the sessions it would score. */
+export interface FunnelTemplate {
+  steps: FunnelStep[];
+  /** Sessions of the window that would enter it (that matched step 1). */
+  entering: number;
+}
+
+const MAX_TEMPLATES = 2;
+
+function increment(counts: Map<string, number>, key: string): void {
+  counts.set(key, (counts.get(key) ?? 0) + 1);
+}
+
+function mostFrequent(counts: Map<string, number>): string | null {
+  let best: string | null = null;
+  for (const [key, count] of counts) {
+    if (best === null || count > (counts.get(best) ?? 0)) {
+      best = key;
+    }
+  }
+  return best;
+}
+
+/**
+ * Templates for a site without funnels, from real journeys: its custom
+ * events triggered by the most sessions, each led by the page those sessions
+ * viewed most often before it. `entering` counts the sessions that viewed
+ * that page, the ones the funnel would see enter.
+ */
+export async function funnelTemplates(
+  website: Website,
+  window: QueryWindow,
+): Promise<FunnelTemplate[]> {
+  const events = (await GetModel(
+    MarketingEventsModel,
+    website.tenantId,
+  ).queryRange({
+    websiteIds: [website._id],
+    since: window.since,
+    until: window.until,
+    kinds: ["pageview", "custom"],
+    limit: MAX_FUNNEL_EVENTS,
+    fields: ["sessionId", "kind", "url", "name"],
+  })) as FunnelEvent[];
+  const sessions = [...groupBySession(events).values()];
+  const sessionsByEvent = new Map<string, number>();
+  const sessionsByPage = new Map<string, number>();
+  for (const session of sessions) {
+    const names = new Set<string>();
+    const pages = new Set<string>();
+    for (const event of session) {
+      if (event.kind === "custom" && event.name) {
+        names.add(event.name);
+      } else if (event.kind === "pageview") {
+        pages.add(event.url);
+      }
+    }
+    names.forEach((name) => increment(sessionsByEvent, name));
+    pages.forEach((page) => increment(sessionsByPage, page));
+  }
+  const topEvents = [...sessionsByEvent.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, MAX_TEMPLATES)
+    .map(([name]) => name);
+  return topEvents.map((name) => {
+    const before = new Map<string, number>();
+    for (const session of sessions) {
+      const at = session.findIndex(
+        (event) => event.kind === "custom" && event.name === name,
+      );
+      if (at <= 0) {
+        continue;
+      }
+      const pages = new Set(
+        session
+          .slice(0, at)
+          .filter((event) => event.kind === "pageview")
+          .map((event) => event.url),
+      );
+      pages.forEach((page) => increment(before, page));
+    }
+    const page = mostFrequent(before);
+    return page
+      ? {
+          steps: [
+            { kind: "url", value: page },
+            { kind: "custom", value: name },
+          ],
+          entering: sessionsByPage.get(page) ?? 0,
+        }
+      : {
+          steps: [{ kind: "custom", value: name }],
+          entering: sessionsByEvent.get(name) ?? 0,
+        };
+  });
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import { useMarketingContext } from '../composables/useMarketingContext'
 import {
@@ -10,8 +10,9 @@ import {
 import {
   funnelBuilderLink,
   funnelsLink,
+  linkInContext,
 } from '../composables/useMarketingRoutes'
-import { formatShortDate } from '../utils/format'
+import { formatPercent, formatShortDate } from '../utils/format'
 import { MS_PER_DAY } from '../constants'
 
 /**
@@ -19,6 +20,10 @@ import { MS_PER_DAY } from '../constants'
  * report, or the A/B test report once the funnel carries a started split.
  * Reads the results with the period scope; a split ignores the period and is
  * read over its own runs, which its subtitle says.
+ *
+ * The report belongs to the funnel's website: opened under another one (a
+ * link, the reader's saved site), the page URL is put on the funnel's; a site
+ * picked in the bar afterwards leads to that site's funnels.
  */
 const props = withDefaults(
   defineProps<{
@@ -28,6 +33,10 @@ const props = withDefaults(
   }>(),
   { periodScope: undefined, componentId: undefined, pageId: undefined },
 )
+
+const MS_PER_HOUR = 3_600_000
+const HTTP_NOT_FOUND = 404
+const PERCENT = 100
 
 const { t, locale } = useI18n()
 const route = useDmsRoute()
@@ -42,41 +51,107 @@ const funnelId = computed(() => {
   return typeof id === 'string' ? id : ''
 })
 
+/** In the page's own context: website and period follow the link. */
+function inContext(link: string): string {
+  return linkInContext(link, route.query as Record<string, unknown>)
+}
+
+// No id at all: nothing to name, back to the list.
+watch(
+  funnelId,
+  (id) => {
+    if (!id) {
+      void router.replace(inContext(funnelsLink()))
+    }
+  },
+  { immediate: true },
+)
+
 const reloadToken = ref(0)
 
+// The id is read off the URL on every request, so another `?id=` opened in
+// the same page reads that funnel, not the one first mounted.
 const { data, isLoading, error, refresh } =
   useChartFetch<MarketingFunnelResults>({
-    fetchUrl: `/api/marketing/funnels/${encodeURIComponent(funnelId.value)}/results`,
+    fetchUrl: '/api/marketing/funnels/{{query.id}}/results',
     periodScope: props.periodScope,
     watchSource: () => reloadToken.value,
   })
 
-const funnel = computed(() => data.value?.funnel ?? null)
+/** Data of the funnel the URL names: a previous one's is not shown under it. */
+const current = computed(() =>
+  data.value?.funnel._id === funnelId.value ? data.value : null,
+)
+const funnel = computed(() => current.value?.funnel ?? null)
 const experiment = computed(() => funnel.value?.experiment ?? null)
 const status = computed<MarketingExperimentStatus | null>(
   () => experiment.value?.status ?? null,
 )
 const isSplit = computed(() => experiment.value !== null)
+const notFound = computed(
+  () => !current.value && apiErrorStatus(error.value) === HTTP_NOT_FOUND,
+)
+
+const websiteName = computed(
+  () =>
+    context.websites.value.find((site) => site.id === funnel.value?.websiteId)
+      ?.name ?? '',
+)
+
+// --- Website -------------------------------------------------------------------
+
+/** The funnel the page URL was last put on the website of. */
+const aligned = ref<string | null>(null)
+
+watch(
+  [funnel, () => context.selected.value?.id],
+  ([shown, selected]) => {
+    if (!shown || !selected || shown.websiteId === selected) {
+      if (shown && shown.websiteId === selected) {
+        aligned.value = shown._id
+      }
+      return
+    }
+    if (aligned.value !== shown._id) {
+      // Opened under another site: the funnel's own, without a history entry
+      // and without saving it as the reader's site.
+      aligned.value = shown._id
+      void router.replace({
+        query: { ...route.query, website: shown.websiteId },
+      })
+      return
+    }
+    // A site picked in the bar: this funnel is not one of its funnels.
+    void router.push(inContext(funnelsLink()))
+  },
+  { immediate: true },
+)
+
+// --- Subtitle ------------------------------------------------------------------
+
+function runDays(since: number, until: number): string {
+  const days = Math.floor((until - since) / MS_PER_DAY)
+  return days < 1
+    ? t('page.marketing.funnel.run_today')
+    : t('page.marketing.funnel.run_days', { days }, days)
+}
 
 const subtitle = computed(() => {
-  const current = funnel.value
-  if (!current) {
+  const shown = funnel.value
+  const results = current.value
+  if (!shown || !results) {
     return ''
   }
-  const website = context.selected.value?.name ?? ''
   const split = experiment.value
-  if (split && data.value && split.status !== 'draft') {
-    const since = data.value.window.since
-    const days = Math.max(
-      1,
-      Math.round((data.value.window.until - since) / MS_PER_DAY),
-    )
+  const website = websiteName.value
+  if (split && split.status !== 'draft') {
+    const { since, until } = results.window
     return t(`page.marketing.funnel.subtitle_${split.status}`, {
       key: split.key,
       website,
       date: formatShortDate(since, locale.value),
-      until: formatShortDate(data.value.window.until, locale.value),
-      days,
+      until: formatShortDate(until, locale.value),
+      days: runDays(since, until),
     })
   }
   if (split) {
@@ -86,28 +161,29 @@ const subtitle = computed(() => {
     })
   }
   return t('page.marketing.funnel.subtitle', {
-    steps: current.steps.length,
-    hours: Math.round(current.conversionWindowMs / 3_600_000),
+    steps: shown.steps.length,
+    hours: Math.round(shown.conversionWindowMs / MS_PER_HOUR),
+    website,
   })
 })
 
-// --- Lifecycle ---------------------------------------------------------------
+// --- Lifecycle -------------------------------------------------------------------
 
 const changing = ref(false)
 
 async function writeStatus(target: MarketingExperimentStatus): Promise<void> {
-  const current = funnel.value
+  const shown = funnel.value
   const split = experiment.value
-  if (!current || !split) {
+  if (!shown || !split) {
     return
   }
   changing.value = true
   try {
-    await api.updateFunnel(current._id, {
-      websiteId: current.websiteId,
-      name: current.name,
-      steps: current.steps,
-      conversionWindowHours: Math.round(current.conversionWindowMs / 3_600_000),
+    await api.updateFunnel(shown._id, {
+      websiteId: shown.websiteId,
+      name: shown.name,
+      steps: shown.steps,
+      conversionWindowHours: Math.round(shown.conversionWindowMs / MS_PER_HOUR),
       experiment: { ...split, status: target },
     })
     toast.add({
@@ -125,6 +201,17 @@ async function writeStatus(target: MarketingExperimentStatus): Promise<void> {
   }
 }
 
+/** Steps the site never sent over the period, while it sent other events. */
+const unseenSteps = computed(() => {
+  const computation = current.value?.computation
+  if (!computation || computation.events === 0) {
+    return []
+  }
+  return computation.steps
+    .filter((row) => row.matches === 0)
+    .map((row) => row.step.value)
+})
+
 async function start(): Promise<void> {
   const split = experiment.value
   if (!split || !funnel.value) {
@@ -135,7 +222,7 @@ async function start(): Promise<void> {
   const shares = split.variations
     .map(
       (arm) =>
-        `${arm.key} ${Math.round((Math.max(arm.weight, 0) / total) * 100)}%`,
+        `${arm.key} ${formatPercent((Math.max(arm.weight, 0) / total) * PERCENT, locale.value, 0)}`,
     )
     .join(' · ')
   await confirm({
@@ -143,18 +230,29 @@ async function start(): Promise<void> {
       name: funnel.value.name,
     }),
     description: t('page.marketing.funnel.lifecycle.start_description', {
-      website: context.selected.value?.name ?? '',
+      website: websiteName.value,
     }),
     color: 'success',
     icon: 'i-ph-play',
     confirmLabel: t('page.marketing.funnel.lifecycle.start_confirm'),
     impact: [
+      ...unseenSteps.value.map((step) => ({
+        icon: 'i-ph-warning',
+        label: t('page.marketing.funnel.lifecycle.start_unseen', {
+          step,
+          website: websiteName.value,
+        }),
+      })),
       {
         icon: 'i-ph-lock-simple',
         label: t('page.marketing.funnel.lifecycle.start_freezes', {
           key: split.key,
           shares,
         }),
+      },
+      {
+        icon: 'i-ph-arrows-clockwise',
+        label: t('page.marketing.funnel.lifecycle.start_rescored'),
       },
       {
         icon: 'i-ph-code',
@@ -167,13 +265,54 @@ async function start(): Promise<void> {
   })
 }
 
+/** What the reading says at the moment of stopping, in a line. */
+const readingAtStop = computed(() => {
+  const arms = current.value?.experiment?.variations ?? []
+  const challengers = arms.slice(1).filter((arm) => arm.pValue !== null)
+  const best = challengers.sort(
+    (a, b) => b.conversionRate - a.conversionRate,
+  )[0]
+  if (!best || !best.significant || best.uplift === null) {
+    return t('page.marketing.funnel.lifecycle.stop_reading_flat')
+  }
+  return t(
+    best.uplift > 0
+      ? 'page.marketing.funnel.lifecycle.stop_reading_winner'
+      : 'page.marketing.funnel.lifecycle.stop_reading_loser',
+    {
+      key: best.key,
+      lift: formatPercent(Math.abs(best.uplift) * PERCENT, locale.value),
+    },
+  )
+})
+
 async function stop(): Promise<void> {
+  const shown = funnel.value
+  const split = experiment.value
+  if (!shown || !split) {
+    return
+  }
   await confirm({
     title: t('page.marketing.funnel.lifecycle.stop_title'),
     description: t('page.marketing.funnel.lifecycle.stop_description'),
     color: 'warning',
     icon: 'i-ph-stop',
     confirmLabel: t('page.marketing.funnel.lifecycle.stop_confirm'),
+    impact: [
+      { icon: 'i-ph-scales', label: readingAtStop.value },
+      {
+        icon: 'i-ph-hourglass',
+        label: t('page.marketing.funnel.lifecycle.stop_settles', {
+          hours: Math.round(shown.conversionWindowMs / MS_PER_HOUR),
+        }),
+      },
+      {
+        icon: 'i-ph-code',
+        label: t('page.marketing.funnel.lifecycle.stop_code', {
+          key: split.key,
+        }),
+      },
+    ],
     onConfirm: () => writeStatus('stopped'),
   })
 }
@@ -188,28 +327,53 @@ async function resume(): Promise<void> {
 }
 
 async function remove(): Promise<void> {
-  const current = funnel.value
-  if (!current) {
+  const shown = funnel.value
+  if (!shown) {
     return
   }
+  const running = status.value === 'running'
   await confirm({
-    title: t('page.marketing.funnel.delete.title', { name: current.name }),
-    description: t('page.marketing.funnel.delete.description'),
+    title: t('page.marketing.funnel.delete.title', { name: shown.name }),
+    description: t(
+      running
+        ? 'page.marketing.funnel.delete.description_running'
+        : 'page.marketing.funnel.delete.description',
+    ),
     color: 'error',
+    icon: 'i-ph-trash',
     confirmLabel: t('page.marketing.funnel.delete.confirm'),
-    confirmText: current.name,
+    confirmText: shown.name,
+    impact: running
+      ? [
+          {
+            icon: 'i-ph-stop',
+            label: t('page.marketing.funnel.delete.impact_running', {
+              key: experiment.value?.key ?? '',
+            }),
+          },
+        ]
+      : undefined,
     onConfirm: async () => {
-      await api.deleteFunnel(current._id)
+      await api.deleteFunnel(shown._id)
       toast.add({
         color: 'success',
         title: t('page.marketing.funnel.delete.done'),
       })
-      await router.push(funnelsLink())
+      await router.push(inContext(funnelsLink()))
     },
   })
 }
 
 const moreItems = computed(() => [
+  [
+    {
+      label: t('page.marketing.funnel.duplicate'),
+      icon: 'i-ph-copy',
+      to: funnel.value
+        ? inContext(funnelBuilderLink(null, { copy: funnel.value._id }))
+        : undefined,
+    },
+  ],
   [
     {
       label: t('page.marketing.funnel.delete.action'),
@@ -228,17 +392,18 @@ const moreItems = computed(() => [
         icon="i-ph-arrow-left"
         color="neutral"
         variant="ghost"
-        :to="funnelsLink()"
+        :to="inContext(funnelsLink())"
         :aria-label="t('page.marketing.funnel.back')"
       />
-      <div class="min-w-0 flex-1">
-        <USkeleton v-if="!funnel && isLoading" class="h-8 w-72" />
+      <div class="min-w-[min(16rem,100%)] flex-1">
+        <USkeleton v-if="!funnel && !notFound && !error" class="h-8 w-72" />
         <h1
           v-else
           class="flex flex-wrap items-center gap-2 text-2xl font-semibold text-highlighted"
         >
           {{ funnel?.name ?? t('page.marketing.funnel.title') }}
           <DmsStatusPill
+            v-if="funnel"
             size="sm"
             uppercase
             :icon="isSplit ? 'i-ph-flask' : 'i-ph-funnel'"
@@ -264,7 +429,7 @@ const moreItems = computed(() => [
             :label="t(`page.marketing.funnels.status.${status}`)"
           />
         </h1>
-        <p class="mt-1 max-w-3xl text-sm text-muted" :class="isSplit ? '' : ''">
+        <p v-if="subtitle" class="mt-1 max-w-3xl text-sm text-muted">
           {{ subtitle }}
         </p>
       </div>
@@ -280,7 +445,7 @@ const moreItems = computed(() => [
                 : 'page.marketing.funnel.edit_steps',
             )
           "
-          :to="funnelBuilderLink(funnel._id)"
+          :to="inContext(funnelBuilderLink(funnel._id))"
         />
         <UButton
           v-if="!isSplit"
@@ -288,7 +453,7 @@ const moreItems = computed(() => [
           color="neutral"
           variant="outline"
           :label="t('page.marketing.funnel.split')"
-          :to="funnelBuilderLink(funnel._id, { split: true })"
+          :to="inContext(funnelBuilderLink(funnel._id, { split: true }))"
         />
         <UButton
           v-if="status === 'draft'"
@@ -328,7 +493,27 @@ const moreItems = computed(() => [
     </header>
 
     <DmsEmptyState
-      v-if="error && !data"
+      v-if="notFound"
+      icon="i-ph-funnel"
+      hatched
+      class="dms-card"
+      :title="t('page.marketing.errors.funnel_not_found')"
+      :description="t('page.marketing.funnel.not_found_description')"
+    >
+      <template #actions>
+        <UButton
+          size="sm"
+          color="neutral"
+          variant="outline"
+          icon="i-ph-arrow-left"
+          :label="t('page.marketing.funnel.back')"
+          :to="inContext(funnelsLink())"
+        />
+      </template>
+    </DmsEmptyState>
+
+    <DmsEmptyState
+      v-else-if="error && !current"
       variant="error"
       class="dms-card"
       :title="t('page.marketing.funnel.error')"
@@ -346,22 +531,23 @@ const moreItems = computed(() => [
       </template>
     </DmsEmptyState>
 
-    <div v-else-if="!data" class="grid gap-4 md:grid-cols-4">
+    <div v-else-if="!current" class="grid gap-4 md:grid-cols-4">
       <USkeleton v-for="index in 4" :key="index" class="h-24 rounded-xl" />
       <USkeleton class="h-80 rounded-xl md:col-span-4" />
     </div>
 
     <DmsMarketingExperimentReport
       v-else-if="isSplit && status !== 'draft'"
-      :results="data"
+      :results="current"
       :loading="isLoading"
+      :website-name="websiteName"
     />
 
     <DmsMarketingFunnelFigure
       v-else
-      :results="data"
+      :results="current"
       :loading="isLoading"
-      :website-name="context.selected.value?.name ?? ''"
+      :website-name="websiteName"
     />
   </div>
 </template>

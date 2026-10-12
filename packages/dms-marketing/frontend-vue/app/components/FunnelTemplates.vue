@@ -1,19 +1,24 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useDmsRouter, useI18n } from '#dms/frontend-module'
+import { computed, ref, watch } from 'vue'
+import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import { useMarketingContext } from '../composables/useMarketingContext'
 import {
   useMarketingApi,
   type MarketingFunnelStep,
-  type MarketingFunnelSuggestions,
+  type MarketingFunnelTemplate,
 } from '../composables/useMarketingApi'
-import { funnelBuilderLink } from '../composables/useMarketingRoutes'
+import {
+  funnelBuilderLink,
+  installLink,
+  linkInContext,
+} from '../composables/useMarketingRoutes'
 import { formatNumber } from '../utils/format'
 
 /**
- * The first-run state of the funnels table: funnels built from what the site
- * already sends (its most visited pages and its custom events), and a blank
- * start. The table draws it while the website has no funnel.
+ * The first-run state of the funnels table: funnels built from the site's
+ * own journeys over the period (its most triggered events, each led by the
+ * page its sessions viewed most often before it), and a blank start. A site
+ * that sent nothing yet is sent to its install guide instead.
  */
 const props = withDefaults(
   defineProps<{ state?: string; componentId?: string; pageId?: string }>(),
@@ -22,54 +27,44 @@ const props = withDefaults(
 
 void props
 
-interface Template {
-  id: string
-  title: string
-  steps: MarketingFunnelStep[]
-  entering: number
-}
-
 const { t, locale } = useI18n()
+const route = useDmsRoute()
 const router = useDmsRouter()
 const api = useMarketingApi()
 const context = useMarketingContext()
 
-const suggestions = ref<MarketingFunnelSuggestions | null>(null)
+const templates = ref<MarketingFunnelTemplate[] | null>(null)
 
-onMounted(async () => {
-  const website = context.selected.value?.id
-  if (!website) {
-    return
-  }
-  try {
-    suggestions.value = await api.getFunnelSuggestions(website)
-  } catch {
-    suggestions.value = { pages: [], events: [] }
-  }
-})
-
-const templates = computed<Template[]>(() => {
-  const pages = suggestions.value?.pages ?? []
-  const events = suggestions.value?.events ?? []
-  return events.slice(0, 2).map((event, index) => {
-    const page = pages[index + 1] ?? pages[0]
-    const steps: MarketingFunnelStep[] = page
-      ? [
-          { kind: 'url', value: page.value },
-          { kind: 'custom', value: event.value },
-        ]
-      : [{ kind: 'custom', value: event.value }]
-    return {
-      id: `${page?.value ?? ''}-${event.value}`,
-      title: event.value,
-      steps,
-      entering: page?.count ?? event.count,
+watch(
+  [() => context.selected.value?.id, context.from, context.to],
+  async ([website, from, to]) => {
+    if (!website) {
+      return
     }
-  })
-})
+    templates.value = null
+    try {
+      templates.value = await api.getFunnelTemplates(website, from, to)
+    } catch {
+      templates.value = []
+    }
+  },
+  { immediate: true },
+)
 
-function startFrom(template: Template | null): void {
-  void router.push(funnelBuilderLink(null, { steps: template?.steps }))
+/** The site has sent nothing yet: templates cannot come before the tracker. */
+const waiting = computed(() => context.selected.value?.state === 'waiting')
+
+function startFrom(steps: MarketingFunnelStep[] | null): void {
+  void router.push(
+    linkInContext(
+      funnelBuilderLink(null, { steps: steps ?? undefined }),
+      route.query as Record<string, unknown>,
+    ),
+  )
+}
+
+function stepsKey(steps: MarketingFunnelStep[]): string {
+  return steps.map((step) => step.value).join('>')
 }
 </script>
 
@@ -84,25 +79,48 @@ function startFrom(template: Template | null): void {
           website: context.selected.value?.name ?? '',
         })
       "
-      :description="t('page.marketing.funnels.empty.description')"
-    />
+      :description="
+        t(
+          waiting
+            ? 'page.marketing.funnels.empty.description_waiting'
+            : templates && templates.length === 0
+              ? 'page.marketing.funnels.empty.description_none'
+              : 'page.marketing.funnels.empty.description',
+          { website: context.selected.value?.name ?? '' },
+        )
+      "
+    >
+      <template v-if="waiting" #actions>
+        <UButton
+          size="sm"
+          icon="i-ph-plug"
+          :label="t('page.marketing.funnels.empty.install')"
+          :to="installLink(context.selected.value?.id)"
+        />
+      </template>
+    </DmsEmptyState>
     <div class="mt-6 grid gap-3 md:grid-cols-3">
+      <template v-if="templates === null && !waiting">
+        <USkeleton v-for="index in 2" :key="index" class="h-32 rounded-xl" />
+      </template>
       <button
-        v-for="template in templates"
-        :key="template.id"
+        v-for="template in templates ?? []"
+        :key="stepsKey(template.steps)"
         type="button"
-        class="dms-card flex flex-col items-start gap-2 p-4 text-left transition-colors hover:border-primary"
-        @click="startFrom(template)"
+        class="dms-card flex min-w-0 flex-col items-start gap-2 p-4 text-left transition-colors hover:border-primary"
+        @click="startFrom(template.steps)"
       >
         <DmsEyebrow :label="t('page.marketing.funnels.empty.template')" />
-        <span class="font-mono text-sm font-semibold text-highlighted">
-          {{ template.title }}
+        <span
+          class="max-w-full truncate font-mono text-sm font-semibold text-highlighted"
+        >
+          {{ template.steps.at(-1)?.value }}
         </span>
-        <span class="flex flex-wrap items-center gap-1">
+        <span class="flex max-w-full flex-wrap items-center gap-1">
           <span
             v-for="step in template.steps"
             :key="step.value"
-            class="rounded border px-1.5 py-0.5 font-mono text-[11px]"
+            class="max-w-full truncate rounded border px-1.5 py-0.5 font-mono text-[11px]"
             :class="
               step.kind === 'custom'
                 ? 'border-primary/40 text-primary'
@@ -114,9 +132,11 @@ function startFrom(template: Template | null): void {
         </span>
         <span class="text-xs text-muted">
           {{
-            t('page.marketing.funnels.empty.entering', {
-              count: formatNumber(template.entering, locale),
-            })
+            t(
+              'page.marketing.funnels.empty.entering',
+              { count: formatNumber(template.entering, locale) },
+              template.entering,
+            )
           }}
         </span>
       </button>

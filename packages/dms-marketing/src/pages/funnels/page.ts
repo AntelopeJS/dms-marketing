@@ -15,7 +15,12 @@ import {
   MARKETING_MODULE_ID,
   MARKETING_MODULE_PATH,
 } from "@/types/constants";
-import { blockMeta, MARKETING_PERIOD_SCOPE, MarketingContext } from "../blocks";
+import {
+  blockMeta,
+  MARKETING_PERIOD_SCOPE,
+  MarketingContext,
+  websiteUrl,
+} from "../blocks";
 import { conversionCategory } from "../module";
 
 const FUNNELS_API = `${API_BASE_PATH}/funnels`;
@@ -27,15 +32,33 @@ const STATUS_TONES = {
   draft: "info",
 } as const;
 
+/** The table's own actions over `/api/marketing/tables/funnels`. */
+const FUNNELS_TABLE_API = `${API_BASE_PATH}/tables/funnels`;
+const BUILDER_URL = `${MARKETING_MODULE_PATH}/funnel-builder`;
+
+/**
+ * The page's website and period on a row's link: a row action fills its URL
+ * from the row alone, so the rows carry the context they were read in.
+ */
+const ROW_CONTEXT = [
+  "website={context.website}",
+  ...(["period", "from", "to", "compare"] as const).map(
+    (key) => `${MARKETING_PERIOD_SCOPE}.${key}={context.${key}}`,
+  ),
+].join("&");
+
 /**
  * The funnels of the context's website: a stock source table over
- * `/funnels/rows`, which reads the context the bar mirrors into the page URL.
- * A click opens the funnel's report; with no funnel yet, templates built from
- * what the site already sends take the table's place.
+ * `/funnels/rows`, on the context bar's website and period.
+ * The conversion and its bar come first, so a phone shows them without
+ * scrolling. The row's arrow opens the report in one click (a stock row
+ * opens on double-click only); its menu edits, duplicates or deletes. With no
+ * funnel yet, templates built from the site's journeys take the table's
+ * place.
  */
 const funnelsTable = TableView.fromSource({
   caption: `${FUNNELS_PREFIX}list_title`,
-  fetchUrl: `${FUNNELS_API}/rows`,
+  fetchUrl: websiteUrl(`${FUNNELS_API}/rows`),
   periodScope: MARKETING_PERIOD_SCOPE,
   capabilities: { filter: true },
   defaultSort: { field: "conversion", desc: true },
@@ -43,26 +66,20 @@ const funnelsTable = TableView.fromSource({
     name: {
       name: `${FUNNELS_PREFIX}columns.name`,
       order: 1,
+      size: 170,
       type: new DefaultDataTypes.StringType(),
-      display: new DefaultDisplays.TwoLineDisplay({ subField: "detail" }),
-      sortable: true,
-    },
-    steps: {
-      name: `${FUNNELS_PREFIX}columns.steps`,
-      order: 2,
-      type: new DefaultDataTypes.StringType(),
-      display: new DefaultDisplays.MonoDisplay(),
-      cellWrap: true,
-    },
-    entered: {
-      name: `${FUNNELS_PREFIX}columns.entered`,
-      order: 3,
-      type: new DefaultDataTypes.NumberType(),
+      display: new DefaultDisplays.IdentityDisplay({
+        icon: "i-ph-funnel",
+        subtitleField: "detail",
+        // The cell reads a per-row icon the options type does not declare yet.
+        ...({ iconField: "icon" } as object),
+      }),
       sortable: true,
     },
     conversion: {
       name: `${FUNNELS_PREFIX}columns.conversion`,
-      order: 4,
+      order: 2,
+      size: 105,
       type: new DefaultDataTypes.NumberType(),
       display: new DefaultDisplays.TwoLineDisplay({
         primaryField: "conversionText",
@@ -70,16 +87,38 @@ const funnelsTable = TableView.fromSource({
       }),
       sortable: true,
     },
+    entered: {
+      name: `${FUNNELS_PREFIX}columns.completed_of_entered`,
+      order: 3,
+      size: 190,
+      type: new DefaultDataTypes.NumberType(),
+      display: new DefaultDisplays.ProgressDisplay({
+        doneField: "completed",
+        totalField: "entered",
+      }),
+      sortable: true,
+    },
     status: {
       name: `${FUNNELS_PREFIX}columns.status`,
-      order: 5,
+      order: 4,
+      size: 110,
       type: new DefaultDataTypes.SelectType({
         items: (["running", "stopped", "draft"] as const).map((status) => ({
           value: status,
           label: `${FUNNELS_PREFIX}status.${status}`,
         })),
       }),
-      display: new DefaultDisplays.StatusPillDisplay({ tones: STATUS_TONES }),
+      display: new DefaultDisplays.StatusPillDisplay({
+        tones: STATUS_TONES,
+        liveValues: ["running"],
+      }),
+    },
+    steps: {
+      name: `${FUNNELS_PREFIX}columns.steps`,
+      order: 5,
+      size: 320,
+      type: new DefaultDataTypes.StringType(),
+      display: new DefaultDisplays.PillsDisplay(),
     },
     kind: {
       name: `${FUNNELS_PREFIX}columns.kind`,
@@ -116,9 +155,35 @@ const funnelsTable = TableView.fromSource({
         icon: "i-ph-arrow-right",
         target: {
           type: "page",
-          url: `${MARKETING_MODULE_PATH}/funnel?id={_id}`,
+          url: `${MARKETING_MODULE_PATH}/funnel?id={_id}&${ROW_CONTEXT}`,
         },
         isDefault: true,
+        isVisible: true,
+      },
+      {
+        label: `${FUNNELS_PREFIX}actions.edit`,
+        icon: "i-ph-pencil-simple",
+        target: { type: "page", url: `${BUILDER_URL}?id={_id}&${ROW_CONTEXT}` },
+      },
+      {
+        label: `${FUNNELS_PREFIX}actions.duplicate`,
+        icon: "i-ph-copy",
+        target: {
+          type: "page",
+          url: `${BUILDER_URL}?copy={_id}&${ROW_CONTEXT}`,
+        },
+      },
+      {
+        label: `${FUNNELS_PREFIX}actions.delete`,
+        icon: "i-ph-trash",
+        color: "error",
+        target: {
+          type: "api",
+          method: "DELETE",
+          url: `${FUNNELS_TABLE_API}/delete?id={_id}`,
+          successMessage: "$page.marketing.funnel.delete.done",
+        },
+        confirm: { from: `${FUNNELS_API}/{id}/delete-confirmation` },
       },
     ],
   },
@@ -181,14 +246,18 @@ export class MarketingFunnelsPage extends PageController(
     .child(
       "winner",
       Banner({
-        fetchUrl: `${FUNNELS_API}/winner`,
+        fetchUrl: websiteUrl(`${FUNNELS_API}/winner`),
         periodScope: MARKETING_PERIOD_SCOPE,
       }).meta(blockMeta("funnels_winner", "i-ph-flask")),
     )
     .child(
       "list",
       funnelsTable.meta(blockMeta("funnels_table", "i-ph-funnel")).navBadge({
-        count: async (ctx) => countRunningTests(getRequestTenantId(ctx)),
+        // In the primary tone: tests live, not funnels to count.
+        count: async (ctx) => ({
+          count: await countRunningTests(getRequestTenantId(ctx)),
+          tone: "primary",
+        }),
       }),
     );
 }

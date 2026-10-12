@@ -12,7 +12,9 @@ import { conversionCategory } from "../module";
  * One funnel's report (`?id=`): the step figure, its KPIs and where to look
  * next, or for an A/B test the verdict, the arms step by step and the code
  * that asks for a variation. The block draws its own title: the page header
- * cannot name a funnel it does not know.
+ * cannot name a funnel it does not know. No `requiredQueryParams`: the DMS
+ * would answer a bare 404 outside the app; the block sends a missing id back
+ * to the list and names an unknown one.
  */
 @RegisterPage()
 export class MarketingFunnelPage extends PageController(
@@ -24,7 +26,6 @@ export class MarketingFunnelPage extends PageController(
     module: MARKETING_MODULE_ID,
     category: conversionCategory,
     hidden: true,
-    validation: { requiredQueryParams: ["id"] },
   },
   DefaultLayout({ hideHeader: true }),
 ) {
