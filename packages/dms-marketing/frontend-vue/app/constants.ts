@@ -9,6 +9,10 @@
 
 export const MS_PER_DAY = 86_400_000
 
+/** A website's name and domain caps (MAX_NAME_LENGTH, MAX_DOMAIN_LENGTH on the server). */
+export const MAX_WEBSITE_NAME_LENGTH = 100
+export const MAX_WEBSITE_DOMAIN_LENGTH = 253
+
 /** Longest period the routes read (MAX_QUERY_PERIOD_DAYS on the server). */
 export const MAX_PERIOD_DAYS = 90
 

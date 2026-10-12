@@ -20,6 +20,10 @@ import {
   allowHostConfirmation,
   hostConflictOf,
 } from '../utils/host-conflict'
+import {
+  MAX_WEBSITE_DOMAIN_LENGTH,
+  MAX_WEBSITE_NAME_LENGTH,
+} from '../constants'
 
 /**
  * The Websites page: one card per site with its state, volumes, accepted
@@ -37,8 +41,6 @@ type DrawerTab = 'general' | 'capture' | 'danger'
 
 const CLOCK_TICK_MS = 15_000
 const PERCENT = 100
-const MAX_NAME_LENGTH = 100
-const MAX_DOMAIN_LENGTH = 253
 
 const { t, locale } = useI18n()
 const router = useDmsRouter()
@@ -648,7 +650,7 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
                 id="website-name"
                 v-model="draftName"
                 class="w-full"
-                :maxlength="MAX_NAME_LENGTH"
+                :maxlength="MAX_WEBSITE_NAME_LENGTH"
                 v-bind="fieldErrors.aria('name')"
                 @update:model-value="fieldErrors.clear('name')"
               />
@@ -670,7 +672,7 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
                 id="website-domain"
                 v-model="draftDomain"
                 class="w-full font-mono"
-                :maxlength="MAX_DOMAIN_LENGTH"
+                :maxlength="MAX_WEBSITE_DOMAIN_LENGTH"
                 v-bind="fieldErrors.aria('domain')"
                 @update:model-value="fieldErrors.clear('domain')"
               />

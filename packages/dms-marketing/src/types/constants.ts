@@ -80,6 +80,8 @@ export const DEFAULT_CONVERSION_WINDOW_HOURS = 24;
 export const MIN_EXPERIMENT_VARIATIONS = 2;
 export const MAX_EXPERIMENT_VARIATIONS = 8;
 export const MAX_EXPERIMENT_KEY_LENGTH = 64;
+/** Experiment and variation keys: a slug starting with a letter or a digit. */
+export const EXPERIMENT_KEY_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
 /** 8 hex chars = 32 bits — plenty for bucketing, cheap to parse. */
 export const ASSIGNMENT_HASH_HEX_CHARS = 8;
 export const EXPERIMENT_SIGNIFICANCE_LEVEL = 0.05;

@@ -6,6 +6,7 @@ import {
 import { z } from "zod";
 import { EXPERIMENT_STATUSES } from "@/db/tables/funnels.table";
 import {
+  EXPERIMENT_KEY_PATTERN,
   MAX_EXPERIMENT_KEY_LENGTH,
   MAX_EXPERIMENT_VARIATIONS,
   MIN_EXPERIMENT_VARIATIONS,
@@ -18,7 +19,7 @@ const experimentKeySchema = z
   .trim()
   .min(1)
   .max(MAX_EXPERIMENT_KEY_LENGTH)
-  .regex(/^[a-z0-9][a-z0-9_-]*$/);
+  .regex(EXPERIMENT_KEY_PATTERN);
 
 const variationSchema = z.object({
   key: experimentKeySchema,
