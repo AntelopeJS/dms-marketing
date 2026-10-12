@@ -203,6 +203,28 @@ describe("collect sessions", () => {
     assert.equal(store.events.at(-1).sessionId, store.sessions[0]._id);
   });
 
+  test("an interaction on an expired session does not revive it", async () => {
+    const visitor = newVisitor();
+    const scroll = { kind: "scroll", url: PAGE, data: { depth: 50 } };
+    await processCollectBatch(WEBSITE, [pageview()], visitor);
+    const expired = new Date(Date.now() - HOUR);
+    store.sessions[0].lastSeenAt = expired;
+    await processCollectBatch(WEBSITE, [scroll], visitor);
+    assert.equal(store.sessions[0].lastSeenAt, expired);
+    assert.equal(store.sessions[0].eventsCount, 2);
+    assert.equal(store.sessions[0].exitUrl, "/landing");
+
+    // The next pageview opens a visit of its own.
+    await processCollectBatch(
+      WEBSITE,
+      [pageview("https://example.com/pricing")],
+      visitor,
+    );
+    assert.equal(store.sessions.length, 2);
+    assert.equal(store.sessions[0].exitUrl, "/landing");
+    assert.equal(store.events.at(-1).sessionId, store.sessions[1]._id);
+  });
+
   test("a session starts at its first event, not at the batch's arrival", async () => {
     const at = Date.now() - 4_000;
     await processCollectBatch(WEBSITE, [pageview(PAGE, { at })], newVisitor());

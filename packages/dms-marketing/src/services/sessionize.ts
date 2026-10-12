@@ -13,7 +13,7 @@ export interface SessionInput {
   /** First event of the batch: when a session it opens started. */
   startedAt: Date;
   /** False for a batch without a pageview: it joins the visitor's last
-   * session, expired or not, and never opens one. */
+   * session, expired or not, and never opens one (see `extendsSession`). */
   opensSession: boolean;
   sessionIdleTimeoutMs: number;
   entryUrl: string;
@@ -30,6 +30,10 @@ export interface SessionResolution {
   session: MarketingSession;
   isNewSession: boolean;
   isNewVisitor: boolean;
+  /** False when a batch without a pageview joined a session already past
+   * the idle timeout: its events are kept, but the session must not move its
+   * `lastSeenAt` — that would revive it for the next pageview. */
+  extendsSession: boolean;
 }
 
 /**
@@ -108,6 +112,18 @@ function joins(session: MarketingSession, input: SessionInput): boolean {
   );
 }
 
+function joined(
+  session: MarketingSession,
+  input: SessionInput,
+): SessionResolution {
+  return {
+    session,
+    isNewSession: false,
+    isNewVisitor: false,
+    extendsSession: isFresh(session, input.now, input.sessionIdleTimeoutMs),
+  };
+}
+
 function cachedResolution(
   key: string,
   input: SessionInput,
@@ -116,7 +132,7 @@ function cachedResolution(
   if (!cached || !joins(cached, input)) {
     return undefined;
   }
-  return { session: cached, isNewSession: false, isNewVisitor: false };
+  return joined(cached, input);
 }
 
 /** Undefined only for a batch that may not open a session and finds none. */
@@ -148,7 +164,7 @@ async function resolveUncached(
   );
   if (latest && joins(latest, input)) {
     cacheSession(key, latest);
-    return { session: latest, isNewSession: false, isNewVisitor: false };
+    return joined(latest, input);
   }
   if (!input.opensSession) {
     return undefined;
@@ -156,7 +172,12 @@ async function resolveUncached(
 
   const session = await createSession(model, input, latest === undefined);
   cacheSession(key, session);
-  return { session, isNewSession: true, isNewVisitor: latest === undefined };
+  return {
+    session,
+    isNewSession: true,
+    isNewVisitor: latest === undefined,
+    extendsSession: true,
+  };
 }
 
 async function createSession(

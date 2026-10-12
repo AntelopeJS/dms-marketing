@@ -105,7 +105,7 @@ export async function processCollectBatch(
 
   await GetModel(MarketingEventsModel, website.tenantId).insertMany(docs);
   const previous = snapshotSession(resolution.session);
-  await touchSession(context, resolution.session, docs);
+  await touchSession(context, resolution, docs);
 
   recordRollup(context, resolution, docs, previous);
   return { accepted: docs.length, dropped: events.length - docs.length };
@@ -190,6 +190,7 @@ function collectOwnHostnames(
  * describes the visit (entry page, campaign). A batch without one — a click
  * or a scroll depth sent after half an hour on the same page — joins the
  * visitor's last session, expired or not, and is dropped when there is none.
+ * Joining an expired session records the events without reopening it.
  */
 async function openSession(
   context: BatchContext,
@@ -274,25 +275,35 @@ function snapshotSession(session: MarketingSession): SessionSnapshot {
   };
 }
 
+/**
+ * An expired session joined by a batch without a pageview only counts the
+ * events: advancing `lastSeenAt` would let the next pageview join it instead
+ * of opening a new session, and such a batch never moves the exit page.
+ */
 async function touchSession(
   context: BatchContext,
-  session: MarketingSession,
+  resolution: SessionResolution,
   docs: MarketingEvent[],
 ): Promise<void> {
+  const { session, extendsSession } = resolution;
   const pageviews = docs.filter((doc) => doc.kind === "pageview");
-  const lastPageview = pageviews[pageviews.length - 1];
+  const lastPageview = extendsSession
+    ? pageviews[pageviews.length - 1]
+    : undefined;
   await GetModel(
     MarketingSessionsModel,
     context.website.tenantId,
   ).recordActivity(session._id, {
     pageviews: pageviews.length,
     events: docs.length,
-    lastSeenAt: context.now,
+    lastSeenAt: extendsSession ? context.now : undefined,
     exitUrl: lastPageview?.url,
   });
   session.pageviewsCount += pageviews.length;
   session.eventsCount += docs.length;
-  session.lastSeenAt = context.now;
+  if (extendsSession) {
+    session.lastSeenAt = context.now;
+  }
   if (lastPageview) {
     session.exitUrl = lastPageview.url;
   }
