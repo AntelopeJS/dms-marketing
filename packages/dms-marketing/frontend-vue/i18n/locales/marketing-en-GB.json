@@ -100,6 +100,10 @@
           "description": "Pause or resume collection on every website.",
           "name": "Collection switch"
         },
+        "collection_paused": {
+          "description": "Shown while collection is paused for the whole module, with a link to Settings.",
+          "name": "Collection paused notice"
+        },
         "context": {
           "description": "Picks the website and the period every block of the page reads.",
           "name": "Website and period bar"

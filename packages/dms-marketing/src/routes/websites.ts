@@ -127,7 +127,7 @@ export class WebsitesController extends Controller(
     return listTenantWebsites(getRequestTenantId(context));
   }
 
-  /** The Websites page: one card per site, and the module's collection state. */
+  /** The Websites page: one card per site. */
   @Get("summary")
   async summary(
     @AuthTenantMember() _user: User,

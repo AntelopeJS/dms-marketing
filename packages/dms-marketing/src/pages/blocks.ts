@@ -2,6 +2,7 @@ import type {
   ComponentBuilder,
   ComponentMetadata,
 } from "@antelopejs/interface-dms/component";
+import { Banner } from "@antelopejs/interface-dms/base/banner";
 import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
 import { API_BASE_PATH } from "@/types/constants";
 
@@ -84,4 +85,15 @@ export function blockMeta(key: string, icon: string): ComponentMetadata {
     description: `$page.marketing.blocks.${key}.description`,
     icon,
   };
+}
+
+/**
+ * The module-wide "collection paused" notice, a stock `Banner` the Websites
+ * grid and the install guide place as their child: the route answers nothing
+ * while the module collects.
+ */
+export function collectionPausedBanner() {
+  return Banner({ fetchUrl: `${BLOCKS_API}/collection-notice` }).meta(
+    blockMeta("collection_paused", "i-ph-pause-circle"),
+  );
 }

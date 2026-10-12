@@ -10,7 +10,7 @@ import {
   MARKETING_MODULE_ID,
   MARKETING_MODULE_PATH,
 } from "@/types/constants";
-import { MarketingBlock } from "../blocks";
+import { collectionPausedBanner, MarketingBlock } from "../blocks";
 import { setupCategory } from "../module";
 
 /** Websites still waiting for their first pageview: the sidebar badge. A
@@ -65,11 +65,13 @@ export class MarketingWebsitesPage extends PageController(
     {
       fetchUrl: `${API_BASE_PATH}/websites/summary`,
     },
-  ).navBadge({
-    // In warning: a grey "Websites 1" reads as one website, not one to check.
-    count: async (ctx) => ({
-      count: await countWaitingWebsites(getRequestTenantId(ctx)),
-      tone: "warning",
-    }),
-  });
+  )
+    .child("collection", collectionPausedBanner())
+    .navBadge({
+      // In warning: a grey "Websites 1" reads as one website, not one to check.
+      count: async (ctx) => ({
+        count: await countWaitingWebsites(getRequestTenantId(ctx)),
+        tone: "warning",
+      }),
+    });
 }

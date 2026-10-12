@@ -42,6 +42,7 @@ import {
   resolveQueryWindow,
 } from "@/services/period";
 import { queryString } from "@/services/query-param";
+import { collectionPausedNotice } from "@/services/settings";
 import {
   mergeDimension,
   percentChange,
@@ -303,5 +304,14 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
         },
       ],
     } satisfies BannerContent;
+  }
+
+  /**
+   * A `Banner` over the Websites grid and in the install guide while the
+   * module-wide collection is paused; `null` while it collects.
+   */
+  @Get("collection-notice")
+  collectionNotice(@AuthTenantMember() _user: User) {
+    return collectionPausedNotice();
   }
 }

@@ -100,6 +100,10 @@
           "description": "Mettre en pause ou reprendre la collecte sur tous les sites.",
           "name": "Interrupteur de collecte"
         },
+        "collection_paused": {
+          "description": "Affiché tant que la collecte est en pause pour tout le module, avec un lien vers les paramètres.",
+          "name": "Avis de collecte en pause"
+        },
         "context": {
           "description": "Choisit le site et la période que lisent tous les blocs de la page.",
           "name": "Barre site et période"

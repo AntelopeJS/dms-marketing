@@ -37,13 +37,6 @@ export interface WebsiteCard extends ContextWebsite {
   rejected: RejectedSource[];
 }
 
-/** The Websites page: the cards, and whether the module collects at all. */
-export interface WebsitesSummary {
-  websites: WebsiteCard[];
-  /** The module-wide collection switch (Settings); off, no site records. */
-  trackerEnabled: boolean;
-}
-
 async function cardOf(
   website: Website,
   activity: ReadonlyMap<string, number>,
@@ -74,14 +67,9 @@ async function cardOf(
 export async function websitesSummary(
   tenantId: string,
   websites: Website[],
-): Promise<WebsitesSummary> {
+): Promise<WebsiteCard[]> {
   const activity = await loadWebsiteActivity(tenantId, websites);
-  return {
-    websites: await Promise.all(
-      websites.map((website) => cardOf(website, activity)),
-    ),
-    trackerEnabled: getConfig().trackerEnabled,
-  };
+  return Promise.all(websites.map((website) => cardOf(website, activity)));
 }
 
 /** What deleting a website discards, for its confirmation. */
@@ -133,8 +121,6 @@ export interface ConnectionStatus {
   /** Epoch ms of the site's last activity, whatever `since` says. */
   lastActivityAt: number | null;
   rejected: RejectedSource[];
-  /** The module-wide collection switch: off, nothing can arrive. */
-  trackerEnabled: boolean;
 }
 
 /** Sessions older than this do not prove the tag on the page today. */
@@ -174,7 +160,6 @@ export async function connectionStatus(
     visit: pageview ? await visitOf(website, pageview, from) : null,
     lastActivityAt,
     rejected: listRejectedSources(website._id),
-    trackerEnabled: getConfig().trackerEnabled,
   };
 }
 

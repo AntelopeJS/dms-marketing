@@ -281,6 +281,7 @@ Kind-specific `data` payloads:
 | `GET /api/marketing/blocks/channels` | tenant member | sessions per channel with share and change |
 | `GET /api/marketing/blocks/campaigns/rows?search=&filter_channel=is:<channel>` | tenant member | the UTM campaign table (`TableView.fromSource`), `{ results, total }`: top 100 (source, medium, campaign) triples with share, daily sessions, derived channel and the missing-medium flag |
 | `GET /api/marketing/blocks/campaigns/notice?kind=missing\|truncated` | tenant member | the notice under the campaign table for a stock `Banner`: sessions tagged without a medium, or the cut at 100 rows; `null` when there is none |
+| `GET /api/marketing/blocks/collection-notice` | tenant member | the "collection paused" notice over the Websites grid and in the install guide, for a stock `Banner`; `null` while the module collects |
 | `GET /api/marketing/stats/overview?website=&from=&to=` (`period=Nd` as a fallback) | tenant member | rollup-backed dashboard read |
 | `GET /api/marketing/stats/campaigns?website=&from=&to=&search=&limit=` | tenant member | acquisition read: sessions by channel, UTM campaign table as (source, medium, campaign) triples, top referrers/terms/contents |
 | `GET /api/marketing/stats/pages?website=&period=Nd&search=&limit=` | tenant member | inventory of observed paths, plus `heatmapSampleRate` and `trackerEnabled` so the caller can explain an empty heatmap |

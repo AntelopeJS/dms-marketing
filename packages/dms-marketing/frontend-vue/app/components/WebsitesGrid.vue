@@ -8,7 +8,6 @@ import {
 import {
   installLink,
   overviewLink,
-  settingsLink,
 } from '../composables/useMarketingRoutes'
 import {
   formatNumber,
@@ -58,15 +57,12 @@ const { confirm } = useConfirm()
 void props
 
 const cards = ref<MarketingWebsiteCard[] | null>(null)
-const trackerEnabled = ref(true)
 const failed = ref(false)
 
 async function load(): Promise<void> {
   failed.value = false
   try {
-    const summary = await api.listWebsiteCards()
-    cards.value = summary.websites
-    trackerEnabled.value = summary.trackerEnabled
+    cards.value = await api.listWebsiteCards()
   } catch {
     failed.value = true
   }
@@ -347,23 +343,8 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
     <DmsMarketingFirstRun v-else-if="cards.length === 0" />
 
     <template v-else>
-      <DmsBanner
-        v-if="!trackerEnabled"
-        tone="warning"
-        icon="i-ph-pause-circle"
-        :title="t('page.marketing.websites.collection_paused.title')"
-        :description="t('page.marketing.websites.collection_paused.description')"
-      >
-        <template #actions>
-          <UButton
-            size="sm"
-            color="neutral"
-            variant="outline"
-            :label="t('page.marketing.websites.collection_paused.open')"
-            :to="settingsLink()"
-          />
-        </template>
-      </DmsBanner>
+      <!-- The page's "collection paused" Banner block, when the module is paused. -->
+      <slot />
 
       <div class="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
         <article

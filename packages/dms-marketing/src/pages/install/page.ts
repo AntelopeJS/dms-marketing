@@ -1,7 +1,7 @@
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import { MARKETING_MODULE_ID } from "@/types/constants";
-import { MarketingBlock } from "../blocks";
+import { collectionPausedBanner, MarketingBlock } from "../blocks";
 import { setupCategory } from "../module";
 
 /**
@@ -27,5 +27,5 @@ export class MarketingInstallPage extends PageController(
     "install_guide",
     "i-ph-plug",
     {},
-  );
+  ).child("collection", collectionPausedBanner());
 }

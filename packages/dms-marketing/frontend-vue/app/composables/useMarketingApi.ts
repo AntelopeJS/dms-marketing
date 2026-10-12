@@ -39,13 +39,6 @@ export interface MarketingWebsiteCard extends ContextWebsite {
   rejected: MarketingRejectedSource[]
 }
 
-/** The Websites page (GET /api/marketing/websites/summary). */
-export interface MarketingWebsitesSummary {
-  websites: MarketingWebsiteCard[]
-  /** The module-wide collection switch; off, no site records anything. */
-  trackerEnabled: boolean
-}
-
 /** What deleting a website discards (GET /websites/:id/deletion). */
 export interface MarketingWebsiteDeletionImpact {
   /** Every stored day, not a window. */
@@ -66,7 +59,6 @@ export interface MarketingConnectionStatus {
   visit: MarketingConnectionVisit | null
   lastActivityAt: number | null
   rejected: MarketingRejectedSource[]
-  trackerEnabled: boolean
 }
 
 export interface MarketingFunnelSuggestion {
@@ -504,7 +496,7 @@ export function useMarketingApi() {
       }),
 
     listWebsiteCards: () =>
-      $authFetch<MarketingWebsitesSummary>('/api/marketing/websites/summary'),
+      $authFetch<MarketingWebsiteCard[]>('/api/marketing/websites/summary'),
 
     // `since` (epoch ms, server clock): only a pageview from then on counts.
     getConnection: (website: string, since?: number) =>

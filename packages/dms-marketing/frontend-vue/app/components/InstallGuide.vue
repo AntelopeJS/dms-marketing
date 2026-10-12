@@ -13,7 +13,6 @@ import {
 import {
   installLink,
   overviewLink,
-  settingsLink,
   websitesLink,
 } from '../composables/useMarketingRoutes'
 import { formatDateTime } from '../utils/format'
@@ -568,25 +567,8 @@ const stepTwoState = computed(() =>
               {{ t('page.marketing.install.step3_description') }}
             </p>
             <template v-if="website && status">
-              <DmsBanner
-                v-if="!status.trackerEnabled"
-                tone="warning"
-                icon="i-ph-pause-circle"
-                :title="t('page.marketing.websites.collection_paused.title')"
-                :description="
-                  t('page.marketing.websites.collection_paused.description')
-                "
-              >
-                <template #actions>
-                  <UButton
-                    size="sm"
-                    color="neutral"
-                    variant="outline"
-                    :label="t('page.marketing.websites.collection_paused.open')"
-                    :to="settingsLink()"
-                  />
-                </template>
-              </DmsBanner>
+              <!-- The page's "collection paused" Banner block, when the module is paused. -->
+              <slot />
               <DmsBanner
                 v-if="website.state === 'paused'"
                 tone="info"

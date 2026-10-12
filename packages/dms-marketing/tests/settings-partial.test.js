@@ -1,8 +1,9 @@
 const assert = require("node:assert/strict");
 const test = it;
-const { setConfig } = require("../dist/config");
+const { setConfig, applyConfigOverrides } = require("../dist/config");
 const {
   applySettingsForm,
+  collectionPausedNotice,
   confirmRetentionCuts,
   reloadSettings,
   settingsFormValues,
@@ -195,4 +196,32 @@ test("a reload puts another instance's save in force", async () => {
   model.row = { ...model.row, heatmapSampleRate: 0.4 };
   await reloadSettings(model);
   assert.equal(settingsFormValues().heatmapSamplePercent, 40);
+});
+
+describe("the collection paused notice", () => {
+  afterEach(() => applyConfigOverrides({}));
+
+  test("is null while the module collects", () => {
+    applyConfigOverrides({ trackerEnabled: true });
+    assert.equal(collectionPausedNotice(), null);
+  });
+
+  test("warns and links to Settings while collection is paused", () => {
+    applyConfigOverrides({ trackerEnabled: false });
+    const notice = collectionPausedNotice();
+    assert.equal(notice.tone, "warning");
+    assert.equal(notice.icon, "i-ph-pause-circle");
+    assert.equal(
+      notice.title,
+      "$page.marketing.websites.collection_paused.title",
+    );
+    assert.deepEqual(notice.actions, [
+      {
+        label: "$page.marketing.websites.collection_paused.open",
+        to: "/modules/marketing/settings",
+        variant: "outline",
+        color: "neutral",
+      },
+    ]);
+  });
 });

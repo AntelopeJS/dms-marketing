@@ -14,6 +14,7 @@ import type { MarketingSettings } from "@/db/tables/marketing_settings.table";
 import {
   HTTP_BAD_REQUEST,
   HTTP_CONFLICT,
+  MARKETING_MODULE_PATH,
   MAX_STATISTICS_RETENTION_DAYS,
   MS_PER_DAY,
   MS_PER_MINUTE,
@@ -510,6 +511,33 @@ export function collectionBanner(
             { icon: "i-ph-clock", label: `${COLLECTION_PREFIX}impact_delay` },
           ],
         },
+      },
+    ],
+  };
+}
+
+const PAUSED_PREFIX = "$page.marketing.websites.collection_paused.";
+
+/**
+ * The notice the Websites grid and the install guide show while the
+ * module-wide collection is paused, as a stock `Banner`: no site records
+ * anything until it is resumed in Settings. `null` while it collects.
+ */
+export function collectionPausedNotice(): BannerContent | null {
+  if (getConfig().trackerEnabled) {
+    return null;
+  }
+  return {
+    tone: "warning",
+    icon: "i-ph-pause-circle",
+    title: `${PAUSED_PREFIX}title`,
+    description: `${PAUSED_PREFIX}description`,
+    actions: [
+      {
+        label: `${PAUSED_PREFIX}open`,
+        to: `${MARKETING_MODULE_PATH}/settings`,
+        variant: "outline",
+        color: "neutral",
       },
     ],
   };
