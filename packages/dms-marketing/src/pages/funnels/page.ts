@@ -18,6 +18,7 @@ import {
 import {
   blockMeta,
   MARKETING_PERIOD_SCOPE,
+  CONTEXT_PAGE_LIVE,
   MarketingContext,
   websiteUrl,
 } from "../blocks";
@@ -71,8 +72,7 @@ const funnelsTable = TableView.fromSource({
       display: new DefaultDisplays.IdentityDisplay({
         icon: "i-ph-funnel",
         subtitleField: "detail",
-        // The cell reads a per-row icon the options type does not declare yet.
-        ...({ iconField: "icon" } as object),
+        iconField: "icon",
       }),
       sortable: true,
     },
@@ -224,6 +224,7 @@ export class MarketingFunnelsPage extends PageController(
     module: MARKETING_MODULE_ID,
     category: conversionCategory,
     order: 1,
+    live: CONTEXT_PAGE_LIVE,
   },
   DefaultLayout({
     headerActions: [
