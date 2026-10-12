@@ -22,7 +22,7 @@ import { heatColorAt } from '../utils/heatmapPalette'
 const props = defineProps<{
   /** reached[d] = views whose max depth is ≥ d percent, d = 0..100. */
   reached: number[]
-  /** Views that scrolled at all — the denominator of every share shown. */
+  /** Sampled views with a measured depth — the denominator of every share. */
   views: number
   /** Height of the overlay in the pane's own pixels (already scaled). */
   height: number
@@ -35,7 +35,9 @@ const DEPTH_SCALE = 100
  * nothing a reader could see. */
 const GRADIENT_STEP = 5
 const OVERLAY_ALPHA = 0.35
-/** Shares worth a labelled line — the "50% of visitors stop here" reading. */
+/** Shares worth a marked line, labelled with the share alone so the chips
+ * cover as little of the page as possible; the aside explains them and the
+ * pointer readout says the full sentence. */
 const REACH_MARKS = [75, 50, 25]
 
 const { t } = useI18n()
@@ -125,19 +127,21 @@ function onPointerMove(event: PointerEvent): void {
       :style="{ background: gradient }"
     />
 
+    <!-- Named in the legend, not on the page: a label on the line sat on
+         whatever the first screen ends with (a button, a price). -->
     <div
       v-if="showFold"
       class="pointer-events-none absolute inset-x-0"
+      :aria-label="t('page.marketing.pages.scroll.fold_line')"
+      role="img"
       :style="{
         top: `${foldY}px`,
         borderTop: '1px solid rgba(255, 255, 255, 0.55)',
       }"
     >
       <span
-        class="absolute left-2 top-0 -translate-y-1/2 rounded-full bg-default/90 px-2 py-0.5 text-xs text-muted shadow"
-      >
-        {{ t('page.marketing.pages.scroll.fold_line') }}
-      </span>
+        class="absolute left-0 top-0 h-2 w-2 -translate-y-1/2 rounded-full bg-default shadow ring-1 ring-white/70"
+      />
     </div>
 
     <div
@@ -151,11 +155,12 @@ function onPointerMove(event: PointerEvent): void {
       }"
     >
       <span
-        class="absolute right-2 top-0 -translate-y-1/2 rounded-full bg-default/90 px-2 py-0.5 text-xs font-medium text-highlighted shadow"
-      >
-        {{
+        class="absolute right-2 top-0 -translate-y-1/2 rounded-full bg-default/90 px-1.5 py-0.5 font-mono text-[11px] font-medium text-highlighted shadow"
+        :title="
           t('page.marketing.pages.scroll.reach_line', { percent: mark.percent })
-        }}
+        "
+      >
+        {{ t('page.marketing.pages.scroll.mark', { percent: mark.percent }) }}
       </span>
     </div>
 

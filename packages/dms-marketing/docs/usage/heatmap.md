@@ -59,10 +59,10 @@ following the pointer.
 
 Three things to keep in mind when reading it:
 
-- **Shares are "of the views that scrolled".** The tracker records the max
-  depth reached per sampled page load and emits nothing when the visitor
-  never scrolls — including on every page that fits the screen. The header
-  states that denominator ("N scrolled views") next to the pageview count.
+- **Shares are "of the measured views".** The tracker records the max
+  depth reached per sampled page load, scrolled or not: a view that never
+  scrolls reports 0 (100 on a page that fits the screen). Views recorded
+  before the tracker did so only counted when they scrolled.
 - **Depth is a fraction of the visitor's scrollable range**, measured through
   windows this dashboard cannot know. The overlay anchors depth 0 at the
   bottom of the first screen (the viewport the snapshot was captured in) and

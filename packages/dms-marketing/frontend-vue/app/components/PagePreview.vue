@@ -4,6 +4,7 @@ import { useI18n } from '#dms/frontend-module'
 import { useLatestRequest } from '../composables/useLatestRequest'
 import {
   useMarketingApi,
+  type MarketingDayRange,
   type MarketingHeatmap,
   type MarketingPageSnapshotResponse,
   type MarketingScrollDepth,
@@ -14,6 +15,12 @@ import {
 } from '../composables/useMarketingApi'
 import { funnelLink, settingsLink } from '../composables/useMarketingRoutes'
 import { formatNumber, formatShortDate } from '../utils/format'
+import {
+  formatShare,
+  heatmapDataLabel,
+  heatmapResetImpact,
+} from '../utils/heatmap'
+import { heatLegendGradient } from '../utils/heatmapPalette'
 import {
   DEFAULT_RENDER_HEIGHT,
   MAX_RENDER_HEIGHT,
@@ -60,9 +67,13 @@ import { rewriteViewportUnits } from '../utils/snapshotViewportUnits'
 const props = defineProps<{
   website: MarketingWebsite | null
   path: string
-  period: string
-  /** Share of visits capturing clicks — why a quiet page looks empty. */
-  sampleRate: number
+  /** Days the counts cover — the context bar's `from`/`to`. */
+  range: MarketingDayRange
+  /**
+   * Measured share of the site's page loads sampled for clicks — why a quiet
+   * page looks empty. Null while too few pageviews tell it.
+   */
+  sampleRate: number | null
   trackerEnabled: boolean
   /** Pageviews of this path over the window, for the sampling hint. */
   pageviews?: number
@@ -73,7 +84,11 @@ const props = defineProps<{
 }>()
 
 /** The site's snapshot options were changed here; the parent owns the row. */
-const emit = defineEmits<{ 'website-updated': [] }>()
+const emit = defineEmits<{
+  'website-updated': []
+  /** The page lost its clicks: the inventory counts them too. */
+  'heatmap-reset': []
+}>()
 
 interface LayoutPreset {
   width: number
@@ -133,14 +148,8 @@ const {
   run: loadHeatmap,
 } = useLatestRequest<MarketingHeatmap>(() =>
   props.website && props.path && !import.meta.env.SSR
-    ? api.getHeatmap(props.website._id, props.path, props.period)
+    ? api.getHeatmap(props.website._id, props.path, props.range)
     : null,
-)
-
-watch(
-  () => [props.website?._id, props.path, props.period, props.refreshToken],
-  () => void loadHeatmap(),
-  { immediate: true },
 )
 
 const points = computed(() => heatmap.value?.points ?? [])
@@ -151,6 +160,9 @@ const totalClicks = computed(() => heatmap.value?.totalClicks ?? 0)
 
 const overlayMode = ref<'clicks' | 'scroll'>('clicks')
 
+// Read with the clicks, not when its overlay opens: every sampled view
+// reports one depth, so its count is the page's sampled views the header
+// and the empty states speak of.
 const {
   data: scrollDepth,
   loading: loadingScroll,
@@ -158,48 +170,38 @@ const {
   run: loadScrollDepth,
 } = useLatestRequest<MarketingScrollDepth>(() =>
   props.website && props.path && !import.meta.env.SSR
-    ? api.getScrollDepth(props.website._id, props.path, props.period)
+    ? api.getScrollDepth(props.website._id, props.path, props.range)
     : null,
 )
-
-/**
- * Lazy on purpose: nothing is fetched until the overlay is first opened,
- * then kept fresh against the same keys the click read watches. The key
- * comparison is what keeps a mere clicks↔scroll round trip from refetching.
- */
-let scrollLoadedKey = ''
-
-function ensureScrollDepth(): void {
-  if (overlayMode.value !== 'scroll') {
-    return
-  }
-  const key = [
-    props.website?._id,
-    props.path,
-    props.period,
-    props.refreshToken,
-  ].join('|')
-  if (key === scrollLoadedKey) {
-    return
-  }
-  scrollLoadedKey = key
-  void loadScrollDepth()
-}
 
 watch(
   () => [
     props.website?._id,
     props.path,
-    props.period,
+    props.range.from,
+    props.range.to,
     props.refreshToken,
-    overlayMode.value,
   ],
-  ensureScrollDepth,
+  () => {
+    void loadHeatmap()
+    void loadScrollDepth()
+  },
   { immediate: true },
 )
 
 const scrollViews = computed(() => scrollDepth.value?.views ?? 0)
 const scrollReached = computed(() => scrollDepth.value?.reached ?? [])
+
+/** Deepest depth at least half of the sampled views reached. */
+const medianDepth = computed(() => {
+  const half = scrollViews.value / 2
+  for (let depth = scrollReached.value.length - 1; depth >= 0; depth--) {
+    if ((scrollReached.value[depth] ?? 0) >= half) {
+      return depth
+    }
+  }
+  return 0
+})
 
 /**
  * Where depth 0 sits on the drawn page: the bottom of the first screen.
@@ -220,48 +222,44 @@ const toast = useToast()
 const resetting = ref(false)
 
 /** Deletes the clicks, scrolls and snapshots of the page (every period),
- *  then refetches the proof for whichever overlay is showing. */
+ *  counted by the server before asking, then refetches both overlays. */
 async function resetPageHeatmap() {
   const website = props.website
   if (!website) {
     return
   }
-  const events = totalClicks.value + scrollViews.value
+  const path = props.path
+  resetting.value = true
+  const counts = await api
+    .countHeatmap(website._id, path)
+    .catch(() => null)
+    .finally(() => (resetting.value = false))
   await confirm({
-    title: t('page.marketing.pages.reset.page_title', { path: props.path }),
+    title: t('page.marketing.pages.reset.page_title'),
     description: t('page.marketing.pages.reset.page_description'),
     color: 'error',
     icon: 'i-ph-eraser',
     confirmLabel:
-      events > 0
+      counts && counts.events + counts.snapshots > 0
         ? t('page.marketing.pages.reset.confirm_count', {
-            count: formatNumber(events, locale.value),
+            what: heatmapDataLabel(counts, t, locale.value),
           })
         : t('page.marketing.pages.reset.confirm'),
-    confirmText: props.path,
-    impact: [
-      {
-        icon: 'i-ph-cursor-click',
-        label: t('page.marketing.pages.reset.impact_page'),
-      },
-      {
-        icon: 'i-ph-check',
-        label: t('page.marketing.pages.reset.impact_kept'),
-      },
-    ],
+    confirmText: path,
+    impact: heatmapResetImpact(counts, t, locale.value),
     onConfirm: async () => {
       resetting.value = true
       try {
-        const { deleted } = await api.resetHeatmap(website._id, props.path)
+        const deleted = await api.resetHeatmap(website._id, path)
         toast.add({
           color: 'success',
-          title: t('page.marketing.pages.reset.done', {
-            count: formatNumber(deleted, locale.value),
+          title: t('page.marketing.pages.reset.page_done'),
+          description: t('page.marketing.pages.reset.done', {
+            what: heatmapDataLabel(deleted, t, locale.value),
           }),
         })
-        scrollLoadedKey = ''
-        ensureScrollDepth()
-        await Promise.all([loadHeatmap(), loadSnapshot()])
+        emit('heatmap-reset')
+        await Promise.all([loadHeatmap(), loadScrollDepth(), loadSnapshot()])
       } finally {
         resetting.value = false
       }
@@ -547,9 +545,16 @@ watch(container, (el) => {
 
 onBeforeUnmount(() => observer?.disconnect())
 
+// Only ever scaled down: a phone or tablet layout narrower than the pane is
+// shown at its own width, centred like a device, never blown up to fill it.
 const scale = computed(() =>
-  containerWidth.value > 0 ? containerWidth.value / layoutWidth.value : 1,
+  containerWidth.value > 0
+    ? Math.min(1, containerWidth.value / layoutWidth.value)
+    : 1,
 )
+
+/** Width of the drawn surface in the pane's own pixels. */
+const surfaceWidth = computed(() => Math.round(layoutWidth.value * scale.value))
 
 /** Height of the zoomed surface in the pane's own pixels — the scroll range
  *  of the pane and the space the scroll-depth overlay draws in. */
@@ -557,31 +562,38 @@ const scrolledHeight = computed(() =>
   Math.round(renderHeight.value * scale.value),
 )
 
+/**
+ * The pane grows with the page, up to the window's height: a short capture
+ * leaves no empty band below it, and a long one scrolls inside a pane that
+ * still fits the screen. The border is counted, or a 2px scroll would remain.
+ */
+const paneStyle = computed(() => ({
+  height: `${scrolledHeight.value + 2}px`,
+  maxHeight: 'calc(100dvh - 8rem)',
+  minHeight: '12rem',
+}))
+
 // --- Emptiness, explained ---------------------------------------------------
 
-/**
- * Page loads whose clicks were captured at all. Sampling is drawn once per
- * page load (tracker.js), so this bounds whether a heatmap could exist — it
- * is not a click estimate, and must not be shown as one next to the real
- * count.
- */
-const expectedSampledPageLoads = computed(() =>
-  props.pageviews ? Math.round(props.pageviews * props.sampleRate) : null,
+/** The site's measured sampling share, written for a sentence. */
+const rateLabel = computed(() =>
+  props.sampleRate === null
+    ? null
+    : formatShare(props.sampleRate, locale.value),
 )
 
-/** Silence has shared causes (collection off, sampled out) before the
+/** Silence has shared causes (collection off, no view sampled) before the
  *  per-overlay one; both overlays explain themselves through this. */
 function captureEmptyReason(fallbackKey: string): string {
   if (!props.trackerEnabled) {
     return t('page.marketing.pages.empty.tracking_off')
   }
-  if (
-    expectedSampledPageLoads.value !== null &&
-    expectedSampledPageLoads.value < 1
-  ) {
-    return t('page.marketing.pages.empty.sampled_out', {
-      rate: Math.round(props.sampleRate * 100),
-    })
+  if (props.pageviews && scrollViews.value === 0) {
+    return rateLabel.value === null
+      ? t('page.marketing.pages.empty.none_sampled')
+      : t('page.marketing.pages.empty.none_sampled_rate', {
+          rate: rateLabel.value,
+        })
   }
   return t(fallbackKey)
 }
@@ -643,14 +655,22 @@ const truncatedState = computed(() => {
   return null
 })
 
-/** The real page, on the origin the snapshot was captured from — opened,
- *  never framed. */
+const LOCAL_HOST = /^(localhost|127\.|\[?::1\]?$)/
+
+/** The real page — opened, never framed: on the origin the snapshot was
+ *  captured from, else on the site's declared domain. */
 const externalUrl = computed(() => {
-  if (!snapshot.value || !props.path) {
+  const domain = props.website?.domain
+  const origin =
+    snapshot.value?.origin ??
+    (domain
+      ? `${LOCAL_HOST.test(domain) ? 'http' : 'https'}://${domain}`
+      : null)
+  if (!origin || !props.path) {
     return ''
   }
   try {
-    return new URL(props.path, snapshot.value.origin).toString()
+    return new URL(props.path, origin).toString()
   } catch {
     return ''
   }
@@ -679,7 +699,6 @@ interface StatusStrip {
  * stay exact whatever it says.
  */
 const statusStrip = computed<StatusStrip | null>(() => {
-  const rate = Math.round(props.sampleRate * 100)
   const candidates: Array<StatusStrip | null> = [
     !props.trackerEnabled
       ? {
@@ -709,12 +728,13 @@ const statusStrip = computed<StatusStrip | null>(() => {
       ? {
           tone: 'primary',
           icon: 'i-ph-hourglass',
-          title: t('page.marketing.pages.preview.no_snapshot', {
-            path: props.path,
-          }),
-          description: t('page.marketing.pages.preview.no_snapshot_hint', {
-            rate,
-          }),
+          title: t('page.marketing.pages.preview.no_snapshot'),
+          description:
+            rateLabel.value === null
+              ? t('page.marketing.pages.preview.no_snapshot_hint')
+              : t('page.marketing.pages.preview.no_snapshot_hint_rate', {
+                  rate: rateLabel.value,
+                }),
         }
       : null,
     snapshot.value && tooHeavy.value
@@ -836,19 +856,52 @@ const mostClicked = computed<ClickedElement[]>(() => {
     .slice(0, MOST_CLICKED)
 })
 
-/** Count badges pinned on the hottest elements, in the surface's own pixels. */
-const pins = computed(() =>
-  overlayMode.value === 'clicks'
-    ? mostClicked.value
-        .filter((element) => element.box)
-        .map((element) => ({
-          key: element.key,
-          weight: element.weight,
-          left: element.box!.x + element.box!.width,
-          top: element.box!.y,
-        }))
-    : [],
-)
+/** Half a pin's footprint on screen, and the step that unstacks two pins. */
+const PIN_HALF_WIDTH = 28
+const PIN_HALF_HEIGHT = 11
+const PIN_STEP = 22
+
+interface Pin {
+  key: string
+  weight: number
+  left: number
+  top: number
+}
+
+/**
+ * Count badges pinned on the hottest elements, in the surface's own pixels:
+ * kept inside the surface (an element flush with the right edge would cut
+ * its badge in half) and pushed down past the badges already placed.
+ */
+const pins = computed(() => {
+  if (overlayMode.value !== 'clicks') {
+    return []
+  }
+  const unit = 1 / scale.value
+  const placed: Pin[] = []
+  for (const element of mostClicked.value) {
+    const box = element.box
+    if (!box) {
+      continue
+    }
+    const left = Math.min(
+      Math.max(box.x + box.width, PIN_HALF_WIDTH * unit),
+      layoutWidth.value - PIN_HALF_WIDTH * unit,
+    )
+    let top = Math.max(box.y, PIN_HALF_HEIGHT * unit)
+    while (
+      placed.some(
+        (pin) =>
+          Math.abs(pin.left - left) < 2 * PIN_HALF_WIDTH * unit &&
+          Math.abs(pin.top - top) < PIN_STEP * unit,
+      )
+    ) {
+      top += PIN_STEP * unit
+    }
+    placed.push({ key: element.key, weight: element.weight, left, top })
+  }
+  return placed
+})
 
 // --- Toolbar ------------------------------------------------------------------
 
@@ -871,6 +924,27 @@ const layoutItems = computed(() =>
     label: '',
     icon: preset.icon,
   })),
+)
+
+/**
+ * Names the icon-only layout segments: DmsSegmented renders an item's label
+ * as its only text and has no per-item aria-label, so a screen reader would
+ * read three unnamed radios. Set on the rendered buttons, in preset order.
+ */
+const layoutSwitch = ref<HTMLElement | null>(null)
+
+watch(
+  [layoutSwitch, locale],
+  ([wrapper]) => {
+    wrapper?.querySelectorAll('[role="radio"]').forEach((radio, index) => {
+      const preset = LAYOUT_PRESETS[index]
+      if (preset) {
+        radio.setAttribute('aria-label', t(preset.labelKey))
+        radio.setAttribute('title', t(preset.labelKey))
+      }
+    })
+  },
+  { flush: 'post' },
 )
 
 const moreItems = computed(() => [
@@ -913,11 +987,55 @@ const moreItems = computed(() => [
   ],
 ])
 
-const sampledVisits = computed(() =>
-  expectedSampledPageLoads.value === null
-    ? null
-    : formatNumber(expectedSampledPageLoads.value, locale.value),
-)
+// --- Surface ----------------------------------------------------------------
+
+/**
+ * What the left cell draws. One empty state whose texts change with the
+ * reason, never several swapped in turn: replacing one DmsEmptyState by
+ * another landed the new one outside the cell.
+ */
+const surface = computed(() => {
+  if (activeFailed.value) {
+    return 'error'
+  }
+  if (snapshot.value && backdrop.value !== null) {
+    return 'frame'
+  }
+  if (emptyState.value) {
+    return 'empty'
+  }
+  if (snapshotsEnabled.value && !snapshotSettled.value) {
+    return 'loading'
+  }
+  return 'no_backdrop'
+})
+
+const surfaceEmpty = computed(() => {
+  if (surface.value === 'error') {
+    return {
+      variant: 'error' as const,
+      icon: undefined,
+      title: t('page.marketing.common.load_error'),
+      description: undefined,
+    }
+  }
+  if (surface.value === 'empty' && emptyState.value) {
+    return {
+      variant: undefined,
+      icon:
+        overlayMode.value === 'clicks'
+          ? 'i-ph-cursor-click'
+          : 'i-ph-caret-double-down',
+      ...emptyState.value,
+    }
+  }
+  return {
+    variant: undefined,
+    icon: 'i-ph-image-broken',
+    title: t('page.marketing.pages.preview.no_backdrop'),
+    description: t('page.marketing.pages.preview.no_backdrop_hint'),
+  }
+})
 </script>
 
 <template>
@@ -926,11 +1044,13 @@ const sampledVisits = computed(() =>
     <header
       class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-4 py-3"
     >
-      <div class="min-w-0">
+      <div class="min-w-0 flex-1 basis-64">
         <p
-          class="flex items-center gap-2 truncate font-mono text-base font-semibold text-highlighted"
+          class="flex min-w-0 items-center gap-2 font-mono text-base font-semibold text-highlighted"
         >
-          {{ props.path }}
+          <span class="min-w-0 truncate" :title="props.path">
+            {{ props.path }}
+          </span>
           <UButton
             v-if="externalUrl"
             :to="externalUrl"
@@ -939,6 +1059,7 @@ const sampledVisits = computed(() =>
             size="xs"
             color="neutral"
             variant="ghost"
+            class="shrink-0"
             :aria-label="t('page.marketing.pages.preview.open_in_tab')"
           />
         </p>
@@ -947,35 +1068,37 @@ const sampledVisits = computed(() =>
             <b class="font-mono text-highlighted">
               {{ formatNumber(props.pageviews, locale) }}
             </b>
-            {{ t('page.marketing.pages.views_unit') }}
+            {{ t('page.marketing.pages.views_unit', props.pageviews) }}
           </span>
-          <span v-if="overlayMode === 'clicks'">
+          <span>
             <b class="font-mono text-highlighted">
               {{ formatNumber(totalClicks, locale) }}
             </b>
-            {{ t('page.marketing.pages.clicks_unit') }}
+            {{ t('page.marketing.pages.clicks_unit', totalClicks) }}
           </span>
-          <span v-else>
+          <span v-if="scrollDepth !== null">
             <b class="font-mono text-highlighted">
               {{ formatNumber(scrollViews, locale) }}
             </b>
-            {{ t('page.marketing.pages.scroll.views_unit') }}
-          </span>
-          <span v-if="sampledVisits !== null">
-            ~
-            <b class="font-mono text-highlighted">{{ sampledVisits }}</b>
-            {{ t('page.marketing.pages.sampled_unit') }}
+            {{ t('page.marketing.pages.sampled_unit', scrollViews) }}
           </span>
         </p>
       </div>
-      <div class="flex flex-wrap items-center gap-2">
-        <DmsSegmented v-model="overlayMode" :items="overlayItems" size="xs" />
+      <div class="flex shrink-0 flex-wrap items-center gap-2">
         <DmsSegmented
-          v-model="layoutWidth"
-          :items="layoutItems"
+          v-model="overlayMode"
+          :items="overlayItems"
           size="xs"
-          :aria-label="t('page.marketing.pages.preview.layout')"
+          :aria-label="t('page.marketing.pages.overlay.label')"
         />
+        <span ref="layoutSwitch" class="contents">
+          <DmsSegmented
+            v-model="layoutWidth"
+            :items="layoutItems"
+            size="xs"
+            :aria-label="t('page.marketing.pages.preview.layout')"
+          />
+        </span>
         <UDropdownMenu :items="moreItems" :content="{ align: 'end' }">
           <UButton
             icon="i-ph-dots-three"
@@ -983,7 +1106,7 @@ const sampledVisits = computed(() =>
             color="neutral"
             variant="ghost"
             :loading="savingOptions || resetting"
-            :aria-label="t('page.marketing.common.more')"
+            :aria-label="t('page.marketing.pages.preview.more')"
           />
         </UDropdownMenu>
       </div>
@@ -1024,51 +1147,31 @@ const sampledVisits = computed(() =>
 
     <div class="grid min-h-0 xl:grid-cols-[minmax(0,1fr)_15rem]">
       <div class="min-w-0 p-3">
-        <DmsEmptyState
-          v-if="activeFailed"
-          variant="error"
-          size="sm"
-          :title="t('page.marketing.common.load_error')"
-        >
-          <template #actions>
-            <UButton
-              size="xs"
-              color="neutral"
-              variant="outline"
-              icon="i-ph-arrow-clockwise"
-              :label="t('page.marketing.common.retry')"
-              @click="retryActive"
-            />
-          </template>
-        </DmsEmptyState>
-
-        <DmsEmptyState
-          v-else-if="emptyState && !(snapshot && backdrop !== null)"
-          :icon="
-            overlayMode === 'clicks'
-              ? 'i-ph-cursor-click'
-              : 'i-ph-caret-double-down'
-          "
-          hatched
-          :title="emptyState.title"
-          :description="emptyState.description"
-        />
-
         <USkeleton
-          v-else-if="snapshotsEnabled && !snapshotSettled"
+          v-if="surface === 'loading'"
           class="w-full rounded-lg"
           :style="{ height: `${PANE_HEIGHT}px` }"
         />
 
         <!-- Kept mounted across refetches: tearing it down would re-render the
              snapshot — and re-measure it — on every period change. -->
-        <div v-else-if="snapshot && backdrop !== null" class="relative">
+        <div v-else-if="surface === 'frame'" class="relative">
           <div
             ref="container"
             class="overflow-x-hidden overflow-y-scroll rounded-lg border border-default bg-elevated"
-            :style="{ height: `${PANE_HEIGHT}px` }"
+            :style="paneStyle"
           >
-            <div class="relative" :style="{ height: `${scrolledHeight}px` }">
+            <!-- A layout narrower than the pane keeps its width, centred. -->
+            <div
+              class="relative mx-auto overflow-hidden"
+              :class="
+                surfaceWidth < containerWidth ? 'ring-1 ring-accented' : ''
+              "
+              :style="{
+                width: `${surfaceWidth}px`,
+                height: `${scrolledHeight}px`,
+              }"
+            >
               <div
                 class="absolute top-0 left-0"
                 :style="{
@@ -1082,7 +1185,8 @@ const sampledVisits = computed(() =>
                      same-origin and nothing else — no script, no form, no
                      navigation — which is what lets useSnapshotFrame read the
                      document while a capture that arrived through a public
-                     endpoint stays inert. -->
+                     endpoint stays inert. Hidden from assistive technology:
+                     "Most clicked" is its readable alternative. -->
                 <iframe
                   :key="frameKey"
                   ref="frame"
@@ -1097,6 +1201,9 @@ const sampledVisits = computed(() =>
                   sandbox="allow-same-origin"
                   scrolling="no"
                   referrerpolicy="no-referrer"
+                  aria-hidden="true"
+                  tabindex="-1"
+                  inert
                   :title="props.path"
                 />
                 <DmsMarketingHeatmapCanvas
@@ -1109,6 +1216,7 @@ const sampledVisits = computed(() =>
                 <span
                   v-for="pin in pins"
                   :key="pin.key"
+                  aria-hidden="true"
                   class="pointer-events-none absolute flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-full bg-neutral-900/90 px-2 py-0.5 font-mono font-semibold text-white shadow"
                   :style="{
                     left: `${pin.left * scale}px`,
@@ -1148,52 +1256,116 @@ const sampledVisits = computed(() =>
           </div>
         </div>
 
-        <DmsEmptyState
-          v-else
-          icon="i-ph-image-broken"
-          hatched
-          :title="t('page.marketing.pages.preview.no_backdrop')"
-          :description="t('page.marketing.pages.preview.no_backdrop_hint')"
-        />
+        <!-- One empty state for every reason, in a plain wrapper: see `surface`. -->
+        <div v-else>
+          <DmsEmptyState
+            :variant="surfaceEmpty.variant"
+            :icon="surfaceEmpty.icon"
+            :hatched="surface !== 'error'"
+            :size="surface === 'error' ? 'sm' : undefined"
+            :title="surfaceEmpty.title"
+            :description="surfaceEmpty.description"
+          >
+            <template v-if="surface === 'error'" #actions>
+              <UButton
+                size="xs"
+                color="neutral"
+                variant="outline"
+                icon="i-ph-arrow-clockwise"
+                :label="t('page.marketing.common.retry')"
+                @click="retryActive"
+              />
+            </template>
+          </DmsEmptyState>
+        </div>
       </div>
 
       <aside
         class="flex flex-col gap-4 border-t border-default p-4 xl:border-t-0 xl:border-l"
       >
-        <div v-if="overlayMode === 'clicks'" class="flex flex-col gap-1.5">
-          <DmsEyebrow :label="t('page.marketing.pages.density')" />
+        <template v-if="overlayMode === 'clicks'">
+          <div class="flex flex-col gap-1.5">
+            <DmsEyebrow :label="t('page.marketing.pages.density')" />
+            <span
+              class="h-2 rounded-full"
+              :style="{ backgroundImage: heatLegendGradient() }"
+            />
+            <span class="flex justify-between text-[10px] text-dimmed">
+              <span>{{ t('page.marketing.pages.density_few') }}</span>
+              <span>{{ t('page.marketing.pages.density_many') }}</span>
+            </span>
+          </div>
+          <div class="flex flex-col gap-2">
+            <DmsEyebrow :label="t('page.marketing.pages.most_clicked')" />
+            <p v-if="mostClicked.length === 0" class="text-xs text-muted">
+              {{ t('page.marketing.pages.most_clicked_empty') }}
+            </p>
+            <ul v-else class="flex flex-col gap-2.5">
+              <li
+                v-for="element in mostClicked"
+                :key="element.key"
+                class="flex min-w-0 flex-col"
+              >
+                <span class="flex items-start justify-between gap-2">
+                  <span
+                    class="truncate text-[13px] font-medium text-highlighted"
+                    :class="element.text ? '' : 'font-mono'"
+                    :title="element.text || element.selector"
+                  >
+                    {{
+                      element.text
+                        ? t('page.marketing.pages.quoted', {
+                            text: element.text,
+                          })
+                        : element.selector
+                    }}
+                  </span>
+                  <span class="font-mono text-xs text-highlighted">
+                    {{ formatNumber(element.weight, locale) }}
+                  </span>
+                </span>
+                <span
+                  v-if="element.text"
+                  class="truncate font-mono text-[10px] text-dimmed"
+                  :title="element.selector"
+                >
+                  {{ element.selector }}
+                </span>
+              </li>
+            </ul>
+          </div>
+        </template>
+        <div v-else class="flex flex-col gap-2">
+          <DmsEyebrow :label="t('page.marketing.pages.scroll.legend_title')" />
           <span
-            class="h-2 rounded-full bg-gradient-to-r from-cyan-400 via-yellow-300 to-red-500"
+            class="h-2 rounded-full"
+            :style="{ backgroundImage: heatLegendGradient(true) }"
           />
           <span class="flex justify-between text-[10px] text-dimmed">
-            <span>{{ t('page.marketing.pages.density_few') }}</span>
-            <span>{{ t('page.marketing.pages.density_many') }}</span>
+            <span>{{ t('page.marketing.pages.scroll.legend_all') }}</span>
+            <span>{{ t('page.marketing.pages.scroll.legend_few') }}</span>
           </span>
-        </div>
-        <div v-if="overlayMode === 'clicks'" class="flex flex-col gap-2">
-          <DmsEyebrow :label="t('page.marketing.pages.most_clicked')" />
-          <p v-if="mostClicked.length === 0" class="text-xs text-muted">
-            {{ t('page.marketing.pages.most_clicked_empty') }}
+          <span
+            v-if="scrollViews > 0 && scrollFoldRatio > 0 && scrollFoldRatio < 1"
+            class="flex items-center gap-2 text-xs text-muted"
+          >
+            <span
+              class="h-2 w-2 shrink-0 rounded-full bg-default shadow ring-1 ring-default"
+              aria-hidden="true"
+            />
+            <span class="h-px w-4 shrink-0 bg-current" aria-hidden="true" />
+            {{ t('page.marketing.pages.scroll.fold_line') }}
+          </span>
+          <p v-if="scrollViews > 0" class="text-xs text-muted">
+            {{
+              t('page.marketing.pages.scroll.median', {
+                depth: medianDepth,
+              })
+            }}
           </p>
-          <ul v-else class="flex flex-col gap-2.5">
-            <li
-              v-for="element in mostClicked"
-              :key="element.key"
-              class="flex flex-col"
-            >
-              <span class="flex items-start justify-between gap-2">
-                <span class="truncate text-[13px] font-medium text-highlighted">
-                  {{ element.text ? `“${element.text}”` : element.selector }}
-                </span>
-                <span class="font-mono text-xs text-highlighted">
-                  {{ formatNumber(element.weight, locale) }}
-                </span>
-              </span>
-              <span class="truncate font-mono text-[10px] text-dimmed">
-                {{ element.selector }}
-              </span>
-            </li>
-          </ul>
+          <p class="text-xs text-dimmed">
+            {{ t('page.marketing.pages.scroll.lines_hint') }}
+          </p>
         </div>
         <div v-if="usedIn && usedIn.length > 0" class="flex flex-col gap-2">
           <DmsEyebrow :label="t('page.marketing.pages.used_in')" />
@@ -1209,7 +1381,10 @@ const sampledVisits = computed(() =>
             </span>
           </DmsAutoLink>
         </div>
-        <p class="mt-auto flex gap-1.5 text-xs text-dimmed">
+        <p
+          v-if="overlayMode === 'clicks'"
+          class="mt-auto flex gap-1.5 text-xs text-dimmed"
+        >
           <UIcon name="i-ph-crosshair" class="mt-0.5 size-3.5 shrink-0" />
           {{ t('page.marketing.pages.anchoring_note') }}
         </p>

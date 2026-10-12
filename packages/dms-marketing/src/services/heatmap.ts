@@ -5,23 +5,35 @@ import type {
   MarketingHeatmapPoint,
   MarketingHeatmapQuery,
 } from "@antelopejs/interface-dms-marketing";
+import { ValueProxy } from "@antelopejs/interface-database";
 import {
   MarketingEventsModel,
+  PageSnapshotsModel,
   type ScrollDepthBucket,
   WebsitesModel,
 } from "@/db";
 import type { MarketingEvent } from "@/db/tables/marketing_events.table";
-import type { ClickEventData } from "@/types";
+import {
+  type ClickEventData,
+  type EventKind,
+  HEATMAP_EVENT_KINDS,
+} from "@/types";
 import {
   HEATMAP_DIVISIONS_PER_AXIS,
   MAX_ANCHORED_HEATMAP_CELLS,
   MAX_HEATMAP_EVENTS,
   SCROLL_DEPTH_SCALE,
 } from "@/types/constants";
-import { parsePeriodDays, periodStart } from "./period";
+import { type QueryWindow, resolveQueryWindow } from "./period";
 import { deleteSnapshots } from "./snapshots";
 
 const CLICK_FIELDS = ["data"] as const;
+
+/**
+ * Pageviews under which a measured sampling share is noise: 1 sampled view
+ * out of 3 says nothing about the rate the snippet applies.
+ */
+const MIN_PAGEVIEWS_FOR_SAMPLE_RATE = 20;
 
 const EMPTY_HEATMAP: MarketingHeatmapPayload = {
   points: [],
@@ -31,10 +43,10 @@ const EMPTY_HEATMAP: MarketingHeatmapPayload = {
 };
 
 /**
- * Scroll-depth distribution of one path. `views` counts only sampled views
- * that scrolled at all — the tracker emits no depth for a view that never
- * scrolls, including every page that fits its screen — so shares read
- * "of the views that scrolled", never "of all views".
+ * Scroll-depth distribution of one path. Every sampled view reports one
+ * depth, scrolled or not (0 for a long page left unscrolled, 100 for one
+ * that fits its screen), so `views` is also the number of sampled views.
+ * Events stored before the tracker did so only cover views that scrolled.
  */
 export interface MarketingScrollDepthPayload {
   views: number;
@@ -211,16 +223,15 @@ export async function computeClickHeatmap(
   tenantId: string,
   websiteIds: string[],
   path: string,
-  period?: string,
+  window: QueryWindow,
 ): Promise<MarketingHeatmapPayload> {
   if (websiteIds.length === 0) {
     return EMPTY_HEATMAP;
   }
-  const days = parsePeriodDays(period);
   const events = await GetModel(MarketingEventsModel, tenantId).queryRange({
     websiteIds,
-    since: periodStart(days),
-    until: new Date(),
+    since: window.since,
+    until: window.until,
     kinds: ["click"],
     url: path,
     limit: MAX_HEATMAP_EVENTS,
@@ -266,40 +277,136 @@ export async function computeScrollDepth(
   tenantId: string,
   websiteIds: string[],
   path: string,
-  period?: string,
+  window: QueryWindow,
 ): Promise<MarketingScrollDepthPayload> {
   if (websiteIds.length === 0) {
     return EMPTY_SCROLL_DEPTH;
   }
-  const days = parsePeriodDays(period);
   const buckets = await GetModel(
     MarketingEventsModel,
     tenantId,
   ).countScrollDepths({
     websiteIds,
-    since: periodStart(days),
-    until: new Date(),
+    since: window.since,
+    until: window.until,
     url: path,
   });
   return { ...cumulativeReach(buckets), truncated: false };
+}
+
+/** Per-path heatmap activity of one site over a window, for the inventory. */
+export interface PageActivity {
+  clicks: Map<string, number>;
+  /** Sampled views per path: each one reports exactly one scroll depth. */
+  sampled: Map<string, number>;
+  /**
+   * Share of the window's page loads that were sampled: the rate the tracker
+   * declared on its pageviews (`data-heatmap-sample` overrides the module
+   * setting), averaged. Null while too few pageviews declare one — those
+   * stored before trackers did say nothing.
+   */
+  sampleRate: number | null;
+}
+
+/** Events of one kind per path, counted where the rows live. */
+async function countByPath(
+  tenantId: string,
+  websiteId: string,
+  window: QueryWindow,
+  kind: EventKind,
+): Promise<Map<string, number>> {
+  const rows = (await GetModel(MarketingEventsModel, tenantId)
+    .table.getAll([websiteId], "websiteId")
+    .filter((doc) => doc.key("timestamp").ge(window.since))
+    .filter((doc) => doc.key("timestamp").le(window.until))
+    .filter((doc) => doc.key("kind").eq(kind))
+    .group("url", (stream, url) => ({ url, count: stream.count() }))
+    .run()) as Array<{ url: string; count: number }>;
+  return new Map(rows.map((row) => [row.url, row.count]));
+}
+
+export async function computePageActivity(
+  tenantId: string,
+  websiteId: string,
+  window: QueryWindow,
+): Promise<PageActivity> {
+  const [clicks, sampled, declared] = await Promise.all([
+    countByPath(tenantId, websiteId, window, "click"),
+    countByPath(tenantId, websiteId, window, "scroll"),
+    GetModel(MarketingEventsModel, tenantId).countDeclaredSampleRates({
+      websiteIds: [websiteId],
+      since: window.since,
+      until: window.until,
+    }),
+  ]);
+  let pageviews = 0;
+  let sampledShare = 0;
+  for (const { sample, views } of declared) {
+    pageviews += views;
+    sampledShare += sample * views;
+  }
+  return {
+    clicks,
+    sampled,
+    sampleRate:
+      pageviews >= MIN_PAGEVIEWS_FOR_SAMPLE_RATE
+        ? sampledShare / pageviews
+        : null,
+  };
+}
+
+/** What a heatmap reset deletes: one path when given, the whole site otherwise. */
+export interface HeatmapData {
+  events: number;
+  snapshots: number;
+}
+
+/**
+ * The figures the reset dialogs confirm with — the same rows
+ * {@link resetHeatmap} deletes, every period.
+ */
+export async function countHeatmapData(
+  tenantId: string,
+  websiteId: string,
+  path?: string,
+): Promise<HeatmapData> {
+  let events = GetModel(MarketingEventsModel, tenantId)
+    .table.getAll([websiteId], "websiteId")
+    .filter((doc) =>
+      ValueProxy.constant(HEATMAP_EVENT_KINDS).includes(doc.key("kind")),
+    );
+  let snapshots = GetModel(PageSnapshotsModel, tenantId).table.getAll(
+    [websiteId],
+    "websiteId",
+  );
+  if (path) {
+    events = events.filter((doc) => doc.key("url").eq(path));
+    snapshots = snapshots.filter((doc) => doc.key("url").eq(path));
+  }
+  const [eventCount, snapshotCount] = await Promise.all([
+    events.count().run(),
+    snapshots.count().run(),
+  ]);
+  return { events: eventCount, snapshots: snapshotCount };
 }
 
 /**
  * A heatmap has no storage of its own — resetting one deletes the click and
  * scroll events it is computed from, and the page snapshots drawn under
  * them: a reset says the page changed. One path when given, the whole site
- * otherwise; returns how many events died.
+ * otherwise; returns what died.
  */
 export async function resetHeatmap(
   tenantId: string,
   websiteId: string,
   path?: string,
-): Promise<number> {
-  await deleteSnapshots(tenantId, websiteId, path);
-  return GetModel(MarketingEventsModel, tenantId).deleteHeatmapEvents(
-    websiteId,
-    path,
-  );
+): Promise<HeatmapData> {
+  const snapshots = await deleteSnapshots(tenantId, websiteId, path);
+  const events = await GetModel(
+    MarketingEventsModel,
+    tenantId,
+  ).deleteHeatmapEvents(websiteId, path);
+  return { events, snapshots };
 }
 
 /**
@@ -332,6 +439,6 @@ export async function buildTenantHeatmap(
     query.tenantId,
     websiteIds,
     query.path,
-    query.period,
+    resolveQueryWindow({ period: query.period }),
   );
 }
