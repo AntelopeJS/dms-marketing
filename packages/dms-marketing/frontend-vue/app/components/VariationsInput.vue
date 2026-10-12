@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '#dms/frontend-module'
-import { formatPercent } from '../utils/format'
 import { MAX_EXPERIMENT_KEY_LENGTH } from '../utils/funnel-draft'
 import {
   parseExperimentVariationsValue,
   type ExperimentVariationDraft,
 } from '../composables/useExperiment'
+import { fractionDigits } from '../constants'
 
 /**
  * The arms of an experiment, inside DmsMarketingExperimentInput: a list of
@@ -142,7 +142,13 @@ watch(
         @update:model-value="onEdit"
       />
       <span class="w-10 shrink-0 text-right text-xs text-muted">
-        {{ formatPercent(sharePercent(variation), locale, 0) }}
+        {{
+          formatPercentage(
+            sharePercent(variation) / 100,
+            locale,
+            fractionDigits(0),
+          )
+        }}
       </span>
       <UButton
         v-if="!props.disabled"

@@ -22,3 +22,11 @@ export const MAX_PERIOD_DAYS = 90
  * MARKETING_PERIOD_SCOPE on the server.
  */
 export const PERIOD_SCOPE = 'marketing'
+
+/**
+ * Exactly `digits` decimals, for the DMS `formatPercentage`: a rate keeps
+ * its width from one row to the next.
+ */
+export function fractionDigits(digits: number): Intl.NumberFormatOptions {
+  return { minimumFractionDigits: digits, maximumFractionDigits: digits }
+}

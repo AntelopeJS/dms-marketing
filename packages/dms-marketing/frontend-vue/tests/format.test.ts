@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   displayName,
   formatDuration,
-  formatPercent,
   formatSignedDelta,
   initials,
   percentChangeTrend,
@@ -30,12 +29,6 @@ describe('formatting', () => {
     expect(percentChangeTrend(0)).toBe('flat')
     expect(percentChangeTrend(0.5)).toBe('up')
     expect(percentChangeTrend(-12)).toBe('down')
-  })
-
-  it('places the percent sign the way the locale does', () => {
-    expect(formatPercent(41.23, 'en')).toBe('41.2%')
-    expect(formatPercent(41.23, 'fr').replace(/\s/g, ' ')).toBe('41,2 %')
-    expect(formatPercent(8.584, 'en', 2)).toBe('8.58%')
   })
 
   it('shows a pasted page step as the path the server matches', () => {

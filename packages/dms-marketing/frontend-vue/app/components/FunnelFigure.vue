@@ -10,10 +10,10 @@ import {
 } from '../composables/useMarketingRoutes'
 import {
   formatNumber,
-  formatPercent,
   formatShortDate,
   formatSignedDelta,
 } from '../utils/format'
+import { fractionDigits } from '../constants'
 
 /**
  * The report of a plain funnel: KPIs (entered, completed, end to end, the
@@ -140,7 +140,13 @@ const kpis = computed(() => [
     value:
       endToEnd.value === null
         ? '—'
-        : formatPercent(endToEnd.value, locale.value),
+        : String(
+            formatPercentage(
+              endToEnd.value / 100,
+              locale.value,
+              fractionDigits(1),
+            ),
+          ),
     ...trend(
       endToEnd.value !== null && previousEndToEnd.value !== null
         ? endToEnd.value - previousEndToEnd.value
@@ -156,7 +162,11 @@ const kpis = computed(() => [
     value: worst.value ? stepLabel(worst.value.index) : '—',
     detail: worst.value
       ? t('page.marketing.funnel.lost_rate', {
-          rate: formatPercent(worst.value.rate, locale.value),
+          rate: formatPercentage(
+            worst.value.rate / 100,
+            locale.value,
+            fractionDigits(1),
+          ),
           next: stepLabel(worst.value.index + 1),
         })
       : undefined,
@@ -195,7 +205,7 @@ function barPercent(sessions: number, index: number): number {
 function shareLabel(sessions: number, index: number): string {
   const base = baseOf(index)
   return base > 0
-    ? formatPercent((sessions / base) * PERCENT, locale.value)
+    ? String(formatPercentage(sessions / base, locale.value, fractionDigits(1)))
     : '—'
 }
 
@@ -471,7 +481,11 @@ const coverageDate = computed(() =>
                     'page.marketing.funnel.lost',
                     {
                       count: formatNumber(transitions[index]!.lost, locale),
-                      rate: formatPercent(transitions[index]!.rate, locale),
+                      rate: formatPercentage(
+                        transitions[index]!.rate / 100,
+                        locale,
+                        fractionDigits(1),
+                      ),
                     },
                     transitions[index]!.lost,
                   )
@@ -504,7 +518,11 @@ const coverageDate = computed(() =>
               <span class="block text-sm font-medium text-highlighted">
                 {{
                   t('page.marketing.funnel.next.worst', {
-                    rate: formatPercent(worst.rate, locale),
+                    rate: formatPercentage(
+                      worst.rate / 100,
+                      locale,
+                      fractionDigits(1),
+                    ),
                     step: stepLabel(worst.index),
                   })
                 }}
@@ -527,7 +545,11 @@ const coverageDate = computed(() =>
               <span class="block text-sm font-medium text-highlighted">
                 {{
                   t('page.marketing.funnel.next.first', {
-                    rate: formatPercent(firstDrop.rate, locale),
+                    rate: formatPercentage(
+                      firstDrop.rate / 100,
+                      locale,
+                      fractionDigits(1),
+                    ),
                     step: stepLabel(1),
                   })
                 }}
@@ -541,7 +563,9 @@ const coverageDate = computed(() =>
               </span>
             </span>
             <DmsAutoLink
-              :to="inContext(funnelBuilderLink(definition._id, { split: true }))"
+              :to="
+                inContext(funnelBuilderLink(definition._id, { split: true }))
+              "
               class="font-mono text-xs text-primary hover:underline"
             >
               {{ t('page.marketing.funnel.next.split') }}

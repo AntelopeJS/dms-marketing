@@ -2,7 +2,8 @@
 import { computed } from 'vue'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import { channelStyle } from '../utils/channels'
-import { formatNumber, formatPercent } from '../utils/format'
+import { formatNumber } from '../utils/format'
+import { fractionDigits } from '../constants'
 
 /**
  * The channel split of the period: a stacked share bar, then one row per
@@ -56,7 +57,7 @@ const splitLabel = computed(() =>
       .filter((row) => row.sessions > 0)
       .map(
         (row) =>
-          `${t(`page.marketing.channels.${row.id}`)} ${formatPercent(row.share, locale.value)}`,
+          `${t(`page.marketing.channels.${row.id}`)} ${formatPercentage(row.share / 100, locale.value, fractionDigits(1))}`,
       )
       .join(', '),
   }),
@@ -74,7 +75,7 @@ function deltaLabel(delta: number | null): string {
     return '—'
   }
   const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±'
-  return `${sign}${formatPercent(Math.abs(delta), locale.value)}`
+  return `${sign}${formatPercentage(Math.abs(delta) / 100, locale.value, fractionDigits(1))}`
 }
 
 /** The campaigns table, found by its heading: stock blocks carry no id. */
@@ -126,7 +127,7 @@ function showCampaigns(channel: string): void {
           class="h-full"
           :class="channelStyle(row.id).bar"
           :style="{ width: `${row.share}%` }"
-          :title="`${t(`page.marketing.channels.${row.id}`)} · ${formatPercent(row.share, locale)}`"
+          :title="`${t(`page.marketing.channels.${row.id}`)} · ${formatPercentage(row.share / 100, locale, fractionDigits(1))}`"
         />
       </div>
     </header>
@@ -244,7 +245,7 @@ function showCampaigns(channel: string): void {
           <td
             class="px-2 py-2.5 text-right font-mono font-semibold tabular-nums text-highlighted"
           >
-            {{ formatPercent(row.share, locale) }}
+            {{ formatPercentage(row.share / 100, locale, fractionDigits(1)) }}
           </td>
           <td class="px-4 py-2.5 text-right">
             <span

@@ -2,12 +2,8 @@
 import { computed, ref, watch } from 'vue'
 import { useDmsRoute, useI18n } from '#dms/frontend-module'
 import { linkInContext } from '../composables/useMarketingRoutes'
-import {
-  displayName,
-  formatNumber,
-  formatPercent,
-  percentChangeTrend,
-} from '../utils/format'
+import { displayName, formatNumber, percentChangeTrend } from '../utils/format'
+import { fractionDigits } from '../constants'
 
 /**
  * One overview card holding sibling top lists behind tabs (top pages, entry,
@@ -132,7 +128,7 @@ function deltaLabel(delta: number | null | undefined): string {
   if (delta === null || delta === undefined) {
     return '—'
   }
-  return `${DELTA_SIGNS[percentChangeTrend(delta)]}${formatPercent(Math.abs(delta), locale.value, 0)}`
+  return `${DELTA_SIGNS[percentChangeTrend(delta)]}${formatPercentage(Math.abs(delta) / 100, locale.value, fractionDigits(0))}`
 }
 
 function deltaClass(delta: number | null | undefined): string {
@@ -282,7 +278,9 @@ const TABS_UI = {
             <span
               class="text-right font-mono text-[11px] text-dimmed tabular-nums"
             >
-              {{ formatPercent(item.share, locale) }}
+              {{
+                formatPercentage(item.share / 100, locale, fractionDigits(1))
+              }}
             </span>
             <span
               v-if="compared"

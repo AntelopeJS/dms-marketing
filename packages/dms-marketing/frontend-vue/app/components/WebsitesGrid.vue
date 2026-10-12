@@ -5,24 +5,18 @@ import {
   useMarketingApi,
   type MarketingWebsiteCard,
 } from '../composables/useMarketingApi'
-import {
-  installLink,
-  overviewLink,
-} from '../composables/useMarketingRoutes'
+import { installLink, overviewLink } from '../composables/useMarketingRoutes'
 import {
   formatNumber,
-  formatPercent,
   formatRelativeTime,
   formatShortDate,
   initials,
 } from '../utils/format'
-import {
-  allowHostConfirmation,
-  hostConflictOf,
-} from '../utils/host-conflict'
+import { allowHostConfirmation, hostConflictOf } from '../utils/host-conflict'
 import {
   MAX_WEBSITE_DOMAIN_LENGTH,
   MAX_WEBSITE_NAME_LENGTH,
+  fractionDigits,
 } from '../constants'
 
 /**
@@ -40,7 +34,6 @@ const props = withDefaults(
 type DrawerTab = 'general' | 'capture' | 'danger'
 
 const CLOCK_TICK_MS = 15_000
-const PERCENT = 100
 
 const { t, locale } = useI18n()
 const router = useDmsRouter()
@@ -205,8 +198,7 @@ const discardsSnapshots = computed(
 /** Empty required fields say so under themselves, on the General tab. */
 async function requireFields(): Promise<boolean> {
   const blank = (['domain', 'name'] as const).filter(
-    (field) =>
-      !{ name: draftName, domain: draftDomain }[field].value.trim(),
+    (field) => !{ name: draftName, domain: draftDomain }[field].value.trim(),
   )
   if (blank.length > 0) {
     tab.value = 'general'
@@ -525,7 +517,10 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
                   {{ t('page.marketing.websites.sampling') }}
                 </dt>
                 <dd class="text-right font-mono text-xs text-highlighted">
-                  {{ formatPercent(card.sampleRate * PERCENT, locale, 0) }} ·
+                  {{
+                    formatPercentage(card.sampleRate, locale, fractionDigits(0))
+                  }}
+                  ·
                   {{ t('page.marketing.websites.sampling_default') }}
                 </dd>
               </div>

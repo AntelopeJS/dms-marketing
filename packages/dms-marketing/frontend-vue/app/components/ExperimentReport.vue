@@ -6,11 +6,12 @@ import type {
   MarketingVariationResult,
 } from '../composables/useMarketingApi'
 import { linkInContext, pagesLink } from '../composables/useMarketingRoutes'
-import { formatNumber, formatPercent } from '../utils/format'
+import { formatNumber } from '../utils/format'
 import {
   localizedSnippetComments,
   variationSnippet,
 } from '../utils/funnel-draft'
+import { fractionDigits } from '../constants'
 
 /**
  * The report of a started A/B test, read over its own runs: the verdict as a
@@ -125,7 +126,7 @@ const verdictKind = computed(() => verdict.value?.kind ?? 'withheld')
 const lift = computed(() => (best.value?.uplift ?? 0) * PERCENT)
 
 function signed(value: number, digits = 1): string {
-  return `${value >= 0 ? '+' : '−'}${formatPercent(Math.abs(value), locale.value, digits)}`
+  return `${value >= 0 ? '+' : '−'}${formatPercentage(Math.abs(value) / 100, locale.value, fractionDigits(digits))}`
 }
 
 const interval = computed(() => {
@@ -155,7 +156,11 @@ const goal = computed(() => props.results.funnel.steps.at(-1)?.value ?? '')
 const headline = computed(() => {
   const params = {
     letter: letter(bestIndex.value),
-    lift: formatPercent(Math.abs(lift.value), locale.value),
+    lift: formatPercentage(
+      Math.abs(lift.value) / 100,
+      locale.value,
+      fractionDigits(1),
+    ),
   }
   return t(`page.marketing.experiment.verdict.${verdictKind.value}`, params)
 })
@@ -172,11 +177,15 @@ const explanation = computed(() => {
   const days = Math.floor(decision.value?.days ?? 0)
   return t(`page.marketing.experiment.verdict.${stoppedKind}`, {
     goal: goal.value,
-    best: formatPercent(best.value.conversionRate * PERCENT, locale.value, 2),
-    control: formatPercent(
-      control.value.conversionRate * PERCENT,
+    best: formatPercentage(
+      best.value.conversionRate,
       locale.value,
-      2,
+      fractionDigits(2),
+    ),
+    control: formatPercentage(
+      control.value.conversionRate,
+      locale.value,
+      fractionDigits(2),
     ),
     letter: letter(bestIndex.value),
     key: best.value.key,
@@ -425,7 +434,9 @@ const withheldCounts = computed(() =>
             <span
               class="text-right font-mono text-[13px] font-semibold tabular-nums text-highlighted"
             >
-              {{ formatPercent(arm.conversionRate * PERCENT, locale, 2) }}
+              {{
+                formatPercentage(arm.conversionRate, locale, fractionDigits(2))
+              }}
             </span>
           </li>
         </ul>
@@ -613,10 +624,10 @@ const withheldCounts = computed(() =>
                   </span>
                   <span class="ms-1 text-dimmed">
                     {{
-                      formatPercent(
-                        stepShare(arm, stepIndex),
+                      formatPercentage(
+                        stepShare(arm, stepIndex) / 100,
                         locale,
-                        stepShare(arm, stepIndex) < 10 ? 2 : 1,
+                        fractionDigits(stepShare(arm, stepIndex) < 10 ? 2 : 1),
                       )
                     }}
                   </span>
@@ -678,7 +689,13 @@ const withheldCounts = computed(() =>
                 {{ t('page.marketing.experiment.control_arm') }}
               </span>
               <span class="ms-auto font-mono text-sm text-muted">
-                {{ formatPercent(weights[index] ?? 0, locale, 0) }}
+                {{
+                  formatPercentage(
+                    (weights[index] ?? 0) / 100,
+                    locale,
+                    fractionDigits(0),
+                  )
+                }}
               </span>
             </li>
           </ul>

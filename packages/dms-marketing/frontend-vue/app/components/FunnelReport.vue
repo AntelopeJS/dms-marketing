@@ -12,8 +12,8 @@ import {
   funnelsLink,
   linkInContext,
 } from '../composables/useMarketingRoutes'
-import { formatPercent, formatShortDate } from '../utils/format'
-import { MS_PER_DAY } from '../constants'
+import { formatShortDate } from '../utils/format'
+import { MS_PER_DAY, fractionDigits } from '../constants'
 
 /**
  * The page of one funnel (`?id=`): its title and actions, then the funnel
@@ -36,7 +36,6 @@ const props = withDefaults(
 
 const MS_PER_HOUR = 3_600_000
 const HTTP_NOT_FOUND = 404
-const PERCENT = 100
 
 const { t, locale } = useI18n()
 const route = useDmsRoute()
@@ -223,7 +222,7 @@ async function start(): Promise<void> {
   const shares = split.variations
     .map(
       (arm) =>
-        `${arm.key} ${formatPercent((Math.max(arm.weight, 0) / total) * PERCENT, locale.value, 0)}`,
+        `${arm.key} ${formatPercentage(Math.max(arm.weight, 0) / total, locale.value, fractionDigits(0))}`,
     )
     .join(' · ')
   await confirm({
@@ -281,7 +280,11 @@ const readingAtStop = computed(() => {
   ) {
     return t(`page.marketing.funnel.lifecycle.stop_reading_${kind}`, {
       key: best.key,
-      lift: formatPercent(Math.abs(best.uplift) * PERCENT, locale.value),
+      lift: formatPercentage(
+        Math.abs(best.uplift),
+        locale.value,
+        fractionDigits(1),
+      ),
     })
   }
   if (kind === 'early' || kind === 'withheld') {

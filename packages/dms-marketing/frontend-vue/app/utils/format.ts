@@ -3,6 +3,8 @@
  * inputs, so the blocks stay thin and the rules stay testable.
  */
 
+import { fractionDigits } from '../constants'
+
 const SECONDS_PER_MINUTE = 60
 const SECONDS_PER_HOUR = 3600
 const MS_PER_SECOND = 1000
@@ -17,20 +19,6 @@ export function formatNumber(
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(value)
-}
-
-/** A share or rate already in percent units (41.2 → "41.2%", "41,2 %" in
- * French): the locale places the sign, as the server's composed texts do. */
-export function formatPercent(
-  value: number,
-  locale: string,
-  digits = 1,
-): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'percent',
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
-  }).format(value / 100)
 }
 
 /** "2m 48s", the way analytics tools write a visit length. */
@@ -72,7 +60,8 @@ export function formatSignedDelta(
     points: () => `${formatNumber(magnitude, locale, 1)} pt`,
     seconds: () => formatDuration(magnitude),
     number: () => formatNumber(magnitude, locale, 1),
-    percent: () => formatPercent(magnitude, locale),
+    percent: () =>
+      String(formatPercentage(magnitude / 100, locale, fractionDigits(1))),
   }
   return `${sign}${formatters[unit]()}`
 }

@@ -36,8 +36,9 @@ import {
   type FunnelDraftValues,
   type StepValue,
 } from '../utils/funnel-draft'
-import { formatNumber, formatPercent } from '../utils/format'
+import { formatNumber } from '../utils/format'
 import { normalizeFunnelStepPath } from '../utils/step-path'
+import { fractionDigits } from '../constants'
 
 /**
  * The funnel builder (`?id=` to edit, `?from=` to start from a copy of a
@@ -498,10 +499,12 @@ function stepRate(index: number): string | null {
   if (index === 0 || before <= 0) {
     return null
   }
-  return formatPercent(
-    (previewRows.value[index]!.sessions / before) * PERCENT,
-    locale.value,
-    0,
+  return String(
+    formatPercentage(
+      previewRows.value[index]!.sessions / before,
+      locale.value,
+      fractionDigits(0),
+    ),
   )
 }
 
@@ -533,7 +536,7 @@ const sampleHint = computed(() => {
         )
   return {
     total: formatNumber(Math.round(total), locale.value),
-    rate: formatPercent(rate * PERCENT, locale.value),
+    rate: formatPercentage(rate, locale.value, fractionDigits(1)),
     duration,
     tooSmall: months > 3,
   }
@@ -1355,7 +1358,13 @@ const websiteItems = computed(() =>
                 <span
                   class="text-right font-mono text-xs font-semibold text-highlighted"
                 >
-                  {{ formatPercent(share(arm), locale, 0) }}
+                  {{
+                    formatPercentage(
+                      share(arm) / 100,
+                      locale,
+                      fractionDigits(0),
+                    )
+                  }}
                 </span>
                 <UButton
                   icon="i-ph-x"
@@ -1503,7 +1512,13 @@ const websiteItems = computed(() =>
                 </span>
                 <span class="font-mono text-sm font-semibold text-highlighted">
                   {{
-                    endToEnd === null ? '—' : formatPercent(endToEnd, locale)
+                    endToEnd === null
+                      ? '—'
+                      : formatPercentage(
+                          endToEnd / 100,
+                          locale,
+                          fractionDigits(1),
+                        )
                   }}
                 </span>
               </div>
