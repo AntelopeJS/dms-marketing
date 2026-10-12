@@ -162,15 +162,22 @@ const TABS_UI = {
       class="flex flex-wrap items-center gap-x-4 border-b border-default px-4"
     >
       <DmsEyebrow :label="processI18n(eyebrow)" class="shrink-0 py-3" />
-      <UTabs
+      <!-- UTabs cannot name its tablist: the group around it carries the name. -->
+      <div
         v-if="tabs.length > 1"
-        v-model="activeId"
-        :items="tabItems"
-        :content="false"
-        variant="link"
-        :ui="TABS_UI"
+        role="group"
+        :aria-label="processI18n(eyebrow)"
         class="order-last -mx-1 min-w-0 basis-full sm:order-none sm:mx-0 sm:flex-1 sm:basis-auto"
-      />
+      >
+        <UTabs
+          v-model="activeId"
+          :items="tabItems"
+          :content="false"
+          variant="link"
+          :ui="TABS_UI"
+          class="w-full"
+        />
+      </div>
       <DmsEyebrow
         :label="processI18n(valueLabel)"
         class="ms-auto shrink-0 py-3"
