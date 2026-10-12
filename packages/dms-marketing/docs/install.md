@@ -43,6 +43,14 @@ export default defineConfig({
         // its EULA, or a commercial db) is the operator's licensing and
         // compliance decision. Replacing the file takes a restart.
         geoipDatabasePath: "/var/lib/geoip/GeoLite2-Country.mmdb",
+        // Optional: reverse proxies in front of the backend that append the
+        // client address to X-Forwarded-For (e.g. 1 behind one nginx, 2
+        // behind a CDN and a load balancer). Default 0: the header is
+        // ignored and the connection's address identifies the visitor —
+        // left at 0 behind a proxy, every visitor looks like the proxy.
+        // Never set it higher than the proxies actually there: the entries
+        // past them are written by the client.
+        trustedProxyHops: 1,
       },
     },
     // … dms, mongodb, api, auth-jwt as in any DMS project
@@ -99,14 +107,18 @@ embed with the id filled in, and check the connection (see
 
 The Websites page (`/modules/marketing/websites`) lists the sites
 afterwards, one card each: its state (live, waiting for its first pageview,
-paused), its sessions, pages and funnels over the last 30 days, the hosts it
-accepts, and its snapshot and sampling state. A site still waiting leads
-back to its install guide and shows the hosts refused for it; the sidebar
-badge on Websites counts those sites. A site's drawer holds three tabs:
-**General** (name, domain, extra hosts), **Capture** (page snapshots, mask
-all text — a change discards the site's snapshots, and the drawer says how
-many) and **Danger zone** (delete the website: it lists what goes — sessions,
-rollups, raw events and snapshots; funnel definitions stay — and asks for
+paused), its sessions, distinct pages and funnels over the last 30 days, the
+hosts it accepts, and its snapshot and sampling state. Any card names the
+hosts refused for it, each with **Allow this host**; a paused site offers
+**Resume tracking**; a banner says when collection is paused for the whole
+module (Settings). A site still waiting leads back to its install guide; the
+sidebar badge on Websites counts those sites (paused ones excluded). A
+site's drawer holds three tabs: **General** (name, domain, extra hosts, and
+**Collect data** — off pauses the site: its beacons are refused, what was
+collected stays), **Capture** (page snapshots, mask all text — a change
+discards the site's snapshots, and the drawer says how many) and **Danger
+zone** (delete the website: it lists what goes, over every stored day —
+sessions, pageviews, funnels with their A/B tests, snapshots — and asks for
 the domain).
 
 <p align="center">
@@ -130,6 +142,14 @@ curl -X POST https://<backend>/api/marketing/websites \
   Never used to build URLs.
 - `extraDomains` — optional; other hosts the site legitimately serves from
   (another TLD, a staging host, localhost), same apex-or-subdomain rule.
+
+Both are stored as bare lowercase hostnames: a scheme, a port, a path or
+spaces are stripped (`https://Shop.Example.com/x` → `shop.example.com`), and
+anything that is not a hostname, an IP or `localhost` is refused with a 400
+whose zod issues name the field. A host another website of the workspace
+already declares (domain or extra host) is refused with a 409
+`{ field, message, values }`. `PUT /api/marketing/websites/:id` takes the
+same keys plus `trackingEnabled` (false pauses the site).
 - `snapshotsEnabled` — optional, off by default; lets the tracker capture a
   masked rendering of each tracked page as the heatmap's backdrop. This
   stores page content, unlike anything else in the module — read
@@ -177,14 +197,18 @@ page snapshots, mark the elements that must never be captured with
 
 Step 3 of the install guide checks the connection by itself: it polls
 `GET /api/marketing/websites/:id/connection` every 4 seconds and turns green
-on the first accepted pageview, with its URL, browser and device. A beacon
+once a pageview stored since the site's creation arrives, with its date and
+time, the host it came from (when this backend instance saw it), its path,
+browser and device. **Check again** waits for a pageview sent after the
+click (`?since=<epoch ms>`), to re-verify a site already live. A banner says
+when collection is paused for the whole module or for the site. A beacon
 refused because its host is not declared shows instead as *N events refused
 from `<host>`*, with **Allow this host**, which adds the host to the
 website's `extraDomains` (`POST /api/marketing/websites/:id/allow-host`).
 Refusals are counted in memory, per backend instance, for an hour and for at
 most 5 hosts per site: enough for a page that polls while someone installs
 the tag, not an audit trail. The Websites page shows the same refused hosts
-on a site still waiting for its first pageview.
+on the site's card, whatever its state.
 
 By hand:
 

@@ -1,6 +1,6 @@
 import type { UtmFields } from "@/types";
 import { MAX_URL_LENGTH } from "@/types/constants";
-import { CLICK_ID_PARAMS } from "./acquisition";
+import { CLICK_ID_PARAMS, normalizeUtm } from "./acquisition";
 
 /** Base for parsing tracker-relative URLs ("/pricing?x=1"). */
 const RELATIVE_URL_BASE = "http://relative.invalid";
@@ -54,10 +54,14 @@ function findClickIdParam(url: URL): string | undefined {
   return CLICK_ID_PARAMS.find((param) => url.searchParams.get(param));
 }
 
+/** Normalized as the campaigns table compares them (see normalizeUtm). */
 function parseUtm(url: URL): UtmFields {
   const utm: UtmFields = {};
   for (const key of UTM_FIELD_KEYS) {
-    const value = url.searchParams.get(`${UTM_PARAM_PREFIX}${key}`);
+    const value = normalizeUtm(
+      key,
+      url.searchParams.get(`${UTM_PARAM_PREFIX}${key}`) ?? undefined,
+    );
     if (value) {
       utm[key] = value;
     }
@@ -88,6 +92,20 @@ export function toBareHostname(value: string | undefined): string | undefined {
 }
 
 /**
+ * Link-shim and mobile hosts a network sends its outbound clicks from
+ * ("l.facebook.com", "m.youtube.com", "out.reddit.com"): dropped, so the top
+ * referrers list one line per network.
+ */
+const REDIRECT_LABELS = new Set(["l", "lm", "m", "mobile", "out"]);
+
+function withoutRedirectLabel(domain: string): string {
+  const [first, ...rest] = domain.split(".");
+  return REDIRECT_LABELS.has(first) && rest.length >= 2
+    ? rest.join(".")
+    : domain;
+}
+
+/**
  * Referrer reduced to its domain; full referrer URLs can embed search terms
  * or user paths we have no reason to keep. Self-referrals are dropped — they
  * are navigation, not acquisition — which is why the caller passes every host
@@ -104,9 +122,10 @@ export function extractReferrerDomain(
   if (!url || url.hostname === RELATIVE_HOSTNAME) {
     return undefined;
   }
-  const domain = toBareHostname(url.hostname);
-  if (!domain || ownHostnames.has(domain)) {
+  const host = toBareHostname(url.hostname);
+  if (!host || ownHostnames.has(host)) {
     return undefined;
   }
-  return domain;
+  const domain = withoutRedirectLabel(host);
+  return ownHostnames.has(domain) ? undefined : domain;
 }

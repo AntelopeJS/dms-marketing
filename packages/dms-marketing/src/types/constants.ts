@@ -57,6 +57,10 @@ export const MAX_NAME_LENGTH = 100;
 export const MAX_DOMAIN_LENGTH = 253;
 export const MAX_EXTRA_DOMAINS = 20;
 export const MAX_SCREEN_AND_LANGUAGE_CHARS = 16;
+/** Mirrors the tracker's MAX_SELECTOR_LENGTH. */
+export const MAX_CLICK_SELECTOR_LENGTH = 120;
+/** A full batch of maximal events fits several times over. */
+export const MAX_COLLECT_BODY_BYTES = 256 * 1024;
 
 // =============================================================================
 // Funnels
@@ -83,6 +87,18 @@ export const EXPERIMENT_SIGNIFICANCE_LEVEL = 0.05;
 export const EXPERIMENT_SRM_P_THRESHOLD = 0.001;
 /** Normal/chi-square approximations need this many outcomes per cell. */
 export const MIN_OUTCOMES_PER_CELL = 5;
+/**
+ * A significant split is "ready to decide" only past a full week (weekday
+ * and weekend traffic convert differently) and with this many conversions in
+ * every arm: a p-value looked at every day crosses .05 by chance long before
+ * the test has the sample it needs.
+ */
+export const MIN_DECISION_DAYS = 7;
+export const MIN_DECISION_CONVERSIONS = 50;
+/** Funnel summaries of the list, shared by its tab counters and banner. */
+export const FUNNEL_SUMMARY_CACHE_TTL_MS = 30_000;
+/** Where a website's raw events start: moves at most once an hour (prune). */
+export const RAW_COVERAGE_CACHE_TTL_MS = 10 * 60_000;
 
 // =============================================================================
 // Aggregation Settings
@@ -91,7 +107,8 @@ export const MIN_OUTCOMES_PER_CELL = 5;
 export const MAX_ENTRIES_PER_TOP_MAP = 50;
 
 /**
- * Joins utm source, medium and campaign into one `topCampaigns` map key. The
+ * Joins utm source, medium, campaign and the session's channel into one
+ * `topCampaigns` map key (see `campaignKey`). The
  * unit separator is the one delimiter no keyboard produces: a UTM value could
  * still smuggle it in percent-encoded, in which case the key splits into
  * extra parts the read side ignores.
@@ -100,11 +117,12 @@ export const CAMPAIGN_KEY_SEPARATOR = "\u001f";
 
 /**
  * Past it a day row keeps its scalar counters and its maps are emptied by
- * the retention prune — no endpoint can read them anyway
- * (MAX_QUERY_PERIOD_DAYS bounds every window). Without the trim the bulk of
- * every row's size would outlive the only window able to read it.
+ * the retention prune. The oldest day a read reaches is the comparison
+ * window of the longest period against the previous year: a year plus
+ * MAX_QUERY_PERIOD_DAYS. Without the trim the bulk of every row's size would
+ * outlive the only windows able to read it.
  */
-export const TOP_MAPS_RETENTION_DAYS = MAX_QUERY_PERIOD_DAYS;
+export const TOP_MAPS_RETENTION_DAYS = DAYS_PER_YEAR + MAX_QUERY_PERIOD_DAYS;
 export const DEFAULT_PAGES_LIST_LIMIT = 100;
 export const MAX_PAGES_LIST_LIMIT = 200;
 export const MAX_FUNNEL_EVENTS = 200_000;
@@ -167,6 +185,7 @@ export const RATE_LIMIT_MAX_SOURCES = 50_000;
 /** Per (website, IP): one legitimate visitor captures a handful per visit. */
 export const MAX_SNAPSHOTS_PER_WINDOW_PER_SOURCE = 3;
 export const TRACKER_CACHE_MAX_AGE_SECONDS = 3600;
+export const PAUSED_TRACKER_CACHE_MAX_AGE_SECONDS = 60;
 
 // =============================================================================
 // HTTP
@@ -177,4 +196,5 @@ export const API_BASE_PATH = "/api/marketing";
 export const HTTP_BAD_REQUEST = 400;
 export const HTTP_FORBIDDEN = 403;
 export const HTTP_NOT_FOUND = 404;
+export const HTTP_CONFLICT = 409;
 export const HTTP_PAYLOAD_TOO_LARGE = 413;

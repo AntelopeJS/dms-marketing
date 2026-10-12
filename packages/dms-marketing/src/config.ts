@@ -32,6 +32,13 @@ export interface DmsMarketingConfig {
    * Empty: sessions carry no country and the overview hides the card.
    */
   geoipDatabasePath: string;
+  /**
+   * Reverse proxies in front of the backend that append the client address
+   * to `X-Forwarded-For`. 0 (default): the header is ignored and the socket
+   * address is the client. N: the N-th entry from the right is — every entry
+   * left of it was written by the client and proves nothing.
+   */
+  trustedProxyHops: number;
 }
 
 const DEFAULT_CONFIG: DmsMarketingConfig = {
@@ -43,6 +50,7 @@ const DEFAULT_CONFIG: DmsMarketingConfig = {
   heatmapSampleRate: DEFAULT_HEATMAP_SAMPLE_RATIO,
   visitorHashSecret: "",
   geoipDatabasePath: "",
+  trustedProxyHops: 0,
 };
 
 let baseConfig: DmsMarketingConfig = DEFAULT_CONFIG;

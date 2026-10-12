@@ -8,6 +8,8 @@ import {
   MAX_WEBSITE_ID_LENGTH,
 } from "./constants";
 
+const SNAPSHOT_TOKEN_MAX_LENGTH = 64;
+
 /**
  * Layouts a page is captured for, widest first. The console renders them at
  * 1280, 768 and 390 px; a visitor's viewport is bucketed by `layoutOfWidth`.
@@ -49,6 +51,8 @@ const snapshotPageSchema = z.object({
   url: z.string().min(1).max(MAX_URL_LENGTH),
   viewport: dimensionSchema(MAX_SNAPSHOT_VIEWPORT_PX),
   colorScheme: z.enum(SNAPSHOT_COLOR_SCHEMES).optional(),
+  /** Handed out by the negotiation (snapshot.js) to this visit alone. */
+  token: z.string().min(1).max(SNAPSHOT_TOKEN_MAX_LENGTH),
 });
 
 /** Wire contract of the public snapshot upload (static/snapshot.js). */

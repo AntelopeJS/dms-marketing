@@ -24,8 +24,10 @@ import {
 import { queryString } from "@/services/query-param";
 import { readBoundedBody } from "@/services/request-body";
 import { clientIp, userAgentOf } from "@/services/request-meta";
+import { getVisitorHashSecret } from "@/services/settings";
 import { storeSnapshot, wantsSnapshot } from "@/services/snapshots";
 import { parseTrackedUrl } from "@/services/url";
+import { computeVisitorId } from "@/services/visitor-id";
 import { resolveWebsite } from "@/services/website-cache";
 import { snapshotRequestSchema } from "@/types";
 import {
@@ -53,10 +55,12 @@ const INVALID_BODY_MESSAGE = "invalid body";
 
 const REFUSED = { accepted: false };
 
-/** Settings the capture honors. Scalars only — inlined into a script body. */
+/** Settings the capture honors. Scalars only — inlined into a script body
+ * (the token is hex). */
 interface ServedSnapshotConfig {
   maskText: boolean;
   maxBytes: number;
+  token: string;
 }
 
 let cachedScript: string | null = null;
@@ -71,10 +75,11 @@ function loadScript(): string {
   return cachedScript;
 }
 
-function servedScript(website: Website): string {
+function servedScript(website: Website, token: string): string {
   const config: ServedSnapshotConfig = {
     maskText: website.snapshotMaskText === true,
     maxBytes: MAX_SNAPSHOT_BYTES,
+    token,
   };
   return `window.${SNAPSHOT_CONFIG_GLOBAL}=${JSON.stringify(config)};\n${loadScript()}`;
 }
@@ -89,6 +94,17 @@ function trackedPath(raw: unknown): string | undefined {
   return parseTrackedUrl(value).path;
 }
 
+/** Same identity as collect's, so the upload can be matched to the visit
+ * that negotiated it. */
+function visitorOf(context: RequestContext, website: Website): string {
+  return computeVisitorId(
+    getVisitorHashSecret(),
+    website._id,
+    clientIp(context),
+    userAgentOf(context),
+  );
+}
+
 function parseJson(body: Buffer): unknown {
   try {
     return JSON.parse(body.toString("utf8"));
@@ -100,8 +116,9 @@ function parseJson(body: Buffer): unknown {
 /**
  * Page snapshots — public like collect, guarded like it (origin, bot, rate).
  * The two halves of one negotiation: a sampled visit asks whether a capture
- * is wanted and receives the capture script only then, so no visit ever
- * uploads a snapshot that would be discarded.
+ * is wanted and receives the capture script only then, with a token the
+ * upload must return — so no visit ever uploads a snapshot that would be
+ * discarded, and nothing uploads one it was not asked for.
  */
 export class SnapshotController extends Controller(API_BASE_PATH) {
   /**
@@ -148,15 +165,20 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
     if (isAutomatedClient(userAgentOf(context))) {
       return "";
     }
-    return (await wantsSnapshot(site, url, viewportWidth))
-      ? servedScript(site)
-      : "";
+    const token = await wantsSnapshot(
+      site,
+      url,
+      viewportWidth,
+      visitorOf(context, site),
+    );
+    return token ? servedScript(site, token) : "";
   }
 
   /**
    * text/plain JSON like collect (no preflight). The body is read under a
    * hard cap before anything parses it; refusals past the origin check are
-   * silent 200s, as on collect.
+   * silent 200s, as on collect — headerless uploads included, since the
+   * capture script's fetch always carries an Origin.
    */
   @Post("snapshot")
   async upload(@Context() context: RequestContext) {
@@ -175,18 +197,22 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
     if (!website || !website.trackingEnabled) {
       throw new HTTPResult(HTTP_NOT_FOUND, UNKNOWN_WEBSITE_MESSAGE);
     }
-    const source = requestSourceHostname(context.rawRequest.headers);
+    const headers = context.rawRequest.headers;
+    const source = requestSourceHostname(headers);
     if (source !== undefined && !websiteAcceptsHostname(website, source)) {
-      warnRejectedSource(website._id, source);
+      warnRejectedSource(website._id, source, headers);
       throw new HTTPResult(HTTP_FORBIDDEN, ORIGIN_NOT_ALLOWED_MESSAGE);
     }
     if (
+      source === undefined ||
       !website.snapshotsEnabled ||
       isAutomatedClient(userAgentOf(context)) ||
       !snapshotRateLimiter.consume(`${website._id}\n${clientIp(context)}`, 1)
     ) {
       return REFUSED;
     }
-    return { accepted: await storeSnapshot(website, data) };
+    return {
+      accepted: await storeSnapshot(website, data, visitorOf(context, website)),
+    };
   }
 }

@@ -8,7 +8,7 @@
  * Optional attributes:
  *   data-host-url        override the collect origin (defaults to the script origin)
  *   data-heatmap-sample  0-1 click/scroll sampling rate; overrides the module setting
- *   data-do-not-track    "false" to ignore the browser DNT signal
+ *   data-do-not-track    "false" to ignore the browser DNT and GPC signals
  *
  * Cookieless by design: no identifier is generated or stored client-side —
  * the backend derives an anonymous visitor hash per request. Payload shape
@@ -36,12 +36,17 @@
   const CONFIG_GLOBAL = "__dmsMarketingTrackerConfig";
   /** Global the capture script (snapshot.js) reads its page context from. */
   const SNAPSHOT_CONTEXT_GLOBAL = "__dmsMarketingSnapshotContext";
+  /** Set by the first tracker that starts collecting on the page. */
+  const INSTALLED_GLOBAL = "__dmsMarketingInstalled";
 
   const DEFAULT_SAMPLE_RATE = 0.1;
   const FLUSH_INTERVAL_MS = 5000;
   const MAX_BATCH = 25;
-  /** Mirrors the backend MAX_URL_LENGTH: a longer field fails validation. */
+  /** Mirror the backend caps (MAX_URL_LENGTH, MAX_TITLE_LENGTH,
+   * MAX_EVENT_NAME_LENGTH): cut here, nothing is lost to validation. */
   const MAX_URL_LENGTH = 500;
+  const MAX_TITLE_LENGTH = 200;
+  const MAX_EVENT_NAME_LENGTH = 50;
   const MAX_SELECTOR_LENGTH = 120;
   const SELECTOR_DEPTH = 3;
   const COORDINATE_PRECISION = 4;
@@ -51,6 +56,11 @@
   const SNAPSHOT_DELAY_MS = 3000;
   /** SPA navigations may ask again, this many times per page load. */
   const MAX_SNAPSHOTS_PER_LOAD = 3;
+  /** After a SPA navigation, time for the new view to render before its
+   * unscrolled depth is measured. */
+  const SCROLL_MEASURE_DELAY_MS = 1000;
+  /** Where a keyboard-activated click is anchored inside its element. */
+  const ELEMENT_CENTER = 0.5;
 
   // --- Public API -----------------------------------------------------------
 
@@ -105,9 +115,21 @@
     return;
   }
 
+  // A tag included twice (theme and tag manager) would count everything twice.
+  if (window[INSTALLED_GLOBAL]) {
+    console.warn("[dms-marketing] tracker included twice; ignoring the copy.");
+    return;
+  }
+  window[INSTALLED_GLOBAL] = true;
+
+  /** Global Privacy Control is the opt-out signal browsers ship now that DNT
+   * is deprecated; both are honoured alike. */
   const respectDnt = script.getAttribute("data-do-not-track") !== "false";
-  const dntEnabled = navigator.doNotTrack === "1" || window.doNotTrack === "1";
-  if (respectDnt && dntEnabled) {
+  const optedOut =
+    navigator.doNotTrack === "1" ||
+    window.doNotTrack === "1" ||
+    navigator.globalPrivacyControl === true;
+  if (respectDnt && optedOut) {
     publishApi();
     return;
   }
@@ -135,7 +157,7 @@
   const base = () => ({
     url: currentUrl(),
     referrer: document.referrer.slice(0, MAX_URL_LENGTH) || undefined,
-    title: document.title || undefined,
+    title: document.title.slice(0, MAX_TITLE_LENGTH) || undefined,
     screen: `${screen.width}x${screen.height}`,
     language: navigator.language || undefined,
     at: Date.now(),
@@ -179,7 +201,8 @@
    * navigation rewrites `location` before the depth of the page being left
    * is flushed. */
   let scrolledUrl = null;
-  let maxScrollDepth = 0;
+  /** -1 until the page has been measured once. */
+  let maxScrollDepth = -1;
 
   function trackPageview() {
     if (location.pathname === lastPath) {
@@ -188,17 +211,34 @@
     flushScrollDepth();
     lastPath = location.pathname;
     scrolledUrl = currentUrl();
-    maxScrollDepth = 0;
-    enqueue(Object.assign(base(), { kind: "pageview" }));
+    maxScrollDepth = -1;
+    // The rate it applies, for the server's "recorded on N % of page loads":
+    // counting scroll events against pageviews undercounts the views left
+    // before their depth is sent.
+    enqueue(
+      Object.assign(base(), { kind: "pageview", data: { sample: sampleRate } }),
+    );
+    scheduleScrollMeasure();
     scheduleSnapshot();
   }
 
-  const originalPushState = history.pushState;
-  history.pushState = function pushState(...args) {
-    originalPushState.apply(this, args);
-    trackPageview();
-  };
+  /** pushState and replaceState (a client-side redirect lands on a page
+   * too); a same-path call — a query or hash update — is no navigation. */
+  for (const method of ["pushState", "replaceState"]) {
+    const original = history[method];
+    history[method] = function navigate(...args) {
+      original.apply(this, args);
+      trackPageview();
+    };
+  }
   window.addEventListener("popstate", trackPageview);
+  // A page restored from the back/forward cache runs no script again.
+  window.addEventListener("pageshow", (event) => {
+    if (event.persisted) {
+      lastPath = null;
+      trackPageview();
+    }
+  });
 
   // --- Scroll depth (max reached per page, flushed on leave) ----------------
 
@@ -215,19 +255,30 @@
     );
   }
 
-  window.addEventListener(
-    "scroll",
-    () => {
-      const depth = currentScrollDepth();
-      if (depth > maxScrollDepth) {
-        maxScrollDepth = depth;
-      }
-    },
-    { passive: true },
-  );
+  function measureScrollDepth() {
+    const depth = currentScrollDepth();
+    if (depth > maxScrollDepth) {
+      maxScrollDepth = depth;
+    }
+  }
+
+  window.addEventListener("scroll", measureScrollDepth, { passive: true });
+
+  /**
+   * Every sampled view reports a depth, scrolled or not: what shows without
+   * scrolling is reached too (all of a page shorter than the window), and a
+   * view that never scrolls belongs in the denominator.
+   */
+  function scheduleScrollMeasure() {
+    if (document.readyState === "complete") {
+      setTimeout(measureScrollDepth, SCROLL_MEASURE_DELAY_MS);
+      return;
+    }
+    window.addEventListener("load", measureScrollDepth, { once: true });
+  }
 
   function flushScrollDepth() {
-    if (!heatmapSampled || maxScrollDepth <= 0) {
+    if (!heatmapSampled || maxScrollDepth < 0) {
       return;
     }
     enqueue(
@@ -237,7 +288,7 @@
         data: { depth: maxScrollDepth },
       }),
     );
-    maxScrollDepth = 0;
+    maxScrollDepth = -1;
   }
 
   // --- Click capture (sampled, viewport-normalized) -------------------------
@@ -257,17 +308,14 @@
     return parts.join(">").slice(0, MAX_SELECTOR_LENGTH);
   }
 
-  function normalized(value, total) {
-    if (total <= 0) {
-      return 0;
-    }
-    return Number(Math.min(value / total, 1).toFixed(COORDINATE_PRECISION));
-  }
-
   function rounded(value) {
     return Number(
       Math.min(Math.max(value, 0), 1).toFixed(COORDINATE_PRECISION),
     );
+  }
+
+  function normalized(value, total) {
+    return total <= 0 ? 0 : rounded(value / total);
   }
 
   /**
@@ -284,7 +332,7 @@
    * several elements, and the embedder resolving it would otherwise land on
    * whichever comes first in the document.
    */
-  function elementAnchor(target, event) {
+  function elementAnchor(target, point) {
     if (target === document.body || target === document.documentElement) {
       return null;
     }
@@ -310,16 +358,37 @@
     }
     return {
       selector: selector,
-      ox: rounded((event.clientX - box.left) / box.width),
-      oy: rounded((event.clientY - box.top) / box.height),
+      ox: rounded((point.clientX - box.left) / box.width),
+      oy: rounded((point.clientY - box.top) / box.height),
       nth: nth,
+    };
+  }
+
+  /**
+   * Where the click happened. A click from the keyboard (Enter, Space) has no
+   * pointer — detail 0, coordinates 0,0 — and is placed at the centre of the
+   * element it activated instead of the window's corner.
+   */
+  function clickPoint(target, event) {
+    if (event.detail !== 0 || event.clientX !== 0 || event.clientY !== 0) {
+      return event;
+    }
+    const box = target.getBoundingClientRect();
+    const clientX = box.left + box.width * ELEMENT_CENTER;
+    const clientY = box.top + box.height * ELEMENT_CENTER;
+    return {
+      clientX: clientX,
+      clientY: clientY,
+      pageX: clientX + scrollX,
+      pageY: clientY + scrollY,
     };
   }
 
   document.addEventListener(
     "click",
     (event) => {
-      if (!heatmapSampled) {
+      // Script-dispatched clicks (element.click()) are no visitor's.
+      if (!heatmapSampled || !event.isTrusted) {
         return;
       }
       const target = event.target;
@@ -327,18 +396,19 @@
         return;
       }
       const doc = document.documentElement;
+      const point = clickPoint(target, event);
       enqueue(
         Object.assign(base(), {
           kind: "click",
           data: Object.assign(
             {
-              x: normalized(event.clientX, innerWidth),
-              y: normalized(event.clientY, innerHeight),
-              dx: normalized(event.pageX, doc.scrollWidth),
-              dy: normalized(event.pageY, doc.scrollHeight),
+              x: normalized(point.clientX, innerWidth),
+              y: normalized(point.clientY, innerHeight),
+              dx: normalized(point.pageX, doc.scrollWidth),
+              dy: normalized(point.pageY, doc.scrollHeight),
               selector: shortSelector(target),
             },
-            elementAnchor(target, event),
+            elementAnchor(target, point),
           ),
         }),
       );
@@ -369,6 +439,9 @@
       return;
     }
     snapshotsRequested++;
+    // The upload is only accepted for the page the visit's last pageview
+    // named: that pageview must be on its way before the capture is.
+    flush();
     const path = location.pathname;
     window[SNAPSHOT_CONTEXT_GLOBAL] = {
       website: websiteId,
@@ -466,7 +539,16 @@
 
   publishApi({
     track(name, data) {
-      enqueue(Object.assign(base(), { kind: "custom", name, data }));
+      enqueue(
+        Object.assign(base(), {
+          kind: "custom",
+          name:
+            typeof name === "string"
+              ? name.slice(0, MAX_EVENT_NAME_LENGTH)
+              : name,
+          data,
+        }),
+      );
     },
     /** Assigned variation of a running experiment, or null. Reports the
      * exposure, so only call it where the variation is actually applied. */

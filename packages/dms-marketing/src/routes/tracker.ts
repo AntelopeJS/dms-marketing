@@ -4,13 +4,12 @@ import {
   Context,
   Controller,
   Get,
-  HTTPResult,
   type RequestContext,
 } from "@antelopejs/interface-api";
 import { getConfig } from "@/config";
 import {
   API_BASE_PATH,
-  HTTP_NOT_FOUND,
+  PAUSED_TRACKER_CACHE_MAX_AGE_SECONDS,
   TRACKER_CACHE_MAX_AGE_SECONDS,
 } from "@/types/constants";
 
@@ -27,6 +26,15 @@ const TRACKER_CONFIG_GLOBAL = "__dmsMarketingTrackerConfig";
 interface ServedTrackerConfig {
   heatmapSampleRate: number;
 }
+
+/**
+ * Served while collection is paused: the page API without the collection, so
+ * page code calling `window.dmsMarketing.track(…)` keeps working and
+ * `variation()` answers the control. A page already running the real tracker
+ * keeps it.
+ */
+const PAUSED_SCRIPT =
+  "window.dmsMarketing=window.dmsMarketing||{track(){},exposure(){},variation(){return Promise.resolve(null)}};";
 
 let cachedScript: string | null = null;
 
@@ -61,13 +69,14 @@ function servedScript(): string {
 export class TrackerController extends Controller(API_BASE_PATH) {
   @Get("tracker.js")
   async tracker(@Context() context: RequestContext) {
-    if (!getConfig().trackerEnabled) {
-      throw new HTTPResult(HTTP_NOT_FOUND);
-    }
-    context.response.addHeader(
-      "Cache-Control",
-      `public, max-age=${TRACKER_CACHE_MAX_AGE_SECONDS}`,
-    );
-    context.response.getWriteStream(TRACKER_CONTENT_TYPE).end(servedScript());
+    // Paused: cached briefly, so resuming reaches visitors within a minute.
+    const enabled = getConfig().trackerEnabled;
+    const maxAge = enabled
+      ? TRACKER_CACHE_MAX_AGE_SECONDS
+      : PAUSED_TRACKER_CACHE_MAX_AGE_SECONDS;
+    context.response.addHeader("Cache-Control", `public, max-age=${maxAge}`);
+    context.response
+      .getWriteStream(TRACKER_CONTENT_TYPE)
+      .end(enabled ? servedScript() : PAUSED_SCRIPT);
   }
 }

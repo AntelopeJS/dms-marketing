@@ -4,6 +4,7 @@ import type { Website } from "@/db/tables/websites.table";
 import { MS_PER_MINUTE } from "@/types/constants";
 import { BoundedCache, setBounded } from "./bounded-cache";
 import { toBareHostname } from "./url";
+import { isValidHostname } from "./website-hosts";
 
 function firstHeaderValue(
   value: string | string[] | undefined,
@@ -64,6 +65,28 @@ const REJECTIONS_TTL_MS = 60 * MS_PER_MINUTE;
  */
 const rejectedSources = new Map<string, Map<string, RejectedSource>>();
 
+/** What a sandboxed frame or a strict referrer policy sends as Origin. */
+const OPAQUE_ORIGIN = "null";
+
+/**
+ * Only what a browser stamps is worth offering the owner for "Allow this
+ * host": a hostname, not the `null` of sandboxed frames nor the raw text
+ * of an unparsable header, from a request carrying `Sec-Fetch-Mode` — every
+ * beacon and capture of a current browser does, nothing a hand-written client
+ * sends by default. A forger adding it still gets nowhere but a row in the
+ * list: the allow click stays the owner's call.
+ */
+function isOfferableSource(
+  hostname: string,
+  headers: IncomingHttpHeaders,
+): boolean {
+  return (
+    hostname !== OPAQUE_ORIGIN &&
+    isValidHostname(hostname) &&
+    headers["sec-fetch-mode"] !== undefined
+  );
+}
+
 function recordRejectedSource(websiteId: string, hostname: string): void {
   const hosts =
     rejectedSources.get(websiteId) ?? new Map<string, RejectedSource>();
@@ -92,8 +115,31 @@ export function forgetRejectedSources(websiteId: string): void {
   rejectedSources.delete(websiteId);
 }
 
-export function warnRejectedSource(websiteId: string, hostname: string): void {
-  recordRejectedSource(websiteId, hostname);
+/**
+ * Forgets only the refused hosts the website now accepts — what a save of
+ * its domains should call, so an unrelated edit (its name) keeps the list.
+ */
+export function forgetAcceptedSources(website: Website): void {
+  const hosts = rejectedSources.get(website._id);
+  if (!hosts) {
+    return;
+  }
+  // Deleting the entry being visited is safe in a Map iteration.
+  for (const hostname of hosts.keys()) {
+    if (websiteAcceptsHostname(website, hostname)) {
+      hosts.delete(hostname);
+    }
+  }
+}
+
+export function warnRejectedSource(
+  websiteId: string,
+  hostname: string,
+  headers: IncomingHttpHeaders,
+): void {
+  if (isOfferableSource(hostname, headers)) {
+    recordRejectedSource(websiteId, hostname);
+  }
   if (rejectionLogGate.get(websiteId)) {
     return;
   }
