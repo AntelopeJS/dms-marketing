@@ -4,6 +4,7 @@ import type {
 } from "@antelopejs/interface-dms/base/types/composed-text";
 import type { Tone } from "@antelopejs/interface-dms/base/types/tone";
 import { SECONDS_PER_HOUR, SECONDS_PER_MINUTE } from "@/types/constants";
+import type { ComparisonKind } from "./period";
 
 const COMPOSE_PREFIX = "$page.marketing.compose.";
 const DECIMALS = 10;
@@ -57,12 +58,13 @@ export function decimalText(value: number | null): BlockText | number {
 export type DeltaUnit = "points" | "seconds" | "number";
 
 /**
- * "+2.1 pt · vs previous": a signed change against the comparison window, or
- * nothing when there is no comparison to read.
+ * "+2.1 pt · vs previous period": a signed change against the comparison
+ * window, named after it, or nothing when there is no comparison to read.
  */
 export function deltaText(
   delta: number | null,
   unit: DeltaUnit,
+  comparison: ComparisonKind = "previous-period",
 ): ComposedText | undefined {
   if (delta === null) {
     return undefined;
@@ -76,7 +78,10 @@ export function deltaText(
       : compose(unit === "points" ? "points" : "number", {
           value: { type: "number", value: magnitude },
         });
-  return compose("delta", { sign, value });
+  return compose(
+    comparison === "previous-year" ? "delta_previous_year" : "delta",
+    { sign, value },
+  );
 }
 
 /** Good is up unless lower is better; a near-zero change is neutral. */

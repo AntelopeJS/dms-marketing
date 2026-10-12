@@ -3,16 +3,29 @@ import { WebsiteStatisticsModel } from "@/db";
 import type { WebsiteStatistics } from "@/db/tables/website_statistics.table";
 import type { Website } from "@/db/tables/websites.table";
 import type { MarketingDayCounters, TopDimension, TopEntries } from "@/types";
-import { type QueryWindow, windowDays } from "./period";
+import { elapsedShare, type QueryWindow, windowDays } from "./period";
 
 export type RollupTotals = Omit<MarketingDayCounters, "day">;
 
-/** The rollup rows of one window, the comparison window's beside it. */
+/**
+ * The rollup rows of one window, the comparison window's beside it. A
+ * comparison window with no row at all (before the site existed, past the
+ * retention) is no comparison: `compare` is null rather than a window of
+ * zeros every change would be measured against.
+ */
 export interface RollupRead {
   window: QueryWindow;
   rows: WebsiteStatistics[];
   compare: QueryWindow | null;
+  /**
+   * The comparison rows every change is computed from: while the read
+   * window's last day is still being counted, the matching day of the
+   * comparison counts for the same share of its day (see {@link elapsedShare}),
+   * so a day half gone is not set against a whole one.
+   */
   compareRows: WebsiteStatistics[];
+  /** The comparison rows as stored, the whole days a chart draws. */
+  compareDays: WebsiteStatistics[];
 }
 
 export const EMPTY_TOTALS: RollupTotals = {
@@ -40,11 +53,49 @@ export async function readRollupsWithComparison(
   window: QueryWindow,
   compare: QueryWindow | null,
 ): Promise<RollupRead> {
-  const [rows, compareRows] = await Promise.all([
+  const [rows, stored] = await Promise.all([
     readRollups(website, window),
     compare ? readRollups(website, compare) : Promise.resolve([]),
   ]);
-  return { window, rows, compare, compareRows };
+  if (!compare || stored.length === 0) {
+    return { window, rows, compare: null, compareRows: [], compareDays: [] };
+  }
+  const share = elapsedShare(window);
+  const compareRows =
+    share < 1
+      ? stored.map((row) =>
+          row.day === compare.lastDay ? scaleRow(row, share) : row,
+        )
+      : stored;
+  return { window, rows, compare, compareRows, compareDays: stored };
+}
+
+function scaleEntries(entries: TopEntries, share: number): TopEntries {
+  return Object.fromEntries(
+    Object.entries(entries).map(([key, count]) => [key, count * share]),
+  );
+}
+
+/** A day's counts cut to `share` of it, as if read that far into the day. */
+function scaleRow(row: WebsiteStatistics, share: number): WebsiteStatistics {
+  const tops = row.tops
+    ? (Object.fromEntries(
+        Object.entries(row.tops).map(([dimension, entries]) => [
+          dimension,
+          entries ? scaleEntries(entries, share) : entries,
+        ]),
+      ) as WebsiteStatistics["tops"])
+    : row.tops;
+  // A copy of the stored document (a plain object, whatever its type says).
+  return Object.assign({}, row, {
+    pageviews: row.pageviews * share,
+    sessions: row.sessions * share,
+    newVisitors: row.newVisitors * share,
+    customEvents: row.customEvents * share,
+    bouncedSessions: (row.bouncedSessions ?? 0) * share,
+    sessionDurationMs: (row.sessionDurationMs ?? 0) * share,
+    tops,
+  });
 }
 
 export function sumRollups(rows: readonly WebsiteStatistics[]): RollupTotals {

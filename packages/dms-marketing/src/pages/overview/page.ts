@@ -5,7 +5,9 @@ import { Grid, GridRow } from "@antelopejs/interface-dms/base/grid";
 import { KpiCard } from "@antelopejs/interface-dms/base/kpi-card";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { StatGroup } from "@antelopejs/interface-dms/base/stat-group";
+import { Tab, TabVariant } from "@antelopejs/interface-dms/base/tab";
 import { TopListCard } from "@antelopejs/interface-dms/base/top-list-card";
+import { Size } from "@antelopejs/interface-dms/base/types/size";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
 import {
   MARKETING_MODULE_ID,
@@ -18,6 +20,7 @@ import {
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
   MarketingContext,
+  websiteUrl,
 } from "../blocks";
 import { analyticsCategory } from "../module";
 
@@ -31,15 +34,41 @@ function volumeKpi(metric: string, icon: string) {
     variant: "stat",
     valueFormat: "number",
     showSparkline: true,
+    // The trend badge carries the change: the line only draws the days, and
+    // never reads as a fall nobody compared.
+    sparklineAccent: "primary",
     compareLabel: COMPARE_LABEL,
-    fetchUrl: `${BLOCKS_API}/kpi?metric=${metric}`,
+    fetchUrl: websiteUrl(`${BLOCKS_API}/kpi?metric=${metric}`),
     periodScope: MARKETING_PERIOD_SCOPE,
   }).meta(blockMeta(`kpi_${metric.replaceAll("-", "_")}`, icon));
 }
 
+const TRAFFIC_PREFIX = "$page.marketing.overview.traffic.";
+
+/** The traffic curve of one metric, by day, or by hour over a single day. */
+function trafficChart(metric: "sessions" | "pageviews") {
+  return ChartCard({
+    title: `${TRAFFIC_PREFIX}${metric}_title`,
+    icon: "i-ph-chart-line",
+    fetchUrl: websiteUrl(`${BLOCKS_API}/traffic?metric=${metric}`),
+    periodScope: MARKETING_PERIOD_SCOPE,
+    valueFormat: "number",
+    primaryLabel: `${TRAFFIC_PREFIX}this_period`,
+    comparisonLabel: `${TRAFFIC_PREFIX}compared_period`,
+    // Straight: a smoothed line between daily counts draws peaks and dips no
+    // day had.
+    chart: ChartArea({
+      curve: "straight",
+      xaxisType: "datetime",
+      comparisonStyle: "dashed",
+      height: "260px",
+    }),
+  }).meta(blockMeta(`traffic_${metric}`, "i-ph-chart-line"));
+}
+
 function topListTabs(group: string, icon: string, footer?: string) {
   return MarketingBlock("TopListTabs", `tops_${group}`, icon, {
-    fetchUrl: `${BLOCKS_API}/tops?group=${group}`,
+    fetchUrl: websiteUrl(`${BLOCKS_API}/tops?group=${group}`),
     periodScope: MARKETING_PERIOD_SCOPE,
     eyebrow: `$page.marketing.overview.groups.${group}.title`,
     valueLabel: `$page.marketing.overview.groups.${group}.value`,
@@ -73,14 +102,14 @@ export class MarketingOverviewPage extends PageController(
         id: "view-funnels",
         label: "$page.marketing.overview.view_funnels",
         icon: "i-ph-funnel",
-        variant: ButtonVariant.solid,
-        color: "primary",
+        variant: ButtonVariant.outline,
+        color: "neutral",
         target: { type: "page", url: `${MARKETING_MODULE_PATH}/funnels` },
       },
     ],
   }),
 ) {
-  static content = MarketingContext()
+  static content = MarketingContext({ waitingGuide: true })
     .child(
       "kpis",
       Grid({ minColumnWidth: "200px" })
@@ -97,7 +126,7 @@ export class MarketingOverviewPage extends PageController(
     .child(
       "quality",
       StatGroup({
-        fetchUrl: `${BLOCKS_API}/quality`,
+        fetchUrl: websiteUrl(`${BLOCKS_API}/quality`),
         periodScope: MARKETING_PERIOD_SCOPE,
         label: "$page.marketing.blocks.quality.name",
         skeletonCount: 3,
@@ -105,35 +134,39 @@ export class MarketingOverviewPage extends PageController(
     )
     .child(
       "traffic",
-      Grid({ minColumnWidth: "320px" })
+      // Three 280px tracks fit the content of a 1280px window, so the wide card
+      // keeps its side card on the same row on a laptop.
+      Grid({ minColumnWidth: "280px" })
         .child(
           "row",
           GridRow()
             .child(
               "chart",
-              ChartCard({
-                title: "$page.marketing.overview.traffic.title",
-                icon: "i-ph-chart-line",
-                fetchUrl: `${BLOCKS_API}/traffic?metric=sessions`,
-                periodScope: MARKETING_PERIOD_SCOPE,
-                valueFormat: "number",
-                primaryLabel: "$page.marketing.overview.traffic.this_period",
-                comparisonLabel:
-                  "$page.marketing.overview.traffic.previous_period",
-                chart: ChartArea({
-                  smooth: true,
-                  xaxisType: "datetime",
-                  comparisonStyle: "dashed",
-                  height: "260px",
-                }),
-              }).meta(blockMeta("traffic", "i-ph-chart-line")),
+              Tab({
+                items: [
+                  { label: `${TRAFFIC_PREFIX}tabs.sessions`, slot: "sessions" },
+                  {
+                    label: `${TRAFFIC_PREFIX}tabs.pageviews`,
+                    slot: "pageviews",
+                  },
+                ],
+                variant: TabVariant.link,
+                size: Size.small,
+              })
+                .child("sessions", trafficChart("sessions"), {
+                  slot: "sessions",
+                })
+                .child("pageviews", trafficChart("pageviews"), {
+                  slot: "pageviews",
+                })
+                .meta(blockMeta("traffic", "i-ph-chart-line")),
               { colSpan: 2 },
             )
             .child(
               "devices",
               TopListCard({
                 title: "$page.marketing.overview.devices.title",
-                fetchUrl: `${BLOCKS_API}/devices`,
+                fetchUrl: websiteUrl(`${BLOCKS_API}/devices`),
                 periodScope: MARKETING_PERIOD_SCOPE,
                 valueFormat: "number",
                 emptyLabel: "$page.marketing.overview.devices.empty",

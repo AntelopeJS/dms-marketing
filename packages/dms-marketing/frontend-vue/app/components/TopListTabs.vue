@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useI18n } from '#dms/frontend-module'
+import { computed, nextTick, ref, useId, watch } from 'vue'
+import { useDmsRoute, useI18n } from '#dms/frontend-module'
+import { linkInContext } from '../composables/useMarketingRoutes'
 import { displayName, formatNumber, formatPercent } from '../utils/format'
 
 /**
  * One overview card holding sibling top lists behind tabs (top pages, entry,
  * exit…), read in one request that follows the period scope. Each row shows
- * its rank, a bar of its share, the count and the share; rows lead to the
- * surface that owns them.
+ * its rank, a bar of its share, the count, the share and, with a comparison,
+ * its change; rows lead to the surface that owns them, in the page's website
+ * and period.
  */
 type LabelKind = 'raw' | 'channel' | 'country' | 'language' | 'device'
 
@@ -16,6 +18,8 @@ interface TopRow {
   title: string
   value: number
   share: number
+  /** Percent change; null without a value to compare, absent without a comparison. */
+  delta?: number | null
   to?: string
   tag?: string
 }
@@ -57,9 +61,13 @@ const props = withDefaults(
 const HIGHLIGHTED_RANKS = 3
 const SKELETON_ROWS = 6
 const RANK_DIGITS = 2
+/** Changes this small read as "no change", whatever their sign. */
+const FLAT_DELTA = 0.05
 
 const { t, te, locale } = useI18n()
 const { processI18n } = useTranslation()
+const route = useDmsRoute()
+const uid = useId()
 
 const { data, isLoading, error, refresh } = useChartFetch<TopTabsResponse>({
   fetchUrl: props.fetchUrl,
@@ -85,6 +93,10 @@ const active = computed(
 const maxShare = computed(() =>
   Math.max(1, ...(active.value?.items.map((item) => item.share) ?? [])),
 )
+/** The period is compared with another: each row says how it moved. */
+const compared = computed(
+  () => active.value?.items.some((item) => item.delta !== undefined) ?? false,
+)
 
 const LABELERS: Record<LabelKind, (key: string) => string> = {
   raw: (key) => key,
@@ -102,37 +114,102 @@ const MONO_KINDS = new Set<LabelKind>(['raw'])
 function rank(index: number): string {
   return String(index + 1).padStart(RANK_DIGITS, '0')
 }
+
+function inContext(link: string): string {
+  return linkInContext(link, route.query)
+}
+
+function deltaLabel(delta: number | null | undefined): string {
+  if (delta === null || delta === undefined) {
+    return '—'
+  }
+  const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±'
+  return `${sign}${formatPercent(Math.abs(delta), locale.value, 0)}`
+}
+
+function deltaClass(delta: number | null | undefined): string {
+  if (delta === null || delta === undefined || Math.abs(delta) < FLAT_DELTA) {
+    return 'text-dimmed'
+  }
+  return delta > 0 ? 'text-success' : 'text-error'
+}
+
+// --- Tabs (WAI-ARIA tabs pattern: roving focus, arrows, Home/End) ----------
+
+const tabIdOf = (id: string) => `${uid}-tab-${id}`
+const panelId = `${uid}-panel`
+const tabRefs = ref<Record<string, HTMLButtonElement | null>>({})
+
+const KEY_STEPS: Record<string, (index: number, count: number) => number> = {
+  ArrowRight: (index, count) => (index + 1) % count,
+  ArrowLeft: (index, count) => (index - 1 + count) % count,
+  Home: () => 0,
+  End: (_index, count) => count - 1,
+}
+
+async function onTabKeydown(event: KeyboardEvent, index: number) {
+  const step = KEY_STEPS[event.key]
+  if (!step) {
+    return
+  }
+  event.preventDefault()
+  const next = tabs.value[step(index, tabs.value.length)]
+  if (next) {
+    activeId.value = next.id
+    await nextTick()
+    tabRefs.value[next.id]?.focus()
+  }
+}
 </script>
 
 <template>
   <section class="dms-card flex min-w-0 flex-col overflow-hidden p-0">
-    <header class="flex items-center gap-4 border-b border-default px-4">
+    <header
+      class="flex flex-wrap items-center gap-x-4 border-b border-default px-4"
+    >
       <DmsEyebrow :label="processI18n(eyebrow)" class="shrink-0 py-3" />
       <div
-        class="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+        v-if="tabs.length > 1"
+        class="order-last -mx-1 flex min-w-0 basis-full items-center gap-1 overflow-x-auto [scrollbar-width:none] sm:order-none sm:mx-0 sm:flex-1 sm:basis-auto"
         role="tablist"
+        :aria-label="processI18n(eyebrow)"
       >
         <button
-          v-for="tab in tabs.length > 1 ? tabs : []"
+          v-for="(tab, index) in tabs"
+          :id="tabIdOf(tab.id)"
           :key="tab.id"
+          :ref="(el) => (tabRefs[tab.id] = el as HTMLButtonElement | null)"
           type="button"
           role="tab"
           :aria-selected="tab.id === activeId"
-          class="relative px-2 py-3 text-[13px] whitespace-nowrap transition-colors"
+          :aria-controls="panelId"
+          :tabindex="tab.id === activeId ? 0 : -1"
+          class="relative shrink-0 rounded-sm px-2 py-3 text-[13px] whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
           :class="
             tab.id === activeId
               ? 'font-semibold text-highlighted after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary'
               : 'text-muted hover:text-highlighted'
           "
           @click="activeId = tab.id"
+          @keydown="onTabKeydown($event, index)"
         >
           {{ processI18n(tab.label) }}
         </button>
       </div>
-      <DmsEyebrow :label="processI18n(valueLabel)" class="shrink-0 py-3" />
+      <DmsEyebrow
+        :label="processI18n(valueLabel)"
+        class="ms-auto shrink-0 py-3"
+      />
     </header>
 
-    <div class="flex-1">
+    <div
+      :id="panelId"
+      class="flex-1"
+      :role="tabs.length > 1 ? 'tabpanel' : undefined"
+      :aria-labelledby="
+        tabs.length > 1 && active ? tabIdOf(active.id) : undefined
+      "
+    >
       <DmsEmptyState
         v-if="error && !data"
         variant="error"
@@ -179,9 +256,14 @@ function rank(index: number): string {
         <li v-for="(item, index) in active.items" :key="item.id">
           <component
             :is="item.to ? 'DmsAutoLink' : 'div'"
-            :to="item.to"
-            class="grid grid-cols-[1.75rem_minmax(0,1fr)_auto_3.5rem] items-center gap-x-3 px-4 py-2"
-            :class="item.to ? 'transition-colors hover:bg-elevated/60' : ''"
+            :to="item.to ? inContext(item.to) : undefined"
+            class="grid items-center gap-x-3 px-4 py-2"
+            :class="[
+              compared
+                ? 'grid-cols-[1.5rem_minmax(0,1fr)_auto_3rem_3rem]'
+                : 'grid-cols-[1.5rem_minmax(0,1fr)_auto_3rem]',
+              item.to ? 'transition-colors hover:bg-elevated/60' : '',
+            ]"
           >
             <span
               class="font-mono text-[11px]"
@@ -198,6 +280,7 @@ function rank(index: number): string {
                 <span
                   class="truncate text-[13px] text-highlighted"
                   :class="MONO_KINDS.has(active.labelKind) ? 'font-mono' : ''"
+                  :title="LABELERS[active.labelKind](item.title)"
                 >
                   {{ LABELERS[active.labelKind](item.title) }}
                 </span>
@@ -223,6 +306,13 @@ function rank(index: number): string {
             >
               {{ formatPercent(item.share, locale) }}
             </span>
+            <span
+              v-if="compared"
+              class="text-right font-mono text-[11px] tabular-nums"
+              :class="deltaClass(item.delta)"
+            >
+              {{ deltaLabel(item.delta) }}
+            </span>
           </component>
         </li>
       </ol>
@@ -230,17 +320,17 @@ function rank(index: number): string {
 
     <footer
       v-if="footerTo || note"
-      class="flex items-center justify-between gap-3 border-t border-default px-4 py-2.5 text-xs"
+      class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-default px-4 py-2.5 text-xs"
     >
       <DmsAutoLink
         v-if="footerTo && footerLabel"
-        :to="footerTo"
-        class="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+        :to="inContext(footerTo)"
+        class="inline-flex items-center gap-1 font-medium whitespace-nowrap text-primary hover:underline"
       >
         {{ processI18n(footerLabel) }}
         <UIcon name="i-ph-arrow-right" class="size-3.5" />
       </DmsAutoLink>
-      <span v-if="note" class="truncate text-dimmed">
+      <span v-if="note" class="min-w-0 text-dimmed">
         {{ processI18n(note) }}
       </span>
     </footer>

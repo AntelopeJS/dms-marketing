@@ -1,4 +1,5 @@
 import type { StatGroupItem } from "@antelopejs/interface-dms/base/stat-group";
+import type { BlockText } from "@antelopejs/interface-dms/base/types/composed-text";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { FunnelsModel } from "@/db";
 import type { WebsiteStatistics } from "@/db/tables/website_statistics.table";
@@ -7,6 +8,7 @@ import type { TopDimension } from "@/types";
 import {
   MARKETING_MODULE_PATH,
   MS_PER_DAY,
+  MS_PER_HOUR,
   MS_PER_SECOND,
 } from "@/types/constants";
 import {
@@ -17,7 +19,8 @@ import {
   percentText,
 } from "./composed";
 import { isGeoipActive } from "./geoip";
-import type { QueryWindow } from "./period";
+import { HOURS_PER_DAY, hourlyValues } from "./hourly-traffic";
+import type { ComparisonKind, QueryWindow } from "./period";
 import {
   dailyValues,
   mergeDimension,
@@ -58,27 +61,46 @@ export interface KpiPayload {
   sparkline: number[];
 }
 
+/**
+ * The days a trend line draws: the day still being counted is left out, its
+ * dip would read as a fall. Nothing for fewer than two days.
+ */
+function completeDays(values: number[], window: QueryWindow): number[] {
+  const complete = window.inProgress ? values.slice(0, -1) : values;
+  return complete.length > 1 ? complete : [];
+}
+
+/**
+ * The value and its change. The comparison counts its day matching today for
+ * as much of it as today has run (see `RollupRead.compareRows`), so the
+ * change compares equal stretches of time.
+ */
 export function kpiPayload(read: RollupRead, metric: KpiMetric): KpiPayload {
   const value = KPI_METRICS[metric](sumRollups(read.rows));
-  const previousValue = read.compare
+  const previous = read.compare
     ? KPI_METRICS[metric](sumRollups(read.compareRows))
     : undefined;
   return {
     value,
-    previousValue,
-    delta: percentChange(value, previousValue) ?? undefined,
-    sparkline: dailyValues(read.rows, read.window, ROW_METRICS[metric]),
+    previousValue: previous === undefined ? undefined : Math.round(previous),
+    delta: percentChange(value, previous) ?? undefined,
+    sparkline: completeDays(
+      dailyValues(read.rows, read.window, ROW_METRICS[metric]),
+      read.window,
+    ),
   };
 }
 
 interface ChartPoint {
   x: number;
-  y: number;
+  y: number | null;
 }
 
 interface ChartSeries {
   name: string;
   data: ChartPoint[];
+  color?: string;
+  strokeDashArray?: number;
 }
 
 /** The payload a DMS `ChartCard` reads. */
@@ -92,7 +114,25 @@ export interface TrafficPayload {
 
 const SERIES_NAME_PREFIX = "$page.marketing.overview.traffic.series.";
 
-function seriesOf(
+/** The line a chart leads with, which the stretch still being counted continues. */
+const PRIMARY_LINE_COLOR = "--dms-sparkline";
+const PARTIAL_DASH = 4;
+
+/** The points of a curve and the window they stand for. */
+interface Curves {
+  current: ChartPoint[];
+  previous: ChartPoint[] | null;
+  /** The last point is a day or an hour still being counted. */
+  partial: boolean;
+}
+
+/**
+ * Daily points drawn at the reader's midnight (see `QueryWindow.localOffset`)
+ * so each sits under the date it was picked as. The comparison is drawn on
+ * the read window's axis, day i of the previous period under day i of the
+ * current one: the dashed line reads "the same point of the last period".
+ */
+function dayPoints(
   rows: readonly WebsiteStatistics[],
   window: QueryWindow,
   axis: QueryWindow,
@@ -100,34 +140,121 @@ function seriesOf(
 ): ChartPoint[] {
   const values = dailyValues(rows, window, ROW_METRICS[metric]);
   return values.map((y, index) => ({
-    x: axis.firstDay + index * MS_PER_DAY,
+    x: axis.firstDay - axis.localOffset + index * MS_PER_DAY,
     y,
   }));
 }
 
+function dailyCurves(read: RollupRead, metric: KpiMetric): Curves {
+  return {
+    current: dayPoints(read.rows, read.window, read.window, metric),
+    previous: read.compare
+      ? dayPoints(read.compareDays, read.compare, read.window, metric)
+      : null,
+    partial: read.window.inProgress,
+  };
+}
+
 /**
- * The comparison series is drawn on the primary window's axis, day i of the
- * previous period under day i of the current one, which is how the dashed
- * line reads "the same point of the last period".
+ * A single day is drawn hour by hour, up to the hour in progress, from the
+ * raw events: a lone daily point would leave the chart a dot on an axis
+ * stretched over days that have not come. The comparison covers the same
+ * hours of its own day. A day whose events are gone draws nothing.
  */
-export function trafficPayload(
+async function hourlyCurves(
   read: RollupRead,
   metric: KpiMetric,
-): TrafficPayload {
+  website: Website,
+): Promise<Curves> {
+  const since = read.window.firstDay;
+  const hours = read.window.inProgress
+    ? Math.floor((Date.now() - since) / MS_PER_HOUR) + 1
+    : HOURS_PER_DAY;
+  const [current, previous] = await Promise.all([
+    hourlyValues(website, since, hours, metric),
+    read.compare
+      ? hourlyValues(website, read.compare.firstDay, hours, metric)
+      : null,
+  ]);
+  const points = (values: number[]) => {
+    const drawn = values.map((y, index) => ({
+      x: since + index * MS_PER_HOUR,
+      y: y as number | null,
+    }));
+    // Two points at least, or the axis spreads a lone one over days.
+    return drawn.length > 1
+      ? drawn
+      : [...drawn, { x: since + drawn.length * MS_PER_HOUR, y: null }];
+  };
+  return {
+    current: current ? points(current) : [],
+    previous: current && previous ? points(previous) : null,
+    partial: read.window.inProgress && hours > 1,
+  };
+}
+
+/**
+ * The curve, its last stretch dashed while that day or hour is still being
+ * counted: the line does not plunge to a value that is not final yet.
+ */
+function withPartialEnd(
+  name: string,
+  points: ChartPoint[],
+  partial: boolean,
+): ChartSeries[] {
+  const last = points.length - 1;
+  if (!partial || last < 1) {
+    return [{ name, data: points }];
+  }
+  return [
+    {
+      name,
+      data: points.map((point, index) =>
+        index === last ? { x: point.x, y: null } : point,
+      ),
+    },
+    {
+      name: `${SERIES_NAME_PREFIX}in_progress`,
+      data: points.map((point, index) =>
+        index >= last - 1 ? point : { x: point.x, y: null },
+      ),
+      color: PRIMARY_LINE_COLOR,
+      strokeDashArray: PARTIAL_DASH,
+    },
+  ];
+}
+
+/**
+ * The traffic chart: one point per day, or per hour over a single day. Its
+ * value and change are the KPI's own, so the card agrees with the KPI row.
+ */
+export async function trafficPayload(
+  read: RollupRead,
+  metric: KpiMetric,
+  website: Website,
+  comparison: ComparisonKind,
+): Promise<TrafficPayload> {
   const kpi = kpiPayload(read, metric);
-  const name = `${SERIES_NAME_PREFIX}${metric}`;
+  const curves =
+    read.window.days === 1
+      ? await hourlyCurves(read, metric, website)
+      : dailyCurves(read, metric);
+  const previousName =
+    comparison === "previous-year" ? "previous_year" : "previous";
   return {
     value: kpi.value,
     previousValue: kpi.previousValue,
     delta: kpi.delta,
-    series: [
-      { name, data: seriesOf(read.rows, read.window, read.window, metric) },
-    ],
-    comparisonSeries: read.compare
+    series: withPartialEnd(
+      `${SERIES_NAME_PREFIX}${metric}`,
+      curves.current,
+      curves.partial,
+    ),
+    comparisonSeries: curves.previous
       ? [
           {
-            name: `${SERIES_NAME_PREFIX}previous`,
-            data: seriesOf(read.compareRows, read.compare, read.window, metric),
+            name: `${SERIES_NAME_PREFIX}${previousName}`,
+            data: curves.previous,
           },
         ]
       : undefined,
@@ -173,7 +300,10 @@ const QUALITY_PREFIX = "$page.marketing.overview.quality.";
  * The session quality strip, as stock `StatGroup` cells: values and changes
  * are composed texts, written in the reader's language by the dashboard.
  */
-export function qualityItems(read: RollupRead): StatGroupItem[] {
+export function qualityItems(
+  read: RollupRead,
+  comparison: ComparisonKind,
+): StatGroupItem[] {
   const current = qualityOf(sumRollups(read.rows));
   const previous = read.compare
     ? qualityOf(sumRollups(read.compareRows))
@@ -190,7 +320,7 @@ export function qualityItems(read: RollupRead): StatGroupItem[] {
       eyebrow: `${QUALITY_PREFIX}bounce_rate`,
       icon: "i-ph-arrow-u-up-left",
       value: percentText(current.bounceRate),
-      detail: deltaText(bounce, "points"),
+      detail: deltaText(bounce, "points", comparison),
       detailTone: deltaTone(bounce, true),
     },
     {
@@ -201,7 +331,7 @@ export function qualityItems(read: RollupRead): StatGroupItem[] {
         current.averageDurationSeconds === null
           ? "—"
           : durationText(current.averageDurationSeconds),
-      detail: deltaText(duration, "seconds"),
+      detail: deltaText(duration, "seconds", comparison),
       detailTone: deltaTone(duration),
     },
     {
@@ -209,7 +339,7 @@ export function qualityItems(read: RollupRead): StatGroupItem[] {
       eyebrow: `${QUALITY_PREFIX}pages_per_session`,
       icon: "i-ph-stack",
       value: decimalText(current.pagesPerSession),
-      detail: deltaText(pages, "number"),
+      detail: deltaText(pages, "number", comparison),
       detailTone: deltaTone(pages),
     },
   ];
@@ -220,7 +350,7 @@ export interface TopRow {
   id: string;
   title: string;
   value: number;
-  description?: string;
+  description?: BlockText;
   share: number;
   delta?: number | null;
   to?: string;
@@ -259,8 +389,19 @@ export function pagesLink(path?: string): string {
   return path ? `${base}?path=${encodeURIComponent(path)}` : base;
 }
 
-export function acquisitionLink(): string {
-  return `${MARKETING_MODULE_PATH}/acquisition`;
+/**
+ * Acquisition, on one channel's tab of the campaigns table (the table opens
+ * the tab its URL names) or whole.
+ */
+export function acquisitionLink(channel?: string): string {
+  const base = `${MARKETING_MODULE_PATH}/acquisition`;
+  return channel ? `${base}?tab=${encodeURIComponent(channel)}` : base;
+}
+
+/** The funnel builder, a new funnel starting on this custom event. */
+export function eventFunnelLink(name: string): string {
+  const steps = JSON.stringify([{ kind: "custom", value: name }]);
+  return `${MARKETING_MODULE_PATH}/funnel-builder?steps=${encodeURIComponent(steps)}`;
 }
 
 function topTab(read: RollupRead, tab: TopTabDefinition): TopTabPayload {
@@ -320,16 +461,18 @@ const TOP_GROUPS: Record<string, () => TopTabDefinition[]> = {
       labelKind: "channel",
       link: acquisitionLink,
     },
+    // Acquisition lists both in full; its table cannot be opened on a search.
     {
       id: "campaigns",
       label: `${GROUP_PREFIX}acquisition.tabs.campaigns`,
       dimension: "topUtmCampaigns",
-      link: acquisitionLink,
+      link: () => acquisitionLink(),
     },
     {
       id: "referrers",
       label: `${GROUP_PREFIX}acquisition.tabs.referrers`,
       dimension: "topReferrers",
+      link: () => acquisitionLink(),
     },
   ],
   audience: () => [
@@ -360,6 +503,7 @@ const TOP_GROUPS: Record<string, () => TopTabDefinition[]> = {
       id: "events",
       label: `${GROUP_PREFIX}events.tabs.events`,
       dimension: "topEvents",
+      link: eventFunnelLink,
     },
   ],
 };
@@ -412,7 +556,7 @@ export function devicesPayload(read: RollupRead): TopRow[] {
     title: `$page.marketing.devices.${key}`,
     value,
     share: shareOf(value, total),
-    description: `${shareOf(value, total).toFixed(0)}%`,
+    description: percentText(shareOf(value, total)),
     delta: previous ? percentChange(value, previous[key]) : null,
     icon: DEVICE_ICONS[key] ?? DEFAULT_DEVICE_ICON,
   }));
