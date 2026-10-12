@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { gunzipSync, gzipSync } from "node:zlib";
 import { GetModel } from "@antelopejs/interface-database-decorators";
+import sanitizeHtml from "sanitize-html";
 import { getConfig } from "@/config";
 import { MarketingSessionsModel, PageSnapshotsModel } from "@/db";
 import type { PageSnapshot } from "@/db/tables/page_snapshots.table";
@@ -97,65 +98,115 @@ export async function wantsSnapshot(
  * sandboxed without scripts already; the policy holds even where that
  * sandbox would not, and covers what a sandbox leaves open (form targets,
  * plugins, nested frames). Styles, images and fonts stay unrestricted —
- * they are the page.
+ * they are the page. These two remain the primary defence: the sanitizer
+ * below is a second layer, not what the console relies on.
  */
 const SNAPSHOT_CSP_META =
   "<meta http-equiv=\"Content-Security-Policy\" content=\"script-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none'\">";
 
-const DOCTYPE_PATTERN = /^\s*<!doctype[^>]*>/i;
-/** Elements whose content is code, another document or a form value. */
-const STRIPPED_ELEMENT_PATTERN =
-  /<(script|iframe|frame|object|embed|applet|portal|noscript|template)\b[\s\S]*?<\/\1\s*>/gi;
-const STRIPPED_TAG_PATTERN =
-  /<\/?(script|iframe|frame|object|embed|applet|portal|base|meta)\b[^>]*>/gi;
-const TEXTAREA_PATTERN = /(<textarea\b[^>]*>)[\s\S]*?(<\/textarea\s*>)/gi;
-const TAG_PATTERN =
-  /<([a-zA-Z][^\s/>]*)((?:\s+[^\s=/>]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+))?)*)\s*(\/?)>/g;
-const ATTRIBUTE_PATTERN =
-  /\s+([^\s=/>]+)(?:\s*=\s*("[^"]*"|'[^']*'|[^\s>]+))?/g;
-const SCRIPT_URL_PATTERN = /^["']?\s*javascript:/i;
+/** Elements dropped with their content: code, another document, a form
+ * target base, a refresh. Shadow roots (`template`) included, as before. */
+const DROPPED_TAGS = new Set([
+  "script",
+  "iframe",
+  "frame",
+  "object",
+  "embed",
+  "applet",
+  "portal",
+  "noscript",
+  "template",
+  "base",
+  "meta",
+]);
 const STRIPPED_ATTRIBUTES = new Set(["srcdoc", "action", "formaction"]);
 const FORM_CONTROL_TAGS = new Set(["input", "textarea", "select", "option"]);
 const FORM_STATE_ATTRIBUTES = new Set(["value", "checked", "selected"]);
+/** Void elements, serialized `<tag />` with no end tag (a stray `</br>`
+ * would render as one more break). */
+const VOID_TAGS = [
+  "area",
+  "base",
+  "br",
+  "col",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr",
+];
+/** Every other scheme — `javascript:` and `vbscript:` first, however
+ * entity-encoded or padded — drops the URL attribute carrying it. */
+const URL_SCHEMES = [
+  "http",
+  "https",
+  "data",
+  "blob",
+  "mailto",
+  "tel",
+  "sms",
+  "ftp",
+];
 
-function sanitizeTag(
-  _match: string,
-  tag: string,
-  attributes: string,
-  selfClosing: string,
-): string {
-  const formControl = FORM_CONTROL_TAGS.has(tag.toLowerCase());
-  const kept = attributes.replace(
-    ATTRIBUTE_PATTERN,
-    (attribute: string, name: string, value?: string) => {
-      const lower = name.toLowerCase();
-      const stripped =
-        lower.startsWith("on") ||
-        STRIPPED_ATTRIBUTES.has(lower) ||
-        (formControl && FORM_STATE_ATTRIBUTES.has(lower)) ||
-        (value !== undefined && SCRIPT_URL_PATTERN.test(value));
-      return stripped ? "" : attribute;
-    },
-  );
-  return `<${tag}${kept}${selfClosing}>`;
+function withoutUnsafeAttributes(
+  tagName: string,
+  attribs: sanitizeHtml.Attributes,
+): sanitizeHtml.Tag {
+  const formControl = FORM_CONTROL_TAGS.has(tagName);
+  const kept: sanitizeHtml.Attributes = {};
+  for (const [name, value] of Object.entries(attribs)) {
+    if (
+      !name.startsWith("on") &&
+      !STRIPPED_ATTRIBUTES.has(name) &&
+      !(formControl && FORM_STATE_ATTRIBUTES.has(name))
+    ) {
+      kept[name] = value;
+    }
+  }
+  return { tagName, attribs: kept };
 }
+
+/**
+ * Every tag and attribute of the page is kept — custom elements, classes,
+ * inline styles, `hidden`, data-* — except what the denylists above name;
+ * URL attributes (href, src, srcset, xlink:href…) are scheme-checked after
+ * entity decoding. A `<style>` is re-emitted verbatim, so one holding a `<`
+ * (no stylesheet the capture serializes does) is dropped rather than risk
+ * a parser disagreement reopening markup.
+ */
+const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
+  allowedTags: false,
+  allowedAttributes: false,
+  allowVulnerableTags: true,
+  allowedSchemes: URL_SCHEMES,
+  nonBooleanAttributes: [],
+  parseStyleAttributes: false,
+  selfClosing: VOID_TAGS,
+  exclusiveFilter: (frame) =>
+    DROPPED_TAGS.has(frame.tag) ||
+    (frame.tag === "style" && frame.text.includes("<")),
+  transformTags: {
+    textarea: (tagName, attribs) => ({ tagName, attribs, text: "" }),
+    "*": withoutUnsafeAttributes,
+  },
+};
 
 /**
  * The capture script already serializes nothing executable and no form
  * value; this is the server not taking a public upload's word for it —
- * scripts, frames, plugins, handlers, script URLs and form values are
- * stripped again before storage, and the policy above goes in front.
+ * the upload goes through a real HTML parser, scripts, frames, plugins,
+ * handlers, script URLs and form values are stripped again before
+ * storage, and the policy above goes in front.
  */
 export function sanitizeSnapshotHtml(html: string): string {
-  const body = html
-    .replace(DOCTYPE_PATTERN, "")
-    .replace(STRIPPED_ELEMENT_PATTERN, "")
-    .replace(STRIPPED_TAG_PATTERN, "")
-    .replace(TEXTAREA_PATTERN, "$1$2")
-    .replace(TAG_PATTERN, sanitizeTag);
-  // A meta ahead of <html> opens the head itself: the policy precedes
-  // whatever the document puts there.
-  return `<!DOCTYPE html>${SNAPSHOT_CSP_META}${body}`;
+  // The parser drops the doctype and comments; a meta ahead of <html> opens
+  // the head itself, so the policy precedes whatever the document puts there.
+  return `<!DOCTYPE html>${SNAPSHOT_CSP_META}${sanitizeHtml(html, SANITIZE_OPTIONS)}`;
 }
 
 /** The page's origin, only on a host the website declares: it is what the

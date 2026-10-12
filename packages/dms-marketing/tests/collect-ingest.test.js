@@ -292,8 +292,65 @@ test("a stored snapshot carries nothing executable and no form value", () => {
     /^<!DOCTYPE html><meta http-equiv="Content-Security-Policy"/,
   );
   assert.doesNotMatch(html, /alert|secret|typed|refresh/);
-  assert.match(html, /<img src="x.png">/);
+  assert.match(html, /<img src="x.png" \/>/);
   assert.match(html, /<li value="3">kept<\/li>/);
+});
+
+test("the snapshot sanitizer is not bypassed by parser tricks", () => {
+  const html = sanitizeSnapshotHtml(
+    '<img/onerror=alert(1) src="a.png"><svg/onload=alert(2)></svg>' +
+      '<a href="&#106;avascript:alert(3)">a</a>' +
+      '<a href="&#x6A;&#x61;vascript&colon;alert(4)">b</a>' +
+      '<a href="java&#x09;script:alert(5)">c</a>' +
+      '<a href=" JaVaScRiPt:alert(6)">d</a>' +
+      '<svg><a xlink:href="javascript:alert(7)"><text>e</text></a></svg>' +
+      '<img srcset="javascript:alert(8) 1x, b.png 2x">' +
+      '<form action="javascript:alert(9)"><button formaction="javascript:alert(10)">f</button></form>' +
+      '<div title="</div><script>steal()</script>">g</div>' +
+      "<p>open <script>alert(12)",
+  );
+  assert.doesNotMatch(html, /alert|javascript|onerror|onload|<script/i);
+  assert.match(html, /<img src="a.png" \/>/);
+  assert.match(html, /<img srcset="b.png 2x" \/>/);
+  assert.match(html, /<a>a<\/a><a>b<\/a><a>c<\/a><a>d<\/a>/);
+  assert.match(html, /<div title="&lt;\/div&gt;&lt;script&gt;.*">g<\/div>/);
+});
+
+test("a sanitized snapshot keeps what renders the page", () => {
+  const html = sanitizeSnapshotHtml(
+    '<html><head><link rel="stylesheet" href="https://example.com/a.css" media="screen">' +
+      "<style>.card > p { color: red }</style></head>" +
+      '<body class="home" style="margin:0;background:url(&quot;https://example.com/bg.png&quot;)">' +
+      '<nav hidden data-state="closed"><a href="#top">Top</a><a href="mailto:a@example.com">Mail</a></nav>' +
+      '<img src="data:image/png;base64,AAAA" alt=""><br><wbr>' +
+      '<svg viewBox="0 0 10 10"><use xlink:href="#icon"/></svg>' +
+      '<my-widget theme="dark">x &amp; y &lt;z&gt;</my-widget>' +
+      '<select><option selected value="v">Shown</option></select></body></html>',
+  );
+  assert.match(
+    html,
+    /<link rel="stylesheet" href="https:\/\/example.com\/a.css" media="screen" \/>/,
+  );
+  assert.match(html, /<style>\.card > p \{ color: red \}<\/style>/);
+  assert.match(
+    html,
+    /<body class="home" style="margin:0;background:url\(&quot;https:\/\/example.com\/bg.png&quot;\)">/,
+  );
+  assert.match(
+    html,
+    /<nav hidden data-state="closed"><a href="#top">Top<\/a><a href="mailto:a@example.com">Mail<\/a><\/nav>/,
+  );
+  assert.match(
+    html,
+    /<img src="data:image\/png;base64,AAAA" alt="" \/><br \/><wbr \/>/,
+  );
+  assert.match(html, /<use xlink:href="#icon"><\/use>/);
+  assert.match(
+    html,
+    /<my-widget theme="dark">x &amp; y &lt;z&gt;<\/my-widget>/,
+  );
+  assert.match(html, /<select><option>Shown<\/option><\/select>/);
+  assert.doesNotMatch(html, /<\/(br|img|wbr)>/);
 });
 
 test("only browser-stamped hostnames are offered for Allow this host", () => {
