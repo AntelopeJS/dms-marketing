@@ -4,6 +4,7 @@ import type {
 } from "@antelopejs/interface-dms/component";
 import { Banner } from "@antelopejs/interface-dms/base/banner";
 import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
+import type { PageLiveOptions } from "@antelopejs/interface-dms/page";
 import { API_BASE_PATH } from "@/types/constants";
 
 /**
@@ -63,6 +64,14 @@ export interface MarketingContextOptions extends ScopedBlockOptions {
    */
   waitingGuide?: boolean;
 }
+
+/**
+ * The `live` option of a page under the context bar: while its period
+ * reaches today, the bar asks the blocks to read again every minute
+ * (`refreshLivePageBlocks()`), and the page's gate reads each block at most
+ * that often.
+ */
+export const CONTEXT_PAGE_LIVE: PageLiveOptions = { maxRate: 60 };
 
 /**
  * The context bar and first-run gate wrapping an analytics page: its children

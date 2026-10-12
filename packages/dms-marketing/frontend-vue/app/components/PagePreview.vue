@@ -4,7 +4,7 @@ import { useI18n } from '#dms/frontend-module'
 import { useLatestRequest } from '../composables/useLatestRequest'
 import {
   useMarketingApi,
-  type MarketingDayRange,
+  type MarketingPeriod,
   type MarketingHeatmap,
   type MarketingPageSnapshotResponse,
   type MarketingScrollDepth,
@@ -67,8 +67,8 @@ import { rewriteViewportUnits } from '../utils/snapshotViewportUnits'
 const props = defineProps<{
   website: MarketingWebsite | null
   path: string
-  /** Days the counts cover — the context bar's `from`/`to`. */
-  range: MarketingDayRange
+  /** Days the counts cover — the context bar's period scope. */
+  period: MarketingPeriod
   /**
    * Measured share of the site's page loads sampled for clicks — why a quiet
    * page looks empty. Null while too few pageviews tell it.
@@ -148,7 +148,7 @@ const {
   run: loadHeatmap,
 } = useLatestRequest<MarketingHeatmap>(() =>
   props.website && props.path && !import.meta.env.SSR
-    ? api.getHeatmap(props.website._id, props.path, props.range)
+    ? api.getHeatmap(props.website._id, props.path, props.period)
     : null,
 )
 
@@ -170,7 +170,7 @@ const {
   run: loadScrollDepth,
 } = useLatestRequest<MarketingScrollDepth>(() =>
   props.website && props.path && !import.meta.env.SSR
-    ? api.getScrollDepth(props.website._id, props.path, props.range)
+    ? api.getScrollDepth(props.website._id, props.path, props.period)
     : null,
 )
 
@@ -178,8 +178,8 @@ watch(
   () => [
     props.website?._id,
     props.path,
-    props.range.from,
-    props.range.to,
+    props.period?.range?.from.getTime(),
+    props.period?.range?.to.getTime(),
     props.refreshToken,
   ],
   () => {

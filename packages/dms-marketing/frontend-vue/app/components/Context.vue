@@ -57,8 +57,8 @@ const PRESETS = [
 const COMPARISONS = ['previous-period', 'previous-year', 'none']
 const CLOCK_TICK_MS = 15_000
 /**
- * How often, while the tab is shown, the blocks of a period reaching today
- * and the websites' last events are read again.
+ * How often the blocks of a period reaching today and the websites' last
+ * events are read again (the pages' `live` option caps the blocks alike).
  */
 const LIVE_REFRESH_MS = 60_000
 /** A website is live while its last event is this recent. */
@@ -182,46 +182,29 @@ watch(
 
 watch(refreshToken, () => refreshPageBlocks())
 
-// --- Period, for the module's own reads ------------------------------------
+// --- Period --------------------------------------------------------------------
 
 const period = usePeriodScope(props.periodScope)
 
-/** The last `days` days up to the end of today, before the selector registers. */
-function defaultRange(days: number): { from: Date; to: Date } {
-  const from = new Date()
-  from.setHours(0, 0, 0, 0)
-  from.setDate(from.getDate() - (days - 1))
-  const to = new Date()
-  to.setHours(23, 59, 59, 999)
-  return { from, to }
-}
-
 // Read once the bar shows the selector: the scope registers with it, and a
 // read before has the DMS warn about a missing scope.
-const scoped = computed(() => (selected.value ? period.value : null))
-const range = computed(() => scoped.value?.range ?? defaultRange(30))
-
-const rangeDays = computed(() => {
-  const { from, to } = range.value
-  return Math.max(1, Math.round((to.getTime() - from.getTime()) / MS_PER_DAY))
-})
-
-/** Days of the period, as the `Nd` window the older routes read. */
-const periodDays = computed(() => `${rangeDays.value}d`)
+const range = computed(() => (selected.value ? period.value?.range : null))
 
 /** A custom range longer than the routes read: only its last days are shown. */
-const cutHint = computed(() =>
-  rangeDays.value > MAX_PERIOD_DAYS
+const cutHint = computed(() => {
+  if (!range.value) {
+    return ''
+  }
+  const { from, to } = range.value
+  const days = Math.round((to.getTime() - from.getTime()) / MS_PER_DAY)
+  return days > MAX_PERIOD_DAYS
     ? t('page.marketing.context.range_cut', { days: MAX_PERIOD_DAYS })
-    : '',
-)
+    : ''
+})
 
 provide(MARKETING_CONTEXT_KEY, {
   websites,
   selected,
-  period: periodDays,
-  from: computed(() => range.value.from.toISOString()),
-  to: computed(() => range.value.to.toISOString()),
   refreshToken,
   select,
   reload,
@@ -231,16 +214,16 @@ onMounted(reload)
 
 // --- Clock -------------------------------------------------------------------
 // A period reaching today follows the clock: its blocks read again every
-// minute while the tab is shown, and a preset moves on at midnight. A hidden
-// tab reads nothing; coming back to it catches up at once.
+// minute, through the page's live gate, and a preset moves on at midnight.
 
 const now = ref(Date.now())
-let lastLiveRefresh = Date.now()
 /** Bumped to mount the period selector again. */
 const selectorKey = ref(0)
 
 /** The period covers the present: its counts are still moving. */
-const reachesToday = computed(() => range.value.to.getTime() >= now.value)
+const reachesToday = computed(
+  () => !!range.value && range.value.to.getTime() >= now.value,
+)
 
 /**
  * The DMS resolves a day preset once (only its hour presets follow the
@@ -249,7 +232,7 @@ const reachesToday = computed(() => range.value.to.getTime() >= now.value)
  * from the URL, which keeps naming it.
  */
 function followClock(): void {
-  const state = scoped.value
+  const state = selected.value ? period.value : null
   if (!state || state.preset === 'custom') {
     return
   }
@@ -263,37 +246,35 @@ function followClock(): void {
 /** Refresh: the period moved on to today if a day passed, and every block reads again. */
 function refresh(): void {
   followClock()
-  lastLiveRefresh = Date.now()
   refreshToken.value++
   void refreshActivity()
 }
 
 function tick(): void {
   now.value = Date.now()
-  if (document.visibilityState !== 'visible') {
-    return
-  }
   followClock()
-  if (now.value - lastLiveRefresh < LIVE_REFRESH_MS) {
-    return
-  }
-  lastLiveRefresh = now.value
+}
+
+function liveRefresh(): void {
   if (reachesToday.value && linkedId.value) {
-    refreshPageBlocks()
+    refreshLivePageBlocks()
   }
   void refreshActivity()
 }
 
 let clock: ReturnType<typeof setInterval> | null = null
+let live: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
   clock = setInterval(tick, CLOCK_TICK_MS)
-  document.addEventListener('visibilitychange', tick)
+  live = setInterval(liveRefresh, LIVE_REFRESH_MS)
 })
 onBeforeUnmount(() => {
   if (clock) {
     clearInterval(clock)
   }
-  document.removeEventListener('visibilitychange', tick)
+  if (live) {
+    clearInterval(live)
+  }
 })
 
 // --- Bar ---------------------------------------------------------------------

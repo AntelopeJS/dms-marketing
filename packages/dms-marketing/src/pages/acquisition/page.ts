@@ -14,6 +14,7 @@ import {
   blockMeta,
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
+  CONTEXT_PAGE_LIVE,
   MarketingContext,
   websiteUrl,
 } from "../blocks";
@@ -175,6 +176,7 @@ export class MarketingAcquisitionPage extends PageController(
     module: MARKETING_MODULE_ID,
     category: analyticsCategory,
     order: 2,
+    live: CONTEXT_PAGE_LIVE,
   },
   DefaultLayout(),
 ) {

@@ -144,11 +144,11 @@ export interface MarketingPageEntry {
   sampled: number
 }
 
-/** The days a period-scoped read covers, local `YYYY-MM-DD`, both included. */
-export interface MarketingDayRange {
-  from: string
-  to: string
-}
+/**
+ * The period a read covers: the DMS period scope's state (`usePeriodScope`),
+ * appended to the URL as its blocks do. Null reads the routes' default.
+ */
+export type MarketingPeriod = Parameters<typeof appendPeriodToUrl>[1]
 
 export type MarketingPagesSort = 'views' | 'clicks'
 
@@ -394,6 +394,10 @@ export interface MarketingScrollDepth {
 
 // --- Facade -----------------------------------------------------------------
 
+function periodUrl(url: string, period: MarketingPeriod): string {
+  return appendPeriodToUrl(url, period) ?? url
+}
+
 /** Far above any real tenant's funnel count — the data-api list answers 10
  * rows unless told otherwise, and caps at 100 whatever is asked. */
 const FUNNEL_LIST_LIMIT = 100
@@ -447,12 +451,11 @@ export function useMarketingApi() {
         { method: 'DELETE' },
       ),
 
-    // A period as the context bar holds it (`from`/`to` local days).
-    getFunnelTemplates: (website: string, from: string, to: string) =>
+    getFunnelTemplates: (website: string, period: MarketingPeriod) =>
       $authFetch<MarketingFunnelTemplate[]>(
-        '/api/marketing/funnels/templates',
+        periodUrl('/api/marketing/funnels/templates', period),
         {
-          query: { website, from, to },
+          query: { website },
         },
       ),
 
@@ -484,23 +487,32 @@ export function useMarketingApi() {
     // Query strings via ofetch's `query` option — encoding is its job.
     listPages: (
       website: string,
-      range: MarketingDayRange,
+      period: MarketingPeriod,
       search = '',
       sort: MarketingPagesSort = 'views',
     ) =>
-      $authFetch<MarketingPages>('/api/marketing/stats/pages', {
-        query: { website, ...range, search, sort },
-      }),
+      $authFetch<MarketingPages>(
+        periodUrl('/api/marketing/stats/pages', period),
+        {
+          query: { website, search, sort },
+        },
+      ),
 
-    getHeatmap: (website: string, path: string, range: MarketingDayRange) =>
-      $authFetch<MarketingHeatmap>('/api/marketing/stats/heatmap', {
-        query: { website, path, ...range },
-      }),
+    getHeatmap: (website: string, path: string, period: MarketingPeriod) =>
+      $authFetch<MarketingHeatmap>(
+        periodUrl('/api/marketing/stats/heatmap', period),
+        {
+          query: { website, path },
+        },
+      ),
 
-    getScrollDepth: (website: string, path: string, range: MarketingDayRange) =>
-      $authFetch<MarketingScrollDepth>('/api/marketing/stats/scroll', {
-        query: { website, path, ...range },
-      }),
+    getScrollDepth: (website: string, path: string, period: MarketingPeriod) =>
+      $authFetch<MarketingScrollDepth>(
+        periodUrl('/api/marketing/stats/scroll', period),
+        {
+          query: { website, path },
+        },
+      ),
 
     getSnapshot: (
       website: string,

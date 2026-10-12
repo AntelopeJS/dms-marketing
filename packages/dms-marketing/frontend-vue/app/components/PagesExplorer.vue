@@ -12,6 +12,7 @@ import {
 } from '../composables/useMarketingApi'
 import { useMarketingContext } from '../composables/useMarketingContext'
 import { installLink } from '../composables/useMarketingRoutes'
+import { PERIOD_SCOPE } from '../constants'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
 import { formatNumber } from '../utils/format'
 import {
@@ -36,15 +37,13 @@ const props = withDefaults(
     componentId?: string
     pageId?: string
   }>(),
-  { periodScope: undefined, componentId: undefined, pageId: undefined },
+  { periodScope: PERIOD_SCOPE, componentId: undefined, pageId: undefined },
 )
 
 const SEARCH_DEBOUNCE_MS = 300
 const SKELETON_ROWS = 8
 /** Where the list and the preview sit side by side (Tailwind `xl`). */
 const SIDE_BY_SIDE_QUERY = '(min-width: 1280px)'
-
-void props
 
 const { t, locale } = useI18n()
 const route = useDmsRoute()
@@ -55,10 +54,12 @@ const toast = useToast()
 const { confirm } = useConfirm()
 
 const websiteId = computed(() => context.selected.value?.id ?? '')
-const range = computed(() => ({
-  from: context.from.value,
-  to: context.to.value,
-}))
+const period = usePeriodScope(props.periodScope)
+/** The days read: a comparison change alone reads nothing again. */
+const periodDays = computed(() => {
+  const range = period.value?.range
+  return range ? `${range.from.toISOString()}|${range.to.toISOString()}` : ''
+})
 
 const queryPath = () =>
   typeof route.query.path === 'string' ? route.query.path : ''
@@ -84,7 +85,7 @@ const {
   websiteId.value && !import.meta.env.SSR
     ? api.listPages(
         websiteId.value,
-        range.value,
+        period.value,
         search.value.trim(),
         sort.value,
       )
@@ -115,9 +116,11 @@ watch(
   { immediate: true },
 )
 
-watch([websiteId, range, context.refreshToken, sort], () => void loadPages(), {
-  immediate: true,
-})
+watch(
+  [websiteId, periodDays, context.refreshToken, sort],
+  () => void loadPages(),
+  { immediate: true },
+)
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 watch(search, () => {
@@ -508,7 +511,7 @@ const moreItems = computed(() => [
           <DmsMarketingPagePreview
             :website="website"
             :path="selectedPath"
-            :range="range"
+            :period="period"
             :sample-rate="sampleRate"
             :tracker-enabled="trackerEnabled"
             :pageviews="selectedPage?.pageviews"

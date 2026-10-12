@@ -13,6 +13,7 @@ import {
   linkInContext,
 } from '../composables/useMarketingRoutes'
 import { formatNumber } from '../utils/format'
+import { PERIOD_SCOPE } from '../constants'
 
 /**
  * The first-run state of the funnels table: funnels built from the site's
@@ -32,18 +33,23 @@ const route = useDmsRoute()
 const router = useDmsRouter()
 const api = useMarketingApi()
 const context = useMarketingContext()
+const period = usePeriodScope(PERIOD_SCOPE)
 
 const templates = ref<MarketingFunnelTemplate[] | null>(null)
 
 watch(
-  [() => context.selected.value?.id, context.from, context.to],
-  async ([website, from, to]) => {
+  [
+    () => context.selected.value?.id,
+    () => period.value?.range?.from.getTime(),
+    () => period.value?.range?.to.getTime(),
+  ],
+  async ([website]) => {
     if (!website) {
       return
     }
     templates.value = null
     try {
-      templates.value = await api.getFunnelTemplates(website, from, to)
+      templates.value = await api.getFunnelTemplates(website, period.value)
     } catch {
       templates.value = []
     }

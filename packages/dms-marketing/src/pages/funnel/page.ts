@@ -4,6 +4,7 @@ import { MARKETING_MODULE_ID } from "@/types/constants";
 import {
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
+  CONTEXT_PAGE_LIVE,
   MarketingContext,
 } from "../blocks";
 import { conversionCategory } from "../module";
@@ -26,6 +27,7 @@ export class MarketingFunnelPage extends PageController(
     module: MARKETING_MODULE_ID,
     category: conversionCategory,
     hidden: true,
+    live: CONTEXT_PAGE_LIVE,
   },
   DefaultLayout({ hideHeader: true }),
 ) {

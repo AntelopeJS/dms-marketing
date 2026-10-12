@@ -343,9 +343,12 @@ that wraps the blocks of each page.
   matching day of the comparison (`RollupRead.compareRows`). A comparison
   window with no rollup row is no comparison (no "vs 0"). A one-day window
   draws its curve hour by hour from the raw events (`services/hourly-traffic.ts`).
-- **Clock.** The selector resolves a preset reaching today again every
-  minute, so its blocks read again with it; the bar's Refresh reads every
-  block again (`refreshPageBlocks()`).
+- **Clock.** While the period reaches today, the bar asks the blocks to
+  read again every minute (`refreshLivePageBlocks()`), through the live gate
+  of the pages it sits on (`live: CONTEXT_PAGE_LIVE`, at most one read a
+  minute per block); past midnight it mounts the selector again so a day
+  preset moves on. The bar's Refresh reads every block again at once
+  (`refreshPageBlocks()`).
 - **Website.** The page URL names it (`?website=`), so each tab keeps its
   own and a copied link opens on the same site; a stock block reads it
   through a `{{query.website}}` token (`websiteUrl()`, `src/pages/blocks.ts`)

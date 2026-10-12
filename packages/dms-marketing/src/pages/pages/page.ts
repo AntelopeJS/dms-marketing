@@ -4,6 +4,7 @@ import { MARKETING_MODULE_ID } from "@/types/constants";
 import {
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
+  CONTEXT_PAGE_LIVE,
   MarketingContext,
 } from "../blocks";
 import { analyticsCategory } from "../module";
@@ -23,6 +24,7 @@ export class MarketingPagesPage extends PageController(
     module: MARKETING_MODULE_ID,
     category: analyticsCategory,
     order: 3,
+    live: CONTEXT_PAGE_LIVE,
   },
   DefaultLayout(),
 ) {
