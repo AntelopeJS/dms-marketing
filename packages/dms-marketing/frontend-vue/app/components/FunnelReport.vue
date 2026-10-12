@@ -201,10 +201,11 @@ async function writeStatus(target: MarketingExperimentStatus): Promise<void> {
   }
 }
 
-/** Steps the site never sent over the period, while it sent other events. */
+/** Steps the site never sent over the period, while it sent other events;
+ * a read cut at its cap concludes nothing. */
 const unseenSteps = computed(() => {
   const computation = current.value?.computation
-  if (!computation || computation.events === 0) {
+  if (!computation || computation.events === 0 || current.value?.truncated) {
     return []
   }
   return computation.steps

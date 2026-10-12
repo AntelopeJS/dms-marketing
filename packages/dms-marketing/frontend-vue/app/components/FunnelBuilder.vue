@@ -458,7 +458,7 @@ function previewCount(step: StepDraft): number | null {
 const previewRows = computed(() => preview.value?.computation.steps ?? [])
 
 /** Under a step: the path a pasted URL is matched as, or a step the site
- * never sent over the preview's 30 days. */
+ * never sent over the preview's 30 days (unless the read hit its cap). */
 function stepHint(step: StepDraft): { text: string; warning: boolean } | null {
   const value = step.value.trim()
   if (!value) {
@@ -469,7 +469,8 @@ function stepHint(step: StepDraft): { text: string; warning: boolean } | null {
   if (
     row &&
     row.matches === 0 &&
-    (preview.value?.computation.events ?? 0) > 0
+    (preview.value?.computation.events ?? 0) > 0 &&
+    !preview.value?.truncated
   ) {
     return { text: t('page.marketing.builder.step_unseen'), warning: true }
   }

@@ -95,11 +95,12 @@ function conversionOf(results: FunnelResults | null): number | null {
 /**
  * The first step no event of the window matched, while the site did send
  * something: an event nobody tracks yet, or a path that matches no page. A
- * site that sent nothing at all has no traffic, not a broken step.
+ * site that sent nothing at all has no traffic, not a broken step, and a
+ * read cut at its cap may have stopped before the step's first event.
  */
 export function unseenStepOf(results: FunnelResults): string | null {
   const computation = results.computation;
-  if (computation.events === 0) {
+  if (computation.events === 0 || results.truncated) {
     return null;
   }
   return (
