@@ -577,9 +577,11 @@
           "start_rescored": "Le nom, les étapes et la fenêtre restent modifiables, mais changer les étapes ou la fenêtre recalcule tout le test : le verdict peut changer.",
           "start_unseen": "{step} n'a jamais été reçu sur {website} sur cette période : vérifiez d'abord son suivi, sinon le test ne mesure rien.",
           "stop_code": "Ensuite, déployez le gagnant sur le site, ou retirez l'appel variation(\"{key}\") : il renvoie null et la page affiche le contrôle.",
+          "stop_reading_early": "Lecture à l'arrêt : trop tôt pour conclure, la règle de décision n'est pas encore remplie.",
           "stop_reading_flat": "Lecture à l'arrêt : aucune différence significative.",
           "stop_reading_loser": "Lecture à l'arrêt : {key} convertit {lift} moins bien que le contrôle (significatif).",
           "stop_reading_winner": "Lecture à l'arrêt : {key} convertit {lift} mieux que le contrôle (significatif).",
+          "stop_reading_withheld": "Lecture à l'arrêt : verdict suspendu, une alerte invalide cette lecture.",
           "stop_settles": "Les sessions exposées avant l'arrêt comptent encore leurs conversions pendant {hours} h (la fenêtre de conversion) ; les chiffres se figent ensuite."
         },
         "lost": "{count} session perdue · {rate} | {count} sessions perdues · {rate}",

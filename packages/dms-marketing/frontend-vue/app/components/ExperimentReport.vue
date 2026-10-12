@@ -81,18 +81,14 @@ function goalSessions(arm: MarketingVariationResult): number {
 
 const control = computed(() => arms.value[0] ?? null)
 
-/** The challenger with the best rate among those that got a p-value — the
- * list names the same one. */
-const best = computed(() => {
-  const challengers = arms.value.slice(1).filter((arm) => arm.pValue !== null)
-  return (
-    [...challengers].sort((a, b) => b.conversionRate - a.conversionRate)[0] ??
-    null
-  )
-})
+/** The server's reading: the challenger it names (best rate among those that
+ * got a p-value — the list names the same one) and its verdict. */
+const verdict = computed(() => props.results.verdict ?? null)
 
-const bestIndex = computed(() =>
-  best.value ? arms.value.indexOf(best.value) : -1,
+const bestIndex = computed(() => verdict.value?.leader ?? -1)
+
+const best = computed(() =>
+  bestIndex.value === -1 ? null : (arms.value[bestIndex.value] ?? null),
 )
 
 const totalExposed = computed(() =>
@@ -124,25 +120,7 @@ const level = computed(() =>
   ).replace(/[.,]0$/, ''),
 )
 
-type VerdictKind = 'winner' | 'loser' | 'flat' | 'early' | 'withheld'
-
-const verdictKind = computed<VerdictKind>(() => {
-  if (
-    props.results.truncated ||
-    srmMismatch.value ||
-    insufficient.value ||
-    !best.value
-  ) {
-    return 'withheld'
-  }
-  if (!best.value.significant) {
-    return 'flat'
-  }
-  if (!decision.value?.ready) {
-    return 'early'
-  }
-  return (best.value.uplift ?? 0) > 0 ? 'winner' : 'loser'
-})
+const verdictKind = computed(() => verdict.value?.kind ?? 'withheld')
 
 const lift = computed(() => (best.value?.uplift ?? 0) * PERCENT)
 

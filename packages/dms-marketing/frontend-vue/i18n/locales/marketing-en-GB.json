@@ -577,9 +577,11 @@
           "start_rescored": "The name, steps and window stay editable, but changing the steps or the window scores the whole test again: the verdict may change.",
           "start_unseen": "{step} was never received on {website} in this period: check its tracking first, or the test measures nothing.",
           "stop_code": "Then ship the winner on the site, or remove the variation(\"{key}\") call: it answers null and the page shows the control.",
+          "stop_reading_early": "Reading at the stop: too early to call, the decision rule is not met yet.",
           "stop_reading_flat": "Reading at the stop: no significant difference.",
           "stop_reading_loser": "Reading at the stop: {key} converts {lift} worse than the control (significant).",
           "stop_reading_winner": "Reading at the stop: {key} converts {lift} better than the control (significant).",
+          "stop_reading_withheld": "Reading at the stop: verdict withheld, a warning voids this reading.",
           "stop_settles": "Sessions exposed before the stop keep counting their conversions for {hours} h (the conversion window); the numbers settle after that."
         },
         "lost": "{count} session lost · {rate} | {count} sessions lost · {rate}",

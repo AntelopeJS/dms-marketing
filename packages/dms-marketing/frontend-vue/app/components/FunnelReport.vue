@@ -266,25 +266,28 @@ async function start(): Promise<void> {
   })
 }
 
-/** What the reading says at the moment of stopping, in a line. */
+/** What the reading says at the moment of stopping, in a line: the report's
+ * own verdict, so a test too early to call never names a winner. */
 const readingAtStop = computed(() => {
+  const verdict = current.value?.verdict
   const arms = current.value?.experiment?.variations ?? []
-  const challengers = arms.slice(1).filter((arm) => arm.pValue !== null)
-  const best = challengers.sort(
-    (a, b) => b.conversionRate - a.conversionRate,
-  )[0]
-  if (!best || !best.significant || best.uplift === null) {
-    return t('page.marketing.funnel.lifecycle.stop_reading_flat')
-  }
-  return t(
-    best.uplift > 0
-      ? 'page.marketing.funnel.lifecycle.stop_reading_winner'
-      : 'page.marketing.funnel.lifecycle.stop_reading_loser',
-    {
+  const leader = verdict?.leader ?? null
+  const best = leader === null ? undefined : arms[leader]
+  const kind = verdict?.kind ?? 'withheld'
+  if (
+    (kind === 'winner' || kind === 'loser') &&
+    best !== undefined &&
+    best.uplift !== null
+  ) {
+    return t(`page.marketing.funnel.lifecycle.stop_reading_${kind}`, {
       key: best.key,
       lift: formatPercent(Math.abs(best.uplift) * PERCENT, locale.value),
-    },
-  )
+    })
+  }
+  if (kind === 'early' || kind === 'withheld') {
+    return t(`page.marketing.funnel.lifecycle.stop_reading_${kind}`)
+  }
+  return t('page.marketing.funnel.lifecycle.stop_reading_flat')
 })
 
 async function stop(): Promise<void> {

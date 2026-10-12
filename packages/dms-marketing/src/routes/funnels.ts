@@ -20,6 +20,7 @@ import type { Funnel } from "@/db/tables/funnels.table";
 import { resolveContextWebsite } from "@/services/context";
 import {
   coversWindow,
+  experimentVerdict,
   funnelResultsIn,
   funnelSuggestions,
   funnelTemplates,
@@ -274,6 +275,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
     return {
       funnel,
       ...results,
+      verdict: experimentVerdict(results),
       previous: previous?.computation ?? null,
       coverage,
     };

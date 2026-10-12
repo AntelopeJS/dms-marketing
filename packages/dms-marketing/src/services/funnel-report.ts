@@ -114,7 +114,7 @@ type ArmResult = NonNullable<FunnelResults["experiment"]>["variations"][number];
  * The challenger with the best rate among those the test could score: the
  * one the report's verdict names. It may trail the control.
  */
-export function pickLeader(arms: ArmResult[]): number {
+function pickLeader(arms: ArmResult[]): number {
   let best = -1;
   arms.forEach((arm, index) => {
     if (index === 0 || arm.pValue === null) {
@@ -127,12 +127,62 @@ export function pickLeader(arms: ArmResult[]): number {
   return best;
 }
 
-type ExperimentRead = NonNullable<FunnelResults["experiment"]>;
+/**
+ * What a started test says: `withheld` when a warning voids the reading
+ * (truncated window, sample ratio mismatch, no challenger scored), `flat`
+ * when the leader is not significant, `early` when it is but the decision
+ * rule (a week, a conversions floor) is not met yet.
+ */
+export type ExperimentVerdictKind =
+  | "winner"
+  | "loser"
+  | "flat"
+  | "early"
+  | "withheld";
 
-function leaderOf(arms: ArmResult[]): ExperimentLeader | null {
+export interface ExperimentVerdict {
+  kind: ExperimentVerdictKind;
+  /** Index of the arm the verdict names, the control being 0; null when no
+   * challenger could be scored. */
+  leader: number | null;
+}
+
+/**
+ * The one reading of a started test, shared by the list, the report and its
+ * stop dialog. Null on a funnel without one.
+ */
+export function experimentVerdict(
+  results: FunnelResults,
+): ExperimentVerdict | null {
+  const read = results.experiment;
+  if (!read) {
+    return null;
+  }
+  const arms = read.variations;
   const index = pickLeader(arms);
-  const best = index === -1 ? null : arms[index];
-  if (!best || best.uplift === null) {
+  const leader = index === -1 ? null : index;
+  const unscored = arms.slice(1).every((arm) => arm.significant === null);
+  const best = leader === null ? undefined : arms[leader];
+  let kind: ExperimentVerdictKind;
+  if (results.truncated || read.srm.mismatch || unscored || !best) {
+    kind = "withheld";
+  } else if (!best.significant) {
+    kind = "flat";
+  } else if (!read.decision.ready) {
+    kind = "early";
+  } else {
+    kind = (best.uplift ?? 0) > 0 ? "winner" : "loser";
+  }
+  return { kind, leader };
+}
+
+function leaderOf(
+  arms: ArmResult[],
+  verdict: ExperimentVerdict | null,
+): ExperimentLeader | null {
+  const index = verdict?.leader ?? null;
+  const best = index === null ? null : arms[index];
+  if (index === null || !best || best.uplift === null) {
     return null;
   }
   return {
@@ -141,22 +191,6 @@ function leaderOf(arms: ArmResult[]): ExperimentLeader | null {
     uplift: best.uplift * 100,
     significant: best.significant === true,
   };
-}
-
-/** Significant, ahead, and past the decision rule; no warning voiding it. */
-function isReady(
-  results: FunnelResults,
-  read: ExperimentRead,
-  leader: ExperimentLeader | null,
-): boolean {
-  return (
-    !results.truncated &&
-    !read.srm.mismatch &&
-    read.decision.ready &&
-    leader !== null &&
-    leader.significant &&
-    leader.uplift > 0
-  );
 }
 
 function percentOrNull(ratio: number | null | undefined): number | null {
@@ -174,7 +208,8 @@ function experimentSummary(
   const started = experiment.runs.length > 0;
   const read = started ? results.experiment : undefined;
   const arms = read?.variations ?? [];
-  const leader = leaderOf(arms);
+  const verdict = read ? experimentVerdict(results) : null;
+  const leader = leaderOf(arms, verdict);
   const best = leader ? arms[leader.index] : undefined;
   return {
     key: experiment.key,
@@ -184,7 +219,8 @@ function experimentSummary(
     until: experiment.status === "stopped" ? results.window.until : null,
     leader,
     exposed: arms.reduce((sum, arm) => sum + arm.exposedSessions, 0),
-    ready: read ? isReady(results, read, leader) : false,
+    // A winner is significant, ahead, past the decision rule and unvoided.
+    ready: verdict?.kind === "winner",
     upliftLow: percentOrNull(best?.upliftLow),
     upliftHigh: percentOrNull(best?.upliftHigh),
     days: read?.decision.days ?? 0,

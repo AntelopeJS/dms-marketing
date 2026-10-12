@@ -378,6 +378,16 @@ export interface MarketingFunnelTemplate {
   entering: number
 }
 
+/** What a started test says, read once by the server for the report, its
+ * stop dialog and the list: `early` is significant but short of the decision
+ * rule, `withheld` voided by a warning (truncated read, SRM, nothing scored). */
+export interface MarketingExperimentVerdict {
+  kind: 'winner' | 'loser' | 'flat' | 'early' | 'withheld'
+  /** Index of the arm the verdict names, the control being 0; null when no
+   * challenger could be scored. */
+  leader: number | null
+}
+
 export interface MarketingFunnelResults {
   funnel: MarketingFunnel
   /** Over every session that entered the funnel, arms or not. */
@@ -386,6 +396,8 @@ export interface MarketingFunnelResults {
   experiment?: MarketingExperimentResults
   /** The raw-event window hit its cap; verdicts are withheld. */
   truncated: boolean
+  /** Null on a funnel without a started experiment. */
+  verdict?: MarketingExperimentVerdict | null
   /** Epoch ms bounds the numbers cover: the selected period on a plain
    * funnel, the experiment's own run once one is started — a running split
    * ends at "now", a stopped one at its stop. */
