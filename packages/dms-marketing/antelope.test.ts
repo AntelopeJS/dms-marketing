@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig } from "@antelopejs/interface-core/config";
@@ -7,6 +7,14 @@ import { MongoMemoryReplSet } from "mongodb-memory-server-core";
 const DATABASE = "marketing_retention";
 const MONGO_VERSION = "8.0.8";
 const JWT_SECRET = "marketing-test-secret";
+const STORAGE_FOLDERS = [
+  "files",
+  "metadata",
+  "__staging__",
+  "tokens/upload",
+  "tokens/read",
+  "tokens/consumed",
+];
 let mongo: MongoMemoryReplSet;
 let storagePath: string;
 
@@ -81,6 +89,14 @@ export default defineConfig({
         binary: { version: MONGO_VERSION },
       });
       storagePath = await mkdtemp(join(tmpdir(), "marketing-retention-"));
+      // file-storage-local 0.1.x never finishes starting on an empty storage
+      // folder under Windows (its fsync walk misses the `\\?\` path mkdir
+      // returns and climbs past the drive root), so its folders are made here.
+      await Promise.all(
+        STORAGE_FOLDERS.map((folder) =>
+          mkdir(join(storagePath, folder), { recursive: true }),
+        ),
+      );
       process.env.TEST_MONGO_URL = mongo.getUri();
       return {
         modules: {
