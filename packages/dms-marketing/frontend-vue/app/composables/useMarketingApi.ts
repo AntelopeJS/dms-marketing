@@ -173,67 +173,6 @@ export interface MarketingPages {
   trackerEnabled: boolean
 }
 
-export interface MarketingDayStatistics {
-  day: number
-  pageviews: number
-  sessions: number
-  newVisitors: number
-  customEvents: number
-  /** Counted as transitions: a day un-bouncing sessions opened the day
-   * before can go negative. Clamp before showing a rate. */
-  bouncedSessions: number
-  sessionDurationMs: number
-  topPages: Record<string, number>
-  topEntryPages?: Record<string, number>
-  topExitPages?: Record<string, number>
-  topReferrers: Record<string, number>
-  topUtmSources: Record<string, number>
-  topUtmMediums?: Record<string, number>
-  topUtmCampaigns?: Record<string, number>
-  topUtmTerms?: Record<string, number>
-  topUtmContents?: Record<string, number>
-  topChannels?: Record<string, number>
-  topDevices?: Record<string, number>
-  topBrowsers?: Record<string, number>
-  topCountries?: Record<string, number>
-  topEvents?: Record<string, number>
-  topLanguages?: Record<string, number>
-}
-
-export interface MarketingOverviewTotals {
-  pageviews: number
-  sessions: number
-  newVisitors: number
-  customEvents: number
-  bouncedSessions: number
-  sessionDurationMs: number
-}
-
-export interface MarketingOverview {
-  totals: MarketingOverviewTotals
-  days: MarketingDayStatistics[]
-  topPages: Record<string, number>
-  topEntryPages: Record<string, number>
-  topExitPages: Record<string, number>
-  topReferrers: Record<string, number>
-  topUtmSources: Record<string, number>
-  topUtmMediums: Record<string, number>
-  topUtmCampaigns: Record<string, number>
-  topUtmTerms: Record<string, number>
-  topUtmContents: Record<string, number>
-  topChannels: Record<string, number>
-  topDevices: Record<string, number>
-  topBrowsers: Record<string, number>
-  /** ISO 3166-1 alpha-2 keys; only populated when the deployment configures
-   * a GeoIP database — `geoipEnabled` says whether the card should show. */
-  topCountries: Record<string, number>
-  /** Custom event names by trigger count — which CTA gets clicked. */
-  topEvents: Record<string, number>
-  /** BCP 47 tags as the visitors' browsers report them (`fr`, `fr-FR`). */
-  topLanguages: Record<string, number>
-  geoipEnabled: boolean
-}
-
 export interface MarketingFunnelStep {
   kind: 'url' | 'custom'
   value: string
@@ -553,11 +492,6 @@ export function useMarketingApi() {
         query: { website, ...range, search, sort },
       }),
 
-    getOverview: (website: string, period = '7d') =>
-      $authFetch<MarketingOverview>('/api/marketing/stats/overview', {
-        query: { website, period },
-      }),
-
     getHeatmap: (website: string, path: string, range: MarketingDayRange) =>
       $authFetch<MarketingHeatmap>('/api/marketing/stats/heatmap', {
         query: { website, path, ...range },
@@ -593,12 +527,6 @@ export function useMarketingApi() {
       $authFetch<MarketingHeatmapData>('/api/marketing/stats/heatmap/count', {
         query: { website, path },
       }),
-
-    getFunnelResults: (id: string, period = '7d') =>
-      $authFetch<MarketingFunnelResults>(
-        `/api/marketing/funnels/${encodeURIComponent(id)}/results`,
-        { query: { period } },
-      ),
 
     // Definitions CRUD over the funnels data-api routes. `is` is the DMS
     // DataType compare mode — the data-api's own `eq` parses but matches

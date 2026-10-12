@@ -82,16 +82,26 @@
 
   // --- Configuration --------------------------------------------------------
 
-  const script = document.currentScript;
-  if (!script) {
-    return;
-  }
-
   /** Read once and removed: the injected settings are not a page-facing API. */
   function servedConfig() {
     const injected = window[CONFIG_GLOBAL];
     delete window[CONFIG_GLOBAL];
     return injected && typeof injected === "object" ? injected : {};
+  }
+
+  const config = servedConfig();
+
+  // Collection paused (Settings): the page API without the collection, so
+  // `variation()` answers the control. A page already running the tracker
+  // keeps it.
+  if (config.paused === true) {
+    window.dmsMarketing = window.dmsMarketing || NOOP_API;
+    return;
+  }
+
+  const script = document.currentScript;
+  if (!script) {
+    return;
   }
 
   function firstFiniteNumber(values) {
@@ -108,7 +118,6 @@
     return Math.min(Math.max(rate, 0), 1);
   }
 
-  const config = servedConfig();
   const websiteId = script.getAttribute("data-website-id");
   if (!websiteId) {
     publishApi();

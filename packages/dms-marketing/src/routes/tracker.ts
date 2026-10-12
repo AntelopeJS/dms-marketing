@@ -21,20 +21,16 @@ const TRACKER_CONTENT_TYPE = "application/javascript; charset=utf-8";
 /** Global the served script reads its settings from (see static/tracker.js). */
 const TRACKER_CONFIG_GLOBAL = "__dmsMarketingTrackerConfig";
 
-/** Settings the tracker honors client-side. Numbers only — the prelude is
- * inlined into a script body, and a number can carry no markup. */
+/** Settings the tracker honors client-side. Numbers and booleans only — the
+ * prelude is inlined into a script body, and neither can carry markup. */
 interface ServedTrackerConfig {
   heatmapSampleRate: number;
+  /**
+   * Collection paused: the tracker only publishes its page API, so page code
+   * calling `window.dmsMarketing.track(…)` keeps working.
+   */
+  paused: boolean;
 }
-
-/**
- * Served while collection is paused: the page API without the collection, so
- * page code calling `window.dmsMarketing.track(…)` keeps working and
- * `variation()` answers the control. A page already running the real tracker
- * keeps it.
- */
-const PAUSED_SCRIPT =
-  "window.dmsMarketing=window.dmsMarketing||{track(){},exposure(){},variation(){return Promise.resolve(null)}};";
 
 let cachedScript: string | null = null;
 
@@ -57,6 +53,7 @@ function loadScript(): string {
 function servedScript(): string {
   const config: ServedTrackerConfig = {
     heatmapSampleRate: getConfig().heatmapSampleRate,
+    paused: !getConfig().trackerEnabled,
   };
   return `window.${TRACKER_CONFIG_GLOBAL}=${JSON.stringify(config)};\n${loadScript()}`;
 }
@@ -75,8 +72,6 @@ export class TrackerController extends Controller(API_BASE_PATH) {
       ? TRACKER_CACHE_MAX_AGE_SECONDS
       : PAUSED_TRACKER_CACHE_MAX_AGE_SECONDS;
     context.response.addHeader("Cache-Control", `public, max-age=${maxAge}`);
-    context.response
-      .getWriteStream(TRACKER_CONTENT_TYPE)
-      .end(enabled ? servedScript() : PAUSED_SCRIPT);
+    context.response.getWriteStream(TRACKER_CONTENT_TYPE).end(servedScript());
   }
 }

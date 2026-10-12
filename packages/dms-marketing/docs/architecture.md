@@ -263,7 +263,7 @@ Kind-specific `data` payloads:
 | Route | Auth | Purpose |
 |---|---|---|
 | `POST /api/marketing/collect` | public | event ingestion; answers `{accepted, dropped}` |
-| `GET /api/marketing/tracker.js` | public | first-party tracker script; while collection is paused, a no-op `window.dmsMarketing` (cached a minute) so page code keeps working |
+| `GET /api/marketing/tracker.js` | public | first-party tracker script; while collection is paused it only publishes a no-op `window.dmsMarketing` (cached a minute) so page code keeps working |
 | `GET /api/marketing/experiments.js?website=` | public | per-visitor assignment script for the site's funnels whose A/B split is running (see *Assignment contract*) |
 | `GET /api/marketing/snapshot.js?website=&path=&width=` | public | snapshot negotiation: the capture script when the backend wants a snapshot of that path at that viewport width, an empty script otherwise (see *Snapshot contract*) |
 | `POST /api/marketing/snapshot` | public | snapshot upload — one serialized page rendering, capped and rate-limited, accepted only with the token its negotiation handed out |

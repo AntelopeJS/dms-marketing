@@ -105,8 +105,8 @@ stopped test stops counting, whoever reports the arm.
 ### Guard the call
 
 `window.dmsMarketing` is installed as a no-op on the paths that collect
-nothing (no website id, DNT or GPC, collection paused — the paused script
-is that no-op alone, cached a minute), **but is absent when the script
+nothing (no website id, DNT or GPC, collection paused — the tracker is
+then cached a minute and publishes that no-op alone), **but is absent when the script
 itself never runs** — blocked, failed to load, or a `type="module"` embed,
 which defeats `document.currentScript`. Page code should still guard:
 
