@@ -20,11 +20,10 @@ const HOURLY_READS: Partial<
   "custom-events": { kind: "custom", perSession: false },
 };
 
-const MAX_HOURLY_EVENTS = 200_000;
 export const HOURS_PER_DAY = MS_PER_DAY / MS_PER_HOUR;
 
 /**
- * `hours` hourly counts from `since`, read from the raw events; null when the
+ * `hours` hourly counts from `since`, counted in the database; null when the
  * metric has no hourly count or the events are past their retention. A
  * session counts in the hour of its first pageview.
  */
@@ -38,31 +37,20 @@ export async function hourlyValues(
   if (!reading || since < Date.now() - getConfig().rawEventsRetention) {
     return null;
   }
-  const events = await GetModel(
+  const buckets = await GetModel(
     MarketingEventsModel,
     website.tenantId,
-  ).queryRange({
+  ).countHourly({
     websiteIds: [website._id],
     since: new Date(since),
     until: new Date(since + hours * MS_PER_HOUR - 1),
-    kinds: [reading.kind],
-    limit: MAX_HOURLY_EVENTS,
-    fields: ["sessionId"],
+    kind: reading.kind,
+    perSession: reading.perSession,
   });
   const values = Array.from({ length: hours }, () => 0);
-  const counted = new Set<string>();
-  for (const event of events) {
-    if (reading.perSession) {
-      if (counted.has(event.sessionId)) {
-        continue;
-      }
-      counted.add(event.sessionId);
-    }
-    const hour = Math.floor(
-      (new Date(event.timestamp).getTime() - since) / MS_PER_HOUR,
-    );
+  for (const { hour, count } of buckets) {
     if (hour >= 0 && hour < hours) {
-      values[hour] += 1;
+      values[hour] += count;
     }
   }
   return values;

@@ -5,7 +5,11 @@ import {
   HEATMAP_EVENT_KINDS,
   type ScrollEventData,
 } from "@/types";
-import { SCROLL_DEPTH_SCALE } from "@/types/constants";
+import {
+  MS_PER_HOUR,
+  MS_PER_SECOND,
+  SCROLL_DEPTH_SCALE,
+} from "@/types/constants";
 import {
   MarketingEvent,
   marketingEventsTableName,
@@ -51,6 +55,22 @@ export interface ScrollDepthBucket {
 }
 
 export type SampleRateQuery = Omit<ScrollDepthQuery, "url">;
+
+/** One kind over one window, cut in hours from `since`. */
+export interface HourlyCountQuery {
+  websiteIds: string[];
+  since: Date;
+  until: Date;
+  kind: EventKind;
+  /** Count each session once, in the hour of its first event of the window. */
+  perSession: boolean;
+}
+
+export interface HourlyCountBucket {
+  /** Whole hours since `since`. */
+  hour: number;
+  count: number;
+}
 
 /** Pageviews that declared one heatmap sampling rate. */
 export interface SampleRateBucket {
@@ -161,6 +181,43 @@ export class MarketingEventsModel extends BasicDataModel(
         sample,
         views: stream.count(),
       }))
+      .run();
+  }
+
+  /**
+   * Events of one kind per hour of the window, counted where the rows live:
+   * one row per hour that saw any comes back, whatever the traffic. A
+   * session-wise count first folds each session to its earliest hour.
+   */
+  async countHourly(query: HourlyCountQuery): Promise<HourlyCountBucket[]> {
+    if (query.websiteIds.length === 0) {
+      return [];
+    }
+    const sinceSeconds = query.since.getTime() / MS_PER_SECOND;
+    const hours = this.table
+      .getAll(query.websiteIds, "websiteId")
+      .filter((doc) => doc.key("timestamp").ge(query.since))
+      .filter((doc) => doc.key("timestamp").le(query.until))
+      .filter((doc) => doc.key("kind").eq(query.kind))
+      .map((doc) => ({
+        sessionId: doc.key("sessionId"),
+        // Back to whole milliseconds before dividing: epochs in seconds
+        // carry float noise that would floor an event on the hour into the
+        // previous one.
+        hour: doc
+          .key("timestamp")
+          .epoch()
+          .sub(sinceSeconds)
+          .mul(MS_PER_SECOND)
+          .round()
+          .div(MS_PER_HOUR)
+          .floor(),
+      }));
+    const counted = query.perSession
+      ? hours.group("sessionId", (stream) => ({ hour: stream.min("hour") }))
+      : hours;
+    return counted
+      .group("hour", (stream, hour) => ({ hour, count: stream.count() }))
       .run();
   }
 
