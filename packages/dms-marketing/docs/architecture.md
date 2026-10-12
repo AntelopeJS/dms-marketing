@@ -283,7 +283,6 @@ Kind-specific `data` payloads:
 | `GET /api/marketing/blocks/campaigns/notice?kind=missing\|truncated` | tenant member | the notice under the campaign table for a stock `Banner`: sessions tagged without a medium, or the cut at 100 rows; `null` when there is none |
 | `GET /api/marketing/blocks/collection-notice` | tenant member | the "collection paused" notice over the Websites grid and in the install guide, for a stock `Banner`; `null` while the module collects |
 | `GET /api/marketing/stats/overview?website=&from=&to=` (`period=Nd` as a fallback) | tenant member | rollup-backed dashboard read |
-| `GET /api/marketing/stats/campaigns?website=&from=&to=&search=&limit=` | tenant member | acquisition read: sessions by channel, UTM campaign table as (source, medium, campaign) triples, top referrers/terms/contents |
 | `GET /api/marketing/stats/pages?website=&period=Nd&search=&limit=` | tenant member | inventory of observed paths, plus `heatmapSampleRate` and `trackerEnabled` so the caller can explain an empty heatmap |
 | `GET /api/marketing/stats/heatmap?website=&path=&period=Nd` | tenant member | click heatmap (also served through the interface). `website` is optional and merges the tenant's sites when omitted — pass it |
 | `GET /api/marketing/stats/snapshot?website=&path=&layout=` | tenant member | the page snapshot the heatmap is drawn over: the capture at that layout, else the nearest one (`exact: false`), else `null`. A document always wins over a row recording an oversize capture, which comes back as `html: null` with the `bytes` it reached |

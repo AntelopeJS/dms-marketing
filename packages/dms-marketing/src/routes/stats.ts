@@ -18,10 +18,6 @@ import { getConfig } from "@/config";
 import { type DayTops, WebsiteStatisticsModel, WebsitesModel } from "@/db";
 import type { WebsiteStatistics } from "@/db/tables/website_statistics.table";
 import type { Website } from "@/db/tables/websites.table";
-import {
-  type CampaignKeyParts,
-  splitCampaignKey,
-} from "@/services/acquisition";
 import { isGeoipActive } from "@/services/geoip";
 import {
   computeClickHeatmap,
@@ -146,45 +142,7 @@ async function loadDaysInRange(
   return rows.map(toDayStatistics);
 }
 
-/**
- * The maps a table surface actually charts, and nothing else: /pages reads
- * one dimension of the sixteen, /campaigns five.
- */
-async function loadTopsInRange(
-  website: Website,
-  window: QueryWindow,
-  dimensions: readonly TopDimension[],
-): Promise<DayTops[]> {
-  return GetModel(WebsiteStatisticsModel, website.tenantId).getTopsSince(
-    website._id,
-    window.firstDay,
-    dimensions,
-    window.lastDay,
-  );
-}
-
 const PAGES_DIMENSIONS = ["topPages"] as const;
-
-const CAMPAIGNS_DIMENSIONS = [
-  "topCampaigns",
-  "topChannels",
-  "topUtmTerms",
-  "topUtmContents",
-  "topReferrers",
-] as const;
-
-interface CampaignRow extends CampaignKeyParts {
-  sessions: number;
-}
-
-function campaignMatches(row: CampaignRow, needle: string): boolean {
-  if (!needle) {
-    return true;
-  }
-  return [row.source, row.medium, row.campaign].some((part) =>
-    part?.toLowerCase().includes(needle),
-  );
-}
 
 function clampLimit(raw: unknown): number {
   const parsed = Number.parseInt(queryString(raw) ?? "", 10);
@@ -339,58 +297,6 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
       truncated: matching.length > max,
       sampleRate: activity.sampleRate,
       trackerEnabled: getConfig().trackerEnabled,
-    };
-  }
-
-  /**
-   * The acquisition surface: sessions by channel, and the UTM campaign table
-   * as (source, medium, campaign) triples — the composite `topCampaigns` key
-   * is split back server-side so its separator stays a storage detail. Same
-   * caps as every rollup read: a day keeps at most MAX_ENTRIES_PER_TOP_MAP
-   * campaign triples.
-   */
-  @Get("campaigns")
-  // The parameter list of a decorated handler is its HTTP surface, not an
-  // argument list to shorten.
-  // oxlint-disable-next-line eslint/max-params
-  async campaigns(
-    @AuthTenantMember() _user: User,
-    @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
-    @Parameter("search", "query") search?: string,
-    @Parameter("limit", "query") limit?: string,
-  ) {
-    const websiteDoc = await requireTenantWebsite(
-      context,
-      queryString(website),
-    );
-    const inRange = await loadTopsInRange(
-      websiteDoc,
-      requestWindow(context),
-      CAMPAIGNS_DIMENSIONS,
-    );
-
-    const needle = queryString(search)?.toLowerCase() ?? "";
-    const rows = Object.entries(mergeDimension(inRange, "topCampaigns"))
-      .map(([key, sessions]): CampaignRow => ({
-        ...splitCampaignKey(key),
-        sessions,
-      }))
-      .filter((row) => campaignMatches(row, needle))
-      .sort((a, b) => b.sessions - a.sessions);
-
-    const max = clampLimit(limit);
-    return {
-      // Exhaustive, not a top list: the classifier only ever mints the five
-      // MARKETING_CHANNELS keys.
-      channels: mergeDimension(inRange, "topChannels"),
-      campaigns: rows.slice(0, max),
-      truncated: rows.length > max,
-      terms: mergeTops(inRange, "topUtmTerms"),
-      contents: mergeTops(inRange, "topUtmContents"),
-      // Referrer domains of every session that carried one — all channels,
-      // not just the donut's referral slice.
-      referrers: mergeTops(inRange, "topReferrers"),
     };
   }
 

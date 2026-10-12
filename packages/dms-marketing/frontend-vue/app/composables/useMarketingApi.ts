@@ -173,11 +173,6 @@ export interface MarketingPages {
   trackerEnabled: boolean
 }
 
-/** The five-way acquisition grouping the backend derives from referrer
- * domain + utm_medium at rollup time. */
-export type MarketingChannel =
-  'direct' | 'organic' | 'email' | 'social' | 'referral' | 'paid'
-
 export interface MarketingDayStatistics {
   day: number
   pageviews: number
@@ -237,27 +232,6 @@ export interface MarketingOverview {
   /** BCP 47 tags as the visitors' browsers report them (`fr`, `fr-FR`). */
   topLanguages: Record<string, number>
   geoipEnabled: boolean
-}
-
-/** One (source, medium, campaign) triple observed on new sessions; a blank
- * slot is a UTM parameter the landing URL did not carry. */
-export interface MarketingCampaignEntry {
-  source?: string
-  medium?: string
-  campaign?: string
-  sessions: number
-}
-
-export interface MarketingCampaigns {
-  /** Exhaustive five-key split, not a top list. */
-  channels: Partial<Record<MarketingChannel, number>>
-  campaigns: MarketingCampaignEntry[]
-  /** The table hit its cap; narrow the search to see the rest. */
-  truncated: boolean
-  terms: Record<string, number>
-  contents: Record<string, number>
-  /** Referrer domains across all channels (search and social included). */
-  referrers?: Record<string, number>
 }
 
 export interface MarketingFunnelStep {
@@ -570,11 +544,6 @@ export function useMarketingApi() {
     getOverview: (website: string, period = '7d') =>
       $authFetch<MarketingOverview>('/api/marketing/stats/overview', {
         query: { website, period },
-      }),
-
-    getCampaigns: (website: string, period = '7d', search = '') =>
-      $authFetch<MarketingCampaigns>('/api/marketing/stats/campaigns', {
-        query: { website, period, search },
       }),
 
     getHeatmap: (website: string, path: string, range: MarketingDayRange) =>
