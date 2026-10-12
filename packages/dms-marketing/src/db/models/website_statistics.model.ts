@@ -18,6 +18,8 @@ export function dayRowId(websiteId: string, day: number): string {
 /** One day's slice of the top maps, holding only the requested dimensions. */
 export type DayTops = Partial<Record<TopDimension, TopEntries>>;
 
+type DayCounters = Pick<WebsiteStatistics, "day" | "sessions" | "pageviews">;
+
 export class WebsiteStatisticsModel extends BasicDataModel(
   WebsiteStatistics,
   websiteStatisticsTableName,
@@ -60,10 +62,12 @@ export class WebsiteStatisticsModel extends BasicDataModel(
     websiteId: string,
     cutoff: number,
     dimensions: readonly TopDimension[],
+    lastDay = Number.MAX_SAFE_INTEGER,
   ): Promise<DayTops[]> {
     return this.table
       .getAll(websiteId, "websiteId")
       .filter((doc) => doc.key("day").ge(cutoff))
+      .filter((doc) => doc.key("day").le(lastDay))
       .map((doc) => {
         const tops = doc.key("tops");
         return Object.fromEntries(
@@ -122,5 +126,13 @@ export class WebsiteStatisticsModel extends BasicDataModel(
 
   async deleteByWebsite(websiteId: string): Promise<number> {
     return this.table.getAll(websiteId, "websiteId").delete().run();
+  }
+
+  /** The counters of every stored day — what deleting the site discards. */
+  async getCounters(websiteId: string): Promise<DayCounters[]> {
+    return this.table
+      .getAll(websiteId, "websiteId")
+      .pluck("day", "sessions", "pageviews")
+      .run() as Promise<DayCounters[]>;
   }
 }

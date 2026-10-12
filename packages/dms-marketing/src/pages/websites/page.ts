@@ -13,9 +13,12 @@ import {
 import { MarketingBlock } from "../blocks";
 import { setupCategory } from "../module";
 
-/** Websites still waiting for their first pageview: the sidebar badge. */
+/** Websites still waiting for their first pageview: the sidebar badge. A
+ * paused site waits for nothing. */
 async function countWaitingWebsites(tenantId: string): Promise<number> {
-  const websites = await listTenantWebsites(tenantId);
+  const websites = (await listTenantWebsites(tenantId)).filter(
+    (website) => website.trackingEnabled,
+  );
   if (websites.length === 0) {
     return 0;
   }
@@ -63,6 +66,10 @@ export class MarketingWebsitesPage extends PageController(
       fetchUrl: `${API_BASE_PATH}/websites/summary`,
     },
   ).navBadge({
-    count: async (ctx) => countWaitingWebsites(getRequestTenantId(ctx)),
+    // In warning: a grey "Websites 1" reads as one website, not one to check.
+    count: async (ctx) => ({
+      count: await countWaitingWebsites(getRequestTenantId(ctx)),
+      tone: "warning",
+    }),
   });
 }

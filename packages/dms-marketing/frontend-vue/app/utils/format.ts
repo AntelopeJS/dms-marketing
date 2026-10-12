@@ -19,13 +19,18 @@ export function formatNumber(
   }).format(value)
 }
 
-/** A share or rate already in percent units (41.2 → "41.2%"). */
+/** A share or rate already in percent units (41.2 → "41.2%", "41,2 %" in
+ * French): the locale places the sign, as the server's composed texts do. */
 export function formatPercent(
   value: number,
   locale: string,
   digits = 1,
 ): string {
-  return `${formatNumber(value, locale, digits)}%`
+  return new Intl.NumberFormat(locale, {
+    style: 'percent',
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value / 100)
 }
 
 /** "2m 48s", the way analytics tools write a visit length. */
@@ -97,6 +102,20 @@ export function formatShortDate(at: number | Date, locale: string): string {
   return new Intl.DateTimeFormat(locale, {
     month: 'short',
     day: 'numeric',
+  }).format(at)
+}
+
+/**
+ * "11 Oct, 14:02": when one thing happened. The module's English is British
+ * (its locale file is en-GB) and the DMS reports a bare "en", which Intl
+ * reads as American — a 12-hour clock beside day-first dates.
+ */
+export function formatDateTime(at: number | Date, locale: string): string {
+  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : locale, {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
   }).format(at)
 }
 

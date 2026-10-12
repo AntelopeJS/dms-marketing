@@ -16,6 +16,9 @@ type EventInsertInput = Parameters<Table<MarketingEvent>["insert"]>[0];
 
 const EPOCH_LOWER_BOUND = new Date(0);
 const SCROLL_KIND: EventKind = "scroll";
+const PAGEVIEW_KIND: EventKind = "pageview";
+
+type PageviewRow = Pick<MarketingEvent, "timestamp" | "url" | "sessionId">;
 
 export interface EventRangeQuery<F extends keyof MarketingEvent> {
   websiteIds: string[];
@@ -44,6 +47,14 @@ export interface ScrollDepthQuery {
 
 export interface ScrollDepthBucket {
   depth: number;
+  views: number;
+}
+
+export type SampleRateQuery = Omit<ScrollDepthQuery, "url">;
+
+/** Pageviews that declared one heatmap sampling rate. */
+export interface SampleRateBucket {
+  sample: number;
   views: number;
 }
 
@@ -124,6 +135,36 @@ export class MarketingEventsModel extends BasicDataModel(
   }
 
   /**
+   * Pageviews of the window by the sampling rate their tracker declared, one
+   * row per rate. Same range guard as the depths: only numbers in [0, 1]
+   * pass, and pageviews stored before trackers declared one are left out.
+   */
+  async countDeclaredSampleRates(
+    query: SampleRateQuery,
+  ): Promise<SampleRateBucket[]> {
+    if (query.websiteIds.length === 0) {
+      return [];
+    }
+    return this.table
+      .getAll(query.websiteIds, "websiteId")
+      .filter((doc) => doc.key("timestamp").ge(query.since))
+      .filter((doc) => doc.key("timestamp").le(query.until))
+      .filter((doc) => doc.key("kind").eq(PAGEVIEW_KIND))
+      .filter((doc) => {
+        const sample = doc.key("data").cast<{ sample: number }>().key("sample");
+        return sample.ge(0).and(sample.le(1));
+      })
+      .map((doc) => ({
+        sample: doc.key("data").cast<{ sample: number }>().key("sample"),
+      }))
+      .group("sample", (stream, sample) => ({
+        sample,
+        views: stream.count(),
+      }))
+      .run();
+  }
+
+  /**
    * Documents are built server-side from an already zod-validated payload,
    * so skipping the per-document wrapper validation is safe.
    */
@@ -168,5 +209,21 @@ export class MarketingEventsModel extends BasicDataModel(
 
   async deleteByWebsite(websiteId: string): Promise<number> {
     return this.table.getAll([websiteId], "websiteId").delete().run();
+  }
+
+  /** The install check: the newest pageview stored at or after `since`. */
+  async getLatestPageview(
+    websiteId: string,
+    since: Date,
+  ): Promise<PageviewRow | undefined> {
+    const rows = (await this.table
+      .getAll([websiteId], "websiteId")
+      .filter((doc) => doc.key("timestamp").ge(since))
+      .filter((doc) => doc.key("kind").eq(PAGEVIEW_KIND))
+      .orderBy("timestamp", "desc")
+      .slice(0, 1)
+      .pluck("timestamp", "url", "sessionId")
+      .run()) as PageviewRow[];
+    return rows[0];
   }
 }

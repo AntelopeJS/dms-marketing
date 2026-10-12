@@ -1,14 +1,24 @@
 import { describe, expect, it } from 'vitest'
 import {
   displayName,
+  formatDateTime,
   formatDuration,
+  formatPercent,
   formatSignedDelta,
   initials,
 } from '../app/utils/format'
 import { sampleSizePerArm } from '../app/utils/sample-size'
+import { normalizeFunnelStepPath } from '../app/utils/step-path'
 import { trackerSnippet } from '../app/utils/snippet'
 
 describe('formatting', () => {
+  it('dates an event on a 24-hour clock in the module English', () => {
+    const at = Date.UTC(2026, 9, 11, 18, 7)
+    const en = formatDateTime(at, 'en')
+    expect(en).toBe(formatDateTime(at, 'en-GB'))
+    expect(en).not.toMatch(/[AP]M/)
+  })
+
   it('writes durations the way analytics tools do', () => {
     expect(formatDuration(8)).toBe('8s')
     expect(formatDuration(168)).toBe('2m 48s')
@@ -19,6 +29,20 @@ describe('formatting', () => {
     expect(formatSignedDelta(-2.34, 'points', 'en')).toBe('−2.3 pt')
     expect(formatSignedDelta(8, 'seconds', 'en')).toBe('+8s')
     expect(formatSignedDelta(0.04, 'number', 'en')).toBe('±0.0')
+  })
+
+  it('places the percent sign the way the locale does', () => {
+    expect(formatPercent(41.23, 'en')).toBe('41.2%')
+    expect(formatPercent(41.23, 'fr').replace(/\s/g, ' ')).toBe('41,2 %')
+    expect(formatPercent(8.584, 'en', 2)).toBe('8.58%')
+  })
+
+  it('shows a pasted page step as the path the server matches', () => {
+    expect(
+      normalizeFunnelStepPath('https://shop.acme.test/Sale/Chairs/?utm=x'),
+    ).toBe('/Sale/Chairs')
+    expect(normalizeFunnelStepPath('/blog/*')).toBe('/blog/*')
+    expect(normalizeFunnelStepPath('/')).toBe('/')
   })
 
   it('names websites by their initials', () => {

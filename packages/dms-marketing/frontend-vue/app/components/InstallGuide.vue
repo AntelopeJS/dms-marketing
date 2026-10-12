@@ -13,14 +13,21 @@ import {
 import {
   installLink,
   overviewLink,
+  settingsLink,
   websitesLink,
 } from '../composables/useMarketingRoutes'
+import { formatDateTime } from '../utils/format'
+import {
+  allowHostConfirmation,
+  hostConflictOf,
+} from '../utils/host-conflict'
 import { trackerSnippet } from '../utils/snippet'
 
 /**
  * The guided install (`?website=` once the site exists): add the website,
- * paste the tag, then a connection check that polls until the first accepted
- * pageview arrives — or names a host the guard refused, with the fix.
+ * paste the tag, then a connection check that polls until a pageview arrives
+ * — or names a host the guard refused, with the fix. "Check again" waits for
+ * a pageview sent after it, to re-verify a site already live.
  */
 const props = withDefaults(
   defineProps<{ componentId?: string; pageId?: string }>(),
@@ -31,6 +38,9 @@ const props = withDefaults(
 )
 
 const POLL_MS = 4000
+const HTTP_NOT_FOUND = 404
+const MAX_NAME_LENGTH = 100
+const MAX_DOMAIN_LENGTH = 253
 
 void props
 
@@ -40,6 +50,7 @@ const router = useDmsRouter()
 const config = useDmsRuntimeConfig()
 const api = useMarketingApi()
 const toast = useToast()
+const { confirm } = useConfirm()
 // A field-tied error from the creation shows under its field, the rest as a toast.
 const fieldErrors = useFieldErrors({
   fields: { name: 'install-name', domain: 'install-domain' },
@@ -50,7 +61,10 @@ const websiteId = ref(
 )
 const status = ref<MarketingConnectionStatus | null>(null)
 const failed = ref(false)
-const listeningSince = ref(Date.now())
+/** The `?website=` names no site of the workspace (deleted, mistyped). */
+const missing = ref(false)
+/** Server time "Check again" waits from; null: since the site's creation. */
+const recheckSince = ref<number | null>(null)
 
 // --- Step 1 ----------------------------------------------------------------------
 
@@ -58,7 +72,22 @@ const name = ref('')
 const domain = ref('')
 const creating = ref(false)
 
+/** Empty required fields say so under themselves, the first one focused. */
+async function requireFields(): Promise<boolean> {
+  const blank = (['domain', 'name'] as const).filter(
+    (field) => !{ name, domain }[field].value.trim(),
+  )
+  for (const field of blank) {
+    await fieldErrors.setError(field, t('dms.field_errors.required'))
+  }
+  return blank.length === 0
+}
+
 async function createWebsite(): Promise<void> {
+  fieldErrors.clear()
+  if (!(await requireFields())) {
+    return
+  }
   creating.value = true
   try {
     const created = await api.createWebsite({
@@ -70,6 +99,14 @@ async function createWebsite(): Promise<void> {
     await router.replace(installLink(created._id))
     await poll()
   } catch (error) {
+    const conflict = hostConflictOf(error)
+    if (conflict) {
+      await fieldErrors.setError(
+        'domain',
+        t('page.marketing.errors.duplicate_host_named', { ...conflict }),
+      )
+      return
+    }
     await fieldErrors.handleApiError(error, {
       toastTitle: 'page.marketing.install.create_error',
     })
@@ -82,18 +119,30 @@ async function createWebsite(): Promise<void> {
 
 let timer: ReturnType<typeof setTimeout> | null = null
 
-async function poll(): Promise<void> {
+function stopPolling(): void {
   if (timer) {
     clearTimeout(timer)
     timer = null
   }
+}
+
+async function poll(): Promise<void> {
+  stopPolling()
   if (!websiteId.value) {
     return
   }
   try {
-    status.value = await api.getConnection(websiteId.value)
+    status.value = await api.getConnection(
+      websiteId.value,
+      recheckSince.value ?? undefined,
+    )
     failed.value = false
-  } catch {
+  } catch (error) {
+    if (apiErrorStatus(error) === HTTP_NOT_FOUND) {
+      missing.value = true
+      status.value = null
+      return
+    }
     failed.value = true
   }
   if (!status.value?.visit) {
@@ -101,26 +150,52 @@ async function poll(): Promise<void> {
   }
 }
 
-onMounted(() => void poll())
-onBeforeUnmount(() => timer && clearTimeout(timer))
+/** Waits for a pageview sent from now on, to re-verify an installed tag. */
+async function checkAgain(): Promise<void> {
+  if (!status.value) {
+    return
+  }
+  recheckSince.value = status.value.checkedAt
+  status.value = { ...status.value, visit: null }
+  await poll()
+}
+
+const apiOrigin = ref('')
+onMounted(() => {
+  // Read once mounted: the server renders with its internal backend URL.
+  apiOrigin.value = String(
+    (config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? '',
+  )
+  void poll()
+})
+onBeforeUnmount(stopPolling)
 
 watch(
   () => route.query.website,
   (value) => {
-    if (typeof value === 'string' && value !== websiteId.value) {
-      websiteId.value = value
+    const next = typeof value === 'string' ? value : ''
+    if (next !== websiteId.value) {
+      websiteId.value = next
+      status.value = null
+      missing.value = false
+      recheckSince.value = null
       void poll()
     }
   },
 )
 
 const website = computed(() => status.value?.website ?? null)
-const connected = computed(
-  () => status.value?.visit !== null && status.value?.visit !== undefined,
+/** The site named in the URL is still being loaded. */
+const loading = computed(
+  () => !!websiteId.value && !website.value && !missing.value,
 )
+const visit = computed(() => status.value?.visit ?? null)
 const allowing = ref<string | null>(null)
 
 async function allow(hostname: string): Promise<void> {
+  if (!(await confirm(allowHostConfirmation(t, hostname)))) {
+    return
+  }
   allowing.value = hostname
   try {
     await api.allowHost(websiteId.value, hostname)
@@ -129,34 +204,57 @@ async function allow(hostname: string): Promise<void> {
       title: t('page.marketing.install.allowed', { host: hostname }),
     })
     await poll()
-  } catch {
-    toast.add({
-      color: 'error',
-      title: t('page.marketing.install.allow_error'),
-    })
+  } catch (error) {
+    const conflict = hostConflictOf(error)
+    if (conflict) {
+      toast.add({
+        color: 'error',
+        title: t('page.marketing.install.allow_error'),
+        description: t('page.marketing.errors.duplicate_host_named', {
+          ...conflict,
+        }),
+      })
+    } else {
+      fieldErrors.toastError(error, {
+        toastTitle: 'page.marketing.install.allow_error',
+      })
+    }
   } finally {
     allowing.value = null
   }
 }
 
-async function openOverview(): Promise<void> {
-  await api.selectContextWebsite(websiteId.value)
-  await router.push(overviewLink())
+const resuming = ref(false)
+
+async function resumeTracking(): Promise<void> {
+  resuming.value = true
+  try {
+    await api.updateWebsite(websiteId.value, { trackingEnabled: true })
+    toast.add({
+      color: 'success',
+      title: t('page.marketing.websites.resumed'),
+    })
+    await poll()
+  } catch (error) {
+    fieldErrors.toastError(error, {
+      toastTitle: 'page.marketing.websites.save_error',
+    })
+  } finally {
+    resuming.value = false
+  }
 }
 
-function time(at: number): string {
-  return new Intl.DateTimeFormat(locale.value, {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(at)
+async function openOverview(): Promise<void> {
+  await api.selectContextWebsite(websiteId.value)
+  await router.push(overviewLink(websiteId.value))
+}
+
+function when(at: number): string {
+  return formatDateTime(at, locale.value)
 }
 
 const siteUrl = computed(() =>
   website.value ? `https://${website.value.domain}` : '',
-)
-
-const apiOrigin = computed(() =>
-  String((config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? ''),
 )
 
 const developerNote = computed(() =>
@@ -187,7 +285,7 @@ const RECORD_ICONS: Record<(typeof RECORDS)[number], string> = {
 }
 
 const stepTwoState = computed(() =>
-  connected.value ? 'done' : websiteId.value ? 'current' : 'next',
+  visit.value ? 'done' : website.value ? 'current' : 'next',
 )
 </script>
 
@@ -201,8 +299,8 @@ const stepTwoState = computed(() =>
         :to="websitesLink()"
         :aria-label="t('page.marketing.install.back')"
       />
-      <div class="min-w-0 flex-1">
-        <h1 class="text-2xl font-semibold text-highlighted">
+      <div class="min-w-0 flex-1 basis-60">
+        <h1 class="text-2xl font-semibold break-words text-highlighted">
           {{
             website
               ? t('page.marketing.install.title_for', { name: website.name })
@@ -223,35 +321,64 @@ const stepTwoState = computed(() =>
       />
     </header>
 
-    <div class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <DmsEmptyState
+      v-if="missing"
+      class="dms-card"
+      icon="i-ph-globe-x"
+      :title="t('page.marketing.install.missing.title')"
+      :description="t('page.marketing.install.missing.description')"
+    >
+      <template #actions>
+        <UButton
+          size="sm"
+          color="neutral"
+          variant="outline"
+          icon="i-ph-arrow-left"
+          :label="t('page.marketing.install.back')"
+          :to="websitesLink()"
+        />
+        <UButton
+          size="sm"
+          icon="i-ph-plus"
+          :label="t('page.marketing.websites.create')"
+          :to="installLink()"
+        />
+      </template>
+    </DmsEmptyState>
+
+    <div
+      v-else
+      class="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]"
+    >
       <ol class="dms-card flex flex-col gap-0 p-5">
         <li class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 pb-6">
           <span class="flex flex-col items-center">
             <span
               class="grid size-8 place-items-center rounded-full border font-mono text-xs"
               :class="
-                websiteId
+                website
                   ? 'border-primary/40 text-primary'
                   : 'border-primary bg-primary text-inverted'
               "
             >
-              <UIcon v-if="websiteId" name="i-ph-check" class="size-4" />
+              <UIcon v-if="website" name="i-ph-check" class="size-4" />
               <template v-else>1</template>
             </span>
             <span class="mt-2 w-px flex-1 bg-(--ui-border)" />
           </span>
-          <div class="flex flex-col gap-2">
+          <div class="flex min-w-0 flex-col gap-2">
             <h2 class="flex items-center gap-2 font-semibold text-highlighted">
               {{ t('page.marketing.install.step1') }}
               <DmsStatusPill
-                v-if="websiteId"
+                v-if="website"
                 tone="success"
                 size="sm"
                 :mono="false"
                 :label="t('page.marketing.install.done')"
               />
             </h2>
-            <p v-if="website" class="text-sm text-muted">
+            <USkeleton v-if="loading" class="h-5 w-64" />
+            <p v-else-if="website" class="text-sm break-words text-muted">
               <span class="font-semibold text-highlighted">
                 {{ website.name }}
               </span>
@@ -267,7 +394,8 @@ const stepTwoState = computed(() =>
             </p>
             <form
               v-else
-              class="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-end"
+              class="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start"
+              novalidate
               @submit.prevent="createWebsite"
             >
               <DmsFieldRow
@@ -283,6 +411,7 @@ const stepTwoState = computed(() =>
                   v-model="name"
                   class="w-full"
                   placeholder="Acme shop"
+                  :maxlength="MAX_NAME_LENGTH"
                   v-bind="fieldErrors.aria('name')"
                   @update:model-value="fieldErrors.clear('name')"
                 />
@@ -304,6 +433,7 @@ const stepTwoState = computed(() =>
                   v-model="domain"
                   class="w-full font-mono"
                   placeholder="shop.example.com"
+                  :maxlength="MAX_DOMAIN_LENGTH"
                   v-bind="fieldErrors.aria('domain')"
                   @update:model-value="fieldErrors.clear('domain')"
                 />
@@ -311,12 +441,16 @@ const stepTwoState = computed(() =>
                   :id="fieldErrors.errorId('domain')"
                   :message="fieldErrors.errors.domain"
                 />
+                <!-- Under the control, so both inputs of the row line up. -->
+                <p v-if="!fieldErrors.errors.domain" class="text-xs text-muted">
+                  {{ t('page.marketing.websites.fields.domain_hint') }}
+                </p>
               </DmsFieldRow>
               <UButton
                 type="submit"
                 icon="i-ph-plus"
+                class="md:mt-6"
                 :loading="creating"
-                :disabled="!name.trim() || !domain.trim()"
                 :label="t('page.marketing.install.add')"
               />
               <p class="text-xs text-dimmed md:col-span-3">
@@ -327,10 +461,7 @@ const stepTwoState = computed(() =>
           </div>
         </li>
 
-        <li
-          class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 pb-6"
-          :class="websiteId ? '' : 'opacity-50'"
-        >
+        <li class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 pb-6">
           <span class="flex flex-col items-center">
             <span
               class="grid size-8 place-items-center rounded-full border font-mono text-xs"
@@ -351,19 +482,22 @@ const stepTwoState = computed(() =>
             </span>
             <span class="mt-2 w-px flex-1 bg-(--ui-border)" />
           </span>
-          <div class="flex flex-col gap-3">
-            <h2 class="font-semibold text-highlighted">
+          <div class="flex min-w-0 flex-col gap-3">
+            <h2
+              class="font-semibold"
+              :class="website ? 'text-highlighted' : 'text-muted'"
+            >
               {{ t('page.marketing.install.step2') }}
             </h2>
             <p class="text-sm text-muted">
               {{ t('page.marketing.install.step2_description') }}
             </p>
             <DmsMarketingTrackerSnippet
-              v-if="websiteId"
-              :website-id="websiteId"
+              v-if="website"
+              :website-id="website.id"
             />
             <UCollapsible
-              v-if="websiteId"
+              v-if="website"
               class="rounded-lg border border-default"
             >
               <UButton
@@ -409,33 +543,71 @@ const stepTwoState = computed(() =>
           </div>
         </li>
 
-        <li
-          class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3"
-          :class="websiteId ? '' : 'opacity-50'"
-        >
+        <li class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3">
           <span class="flex flex-col items-center">
             <span
               class="grid size-8 place-items-center rounded-full border font-mono text-xs"
               :class="
-                connected
+                visit
                   ? 'border-success bg-success text-inverted'
                   : 'border-default text-dimmed'
               "
             >
-              <UIcon v-if="connected" name="i-ph-check" class="size-4" />
+              <UIcon v-if="visit" name="i-ph-check" class="size-4" />
               <template v-else>3</template>
             </span>
           </span>
-          <div class="flex flex-col gap-3">
-            <h2 class="font-semibold text-highlighted">
+          <div class="flex min-w-0 flex-col gap-3">
+            <h2
+              class="font-semibold"
+              :class="website ? 'text-highlighted' : 'text-muted'"
+            >
               {{ t('page.marketing.install.step3') }}
             </h2>
             <p class="text-sm text-muted">
               {{ t('page.marketing.install.step3_description') }}
             </p>
-            <template v-if="websiteId">
+            <template v-if="website && status">
+              <DmsBanner
+                v-if="!status.trackerEnabled"
+                tone="warning"
+                icon="i-ph-pause-circle"
+                :title="t('page.marketing.websites.collection_paused.title')"
+                :description="
+                  t('page.marketing.websites.collection_paused.description')
+                "
+              >
+                <template #actions>
+                  <UButton
+                    size="sm"
+                    color="neutral"
+                    variant="outline"
+                    :label="t('page.marketing.websites.collection_paused.open')"
+                    :to="settingsLink()"
+                  />
+                </template>
+              </DmsBanner>
+              <DmsBanner
+                v-if="website.state === 'paused'"
+                tone="info"
+                icon="i-ph-pause-circle"
+                :title="t('page.marketing.context.state.paused')"
+                :description="t('page.marketing.websites.paused_description')"
+              >
+                <template #actions>
+                  <UButton
+                    size="sm"
+                    color="neutral"
+                    variant="outline"
+                    icon="i-ph-play"
+                    :loading="resuming"
+                    :label="t('page.marketing.websites.resume')"
+                    @click="resumeTracking"
+                  />
+                </template>
+              </DmsBanner>
               <div
-                v-if="connected && status?.visit"
+                v-if="visit"
                 class="flex flex-wrap items-center gap-4 rounded-lg border border-success/40 bg-success/10 p-4"
               >
                 <DmsIconWell icon="i-ph-check" tone="success" />
@@ -443,20 +615,29 @@ const stepTwoState = computed(() =>
                   <span class="block font-semibold text-highlighted">
                     {{
                       t('page.marketing.install.connected', {
-                        time: time(status.visit.at),
+                        when: when(visit.at),
                       })
                     }}
                   </span>
-                  <span class="block font-mono text-xs text-muted">
-                    {{ status.visit.url }} · {{ status.visit.browser ?? '—' }} ·
-                    {{ status.visit.deviceType }}
+                  <span class="block font-mono text-xs break-all text-muted">
+                    {{ visit.host ?? '' }}{{ visit.url }} ·
+                    {{ visit.browser ?? '—' }} · {{ visit.deviceType }}
                   </span>
                 </span>
-                <UButton
-                  trailing-icon="i-ph-arrow-right"
-                  :label="t('page.marketing.install.open_overview')"
-                  @click="openOverview"
-                />
+                <span class="flex flex-wrap items-center gap-2">
+                  <UButton
+                    icon="i-ph-arrow-clockwise"
+                    color="neutral"
+                    variant="outline"
+                    :label="t('page.marketing.install.check_again')"
+                    @click="checkAgain"
+                  />
+                  <UButton
+                    trailing-icon="i-ph-arrow-right"
+                    :label="t('page.marketing.install.open_overview')"
+                    @click="openOverview"
+                  />
+                </span>
               </div>
               <div
                 v-else
@@ -471,18 +652,25 @@ const stepTwoState = computed(() =>
                   />
                 </span>
                 <span class="min-w-0 flex-1">
-                  <span class="block font-semibold text-highlighted">
+                  <span class="block font-semibold break-words text-highlighted">
                     {{
-                      t('page.marketing.install.listening', {
-                        domain: website?.domain ?? '',
-                      })
+                      t(
+                        recheckSince === null
+                          ? 'page.marketing.install.listening'
+                          : 'page.marketing.install.listening_again',
+                        { domain: website.domain },
+                      )
                     }}
                   </span>
                   <span class="block text-xs text-muted">
                     {{
-                      t('page.marketing.install.listening_since', {
-                        time: time(listeningSince),
-                      })
+                      recheckSince === null
+                        ? t('page.marketing.install.listening_since', {
+                            when: when(status.createdAt),
+                          })
+                        : t('page.marketing.install.listening_again_since', {
+                            when: when(recheckSince),
+                          })
                     }}
                   </span>
                 </span>
@@ -497,13 +685,13 @@ const stepTwoState = computed(() =>
                 />
               </div>
               <div
-                v-for="refused in status?.rejected ?? []"
+                v-for="refused in status.rejected"
                 :key="refused.hostname"
                 class="flex flex-wrap items-center gap-4 rounded-lg border border-error/40 bg-error/10 p-4"
               >
                 <DmsIconWell icon="i-ph-prohibit" tone="error" />
                 <span class="min-w-0 flex-1">
-                  <span class="block font-semibold text-highlighted">
+                  <span class="block font-semibold break-words text-highlighted">
                     {{
                       t(
                         'page.marketing.install.refused',
@@ -524,10 +712,10 @@ const stepTwoState = computed(() =>
                   @click="allow(refused.hostname)"
                 />
               </div>
-              <p v-if="failed" class="text-xs text-error">
-                {{ t('page.marketing.install.poll_error') }}
-              </p>
             </template>
+            <p v-if="failed" class="text-xs text-error">
+              {{ t('page.marketing.install.poll_error') }}
+            </p>
           </div>
         </li>
       </ol>

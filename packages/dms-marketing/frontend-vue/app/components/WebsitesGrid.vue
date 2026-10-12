@@ -5,7 +5,11 @@ import {
   useMarketingApi,
   type MarketingWebsiteCard,
 } from '../composables/useMarketingApi'
-import { installLink, overviewLink } from '../composables/useMarketingRoutes'
+import {
+  installLink,
+  overviewLink,
+  settingsLink,
+} from '../composables/useMarketingRoutes'
 import {
   formatNumber,
   formatPercent,
@@ -13,12 +17,17 @@ import {
   formatShortDate,
   initials,
 } from '../utils/format'
+import {
+  allowHostConfirmation,
+  hostConflictOf,
+} from '../utils/host-conflict'
 
 /**
  * The Websites page: one card per site with its state, volumes, accepted
  * hosts and capture options; a site still waiting for its first pageview
- * leads to the install guide. The pencil opens a drawer with the site's
- * General, Capture and Danger zone tabs.
+ * leads to the install guide. Hosts the guard refused show on any card, with
+ * the fix. The pencil opens a drawer with the site's General, Capture and
+ * Danger zone tabs.
  */
 const props = withDefaults(
   defineProps<{ fetchUrl?: string; componentId?: string; pageId?: string }>(),
@@ -29,6 +38,8 @@ type DrawerTab = 'general' | 'capture' | 'danger'
 
 const CLOCK_TICK_MS = 15_000
 const PERCENT = 100
+const MAX_NAME_LENGTH = 100
+const MAX_DOMAIN_LENGTH = 253
 
 const { t, locale } = useI18n()
 const router = useDmsRouter()
@@ -47,12 +58,15 @@ const { confirm } = useConfirm()
 void props
 
 const cards = ref<MarketingWebsiteCard[] | null>(null)
+const trackerEnabled = ref(true)
 const failed = ref(false)
 
 async function load(): Promise<void> {
   failed.value = false
   try {
-    cards.value = await api.listWebsiteCards()
+    const summary = await api.listWebsiteCards()
+    cards.value = summary.websites
+    trackerEnabled.value = summary.trackerEnabled
   } catch {
     failed.value = true
   }
@@ -83,40 +97,96 @@ const STATE_DOTS = {
 
 async function openOverview(card: MarketingWebsiteCard): Promise<void> {
   await api.selectContextWebsite(card.id)
-  await router.push(overviewLink())
+  await router.push(overviewLink(card.id))
+}
+
+// --- Card actions ----------------------------------------------------------------
+
+/** The card action running, as `<site id>:<what>`, for its spinner. */
+const busy = ref<string | null>(null)
+
+async function runCardAction(
+  key: string,
+  action: () => Promise<unknown>,
+  successTitle: string,
+  errorTitle: string,
+): Promise<void> {
+  busy.value = key
+  try {
+    await action()
+    toast.add({ color: 'success', title: successTitle })
+    await load()
+  } catch (error) {
+    const conflict = hostConflictOf(error)
+    if (conflict) {
+      toast.add({
+        color: 'error',
+        title: t(errorTitle),
+        description: t('page.marketing.errors.duplicate_host_named', {
+          ...conflict,
+        }),
+      })
+    } else {
+      fieldErrors.toastError(error, { toastTitle: errorTitle })
+    }
+  } finally {
+    busy.value = null
+  }
+}
+
+async function allowHost(card: MarketingWebsiteCard, hostname: string) {
+  if (!(await confirm(allowHostConfirmation(t, hostname)))) {
+    return
+  }
+  await runCardAction(
+    `${card.id}:${hostname}`,
+    () => api.allowHost(card.id, hostname),
+    t('page.marketing.install.allowed', { host: hostname }),
+    'page.marketing.install.allow_error',
+  )
+}
+
+function resume(card: MarketingWebsiteCard) {
+  return runCardAction(
+    `${card.id}:resume`,
+    () => api.updateWebsite(card.id, { trackingEnabled: true }),
+    t('page.marketing.websites.resumed'),
+    'page.marketing.websites.save_error',
+  )
 }
 
 // --- Drawer --------------------------------------------------------------------
 
 const editing = ref<MarketingWebsiteCard | null>(null)
+const drawerOpen = ref(false)
 const tab = ref<DrawerTab>('general')
 const draftName = ref('')
 const draftDomain = ref('')
 const draftHosts = ref<string[]>([])
+const draftTracking = ref(true)
 const draftSnapshots = ref(false)
 const draftMask = ref(false)
 const saving = ref(false)
-
-const drawerOpen = computed({
-  get: () => editing.value !== null,
-  set: (open: boolean) => {
-    if (!open) {
-      editing.value = null
-    }
-  },
-})
 
 function edit(
   card: MarketingWebsiteCard,
   initialTab: DrawerTab = 'general',
 ): void {
+  fieldErrors.clear()
   editing.value = card
   tab.value = initialTab
   draftName.value = card.name
   draftDomain.value = card.domain
   draftHosts.value = [...card.extraDomains]
+  draftTracking.value = card.state !== 'paused'
   draftSnapshots.value = card.snapshotsEnabled
   draftMask.value = card.snapshotMaskText
+  drawerOpen.value = true
+}
+
+// The content stays while the drawer slides out; it goes once it is gone.
+function onDrawerClosed(): void {
+  editing.value = null
 }
 
 const tabItems = computed(() => [
@@ -134,9 +204,24 @@ const discardsSnapshots = computed(
       draftMask.value !== editing.value.snapshotMaskText),
 )
 
+/** Empty required fields say so under themselves, on the General tab. */
+async function requireFields(): Promise<boolean> {
+  const blank = (['domain', 'name'] as const).filter(
+    (field) =>
+      !{ name: draftName, domain: draftDomain }[field].value.trim(),
+  )
+  if (blank.length > 0) {
+    tab.value = 'general'
+  }
+  for (const field of blank) {
+    await fieldErrors.setError(field, t('dms.field_errors.required'))
+  }
+  return blank.length === 0
+}
+
 async function save(): Promise<void> {
   const card = editing.value
-  if (!card) {
+  if (!card || !(await requireFields())) {
     return
   }
   saving.value = true
@@ -145,14 +230,29 @@ async function save(): Promise<void> {
       name: draftName.value.trim(),
       domain: draftDomain.value.trim(),
       extraDomains: draftHosts.value.map((host) => host.trim()).filter(Boolean),
+      trackingEnabled: draftTracking.value,
       snapshotsEnabled: draftSnapshots.value,
       snapshotMaskText: draftMask.value,
     })
     toast.add({ color: 'success', title: t('page.marketing.websites.saved') })
-    editing.value = null
+    drawerOpen.value = false
     await load()
   } catch (error) {
-    await fieldErrors.handleApiError(error, {
+    // A refused field lives on the General tab: show it there.
+    const conflict = hostConflictOf(error)
+    if (conflict) {
+      tab.value = 'general'
+      await fieldErrors.setError(
+        conflict.field === 'extraDomains' ? 'extraDomains' : 'domain',
+        t('page.marketing.errors.duplicate_host_named', { ...conflict }),
+      )
+      return
+    }
+    if (await fieldErrors.applyApiError(error)) {
+      tab.value = 'general'
+      return
+    }
+    fieldErrors.toastError(error, {
       toastTitle: 'page.marketing.websites.save_error',
     })
   } finally {
@@ -161,28 +261,50 @@ async function save(): Promise<void> {
 }
 
 async function remove(card: MarketingWebsiteCard): Promise<void> {
+  let impact
+  try {
+    impact = await api.getWebsiteDeletionImpact(card.id)
+  } catch (error) {
+    fieldErrors.toastError(error, {
+      toastTitle: 'page.marketing.websites.delete.impact_error',
+    })
+    return
+  }
+  // Every stored day goes, so the counts read "since the oldest one".
+  const since =
+    impact.since === null ? null : formatShortDate(impact.since, locale.value)
+  const sinceLabel = (key: 'sessions' | 'pageviews') =>
+    since === null
+      ? t(`page.marketing.websites.delete.${key}`)
+      : t(`page.marketing.websites.delete.${key}_since`, { date: since })
   await confirm({
     title: t('page.marketing.websites.delete.title', { name: card.name }),
     description: t('page.marketing.websites.delete.description'),
     color: 'error',
     icon: 'i-ph-trash',
     confirmLabel: t('page.marketing.websites.delete.confirm'),
-    confirmText: card.domain,
+    // Stored lowercase: a hostname is not case-sensitive, the typed check is.
+    confirmText: card.domain.toLowerCase(),
     impact: [
       {
         icon: 'i-ph-users',
-        label: t('page.marketing.websites.delete.sessions'),
-        count: formatNumber(card.sessions, locale.value),
+        label: sinceLabel('sessions'),
+        count: formatNumber(impact.sessions, locale.value),
+      },
+      {
+        icon: 'i-ph-eye',
+        label: sinceLabel('pageviews'),
+        count: formatNumber(impact.pageviews, locale.value),
       },
       {
         icon: 'i-ph-funnel',
         label: t('page.marketing.websites.delete.funnels'),
-        count: card.funnels,
+        count: impact.funnels,
       },
       {
         icon: 'i-ph-camera',
         label: t('page.marketing.websites.delete.snapshots'),
-        count: card.snapshots,
+        count: impact.snapshots,
       },
     ],
     onConfirm: async () => {
@@ -191,7 +313,7 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
         color: 'success',
         title: t('page.marketing.websites.delete.done', { name: card.name }),
       })
-      editing.value = null
+      drawerOpen.value = false
       await load()
     },
   })
@@ -224,178 +346,267 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
 
     <DmsMarketingFirstRun v-else-if="cards.length === 0" />
 
-    <div v-else class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      <article
-        v-for="card in cards"
-        :key="card.id"
-        class="flex flex-col overflow-hidden rounded-xl border bg-(--ui-bg)"
-        :class="
-          card.state === 'waiting'
-            ? 'border-dashed border-warning/60'
-            : 'dms-card p-0'
-        "
+    <template v-else>
+      <DmsBanner
+        v-if="!trackerEnabled"
+        tone="warning"
+        icon="i-ph-pause-circle"
+        :title="t('page.marketing.websites.collection_paused.title')"
+        :description="t('page.marketing.websites.collection_paused.description')"
       >
-        <header class="flex items-start gap-3 px-4 pt-4">
-          <span
-            class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/15 font-mono text-sm font-semibold text-primary"
-          >
-            {{ initials(card.name) }}
-          </span>
-          <span class="min-w-0 flex-1">
-            <span class="block truncate font-semibold text-highlighted">
-              {{ card.name }}
-            </span>
-            <span class="block truncate font-mono text-xs text-dimmed">
-              {{ card.domain }}
-            </span>
-          </span>
+        <template #actions>
           <UButton
-            icon="i-ph-pencil-simple"
-            size="xs"
+            size="sm"
             color="neutral"
-            variant="ghost"
-            :aria-label="t('page.marketing.websites.edit')"
-            @click="edit(card)"
+            variant="outline"
+            :label="t('page.marketing.websites.collection_paused.open')"
+            :to="settingsLink()"
           />
-        </header>
-        <p
-          class="flex items-center gap-2 px-4 pt-3 pb-3 font-mono text-xs text-muted"
-        >
-          <span class="size-2 rounded-full" :class="STATE_DOTS[card.state]" />
-          {{ stateLine(card) }}
-        </p>
+        </template>
+      </DmsBanner>
 
-        <template v-if="card.state !== 'waiting'">
-          <dl class="grid grid-cols-3 border-y border-default">
-            <div
-              v-for="stat in ['sessions', 'pages', 'funnels'] as const"
-              :key="stat"
-              class="border-default px-4 py-3 not-first:border-l"
+      <div class="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <article
+          v-for="card in cards"
+          :key="card.id"
+          class="flex flex-col overflow-hidden rounded-xl border bg-(--ui-bg)"
+          :class="
+            card.state === 'waiting'
+              ? 'border-dashed border-warning/60'
+              : 'dms-card p-0'
+          "
+        >
+          <header class="flex items-start gap-3 px-4 pt-4">
+            <span
+              class="grid size-10 shrink-0 place-items-center rounded-lg bg-primary/15 font-mono text-sm font-semibold text-(--ui-color-primary-800) dark:text-primary"
             >
-              <dt>
-                <DmsEyebrow
-                  :label="t(`page.marketing.websites.stats.${stat}`)"
-                />
-              </dt>
-              <dd
-                class="mt-1 font-mono text-lg font-semibold tabular-nums text-highlighted"
-              >
-                {{ formatNumber(card[stat], locale) }}
-              </dd>
-            </div>
-          </dl>
-          <dl class="flex flex-col gap-2 px-4 py-3 text-sm">
-            <div class="flex items-center justify-between gap-3">
-              <dt class="flex items-center gap-2 text-muted">
-                <UIcon name="i-ph-link" class="size-3.5" />
-                {{ t('page.marketing.websites.also_accepts') }}
-              </dt>
-              <dd class="flex flex-wrap justify-end gap-1">
-                <span
-                  v-for="host in card.extraDomains"
-                  :key="host"
-                  class="rounded bg-elevated px-1.5 py-0.5 font-mono text-[11px] text-toned"
-                >
-                  {{ host }}
-                </span>
-                <span
-                  v-if="card.extraDomains.length === 0"
-                  class="text-xs text-dimmed"
-                >
-                  {{ t('page.marketing.websites.subdomains_only') }}
-                </span>
-              </dd>
-            </div>
-            <div class="flex items-center justify-between gap-3">
-              <dt class="flex items-center gap-2 text-muted">
-                <UIcon name="i-ph-camera" class="size-3.5" />
-                {{ t('page.marketing.websites.snapshots') }}
-              </dt>
-              <dd>
-                <DmsStatusPill
-                  size="sm"
-                  :mono="false"
-                  :tone="card.snapshotsEnabled ? 'success' : 'neutral'"
-                  :label="
-                    card.snapshotsEnabled
-                      ? t(
-                          card.snapshotMaskText
-                            ? 'page.marketing.websites.snapshots_masked'
-                            : 'page.marketing.websites.snapshots_on',
-                        )
-                      : t('page.marketing.websites.snapshots_off')
-                  "
-                />
-              </dd>
-            </div>
-            <div class="flex items-center justify-between gap-3">
-              <dt class="flex items-center gap-2 text-muted">
-                <UIcon name="i-ph-cursor-click" class="size-3.5" />
-                {{ t('page.marketing.websites.sampling') }}
-              </dt>
-              <dd class="font-mono text-xs text-highlighted">
-                {{ formatPercent(card.sampleRate * PERCENT, locale, 0) }} ·
-                {{ t('page.marketing.websites.sampling_default') }}
-              </dd>
-            </div>
-          </dl>
-          <footer
-            class="mt-auto flex items-center justify-between gap-2 border-t border-default px-4 py-3"
-          >
+              {{ initials(card.name) }}
+            </span>
+            <span class="min-w-0 flex-1">
+              <span class="block truncate font-semibold text-highlighted">
+                {{ card.name }}
+              </span>
+              <span class="block truncate font-mono text-xs text-dimmed">
+                {{ card.domain }}
+              </span>
+            </span>
             <UButton
-              icon="i-ph-code"
-              size="sm"
-              color="neutral"
-              variant="outline"
-              :label="t('page.marketing.websites.snippet_button')"
-              :to="installLink(card.id)"
-            />
-            <UButton
-              trailing-icon="i-ph-arrow-right"
-              size="sm"
+              icon="i-ph-pencil-simple"
+              size="xs"
               color="neutral"
               variant="ghost"
-              :label="t('page.marketing.websites.open_overview')"
-              @click="openOverview(card)"
+              :aria-label="
+                t('page.marketing.websites.edit_named', { name: card.name })
+              "
+              @click="edit(card)"
             />
-          </footer>
-        </template>
-
-        <template v-else>
-          <p class="px-4 text-sm text-muted">
-            {{
-              t('page.marketing.websites.waiting_description', {
-                date: formatShortDate(card.createdAt, locale),
-              })
-            }}
+          </header>
+          <p
+            class="flex items-center gap-2 px-4 pt-3 pb-3 font-mono text-xs text-muted"
+          >
+            <span class="size-2 rounded-full" :class="STATE_DOTS[card.state]" />
+            {{ stateLine(card) }}
           </p>
-          <DmsBanner
-            v-if="card.rejected.length > 0"
-            class="mx-4 mt-3"
-            tone="warning"
-            size="sm"
-            :title="
-              t(
-                'page.marketing.websites.refused',
-                {
-                  count: card.rejected[0]!.count,
-                  host: card.rejected[0]!.hostname,
-                },
-                card.rejected[0]!.count,
-              )
-            "
-          />
-          <footer class="mt-auto px-4 py-4">
-            <UButton
-              icon="i-ph-pulse"
+
+          <div
+            v-if="card.state === 'paused' || card.rejected.length > 0"
+            class="flex flex-col gap-2 px-4 pb-3"
+          >
+            <DmsBanner
+              v-if="card.state === 'paused'"
+              tone="info"
               size="sm"
-              :label="t('page.marketing.websites.finish_install')"
-              :to="installLink(card.id)"
-            />
-          </footer>
-        </template>
-      </article>
-    </div>
+              icon="i-ph-pause-circle"
+              :title="t('page.marketing.websites.paused_description')"
+            >
+              <template #actions>
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="outline"
+                  icon="i-ph-play"
+                  :loading="busy === `${card.id}:resume`"
+                  :label="t('page.marketing.websites.resume')"
+                  @click="resume(card)"
+                />
+              </template>
+            </DmsBanner>
+            <DmsBanner
+              v-for="refused in card.rejected"
+              :key="refused.hostname"
+              tone="warning"
+              size="sm"
+              icon="i-ph-prohibit"
+              :title="
+                t(
+                  'page.marketing.websites.refused',
+                  { count: refused.count, host: refused.hostname },
+                  refused.count,
+                )
+              "
+            >
+              <template #actions>
+                <UButton
+                  size="xs"
+                  color="neutral"
+                  variant="outline"
+                  :loading="busy === `${card.id}:${refused.hostname}`"
+                  :label="t('page.marketing.install.allow')"
+                  @click="allowHost(card, refused.hostname)"
+                />
+              </template>
+            </DmsBanner>
+          </div>
+
+          <template v-if="card.state !== 'waiting'">
+            <div class="border-y border-default">
+              <!-- The window the three counts cover, whatever period the
+                   other pages show. -->
+              <p
+                class="px-4 pt-1.5 text-right font-mono text-[10px] text-dimmed"
+              >
+                {{ t('page.marketing.websites.stats.window') }}
+              </p>
+              <dl class="grid grid-cols-3">
+                <div
+                  v-for="stat in ['sessions', 'pages', 'funnels'] as const"
+                  :key="stat"
+                  class="border-default px-4 pt-0.5 pb-3 not-first:border-l"
+                >
+                  <dt>
+                    <DmsEyebrow
+                      :label="t(`page.marketing.websites.stats.${stat}`)"
+                    />
+                  </dt>
+                  <dd
+                    class="mt-1 font-mono text-lg font-semibold tabular-nums text-highlighted"
+                  >
+                    {{ formatNumber(card[stat], locale) }}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            <dl class="flex flex-col gap-2 px-4 py-3 text-sm">
+              <div class="flex items-start justify-between gap-3">
+                <dt
+                  class="flex shrink-0 items-center gap-2 whitespace-nowrap text-muted"
+                >
+                  <UIcon name="i-ph-link" class="size-3.5" />
+                  {{ t('page.marketing.websites.also_accepts') }}
+                </dt>
+                <dd class="flex min-w-0 flex-wrap justify-end gap-1">
+                  <span
+                    v-for="host in card.extraDomains"
+                    :key="host"
+                    class="max-w-full truncate rounded bg-elevated px-1.5 py-0.5 font-mono text-[11px] text-toned"
+                  >
+                    {{ host }}
+                  </span>
+                  <span
+                    v-if="card.extraDomains.length === 0"
+                    class="text-xs text-dimmed"
+                  >
+                    {{ t('page.marketing.websites.subdomains_only') }}
+                  </span>
+                </dd>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <dt
+                  class="flex shrink-0 items-center gap-2 whitespace-nowrap text-muted"
+                >
+                  <UIcon name="i-ph-camera" class="size-3.5" />
+                  {{ t('page.marketing.websites.snapshots') }}
+                </dt>
+                <dd>
+                  <DmsStatusPill
+                    size="sm"
+                    :mono="false"
+                    :tone="card.snapshotsEnabled ? 'success' : 'neutral'"
+                    :label="
+                      card.snapshotsEnabled
+                        ? t(
+                            card.snapshotMaskText
+                              ? 'page.marketing.websites.snapshots_masked'
+                              : 'page.marketing.websites.snapshots_on',
+                          )
+                        : t('page.marketing.websites.snapshots_off')
+                    "
+                  />
+                </dd>
+              </div>
+              <div class="flex items-center justify-between gap-3">
+                <dt
+                  class="flex shrink-0 items-center gap-2 whitespace-nowrap text-muted"
+                >
+                  <UIcon name="i-ph-cursor-click" class="size-3.5" />
+                  {{ t('page.marketing.websites.sampling') }}
+                </dt>
+                <dd class="text-right font-mono text-xs text-highlighted">
+                  {{ formatPercent(card.sampleRate * PERCENT, locale, 0) }} ·
+                  {{ t('page.marketing.websites.sampling_default') }}
+                </dd>
+              </div>
+            </dl>
+            <footer
+              class="mt-auto flex items-center justify-between gap-2 border-t border-default px-4 py-3"
+            >
+              <UButton
+                icon="i-ph-code"
+                size="sm"
+                color="neutral"
+                variant="outline"
+                :label="t('page.marketing.websites.snippet_button')"
+                :aria-label="
+                  t('page.marketing.websites.snippet_named', {
+                    name: card.name,
+                  })
+                "
+                :to="installLink(card.id)"
+              />
+              <UButton
+                trailing-icon="i-ph-arrow-right"
+                size="sm"
+                color="neutral"
+                variant="ghost"
+                :label="t('page.marketing.websites.open_overview')"
+                :aria-label="
+                  t('page.marketing.websites.open_overview_named', {
+                    name: card.name,
+                  })
+                "
+                @click="openOverview(card)"
+              />
+            </footer>
+          </template>
+
+          <template v-else>
+            <p class="px-4 text-sm text-muted">
+              {{
+                t(
+                  card.rejected.length > 0
+                    ? 'page.marketing.websites.waiting_refused'
+                    : 'page.marketing.websites.waiting_description',
+                  { date: formatShortDate(card.createdAt, locale) },
+                )
+              }}
+            </p>
+            <footer class="mt-auto px-4 py-4">
+              <UButton
+                icon="i-ph-pulse"
+                size="sm"
+                :label="t('page.marketing.websites.finish_install')"
+                :aria-label="
+                  t('page.marketing.websites.finish_install_named', {
+                    name: card.name,
+                  })
+                "
+                :to="installLink(card.id)"
+              />
+            </footer>
+          </template>
+        </article>
+      </div>
+    </template>
 
     <p
       v-if="cards && cards.length > 0"
@@ -407,40 +618,42 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
 
     <USlideover
       v-model:open="drawerOpen"
-      :title="editing?.name"
-      :ui="{ content: 'max-w-lg' }"
+      :ui="{ content: 'max-w-lg', title: 'min-w-0' }"
+      @after:leave="onDrawerClosed"
     >
-      <template #header>
-        <div v-if="editing" class="flex flex-col gap-2">
+      <template #title>
+        <span v-if="editing" class="flex min-w-0 flex-col gap-2">
           <DmsEyebrow :label="t('page.marketing.websites.drawer.eyebrow')" />
-          <span class="flex items-center gap-3">
+          <span class="flex min-w-0 items-center gap-3">
             <span
-              class="grid size-9 place-items-center rounded-lg bg-primary/15 font-mono text-sm font-semibold text-primary"
+              class="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/15 font-mono text-sm font-semibold text-(--ui-color-primary-800) dark:text-primary"
             >
               {{ initials(editing.name) }}
             </span>
-            <span class="text-xl font-semibold text-highlighted">
+            <span class="truncate text-xl font-semibold text-highlighted">
               {{ editing.name }}
             </span>
           </span>
-          <span class="font-mono text-xs text-dimmed">
-            {{ editing.id }} ·
-            {{
-              t('page.marketing.websites.drawer.added', {
-                date: formatShortDate(editing.createdAt, locale),
-              })
-            }}
-          </span>
+        </span>
+      </template>
+      <template #description>
+        <span v-if="editing" class="font-mono text-xs break-all text-dimmed">
+          {{ editing.id }} ·
+          {{
+            t('page.marketing.websites.drawer.added', {
+              date: formatShortDate(editing.createdAt, locale),
+            })
+          }}
+        </span>
+      </template>
+      <template #body>
+        <div v-if="editing" class="flex flex-col gap-5">
           <DmsSegmented
             v-model="tab"
             :items="tabItems"
             size="sm"
-            class="mt-2 self-start"
+            class="self-start"
           />
-        </div>
-      </template>
-      <template #body>
-        <div v-if="editing" class="flex flex-col gap-5">
           <template v-if="tab === 'general'">
             <DmsFieldRow
               layout="stack"
@@ -454,6 +667,7 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
                 id="website-name"
                 v-model="draftName"
                 class="w-full"
+                :maxlength="MAX_NAME_LENGTH"
                 v-bind="fieldErrors.aria('name')"
                 @update:model-value="fieldErrors.clear('name')"
               />
@@ -475,6 +689,7 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
                 id="website-domain"
                 v-model="draftDomain"
                 class="w-full font-mono"
+                :maxlength="MAX_DOMAIN_LENGTH"
                 v-bind="fieldErrors.aria('domain')"
                 @update:model-value="fieldErrors.clear('domain')"
               />
@@ -503,6 +718,15 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
                 :id="fieldErrors.errorId('extraDomains')"
                 :message="fieldErrors.errors.extraDomains"
               />
+            </DmsFieldRow>
+            <DmsFieldRow
+              spacing="list"
+              :inset="false"
+              label="$page.marketing.websites.fields.tracking"
+              description="$page.marketing.websites.fields.tracking_hint"
+              label-for="website-tracking"
+            >
+              <USwitch id="website-tracking" v-model="draftTracking" />
             </DmsFieldRow>
             <!-- The legend every DMS form shows under starred fields. -->
             <p class="text-xs text-dimmed">
@@ -539,9 +763,11 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
               tone="warning"
               size="sm"
               :title="
-                t('page.marketing.websites.fields.discard', {
-                  count: editing.snapshots,
-                })
+                t(
+                  'page.marketing.websites.fields.discard',
+                  { count: editing.snapshots },
+                  editing.snapshots,
+                )
               "
             />
           </template>
@@ -576,7 +802,7 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
             color="neutral"
             variant="ghost"
             :label="t('page.marketing.common.cancel')"
-            @click="editing = null"
+            @click="drawerOpen = false"
           />
           <UButton
             :loading="saving"
@@ -584,6 +810,14 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
             @click="save"
           />
         </div>
+        <UButton
+          v-else
+          class="ml-auto"
+          color="neutral"
+          variant="outline"
+          :label="t('page.marketing.websites.drawer.close')"
+          @click="drawerOpen = false"
+        />
       </template>
     </USlideover>
   </div>

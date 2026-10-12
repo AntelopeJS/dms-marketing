@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useDmsRuntimeConfig, useI18n } from '#dms/frontend-module'
 import { trackerSnippet, type SnippetFlavor } from '../utils/snippet'
 
@@ -21,9 +21,14 @@ const config = useDmsRuntimeConfig()
 
 const flavor = ref<SnippetFlavor>('html')
 
-const apiOrigin = computed(() =>
-  String((config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? ''),
-)
+// Read once mounted: the server renders with its internal backend URL, the
+// browser with the public one — the tag must only ever show the latter.
+const apiOrigin = ref('')
+onMounted(() => {
+  apiOrigin.value = String(
+    (config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? '',
+  )
+})
 
 const code = computed(() =>
   trackerSnippet(flavor.value, apiOrigin.value, props.websiteId),
