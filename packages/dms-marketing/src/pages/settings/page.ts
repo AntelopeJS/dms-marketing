@@ -10,11 +10,14 @@ import { retentionForm, samplingForm } from "./form";
 
 const SETTINGS_PREFIX = "$page.marketing.settings.";
 
-function retentionMeter(item: string, tone: "primary" | "error" | "neutral") {
-  return FieldRow({ label: `${SETTINGS_PREFIX}glance.${item}`, layout: "form" })
+// The meter carries its own label: it names the bar for a screen reader too,
+// which the label of the FieldRow does not. The row only gives it its padding.
+function retentionMeter(item: string, tone: "primary" | "secondary") {
+  return FieldRow({ layout: "stack" })
     .child(
       "meter",
       Meter({
+        label: `${SETTINGS_PREFIX}glance.${item}`,
         fetchUrl: `${API_BASE_PATH}/settings/glance?item=${item}`,
         tone,
         size: "sm",
@@ -71,9 +74,9 @@ export class MarketingSettingsPage extends PageController(
     title: `${SETTINGS_PREFIX}sections.glance`,
     description: `${SETTINGS_PREFIX}sections.glance_description`,
   })
-    .child("snapshots", retentionMeter("snapshots", "error"))
     .child("raw", retentionMeter("raw", "primary"))
     .child("statistics", retentionMeter("statistics", "primary"))
+    .child("snapshots", retentionMeter("snapshots", "secondary"))
     .meta(blockMeta("settings_glance", "i-ph-ruler"));
 
   static sampling = Section({

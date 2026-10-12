@@ -28,6 +28,7 @@ const {
   pruneStatisticsTops,
   pruneAllTenants,
 } = require("../dist/services/prune");
+const { TOP_MAPS_RETENTION_DAYS } = require("../dist/types/constants");
 
 const SCHEMA = "retention_test";
 const TENANT = "tenant-a";
@@ -296,7 +297,7 @@ test("retention services keep their separate windows and snapshot minimum", asyn
     NOW - 5 * DAY,
     NOW - 180 * DAY,
     NOW - 180 * DAY,
-    NOW - 90 * DAY,
+    NOW - TOP_MAPS_RETENTION_DAYS * DAY,
     NOW - 2 * DAY,
   ]);
   setConfig();

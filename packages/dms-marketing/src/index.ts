@@ -12,12 +12,20 @@ import { AddFrontendModule } from "@antelopejs/interface-dms/page";
 import cron, { type ScheduledTask } from "node-cron";
 import { type DmsMarketingConfig, setConfig } from "./config";
 import { registerMarketingHookListeners } from "./hooks";
-import { loadGeoipDatabase, loadSettings, pruneAllTenants } from "./services";
-import { FRONTEND_MODULE_NAME } from "./types/constants";
+import {
+  loadGeoipDatabase,
+  loadSettings,
+  pruneAllTenants,
+  reloadSettings,
+} from "./services";
+import { FRONTEND_MODULE_NAME, MS_PER_SECOND } from "./types/constants";
 
 const HOURLY_CRON = "0 * * * *";
+/** How stale another instance's Settings save can be here (switch included). */
+const SETTINGS_RELOAD_MS = 30 * MS_PER_SECOND;
 
 let pruneTask: ScheduledTask | null = null;
+let settingsReload: NodeJS.Timeout | null = null;
 
 export async function construct(
   config?: Partial<DmsMarketingConfig>,
@@ -49,10 +57,19 @@ export async function construct(
  * DATABASE_INITIALIZED is the "schemas exist" signal.
  */
 async function onDatabaseInitialized(): Promise<undefined> {
-  await loadSettings(GetModel(MarketingSettingsModel));
+  const settings = GetModel(MarketingSettingsModel);
+  await loadSettings(settings);
 
+  // The settings row is shared by every instance: each reads it again on a
+  // short timer, and right before pruning with the retentions it holds.
+  settingsReload ??= setInterval(() => {
+    void reloadSettings(settings).catch(logReloadError);
+  }, SETTINGS_RELOAD_MS);
+  settingsReload.unref();
   pruneTask ??= cron.schedule(HOURLY_CRON, () => {
-    void pruneAllTenants(logPruneError).catch(logPruneError);
+    void reloadSettings(settings)
+      .then(() => pruneAllTenants(logPruneError))
+      .catch(logPruneError);
   });
   return undefined;
 }
@@ -61,9 +78,17 @@ function logPruneError(err: unknown): void {
   Logging.Error("[dms-marketing] retention prune failed:", err);
 }
 
+function logReloadError(err: unknown): void {
+  Logging.Error("[dms-marketing] settings reload failed:", err);
+}
+
 export function destroy(): void {}
 
 export function stop(): void {
+  if (settingsReload) {
+    clearInterval(settingsReload);
+    settingsReload = null;
+  }
   if (pruneTask) {
     // `stop()` is `void | Promise<void>` in node-cron; this module's own
     // `stop` is synchronous, so the task is told to stop and not waited on.

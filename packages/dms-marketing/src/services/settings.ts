@@ -13,16 +13,24 @@ import type { MarketingSettingsModel } from "@/db";
 import type { MarketingSettings } from "@/db/tables/marketing_settings.table";
 import {
   HTTP_BAD_REQUEST,
+  HTTP_CONFLICT,
   MAX_STATISTICS_RETENTION_DAYS,
   MS_PER_DAY,
+  MS_PER_MINUTE,
   VISITOR_SECRET_BYTES,
 } from "@/types/constants";
 import { resolveQueryWindow } from "./period";
+import {
+  countRawEventsBefore,
+  countSnapshotsBefore,
+  countStatisticsBefore,
+} from "./prune";
 import { readRollups, sumRollups } from "./rollups";
 import { listTenantWebsites } from "./tenant-website";
 import {
   BOOLEAN_SETTINGS,
   NUMBER_SETTINGS,
+  type NumberSetting,
   type SettingsConfigKey,
   type SettingsFormValues,
 } from "@/types/settings";
@@ -37,10 +45,14 @@ import {
 
 const SNAPSHOT_ABOVE_RAW_MESSAGE =
   "$page.marketing.errors.snapshot_retention_above_raw";
+const STATISTICS_BELOW_RAW_MESSAGE =
+  "$page.marketing.errors.statistics_retention_below_raw";
 
 type SettingsDocument = Pick<MarketingSettings, SettingsConfigKey>;
 
 let cachedSecret = "";
+/** Bumped on each save, so a reload that read the row before it is dropped. */
+let savedVersion = 0;
 
 export function getVisitorHashSecret(): string {
   const configured = getConfig().visitorHashSecret;
@@ -71,6 +83,21 @@ function overridesFrom(doc: SettingsDocument): Partial<DmsMarketingConfig> {
 
 function applyDocument(doc: SettingsDocument | undefined): void {
   applyConfigOverrides(doc ? overridesFrom(doc) : {});
+}
+
+/**
+ * Reads the row again and puts it in force: another instance may have saved
+ * since. Called on a short timer and before each read of the Settings page,
+ * so instances agree within seconds, without a restart.
+ */
+export async function reloadSettings(
+  model: MarketingSettingsModel,
+): Promise<void> {
+  const version = savedVersion;
+  const doc = await model.getSingleton();
+  if (doc && version === savedVersion) {
+    applyDocument(doc);
+  }
 }
 
 function defaultDocument(): SettingsDocument {
@@ -124,31 +151,181 @@ function buildNextSettings(
   }
   for (const setting of NUMBER_SETTINGS) {
     doc[setting.configKey] = Object.hasOwn(values, setting.id)
-      ? submittedNumber(values[setting.id], setting.unit)
+      ? submittedNumber(setting, values[setting.id])
       : (existing?.[setting.configKey] ?? null);
   }
   return doc;
 }
 
-function submittedNumber(value: unknown, unit: number): number | null {
-  return typeof value === "number" && !Number.isNaN(value)
-    ? value * unit
-    : null;
+/**
+ * Whole days and percents only. The deployment default itself is stored as
+ * `null` (what "Use default" sends): the setting keeps following the config
+ * instead of freezing today's default as an override.
+ */
+function submittedNumber(
+  setting: NumberSetting,
+  value: unknown,
+): number | null {
+  if (typeof value !== "number" || Number.isNaN(value)) {
+    return null;
+  }
+  const rounded = Math.round(value);
+  return rounded === defaultInUiUnits(setting) ? null : rounded * setting.unit;
+}
+
+/** The deployment default of a setting (module config), in its UI unit. */
+export function defaultInUiUnits(setting: NumberSetting): number {
+  return Math.round(getBaseConfig()[setting.configKey] / setting.unit);
+}
+
+type RetentionKey =
+  | "rawEventsRetention"
+  | "statisticsRetention"
+  | "snapshotRetention";
+
+function effectiveRetention(
+  doc: SettingsDocument | undefined,
+  key: RetentionKey,
+): number {
+  return doc?.[key] ?? getBaseConfig()[key];
+}
+
+/**
+ * A refusal in the issue shape the DMS form reads, under the field the save
+ * changed — the other one of the pair when only that one was sent.
+ */
+function retentionIssue(
+  values: SettingsFormValues,
+  changed: string,
+  other: string,
+  message: string,
+): HTTPResult {
+  const field = Object.hasOwn(values, changed) ? changed : other;
+  return new HTTPResult(HTTP_BAD_REQUEST, [
+    { path: [field], code: "custom", message },
+  ]);
 }
 
 /**
  * Snapshots back the heatmaps drawn from raw events: one kept past the raw
- * window would outlive every click it was captured for. Refused rather than
- * clamped, so the form says why instead of saving another number.
+ * window would outlive every click it was captured for. Sessions back the
+ * funnels and A/B results read from raw events: pruned first, they would
+ * leave events without their visit. Refused rather than clamped, so the form
+ * says why under the field instead of saving another number.
  */
-function assertCoherentRetention(next: SettingsDocument): void {
-  const base = getBaseConfig();
-  const raw = next.rawEventsRetention ?? base.rawEventsRetention;
-  const snapshots = next.snapshotRetention ?? base.snapshotRetention;
-  if (snapshots > raw) {
-    throw new HTTPResult(HTTP_BAD_REQUEST, SNAPSHOT_ABOVE_RAW_MESSAGE);
+function assertCoherentRetention(
+  next: SettingsDocument,
+  values: SettingsFormValues,
+): void {
+  const raw = effectiveRetention(next, "rawEventsRetention");
+  if (effectiveRetention(next, "snapshotRetention") > raw) {
+    throw retentionIssue(
+      values,
+      "snapshotRetentionDays",
+      "rawEventsRetentionDays",
+      SNAPSHOT_ABOVE_RAW_MESSAGE,
+    );
+  }
+  if (effectiveRetention(next, "statisticsRetention") < raw) {
+    throw retentionIssue(
+      values,
+      "statisticsRetentionDays",
+      "rawEventsRetentionDays",
+      STATISTICS_BELOW_RAW_MESSAGE,
+    );
   }
 }
+
+const RETENTION_CUTS = [
+  { id: "rawEventsRetentionDays", key: "rawEventsRetention" },
+  { id: "statisticsRetentionDays", key: "statisticsRetention" },
+  { id: "snapshotRetentionDays", key: "snapshotRetention" },
+] as const;
+
+export type RetentionCutField = (typeof RETENTION_CUTS)[number]["id"];
+
+/**
+ * How much lowering one retention deletes, at the cutoff it would set:
+ * `count` rows of the kind `what` names (a key under `retention_cut`).
+ */
+export type RetentionCutCounter = (
+  field: RetentionCutField,
+  cutoff: Date,
+) => Promise<{ count: number; what: string }>;
+
+const CUT_MESSAGE_PREFIX = "$page.marketing.errors.retention_cut.";
+const CUT_CONFIRM_WINDOW_MS = 10 * MS_PER_MINUTE;
+
+/** Cuts already warned about, by `actor:field:ms`: saved again, they pass. */
+const warnedCuts = new Map<string, number>();
+
+/**
+ * Statistics are confirmed on their sessions, the figure the marketer
+ * knows; on daily rollups when no session is left that old.
+ */
+export const countRetentionCut: RetentionCutCounter = async (field, cutoff) => {
+  if (field === "rawEventsRetentionDays") {
+    return { count: await countRawEventsBefore(cutoff), what: "raw_events" };
+  }
+  if (field === "snapshotRetentionDays") {
+    return { count: await countSnapshotsBefore(cutoff), what: "snapshots" };
+  }
+  const { sessions, days } = await countStatisticsBefore(cutoff);
+  return sessions > 0
+    ? { count: sessions, what: "sessions" }
+    : { count: days, what: "rollups" };
+};
+
+/**
+ * A lowered retention deletes data at the next hourly prune. The first save
+ * that would delete anything is answered 409, under its field, with how much
+ * it deletes; the same save sent again within ten minutes goes through.
+ * Kept in memory: behind several instances, a second save landing on
+ * another one is warned there once more.
+ */
+export async function confirmRetentionCuts(
+  actor: string,
+  current: SettingsDocument | undefined,
+  next: SettingsDocument,
+  count: RetentionCutCounter = countRetentionCut,
+): Promise<void> {
+  const now = Date.now();
+  for (const [warning, expiresAt] of warnedCuts) {
+    if (expiresAt <= now) {
+      warnedCuts.delete(warning);
+    }
+  }
+  for (const cut of RETENTION_CUTS) {
+    const kept = effectiveRetention(next, cut.key);
+    if (kept >= effectiveRetention(current, cut.key)) {
+      continue;
+    }
+    const warning = `${actor}:${cut.id}:${kept}`;
+    if (warnedCuts.has(warning)) {
+      continue;
+    }
+    const deleted = await count(cut.id, new Date(now - kept));
+    if (deleted.count === 0) {
+      continue;
+    }
+    warnedCuts.set(warning, now + CUT_CONFIRM_WINDOW_MS);
+    // `{ field, message, values }`: the DMS form shows it under the field as
+    // "message: values" — the count rides there, an error message taking no
+    // params. Bare digits: the server does not know the reader's language,
+    // and "4,127" reads as a decimal in French as "4 127" looks wrong in English.
+    throw new HTTPResult(HTTP_CONFLICT, {
+      field: cut.id,
+      message: `${CUT_MESSAGE_PREFIX}${deleted.what}`,
+      values: [String(deleted.count)],
+    });
+  }
+}
+
+/** Run between the merge and the write; throws to refuse the save. */
+export type SettingsSaveGuard = (
+  current: SettingsDocument | undefined,
+  next: SettingsDocument,
+) => Promise<void>;
 
 async function persistSettings(
   model: MarketingSettingsModel,
@@ -203,11 +380,14 @@ export async function loadSettings(
 export async function applySettingsForm(
   model: MarketingSettingsModel,
   values: SettingsFormValues,
+  guard?: SettingsSaveGuard,
 ): Promise<SettingsFormValues> {
   const existing = await model.getSingleton();
   const next = buildNextSettings(values, existing);
-  assertCoherentRetention(next);
+  assertCoherentRetention(next, values);
+  await guard?.(existing, next);
   await persistSettings(model, next, existing);
+  savedVersion += 1;
   applyDocument(next);
   return settingsFormValues();
 }
@@ -240,7 +420,7 @@ export async function collectionStatus(
 export interface RetentionMeter {
   value: number;
   max: number;
-  valueLabel: string;
+  valueLabel: ComposedText;
 }
 
 const GLANCE_ITEMS = {
@@ -258,7 +438,10 @@ export function retentionGlance(item: unknown): RetentionMeter | null {
   return {
     value: days,
     max: MAX_STATISTICS_RETENTION_DAYS,
-    valueLabel: `${days} d`,
+    valueLabel: {
+      key: "$page.marketing.settings.glance.days",
+      params: { count: { type: "count", value: days } },
+    },
   };
 }
 

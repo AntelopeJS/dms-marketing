@@ -1,8 +1,9 @@
 # Settings
 
 **Where:** `/modules/marketing/settings` — under **Setup**. Values apply
-without restart; clearing a numeric field resets it to the deployment's
-config default.
+without restart; clearing a numeric field, or **Use default** under it,
+resets it to the deployment's config default (shown as the empty field's
+placeholder).
 
 The settings row is deployment-global (owner-only, like every module page):
 it drives collection and retention for **all** tenants and websites.
@@ -20,8 +21,10 @@ is collecting, with the workspace's websites and their sessions over the
 last 30 days. **Pause collection…** asks for confirmation and lists what it
 does:
 
-- the tracker script answers **404** on every site, and the collect endpoint
-  stops accepting events, so client sites stop sending at the source;
+- the tracker script becomes a stub on every site — `window.dmsMarketing`
+  still exists, records nothing, and `variation()` answers `null` — and the
+  collect endpoint drops every event, so client sites stop sending at the
+  source without page code breaking;
 - running A/B tests stop assigning variations — every visitor gets the
   control;
 - browsers holding the cached script stop within an hour (see
@@ -39,33 +42,59 @@ attention status and reads *Collection is paused*.
 - **Statistics (days)** — how long the daily rollups and sessions are kept.
   Default 395 days (13 months), capped at 760 days (25 months — two full
   year-over-year windows, and the ceiling most privacy regimes put on
-  audience-measurement data).
+  audience-measurement data). Never shorter than the raw events: funnels and
+  A/B results tie raw events to their session, so a value below the
+  raw-event retention is refused.
 - **Page snapshots (days)** — how long a captured page rendering is kept as
   a heatmap backdrop ([heatmap.md](heatmap.md#page-snapshots)). Default 30
   days, and never longer than the raw events: a value above the raw-event
   retention is refused, not saved, since snapshots hold page content and a
   backdrop outliving every click it could back is content kept for nothing.
 
-An hourly job prunes every store past its retention. **At a glance** draws
-the three retention periods as meters on one scale.
+An hourly job, on the hour, prunes every store past its retention.
+**At a glance** draws the three retention periods as meters on one 760-day
+scale, and follows a save at once.
+
+A value out of its bounds (0, 400…) is refused under its field, never
+clamped to the nearest bound. **Lowering a retention that would delete
+data asks for confirmation:** the first save is refused under the field
+with how much the next prune deletes (raw events, sessions — or daily
+rollups when no session is that old —, page snapshots), and saving the same
+value again within ten minutes applies it. A lowered value that deletes
+nothing saves at once.
 
 ## Sampling
 
 - **Heatmap sampling (%)** — the share of page loads that record clicks and
   scrolls (and, on sites that enabled them, page snapshots). Default 10 %.
-  `data-heatmap-sample` on a site's embed overrides it for that site.
+  `data-heatmap-sample` on a site's embed overrides it for that site. At 0,
+  no heatmap records anything on the sites without that override.
 
 ## Saving
 
-Each form saves its own fields: the settings route
-(`POST /api/marketing/settings`) merges a partial body into the stored
-values, so a field left out keeps its value and a field sent as `null` goes
-back to the config default. A body that would leave snapshot retention above
-raw-event retention is answered **400**, with nothing saved.
+Each form sends only the fields the user changed: the settings route
+(`PUT /api/marketing/settings`) merges a partial body into the stored
+values, so a field left out keeps its value — a default never gets frozen
+as an override, and a tab left open does not write back what someone else
+saved since. A field sent as `null`, or as the config default itself, goes
+back to following the config default. Days and percents are whole numbers
+(a decimal is rounded).
+
+Refusals come back as validation issues naming their field, shown under it:
+a value out of bounds, a snapshot retention above the raw-event retention or
+a statistics retention below it (**400**), and the first save of a retention
+cut that deletes data (**409**, see [Retention](#retention)). A body that is
+not JSON, or that carries a key the form does not know, is answered **400**.
+
+The settings row is shared by every instance of the backend: each one reads
+it again every 30 seconds, before each hourly prune and on each read of the
+Settings page, so a save (the master switch included) reaches every instance
+within 30 seconds, without a restart.
 
 ## Propagation delay
 
 The served tracker embeds these settings, and the script response is cached
 for one hour — so a sampling or switch change reaches returning visitors
-within that window, not instantly. (The 404 for a paused tracker obeys the
-same cache.)
+within that window, not instantly. The stub served while collection is
+paused is cached one minute only, so resuming reaches visitors within a
+minute.
