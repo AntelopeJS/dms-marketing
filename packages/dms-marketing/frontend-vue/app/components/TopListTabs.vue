@@ -1,8 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useId, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useDmsRoute, useI18n } from '#dms/frontend-module'
 import { linkInContext } from '../composables/useMarketingRoutes'
-import { displayName, formatNumber, formatPercent } from '../utils/format'
+import {
+  displayName,
+  formatNumber,
+  formatPercent,
+  percentChangeTrend,
+} from '../utils/format'
 
 /**
  * One overview card holding sibling top lists behind tabs (top pages, entry,
@@ -61,13 +66,10 @@ const props = withDefaults(
 const HIGHLIGHTED_RANKS = 3
 const SKELETON_ROWS = 6
 const RANK_DIGITS = 2
-/** Changes this small read as "no change", whatever their sign. */
-const FLAT_DELTA = 0.05
 
 const { t, te, locale } = useI18n()
 const { processI18n } = useTranslation()
 const route = useDmsRoute()
-const uid = useId()
 
 const { data, isLoading, error, refresh } = useChartFetch<TopTabsResponse>({
   fetchUrl: props.fetchUrl,
@@ -111,6 +113,13 @@ const LABELERS: Record<LabelKind, (key: string) => string> = {
 
 const MONO_KINDS = new Set<LabelKind>(['raw'])
 
+const DELTA_SIGNS = { up: '+', down: '−', flat: '±' } as const
+const DELTA_TONES = {
+  up: 'text-success',
+  down: 'text-error',
+  flat: 'text-dimmed',
+} as const
+
 function rank(index: number): string {
   return String(index + 1).padStart(RANK_DIGITS, '0')
 }
@@ -123,42 +132,31 @@ function deltaLabel(delta: number | null | undefined): string {
   if (delta === null || delta === undefined) {
     return '—'
   }
-  const sign = delta > 0 ? '+' : delta < 0 ? '−' : '±'
-  return `${sign}${formatPercent(Math.abs(delta), locale.value, 0)}`
+  return `${DELTA_SIGNS[percentChangeTrend(delta)]}${formatPercent(Math.abs(delta), locale.value, 0)}`
 }
 
 function deltaClass(delta: number | null | undefined): string {
-  if (delta === null || delta === undefined || Math.abs(delta) < FLAT_DELTA) {
-    return 'text-dimmed'
-  }
-  return delta > 0 ? 'text-success' : 'text-error'
+  return delta === null || delta === undefined
+    ? 'text-dimmed'
+    : DELTA_TONES[percentChangeTrend(delta)]
 }
 
-// --- Tabs (WAI-ARIA tabs pattern: roving focus, arrows, Home/End) ----------
+// --- Tabs --------------------------------------------------------------------
 
-const tabIdOf = (id: string) => `${uid}-tab-${id}`
-const panelId = `${uid}-panel`
-const tabRefs = ref<Record<string, HTMLButtonElement | null>>({})
+const tabItems = computed(() =>
+  tabs.value.map((tab) => ({ label: processI18n(tab.label), value: tab.id })),
+)
 
-const KEY_STEPS: Record<string, (index: number, count: number) => number> = {
-  ArrowRight: (index, count) => (index + 1) % count,
-  ArrowLeft: (index, count) => (index - 1 + count) % count,
-  Home: () => 0,
-  End: (_index, count) => count - 1,
-}
-
-async function onTabKeydown(event: KeyboardEvent, index: number) {
-  const step = KEY_STEPS[event.key]
-  if (!step) {
-    return
-  }
-  event.preventDefault()
-  const next = tabs.value[step(index, tabs.value.length)]
-  if (next) {
-    activeId.value = next.id
-    await nextTick()
-    tabRefs.value[next.id]?.focus()
-  }
+/**
+ * The card's own look over the stock tabs: no list border (the header draws
+ * it), and a short bar under the active tab instead of the sliding indicator.
+ */
+const TABS_UI = {
+  root: 'gap-0',
+  list: 'gap-1 overflow-x-auto border-b-0 p-0 mb-0 [scrollbar-width:none]',
+  indicator: 'hidden',
+  trigger:
+    'shrink-0 rounded-sm px-2 py-3 text-[13px] font-normal whitespace-nowrap data-[state=active]:font-semibold data-[state=active]:text-highlighted hover:data-[state=inactive]:not-disabled:text-highlighted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary data-[state=active]:after:absolute data-[state=active]:after:inset-x-2 data-[state=active]:after:bottom-0 data-[state=active]:after:h-0.5 data-[state=active]:after:rounded-full data-[state=active]:after:bg-primary',
 }
 </script>
 
@@ -168,34 +166,15 @@ async function onTabKeydown(event: KeyboardEvent, index: number) {
       class="flex flex-wrap items-center gap-x-4 border-b border-default px-4"
     >
       <DmsEyebrow :label="processI18n(eyebrow)" class="shrink-0 py-3" />
-      <div
+      <UTabs
         v-if="tabs.length > 1"
-        class="order-last -mx-1 flex min-w-0 basis-full items-center gap-1 overflow-x-auto [scrollbar-width:none] sm:order-none sm:mx-0 sm:flex-1 sm:basis-auto"
-        role="tablist"
-        :aria-label="processI18n(eyebrow)"
-      >
-        <button
-          v-for="(tab, index) in tabs"
-          :id="tabIdOf(tab.id)"
-          :key="tab.id"
-          :ref="(el) => (tabRefs[tab.id] = el as HTMLButtonElement | null)"
-          type="button"
-          role="tab"
-          :aria-selected="tab.id === activeId"
-          :aria-controls="panelId"
-          :tabindex="tab.id === activeId ? 0 : -1"
-          class="relative shrink-0 rounded-sm px-2 py-3 text-[13px] whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary"
-          :class="
-            tab.id === activeId
-              ? 'font-semibold text-highlighted after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-primary'
-              : 'text-muted hover:text-highlighted'
-          "
-          @click="activeId = tab.id"
-          @keydown="onTabKeydown($event, index)"
-        >
-          {{ processI18n(tab.label) }}
-        </button>
-      </div>
+        v-model="activeId"
+        :items="tabItems"
+        :content="false"
+        variant="link"
+        :ui="TABS_UI"
+        class="order-last -mx-1 min-w-0 basis-full sm:order-none sm:mx-0 sm:flex-1 sm:basis-auto"
+      />
       <DmsEyebrow
         :label="processI18n(valueLabel)"
         class="ms-auto shrink-0 py-3"
@@ -203,11 +182,10 @@ async function onTabKeydown(event: KeyboardEvent, index: number) {
     </header>
 
     <div
-      :id="panelId"
       class="flex-1"
       :role="tabs.length > 1 ? 'tabpanel' : undefined"
-      :aria-labelledby="
-        tabs.length > 1 && active ? tabIdOf(active.id) : undefined
+      :aria-label="
+        tabs.length > 1 && active ? processI18n(active.label) : undefined
       "
     >
       <DmsEmptyState

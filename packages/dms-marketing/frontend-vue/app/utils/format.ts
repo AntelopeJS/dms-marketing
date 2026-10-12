@@ -45,6 +45,20 @@ export function formatDuration(seconds: number): string {
   return minutes > 0 ? `${minutes}m ${rest}s` : `${rest}s`
 }
 
+/**
+ * A change in percent under half a point rounds to "0 %": it reads as no
+ * change, whatever its sign.
+ */
+const FLAT_PERCENT_CHANGE = 0.5
+
+/** Which way a change in percent (+12.5 for +12.5 %) moved, flat when it rounds to 0 %. */
+export function percentChangeTrend(delta: number): 'up' | 'down' | 'flat' {
+  if (Math.abs(delta) < FLAT_PERCENT_CHANGE) {
+    return 'flat'
+  }
+  return delta > 0 ? 'up' : 'down'
+}
+
 /** Signed difference with its unit: "+8s", "−2.3 pt", "+0.1". */
 export function formatSignedDelta(
   value: number,

@@ -5,6 +5,7 @@ import {
   formatPercent,
   formatSignedDelta,
   initials,
+  percentChangeTrend,
 } from '../app/utils/format'
 import { sampleSizePerArm } from '../app/utils/sample-size'
 import { normalizeFunnelStepPath } from '../app/utils/step-path'
@@ -21,6 +22,14 @@ describe('formatting', () => {
     expect(formatSignedDelta(-2.34, 'points', 'en')).toBe('−2.3 pt')
     expect(formatSignedDelta(8, 'seconds', 'en')).toBe('+8s')
     expect(formatSignedDelta(0.04, 'number', 'en')).toBe('±0.0')
+  })
+
+  it('reads a change in percent that rounds to 0 % as flat', () => {
+    expect(percentChangeTrend(0.3)).toBe('flat')
+    expect(percentChangeTrend(-0.49)).toBe('flat')
+    expect(percentChangeTrend(0)).toBe('flat')
+    expect(percentChangeTrend(0.5)).toBe('up')
+    expect(percentChangeTrend(-12)).toBe('down')
   })
 
   it('places the percent sign the way the locale does', () => {
