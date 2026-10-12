@@ -24,6 +24,7 @@ import {
   retentionGlance,
   settingsFormValues,
 } from "@/services/settings";
+import { parseJsonOr400 } from "@/services/request-body";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { z } from "zod";
 import { API_BASE_PATH, HTTP_BAD_REQUEST } from "@/types/constants";
@@ -35,15 +36,6 @@ const collectionSchema = z.object({ enabled: z.boolean() }).strict();
 
 // A key the form does not know is refused rather than silently dropped.
 const settingsSchema = marketingSettingsFormSchema.strict();
-
-/** A body that is not JSON is the caller's mistake: 400, not a 500. */
-function parseJsonBody(body: Buffer): unknown {
-  try {
-    return JSON.parse(body.toString("utf8"));
-  } catch {
-    throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_SETTINGS_MESSAGE);
-  }
-}
 
 /**
  * Fetch/submit endpoints for the declarative Settings form. The wire format
@@ -69,10 +61,11 @@ export class MarketingSettingsController extends Controller(
    */
   @Put("")
   async submitSettings(@AuthOwnerOnly() user: User, @RawBody() body: Buffer) {
+    const json = parseJsonOr400(body, INVALID_SETTINGS_MESSAGE);
     // zod v3 binds `parse` to its schema in the ZodType constructor, so the
     // reference passed here is not actually unbound.
     // oxlint-disable-next-line typescript/unbound-method
-    const data = assertValidation(parseJsonBody(body), settingsSchema.parse);
+    const data = assertValidation(json, settingsSchema.parse);
     return applySettingsForm(
       GetModel(MarketingSettingsModel),
       data as SettingsFormValues,
@@ -110,7 +103,7 @@ export class MarketingSettingsController extends Controller(
     @RawBody() body: Buffer,
   ) {
     const data = assertValidation(
-      parseJsonBody(body),
+      parseJsonOr400(body, INVALID_SETTINGS_MESSAGE),
       // zod v3 binds `parse` to its schema in the ZodType constructor, so the
       // reference passed here is not actually unbound.
       // oxlint-disable-next-line typescript/unbound-method

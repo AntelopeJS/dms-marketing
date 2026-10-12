@@ -7,6 +7,7 @@ import {
   HTTPResult,
   Parameter,
   Post,
+  RawBody,
   type RequestContext,
 } from "@antelopejs/interface-api";
 import { assertValidation } from "@antelopejs/interface-api-util";
@@ -22,7 +23,7 @@ import {
   websiteAcceptsHostname,
 } from "@/services/origin-guard";
 import { queryString } from "@/services/query-param";
-import { readBoundedBody } from "@/services/request-body";
+import { parseJsonOr400 } from "@/services/request-body";
 import { clientIp, userAgentOf } from "@/services/request-meta";
 import { getVisitorHashSecret } from "@/services/settings";
 import { storeSnapshot, wantsSnapshot } from "@/services/snapshots";
@@ -32,10 +33,8 @@ import { resolveWebsite } from "@/services/website-cache";
 import { snapshotRequestSchema } from "@/types";
 import {
   API_BASE_PATH,
-  HTTP_BAD_REQUEST,
   HTTP_FORBIDDEN,
   HTTP_NOT_FOUND,
-  HTTP_PAYLOAD_TOO_LARGE,
   MAX_SNAPSHOT_BYTES,
   MAX_URL_LENGTH,
 } from "@/types/constants";
@@ -50,8 +49,6 @@ const NO_STORE = "private, no-store";
 
 const UNKNOWN_WEBSITE_MESSAGE = "unknown website";
 const ORIGIN_NOT_ALLOWED_MESSAGE = "origin not allowed";
-const PAYLOAD_TOO_LARGE_MESSAGE = "snapshot too large";
-const INVALID_BODY_MESSAGE = "invalid body";
 
 const REFUSED = { accepted: false };
 
@@ -103,14 +100,6 @@ function visitorOf(context: RequestContext, website: Website): string {
     clientIp(context),
     userAgentOf(context),
   );
-}
-
-function parseJson(body: Buffer): unknown {
-  try {
-    return JSON.parse(body.toString("utf8"));
-  } catch {
-    throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_BODY_MESSAGE);
-  }
 }
 
 /**
@@ -175,24 +164,24 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
   }
 
   /**
-   * text/plain JSON like collect (no preflight). The body is read under a
-   * hard cap before anything parses it; refusals past the origin check are
-   * silent 200s, as on collect — headerless uploads included, since the
-   * capture script's fetch always carries an Origin.
+   * text/plain JSON like collect (no preflight). `@RawBody` reads the body
+   * under a hard cap (413 past it) before anything parses it; refusals past
+   * the origin check are silent 200s, as on collect — headerless uploads
+   * included, since the capture script's fetch always carries an Origin.
    */
   @Post("snapshot")
-  async upload(@Context() context: RequestContext) {
+  async upload(
+    @Context() context: RequestContext,
+    @RawBody(MAX_SNAPSHOT_BYTES) body: Buffer,
+  ) {
     if (!getConfig().trackerEnabled) {
       return REFUSED;
     }
-    const body = await readBoundedBody(context, MAX_SNAPSHOT_BYTES);
-    if (!body) {
-      throw new HTTPResult(HTTP_PAYLOAD_TOO_LARGE, PAYLOAD_TOO_LARGE_MESSAGE);
-    }
+    const json = parseJsonOr400(body);
     // zod v3 binds `parse` to its schema in the ZodType constructor, so the
     // reference passed here is not actually unbound.
     // oxlint-disable-next-line typescript/unbound-method
-    const data = assertValidation(parseJson(body), snapshotRequestSchema.parse);
+    const data = assertValidation(json, snapshotRequestSchema.parse);
     const website = await resolveWebsite(data.website);
     if (!website || !website.trackingEnabled) {
       throw new HTTPResult(HTTP_NOT_FOUND, UNKNOWN_WEBSITE_MESSAGE);

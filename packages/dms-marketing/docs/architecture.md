@@ -221,8 +221,8 @@ traffic; no public analytics product authenticates its ingestion. The answer
 to that residue is detection and purge (per-site data purge ships; see
 *Website lifecycle contract*), not more gating.
 
-The body is read under a cap (`MAX_COLLECT_BODY_BYTES`) and must be JSON
-(400 otherwise). Only the envelope — website id, 1 to 25 events — can fail
+The body is read under a cap (`MAX_COLLECT_BODY_BYTES`, 413 past it, by
+`@RawBody`) and must be JSON (400 otherwise). Only the envelope — website id, 1 to 25 events — can fail
 the request; each event is then validated on its own and a failing one is
 dropped (counted in `dropped`, logged once a minute per site), never the
 rest of its batch: a URL that is neither `http(s)` nor a path, a `name`
@@ -386,10 +386,9 @@ automation, per-source rate) and no further:
   answer is a decision, not a file.
 - **`POST snapshot`** takes the serialized document as `text/plain` JSON
   (no preflight, like collect). The body is read under a hard cap
-  (`MAX_SNAPSHOT_BYTES`, 1 MiB) by `services/request-body.ts` — the
-  framework's `ReadBody` buffers without one — refusing a declared length
-  past it before a byte is read and cutting an undeclared one the moment it
-  crosses. Then zod, the origin gate (here a request with neither `Origin`
+  (`MAX_SNAPSHOT_BYTES`, 1 MiB) by `@RawBody`, which refuses a declared
+  length past it before a byte is read and cuts an undeclared one the moment
+  it crosses (413). Then zod, the origin gate (here a request with neither `Origin`
   nor `Referer` is refused: the capture's `fetch` always sends one), the
   bot filter, a per-(website, IP) budget of
   `MAX_SNAPSHOTS_PER_WINDOW_PER_SOURCE` (3) a minute, and the negotiation

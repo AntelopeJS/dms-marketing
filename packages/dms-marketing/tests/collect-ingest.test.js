@@ -10,6 +10,7 @@ const {
   listRejectedSources,
   warnRejectedSource,
 } = require("../dist/services/origin-guard");
+const { parseJsonOr400 } = require("../dist/services/request-body");
 const { clientIp } = require("../dist/services/request-meta");
 const { sanitizeSnapshotHtml } = require("../dist/services/snapshots");
 const { trackedEventSchema } = require("../dist/types/events");
@@ -391,5 +392,17 @@ test("only browser-stamped hostnames are offered for Allow this host", () => {
   assert.deepEqual(
     listRejectedSources(WEBSITE._id).map((source) => source.hostname),
     ["other.example"],
+  );
+});
+
+test("a body that is not JSON is a 400 carrying the caller's message", () => {
+  assert.deepEqual(parseJsonOr400(Buffer.from('{"a":1}')), { a: 1 });
+  assert.throws(
+    () => parseJsonOr400(Buffer.from("{not json")),
+    (error) => error.getStatus() === 400 && error.getBody() === "invalid body",
+  );
+  assert.throws(
+    () => parseJsonOr400(Buffer.from(""), "custom"),
+    (error) => error.getStatus() === 400 && error.getBody() === "custom",
   );
 });
