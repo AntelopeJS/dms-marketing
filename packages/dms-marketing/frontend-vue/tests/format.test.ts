@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   displayName,
-  formatDateTime,
   formatDuration,
   formatPercent,
   formatSignedDelta,
@@ -12,13 +11,6 @@ import { normalizeFunnelStepPath } from '../app/utils/step-path'
 import { trackerSnippet } from '../app/utils/snippet'
 
 describe('formatting', () => {
-  it('dates an event on a 24-hour clock in the module English', () => {
-    const at = Date.UTC(2026, 9, 11, 18, 7)
-    const en = formatDateTime(at, 'en')
-    expect(en).toBe(formatDateTime(at, 'en-GB'))
-    expect(en).not.toMatch(/[AP]M/)
-  })
-
   it('writes durations the way analytics tools do', () => {
     expect(formatDuration(8)).toBe('8s')
     expect(formatDuration(168)).toBe('2m 48s')

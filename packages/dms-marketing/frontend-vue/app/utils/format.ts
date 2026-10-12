@@ -105,20 +105,6 @@ export function formatShortDate(at: number | Date, locale: string): string {
   }).format(at)
 }
 
-/**
- * "11 Oct, 14:02": when one thing happened. The module's English is British
- * (its locale file is en-GB) and the DMS reports a bare "en", which Intl
- * reads as American — a 12-hour clock beside day-first dates.
- */
-export function formatDateTime(at: number | Date, locale: string): string {
-  return new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : locale, {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(at)
-}
-
 /** "AS" for "Acme shop": the avatar of a website. */
 export function initials(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean)

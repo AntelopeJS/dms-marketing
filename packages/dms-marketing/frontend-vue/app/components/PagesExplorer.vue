@@ -16,7 +16,6 @@ import { PERIOD_SCOPE } from '../constants'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
 import { formatNumber } from '../utils/format'
 import {
-  formatShare,
   heatmapDataLabel,
   heatmapResetImpact,
   normalizePagePath,
@@ -133,6 +132,17 @@ onBeforeUnmount(() => searchTimer && clearTimeout(searchTimer))
 
 const pages = computed(() => inventory.value?.pages ?? [])
 const sampleRate = computed(() => inventory.value?.sampleRate ?? null)
+/** The measured sampling share as a sentence writes it: "10%", "0.4%". */
+const sampleRateLabel = computed(() => {
+  const rate = sampleRate.value
+  return rate === null
+    ? null
+    : String(
+        formatPercentage(rate, locale.value, {
+          maximumFractionDigits: rate > 0 && rate < 0.01 ? 1 : 0,
+        }),
+      )
+})
 const trackerEnabled = computed(() => inventory.value?.trackerEnabled ?? true)
 const waiting = computed(() => context.selected.value?.state === 'waiting')
 
@@ -512,7 +522,7 @@ const moreItems = computed(() => [
             :website="website"
             :path="selectedPath"
             :period="period"
-            :sample-rate="sampleRate"
+            :sample-rate-label="sampleRateLabel"
             :tracker-enabled="trackerEnabled"
             :pageviews="selectedPage?.pageviews"
             :refresh-token="refreshToken + context.refreshToken.value"
@@ -528,10 +538,10 @@ const moreItems = computed(() => [
           :title="t('page.marketing.pages.select_hint')"
         />
       </div>
-      <p v-if="sampleRate !== null" class="text-xs text-dimmed">
+      <p v-if="sampleRateLabel !== null" class="text-xs text-dimmed">
         {{
           t('page.marketing.pages.sampling_note', {
-            rate: formatShare(sampleRate, locale),
+            rate: sampleRateLabel,
           })
         }}
       </p>

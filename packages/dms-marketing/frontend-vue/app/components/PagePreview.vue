@@ -16,7 +16,6 @@ import {
 import { funnelLink, settingsLink } from '../composables/useMarketingRoutes'
 import { formatNumber, formatShortDate } from '../utils/format'
 import {
-  formatShare,
   heatmapDataLabel,
   heatmapResetImpact,
 } from '../utils/heatmap'
@@ -70,10 +69,11 @@ const props = defineProps<{
   /** Days the counts cover — the context bar's period scope. */
   period: MarketingPeriod
   /**
-   * Measured share of the site's page loads sampled for clicks — why a quiet
-   * page looks empty. Null while too few pageviews tell it.
+   * Measured share of the site's page loads sampled for clicks, written for
+   * a sentence — why a quiet page looks empty. Null while too few pageviews
+   * tell it.
    */
-  sampleRate: number | null
+  sampleRateLabel: string | null
   trackerEnabled: boolean
   /** Pageviews of this path over the window, for the sampling hint. */
   pageviews?: number
@@ -575,12 +575,6 @@ const paneStyle = computed(() => ({
 
 // --- Emptiness, explained ---------------------------------------------------
 
-/** The site's measured sampling share, written for a sentence. */
-const rateLabel = computed(() =>
-  props.sampleRate === null
-    ? null
-    : formatShare(props.sampleRate, locale.value),
-)
 
 /** Silence has shared causes (collection off, no view sampled) before the
  *  per-overlay one; both overlays explain themselves through this. */
@@ -589,10 +583,10 @@ function captureEmptyReason(fallbackKey: string): string {
     return t('page.marketing.pages.empty.tracking_off')
   }
   if (props.pageviews && scrollViews.value === 0) {
-    return rateLabel.value === null
+    return props.sampleRateLabel === null
       ? t('page.marketing.pages.empty.none_sampled')
       : t('page.marketing.pages.empty.none_sampled_rate', {
-          rate: rateLabel.value,
+          rate: props.sampleRateLabel,
         })
   }
   return t(fallbackKey)
@@ -730,10 +724,10 @@ const statusStrip = computed<StatusStrip | null>(() => {
           icon: 'i-ph-hourglass',
           title: t('page.marketing.pages.preview.no_snapshot'),
           description:
-            rateLabel.value === null
+            props.sampleRateLabel === null
               ? t('page.marketing.pages.preview.no_snapshot_hint')
               : t('page.marketing.pages.preview.no_snapshot_hint_rate', {
-                  rate: rateLabel.value,
+                  rate: props.sampleRateLabel,
                 }),
         }
       : null,

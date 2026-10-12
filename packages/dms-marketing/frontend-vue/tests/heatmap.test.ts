@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  formatShare,
   heatmapDataLabel,
   normalizePagePath,
 } from '../app/utils/heatmap'
@@ -20,13 +19,6 @@ describe('heatmap helpers', () => {
     expect(normalizePagePath(' /demo/pricing?x=1#top ')).toBe('/demo/pricing')
     expect(normalizePagePath('https://shop.example/cart')).toBe('/cart')
     expect(normalizePagePath('   ')).toBeUndefined()
-  })
-
-  it('writes a share the way the locale writes a percentage', () => {
-    expect(formatShare(0.1, 'en-GB')).toBe('10%')
-    // A no-break space, narrow or not depending on the ICU data.
-    expect(formatShare(0.1, 'fr-FR')).toMatch(/^10\s%$/)
-    expect(formatShare(0.004, 'en-GB')).toBe('0.4%')
   })
 
   it('names what a reset deletes, snapshots only when there are some', () => {

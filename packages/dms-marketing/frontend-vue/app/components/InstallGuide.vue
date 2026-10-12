@@ -15,7 +15,6 @@ import {
   overviewLink,
   websitesLink,
 } from '../composables/useMarketingRoutes'
-import { formatDateTime } from '../utils/format'
 import {
   allowHostConfirmation,
   hostConflictOf,
@@ -248,8 +247,16 @@ async function openOverview(): Promise<void> {
   await router.push(overviewLink(websiteId.value))
 }
 
+/** "11 Oct, 14:02": the DMS date and time, without its year and seconds. */
+const EVENT_TIME: Intl.DateTimeFormatOptions = {
+  year: undefined,
+  month: 'short',
+  day: 'numeric',
+  second: undefined,
+}
+
 function when(at: number): string {
-  return formatDateTime(at, locale.value)
+  return formatDateTime(at, locale.value, EVENT_TIME) ?? ''
 }
 
 const siteUrl = computed(() =>

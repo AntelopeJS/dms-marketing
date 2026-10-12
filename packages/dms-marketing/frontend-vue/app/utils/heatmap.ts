@@ -27,14 +27,6 @@ export function normalizePagePath(typed: string): string | undefined {
   }
 }
 
-/** A 0-1 share as the locale writes a percentage ("10%", "10 %"). */
-export function formatShare(share: number, locale: string): string {
-  return new Intl.NumberFormat(locale, {
-    style: 'percent',
-    maximumFractionDigits: share > 0 && share < 0.01 ? 1 : 0,
-  }).format(share)
-}
-
 /** What a heatmap reset deletes or deleted. */
 export interface HeatmapDataCounts {
   events: number
