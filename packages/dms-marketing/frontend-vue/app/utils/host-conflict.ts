@@ -6,30 +6,15 @@
 
 const HTTP_CONFLICT = 409
 const DUPLICATE_HOST = '$page.marketing.errors.duplicate_host'
+/** The fields a host is declared in. */
+const HOST_FIELDS = ['domain', 'extraDomains'] as const
 
 export interface HostConflict {
   /** `domain` or `extraDomains`: the field that declares the host. */
-  field: string
+  field: (typeof HOST_FIELDS)[number]
   host: string
   /** The name of the website that declares it. */
   site: string
-}
-
-interface FetchErrorLike {
-  statusCode?: number
-  status?: number
-  data?: unknown
-}
-
-function bodyOf(error: FetchErrorLike): unknown {
-  if (typeof error.data !== 'string') {
-    return error.data
-  }
-  try {
-    return JSON.parse(error.data) as unknown
-  } catch {
-    return undefined
-  }
 }
 
 type Translate = (key: string, params?: Record<string, unknown>) => string
@@ -51,24 +36,13 @@ export function allowHostConfirmation(t: Translate, host: string) {
 }
 
 export function hostConflictOf(error: unknown): HostConflict | null {
-  if (typeof error !== 'object' || error === null) {
+  if (apiErrorStatus(error) !== HTTP_CONFLICT) {
     return null
   }
-  const failure = error as FetchErrorLike
-  if ((failure.statusCode ?? failure.status) !== HTTP_CONFLICT) {
+  const [entry] = resolveFieldErrors(error, { fields: HOST_FIELDS }).fields
+  const [host, site] = entry?.values ?? []
+  if (entry?.message !== DUPLICATE_HOST || !host || !site) {
     return null
   }
-  const body = bodyOf(failure) as
-    | { field?: unknown; message?: unknown; values?: unknown }
-    | undefined
-  const [host, site] = Array.isArray(body?.values) ? body.values : []
-  if (
-    body?.message !== DUPLICATE_HOST ||
-    typeof body.field !== 'string' ||
-    typeof host !== 'string' ||
-    typeof site !== 'string'
-  ) {
-    return null
-  }
-  return { field: body.field, host, site }
+  return { field: entry.field as HostConflict['field'], host, site }
 }
