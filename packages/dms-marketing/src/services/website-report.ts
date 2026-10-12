@@ -99,9 +99,7 @@ export async function websiteDeletionImpact(
   website: Website,
 ): Promise<WebsiteDeletionImpact> {
   const [days, funnels, snapshots] = await Promise.all([
-    GetModel(WebsiteStatisticsModel, website.tenantId).getCounters(
-      website._id,
-    ),
+    GetModel(WebsiteStatisticsModel, website.tenantId).getCounters(website._id),
     GetModel(FunnelsModel, website.tenantId).listByWebsite(website._id),
     GetModel(PageSnapshotsModel, website.tenantId).countByWebsite(website._id),
   ]);
@@ -154,7 +152,10 @@ export async function connectionStatus(
 ): Promise<ConnectionStatus> {
   const createdAt = new Date(website.createdAt).getTime();
   const checkedAt = Date.now();
-  const from = Math.max(since ?? createdAt, periodStart(RECENT_VISIT_DAYS).getTime());
+  const from = Math.max(
+    since ?? createdAt,
+    periodStart(RECENT_VISIT_DAYS).getTime(),
+  );
   const [pageview, latest] = await Promise.all([
     GetModel(MarketingEventsModel, website.tenantId).getLatestPageview(
       website._id,

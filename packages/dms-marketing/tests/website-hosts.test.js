@@ -24,7 +24,13 @@ test("only hostnames, IPs and localhost are valid", () => {
   for (const host of ["shop.example.com", "localhost", "127.0.0.1", "[::1]"]) {
     assert.equal(isValidHostname(normalizeHostname(host)), true, host);
   }
-  for (const typed of ["not a domain!!", "*.example.com", "", "-a.com", "null"]) {
+  for (const typed of [
+    "not a domain!!",
+    "*.example.com",
+    "",
+    "-a.com",
+    "null",
+  ]) {
     assert.equal(isValidHostname(normalizeHostname(typed)), false, typed);
   }
 });
@@ -48,7 +54,10 @@ test("a host another site declares is a conflict, tied to its field", () => {
 
 test("a site never conflicts with itself, nor a subdomain with its apex", () => {
   const sites = [site("shop", "Shop", "example.com")];
-  assert.equal(findHostConflict(site("shop", "Shop", "example.com"), sites), undefined);
+  assert.equal(
+    findHostConflict(site("shop", "Shop", "example.com"), sites),
+    undefined,
+  );
   assert.equal(
     findHostConflict(site("docs", "Docs", "docs.example.com"), sites),
     undefined,

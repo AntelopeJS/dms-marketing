@@ -85,7 +85,9 @@ export type ComparisonKind = "previous-period" | "previous-year";
 
 /** `previous-year` when the read names it, else the previous period. */
 export function comparisonKindOf(query: PeriodQuery): ComparisonKind {
-  return queryString(query.comparison) === "previous-year" ? "previous-year" : "previous-period";
+  return queryString(query.comparison) === "previous-year"
+    ? "previous-year"
+    : "previous-period";
 }
 
 function parseInstant(value: unknown): number | undefined {
