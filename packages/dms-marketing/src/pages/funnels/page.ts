@@ -51,10 +51,9 @@ const ROW_CONTEXT = [
  * The funnels of the context's website: a stock source table over
  * `/funnels/rows`, on the context bar's website and period.
  * The conversion and its bar come first, so a phone shows them without
- * scrolling. The row's arrow opens the report in one click (a stock row
- * opens on double-click only); its menu edits, duplicates or deletes. With no
- * funnel yet, templates built from the site's journeys take the table's
- * place.
+ * scrolling. A click on the row opens the report; its menu edits, duplicates
+ * or deletes. With no funnel yet, templates built from the site's journeys
+ * take the table's place.
  */
 const funnelsTable = TableView.fromSource({
   caption: `${FUNNELS_PREFIX}list_title`,
@@ -62,6 +61,7 @@ const funnelsTable = TableView.fromSource({
   periodScope: MARKETING_PERIOD_SCOPE,
   capabilities: { filter: true },
   defaultSort: { field: "conversion", desc: true },
+  rowClick: "single",
   columns: {
     name: {
       name: `${FUNNELS_PREFIX}columns.name`,
@@ -158,7 +158,6 @@ const funnelsTable = TableView.fromSource({
           url: `${MARKETING_MODULE_PATH}/funnel?id={_id}&${ROW_CONTEXT}`,
         },
         isDefault: true,
-        isVisible: true,
       },
       {
         label: `${FUNNELS_PREFIX}actions.edit`,

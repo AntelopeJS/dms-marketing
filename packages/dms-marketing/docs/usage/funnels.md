@@ -23,8 +23,8 @@ splits), the sessions that completed out of those that entered as a bar, its
 status, and its steps as pills (pages outlined, events in the primary
 colour). Under the name: the steps and window, the A/B split's state and
 leader (by its own letter, only when it is ahead of the control), or a step
-the site never sent over the period, in amber. The row's arrow opens the
-report in one click; its menu edits, duplicates or deletes the funnel (the
+the site never sent over the period, in amber. A click on the row opens
+the report; its menu edits, duplicates or deletes the funnel (the
 name must be typed, and a running test is said to stop). The tabs narrow the
 table to **Funnels** or **A/B tests**.
 
