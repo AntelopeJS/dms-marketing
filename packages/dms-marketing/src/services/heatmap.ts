@@ -5,7 +5,6 @@ import type {
   MarketingHeatmapPoint,
   MarketingHeatmapQuery,
 } from "@antelopejs/interface-dms-marketing";
-import { ValueProxy } from "@antelopejs/interface-database";
 import {
   MarketingEventsModel,
   PageSnapshotsModel,
@@ -13,11 +12,7 @@ import {
   WebsitesModel,
 } from "@/db";
 import type { MarketingEvent } from "@/db/tables/marketing_events.table";
-import {
-  type ClickEventData,
-  type EventKind,
-  HEATMAP_EVENT_KINDS,
-} from "@/types";
+import type { ClickEventData, EventKind } from "@/types";
 import {
   HEATMAP_DIVISIONS_PER_AXIS,
   MAX_ANCHORED_HEATMAP_CELLS,
@@ -370,24 +365,14 @@ export async function countHeatmapData(
   websiteId: string,
   path?: string,
 ): Promise<HeatmapData> {
-  let events = GetModel(MarketingEventsModel, tenantId)
-    .table.getAll([websiteId], "websiteId")
-    .filter((doc) =>
-      ValueProxy.constant(HEATMAP_EVENT_KINDS).includes(doc.key("kind")),
-    );
-  let snapshots = GetModel(PageSnapshotsModel, tenantId).table.getAll(
-    [websiteId],
-    "websiteId",
-  );
-  if (path) {
-    events = events.filter((doc) => doc.key("url").eq(path));
-    snapshots = snapshots.filter((doc) => doc.key("url").eq(path));
-  }
-  const [eventCount, snapshotCount] = await Promise.all([
-    events.count().run(),
-    snapshots.count().run(),
+  const [events, snapshots] = await Promise.all([
+    GetModel(MarketingEventsModel, tenantId).countHeatmapEvents(
+      websiteId,
+      path,
+    ),
+    GetModel(PageSnapshotsModel, tenantId).countByWebsite(websiteId, path),
   ]);
-  return { events: eventCount, snapshots: snapshotCount };
+  return { events, snapshots };
 }
 
 /**

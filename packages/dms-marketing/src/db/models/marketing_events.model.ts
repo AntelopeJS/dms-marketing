@@ -246,15 +246,22 @@ export class MarketingEventsModel extends BasicDataModel(
    * window being looked at.
    */
   async deleteHeatmapEvents(websiteId: string, url?: string): Promise<number> {
-    let q = this.table
+    return this.heatmapEvents(websiteId, url).delete().run();
+  }
+
+  /** What {@link deleteHeatmapEvents} would delete, for its confirmation. */
+  async countHeatmapEvents(websiteId: string, url?: string): Promise<number> {
+    return this.heatmapEvents(websiteId, url).count().run();
+  }
+
+  /** The rows a heatmap reset covers: one query, so count and delete agree. */
+  private heatmapEvents(websiteId: string, url?: string) {
+    const events = this.table
       .getAll([websiteId], "websiteId")
       .filter((doc) =>
         ValueProxy.constant(HEATMAP_EVENT_KINDS).includes(doc.key("kind")),
       );
-    if (url) {
-      q = q.filter((doc) => doc.key("url").eq(url));
-    }
-    return q.delete().run();
+    return url ? events.filter((doc) => doc.key("url").eq(url)) : events;
   }
 
   async deleteOlderThan(cutoff: Date): Promise<number> {
