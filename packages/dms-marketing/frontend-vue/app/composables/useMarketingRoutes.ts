@@ -2,9 +2,13 @@
  * Links between the module's surfaces.
  *
  * The `/modules/marketing` prefix comes from the pages being registered under
- * a DMS module. The website and the period are not in the links: the context
- * bar keeps both for the whole module.
+ * a DMS module. The context bar reads the website and the period from the
+ * page URL, the reader's saved ones standing in for what it leaves out: a
+ * link followed from an analytics page carries the page's own through
+ * {@link linkInContext}, or it would open on whatever another tab saved last.
  */
+
+import { PERIOD_SCOPE } from '../constants'
 
 const MODULE_BASE = '/modules/marketing'
 
@@ -23,8 +27,9 @@ function withQuery(
   return suffix ? `${base}?${suffix}` : base
 }
 
-export function overviewLink(): string {
-  return `${MODULE_BASE}/overview`
+/** The overview, on `website` when given. */
+export function overviewLink(website?: string | null): string {
+  return withQuery(`${MODULE_BASE}/overview`, { website })
 }
 
 /** Pages & heatmaps, optionally on a given path. */
@@ -50,6 +55,8 @@ interface BuilderOptions {
   split?: boolean
   /** Prefill the steps of a new funnel (a template). */
   steps?: { kind: 'url' | 'custom'; value: string }[]
+  /** Start a new funnel as a copy of this one (Duplicate). */
+  copy?: string
 }
 
 /** The builder: a new funnel, or the one `id` names. */
@@ -61,6 +68,7 @@ export function funnelBuilderLink(
     id,
     split: options.split ? '1' : null,
     steps: options.steps ? JSON.stringify(options.steps) : null,
+    copy: options.copy,
   })
 }
 
@@ -75,4 +83,35 @@ export function installLink(website?: string | null): string {
 
 export function settingsLink(): string {
   return `${MODULE_BASE}/settings`
+}
+
+/**
+ * What an analytics page keeps in its URL: the context bar's website and its
+ * period selector's keys (see the DMS `periodQueryKeys`).
+ */
+const CONTEXT_KEYS = [
+  'website',
+  ...['period', 'compare', 'from', 'to', 'compareFrom', 'compareTo'].map(
+    (key) => `${PERIOD_SCOPE}.${key}`,
+  ),
+]
+
+/**
+ * `link` with the website and the period of the page it is followed from
+ * (`query`, that page's route query); what the link names itself wins.
+ */
+export function linkInContext(
+  link: string,
+  query: Record<string, unknown>,
+): string {
+  const [path, search = ''] = link.split('?')
+  const params = new URLSearchParams(search)
+  for (const key of CONTEXT_KEYS) {
+    const value = query[key]
+    if (typeof value === 'string' && value && !params.has(key)) {
+      params.set(key, value)
+    }
+  }
+  const suffix = params.toString()
+  return suffix ? `${path}?${suffix}` : path!
 }

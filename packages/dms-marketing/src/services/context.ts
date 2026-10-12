@@ -2,7 +2,11 @@ import { HTTPResult, type RequestContext } from "@antelopejs/interface-api";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
-import { MarketingPreferencesModel, MarketingSessionsModel } from "@/db";
+import {
+  MarketingPreferencesModel,
+  MarketingSessionsModel,
+  WebsitesModel,
+} from "@/db";
 import type { Website } from "@/db/tables/websites.table";
 import { HTTP_NOT_FOUND } from "@/types/constants";
 import { queryString } from "./query-param";
@@ -72,9 +76,10 @@ async function preferredWebsiteId(
 }
 
 /**
- * The website a read without a `website` parameter is about: the caller's
- * last pick while it still belongs to the tenant, else the most recently
- * active site. 404 while the tenant has none.
+ * The website a read is about: the `website` parameter, which the analytics
+ * pages always send, else the caller's last pick while it still belongs to
+ * the tenant, else the most recently active site. 404 while the tenant has
+ * none.
  */
 export async function resolveContextWebsite(
   context: RequestContext,
@@ -86,14 +91,18 @@ export async function resolveContextWebsite(
     return requireTenantWebsite(context, wanted);
   }
   const tenantId = getRequestTenantId(context);
-  const websites = await listTenantWebsites(tenantId);
   const preferred = await preferredWebsiteId(tenantId, user);
-  const resolved =
-    websites.find((site) => site._id === preferred) ?? websites[0];
-  if (!resolved) {
+  const saved = preferred
+    ? await GetModel(WebsitesModel).get(preferred)
+    : undefined;
+  if (saved?.tenantId === tenantId) {
+    return saved;
+  }
+  const [mostActive] = await listTenantWebsites(tenantId);
+  if (!mostActive) {
     throw new HTTPResult(HTTP_NOT_FOUND, NO_WEBSITE_MESSAGE);
   }
-  return resolved;
+  return mostActive;
 }
 
 export async function loadMarketingContext(
@@ -101,8 +110,12 @@ export async function loadMarketingContext(
   user: User,
 ): Promise<MarketingContextPayload> {
   const tenantId = getRequestTenantId(context);
-  const websites = await listTenantWebsites(tenantId);
-  const activity = await loadWebsiteActivity(tenantId, websites);
+  const all = await GetModel(WebsitesModel).getByTenant(tenantId);
+  const activity = await loadWebsiteActivity(tenantId, all);
+  // listTenantWebsites' order, without reading the activity a second time.
+  const websites = [...all].sort(
+    (a, b) => (activity.get(b._id) ?? 0) - (activity.get(a._id) ?? 0),
+  );
   const preferred = await preferredWebsiteId(tenantId, user);
   const selected =
     websites.find((site) => site._id === preferred) ?? websites[0];

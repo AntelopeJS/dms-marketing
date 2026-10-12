@@ -8,3 +8,13 @@
  */
 
 export const MS_PER_DAY = 86_400_000
+
+/** Longest period the routes read (MAX_QUERY_PERIOD_DAYS on the server). */
+export const MAX_PERIOD_DAYS = 90
+
+/**
+ * The id of the context bar's period selector: the scope the analytics blocks
+ * bind to and the prefix of its keys in the page URL (`?marketing.period=`).
+ * MARKETING_PERIOD_SCOPE on the server.
+ */
+export const PERIOD_SCOPE = 'marketing'

@@ -21,9 +21,9 @@ const contextSelectionSchema = z.object({
 
 /**
  * The context bar's two calls: the tenant's websites with their live state and
- * the caller's selection, and the selection change. The bar writes the
- * selection before it republishes its period scope, so the blocks refetch
- * against the website just picked.
+ * the caller's saved website, and its change. The saved website is only the
+ * default of a page opened without `?website`: the bar saves it on a pick,
+ * the blocks read the website the page URL names.
  */
 export class MarketingContextController extends Controller(
   `${API_BASE_PATH}/context`,

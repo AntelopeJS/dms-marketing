@@ -18,20 +18,23 @@ opens on the same bar, and every block of the page reads what it picks:
 - **Website** — the switcher lists the workspace's sites with their state:
   *Live · last event …* once a pageview has arrived, *Waiting for the first
   event* before that, *Tracking paused for this website* when the site's own
-  switch is off. The pick is stored server-side per member, so it follows
-  you across pages and devices. Until you pick one, the most recently active
-  site is shown.
-- **Period** — Today, 7D, 30D or 90D; 30 days by default.
-  `MAX_QUERY_PERIOD_DAYS` (90) bounds every window.
+  switch is off. The pick is also stored server-side per member, as the
+  site of the pages opened without one. Until you pick one, the most
+  recently active site is shown.
+- **Period** — Today, 7D, 30D, 90D or a custom range picked in a calendar;
+  30 days by default. `MAX_QUERY_PERIOD_DAYS` (90) bounds every window: a
+  longer range is cut at its start. Statistics are counted per UTC day; the
+  *UTC* hint says when your days start.
 - **Comparison** — the previous period (default), the same period a year
   earlier, or none. The bar shows the resolved ranges of both.
 - **Refresh** — refetches every block of the page.
 
 The website, period and comparison are in the page URL
 (`?website=…&marketing.period=…&marketing.compare=…`), so a copied link opens
-on the same view; the period and comparison also follow you between the
-module's pages, as the DMS keeps your last choice. While the workspace has no website, a first-run screen with **Add a
-website** replaces the page's blocks.
+on the same view and each tab keeps its own. Links between the module's
+pages carry them; a page opened from the sidebar starts from your last
+choice on it. While the workspace has no website, a first-run screen with
+**Add a website** replaces the page's blocks.
 
 ## What it shows
 
