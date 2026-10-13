@@ -22,7 +22,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/dms",
-        version: ">=0.7.14 <1.0.0",
+        version: ">=0.7.16 <1.0.0",
       },
       config: {
         auth: { jwtSecret: JWT_SECRET },

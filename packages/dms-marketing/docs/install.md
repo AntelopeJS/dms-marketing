@@ -12,8 +12,8 @@ tag). A third section covers running the module's own development playground.
 
 ### Requirements
 
-- An AntelopeJS project running the DMS (`@antelopejs/dms` >=0.7.14 <1.0.0,
-  which implements `@antelopejs/interface-dms` 0.5.9) on `@antelopejs/core`
+- An AntelopeJS project running the DMS (`@antelopejs/dms` >=0.7.16 <1.0.0,
+  which implements `@antelopejs/interface-dms` 0.5.11) on `@antelopejs/core`
   >=1.13.5, with its usual companions: `@antelopejs/mongodb` ^1.4.2 (earlier
   releases rewrite a stored string starting with `$`, and every i18n key the
   module persists starts with one), `@antelopejs/api` >=1.3.4 (earlier
