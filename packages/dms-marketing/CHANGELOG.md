@@ -1,6 +1,35 @@
 # Changelog
 
 
+## v0.4.0
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.3.3...v0.4.0)
+
+### 🚀 Enhancements
+
+- **dms-marketing:** ⚠️  Port the module to dms 0.6 and the v2 design ([#31](https://github.com/AntelopeJS/dms-marketing/pull/31))
+
+### 🩹 Fixes
+
+- **funnels:** Keep the stored experiment when an edit omits it ([#30](https://github.com/AntelopeJS/dms-marketing/pull/30))
+
+### 🏡 Chore
+
+- **playground:** Open module source ranges ([#27](https://github.com/AntelopeJS/dms-marketing/pull/27))
+- **release:** @antelopejs/interface-dms-marketing v0.4.0 ([c9d5617](https://github.com/AntelopeJS/dms-marketing/commit/c9d5617))
+
+### 🤖 CI
+
+- Run on Node 24 from .nvmrc like the other DMS repositories ([#28](https://github.com/AntelopeJS/dms-marketing/pull/28))
+
+#### ⚠️ Breaking Changes
+
+- **dms-marketing:** ⚠️  Port the module to dms 0.6 and the v2 design ([#31](https://github.com/AntelopeJS/dms-marketing/pull/31))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.3.3
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.3.2...v0.3.3)
