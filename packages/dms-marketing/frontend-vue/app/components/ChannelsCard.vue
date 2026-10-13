@@ -88,17 +88,13 @@ function scrollToCampaigns(): void {
 }
 
 /**
- * The campaigns table reads the tab the URL names only when it mounts: the
- * page is mounted again on the new URL, where it stays shareable.
+ * The campaigns table follows the tab the URL names: the page stays mounted
+ * on the new URL, where the tab stays shareable.
  */
 function showCampaigns(channel: string): void {
   void router.push(
     { query: { ...route.query, [CAMPAIGNS_TAB_QUERY]: channel } },
-    {
-      preserveState: false,
-      preserveScroll: true,
-      onSuccess: () => requestAnimationFrame(scrollToCampaigns),
-    },
+    { onSuccess: () => requestAnimationFrame(scrollToCampaigns) },
   )
 }
 </script>
