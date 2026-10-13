@@ -12,11 +12,12 @@ tag). A third section covers running the module's own development playground.
 
 ### Requirements
 
-- An AntelopeJS project running the DMS (`@antelopejs/dms` >=0.7.8 <1.0.0,
-  which implements `@antelopejs/interface-dms` 0.5.4) on `@antelopejs/core`
+- An AntelopeJS project running the DMS (`@antelopejs/dms` >=0.7.14 <1.0.0,
+  which implements `@antelopejs/interface-dms` 0.5.9) on `@antelopejs/core`
   >=1.13.5, with its usual companions: `@antelopejs/mongodb` ^1.4.2 (earlier
   releases rewrite a stored string starting with `$`, and every i18n key the
-  module persists starts with one), `@antelopejs/api`, `@antelopejs/auth-jwt`.
+  module persists starts with one), `@antelopejs/api` >=1.3.4 (earlier
+  releases answer a malformed JSON body with a 500), `@antelopejs/auth-jwt`.
 - The DMS console built with `@antelopejs/dms-frontend` >=0.5.2 <0.6.0 —
   the range the frontend module declares in its `engines`.
 - MongoDB — analytics data lives in the project's existing database

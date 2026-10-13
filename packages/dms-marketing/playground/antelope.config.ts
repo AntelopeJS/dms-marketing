@@ -26,7 +26,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/dms",
-        version: ">=0.7.8 <1.0.0",
+        version: ">=0.7.14 <1.0.0",
       },
       config: {
         homepage: "/modules/marketing/overview",
@@ -92,7 +92,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/api",
-        version: "^1.3.1",
+        version: "^1.3.4",
       },
       config: {
         servers: [
