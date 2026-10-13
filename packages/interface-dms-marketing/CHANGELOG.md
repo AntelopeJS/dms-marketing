@@ -1,6 +1,44 @@
 # Changelog
 
 
+## v0.4.0
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.3.1...v0.4.0)
+
+### 🚀 Enhancements
+
+- **frontend-vue:** Declare the @antelopejs/dms-frontend releases the layer supports ([#22](https://github.com/AntelopeJS/dms-marketing/pull/22))
+- **dms-marketing:** ⚠️  Port the module to dms 0.6 and the v2 design ([#31](https://github.com/AntelopeJS/dms-marketing/pull/31))
+
+### 🩹 Fixes
+
+- **playground:** Build the interface package before the module ([#20](https://github.com/AntelopeJS/dms-marketing/pull/20))
+- **db:** Make the marketing settings singleton deterministic and index last-activity lookup ([#21](https://github.com/AntelopeJS/dms-marketing/pull/21))
+- **deps:** Cap @antelopejs/interface-dms-marketing below the next minor and check interface ranges ([#26](https://github.com/AntelopeJS/dms-marketing/pull/26))
+- **funnels:** Keep the stored experiment when an edit omits it ([#30](https://github.com/AntelopeJS/dms-marketing/pull/30))
+
+### 🏡 Chore
+
+- **release:** @antelopejs/dms-marketing v0.3.0 ([0115ba8](https://github.com/AntelopeJS/dms-marketing/commit/0115ba8))
+- **release:** @antelopejs/dms-marketing v0.3.1 ([4af82d5](https://github.com/AntelopeJS/dms-marketing/commit/4af82d5))
+- **release:** @antelopejs/dms-marketing v0.3.2 ([78cdbe0](https://github.com/AntelopeJS/dms-marketing/commit/78cdbe0))
+- **test:** Run the harness on @antelopejs/mongodb 1.4.0 ([#25](https://github.com/AntelopeJS/dms-marketing/pull/25))
+- **release:** @antelopejs/dms-marketing v0.3.3 ([90d5641](https://github.com/AntelopeJS/dms-marketing/commit/90d5641))
+- **playground:** Open module source ranges ([#27](https://github.com/AntelopeJS/dms-marketing/pull/27))
+
+### 🤖 CI
+
+- Run on Node 24 from .nvmrc like the other DMS repositories ([#28](https://github.com/AntelopeJS/dms-marketing/pull/28))
+
+#### ⚠️ Breaking Changes
+
+- **dms-marketing:** ⚠️  Port the module to dms 0.6 and the v2 design ([#31](https://github.com/AntelopeJS/dms-marketing/pull/31))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Alessandro Aloisio ([@alessaloisio](http://github.com/alessaloisio))
+
 ## v0.3.1
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.3.0...v0.3.1)
