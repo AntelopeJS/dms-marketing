@@ -258,6 +258,8 @@ async function resetSite(): Promise<void> {
           })
         : t('page.marketing.pages.reset.confirm'),
     confirmText: site.domain,
+    // A hostname is not case-sensitive: neither is the typed check.
+    confirmTextCaseInsensitive: true,
     impact: heatmapResetImpact(counts, t, locale.value),
     onConfirm: async () => {
       const deleted = await api.resetHeatmap(site._id)

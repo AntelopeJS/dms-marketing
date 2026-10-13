@@ -31,6 +31,7 @@ import {
 } from "@/services/funnel-report";
 import {
   type FunnelCoverage,
+  funnelDeleteConfirmation,
   funnelTablePayload,
   winnerBanner,
 } from "@/services/funnels-table";
@@ -52,7 +53,6 @@ import {
 import { parseFunnelSteps } from "@/utils/funnel-steps-type";
 
 const INVALID_STEPS_MESSAGE = "$page.marketing.errors.invalid_steps";
-const DELETE_PREFIX = "$page.marketing.funnel.delete.";
 /**
  * Days the builder reads its suggestions and preview over: it has no period
  * of its own.
@@ -222,8 +222,8 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
   }
 
   /**
-   * The list's delete confirmation, worded for the row: a running test says
-   * it stops serving variations, and the name must be typed.
+   * The delete confirmation of the list's rows and of the funnel's page
+   * (`funnelDeleteConfirmation`).
    */
   @Get("/:id/delete-confirmation")
   async deleteConfirmation(
@@ -231,20 +231,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
     @Parameter("id") id: string,
     @Context() context: RequestContext,
   ): Promise<ConfirmDialog> {
-    const funnel = await requireTenantFunnel(context, id);
-    const running = funnel.experiment?.status === "running";
-    return {
-      title: `${DELETE_PREFIX}title`,
-      description: `${DELETE_PREFIX}${running ? "description_running" : "description"}`,
-      params: { name: funnel.name, key: funnel.experiment?.key ?? "" },
-      color: "error",
-      icon: "i-ph-trash",
-      confirmLabel: `${DELETE_PREFIX}confirm`,
-      confirmText: funnel.name,
-      impact: running
-        ? [{ icon: "i-ph-stop", label: `${DELETE_PREFIX}impact_running` }]
-        : undefined,
-    };
+    return funnelDeleteConfirmation(await requireTenantFunnel(context, id));
   }
 
   @Get("/:id/results")

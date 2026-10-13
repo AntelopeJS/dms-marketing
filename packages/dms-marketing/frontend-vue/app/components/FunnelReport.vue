@@ -44,6 +44,7 @@ const api = useMarketingApi()
 const context = useMarketingContext()
 const toast = useToast()
 const { confirm } = useConfirm()
+const { confirmFrom } = useConfirmFrom()
 
 const funnelId = computed(() => {
   const id = route.query.id
@@ -320,33 +321,17 @@ async function resume(): Promise<void> {
   })
 }
 
+/** Worded by the server, as the funnels table's own Delete. */
+const DELETE_CONFIRMATION_URL =
+  '/api/marketing/funnels/{id}/delete-confirmation'
+
 async function remove(): Promise<void> {
   const shown = funnel.value
   if (!shown) {
     return
   }
-  const running = status.value === 'running'
-  await confirm({
-    title: t('page.marketing.funnel.delete.title', { name: shown.name }),
-    description: t(
-      running
-        ? 'page.marketing.funnel.delete.description_running'
-        : 'page.marketing.funnel.delete.description',
-    ),
-    color: 'error',
-    icon: 'i-ph-trash',
-    confirmLabel: t('page.marketing.funnel.delete.confirm'),
-    confirmText: shown.name,
-    impact: running
-      ? [
-          {
-            icon: 'i-ph-stop',
-            label: t('page.marketing.funnel.delete.impact_running', {
-              key: experiment.value?.key ?? '',
-            }),
-          },
-        ]
-      : undefined,
+  await confirmFrom(DELETE_CONFIRMATION_URL, {
+    params: { id: shown._id },
     onConfirm: async () => {
       await api.deleteFunnel(shown._id)
       toast.add({

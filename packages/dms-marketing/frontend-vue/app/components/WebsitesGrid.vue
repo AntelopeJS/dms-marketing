@@ -273,8 +273,9 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
     color: 'error',
     icon: 'i-ph-trash',
     confirmLabel: t('page.marketing.websites.delete.confirm'),
-    // Stored lowercase: a hostname is not case-sensitive, the typed check is.
-    confirmText: card.domain.toLowerCase(),
+    // A hostname is not case-sensitive: neither is the typed check.
+    confirmText: card.domain,
+    confirmTextCaseInsensitive: true,
     impact: [
       {
         icon: 'i-ph-users',

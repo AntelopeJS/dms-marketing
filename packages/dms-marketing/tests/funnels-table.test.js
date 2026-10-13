@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const test = it;
 const {
+  funnelDeleteConfirmation,
   funnelTablePayload,
   winnerBanner,
 } = require("../dist/services/funnels-table");
@@ -148,4 +149,24 @@ test("days raw events miss come before the winner; a missing comparison after", 
   );
   assert.equal(winnerBanner([summary()], coverage(false, true)).tone, "info");
   assert.equal(winnerBanner([summary()], coverage(false, false)), null);
+});
+
+test("the delete confirmation asks for the name and warns about a running test", () => {
+  const plain = funnelDeleteConfirmation({ _id: "f1", name: "Checkout" });
+  assert.equal(plain.confirmText, "Checkout");
+  assert.equal(plain.description, "$page.marketing.funnel.delete.description");
+  assert.deepEqual(plain.params, { name: "Checkout", key: "" });
+  assert.equal(plain.impact, undefined);
+
+  const running = funnelDeleteConfirmation({
+    _id: "t1",
+    name: "Hero",
+    experiment: { key: "hero", status: "running" },
+  });
+  assert.equal(
+    running.description,
+    "$page.marketing.funnel.delete.description_running",
+  );
+  assert.equal(running.params.key, "hero");
+  assert.equal(running.impact.length, 1);
 });

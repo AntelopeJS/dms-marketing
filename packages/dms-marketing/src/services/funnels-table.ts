@@ -4,6 +4,8 @@ import type {
   DefaultDisplays,
 } from "@antelopejs/interface-dms/base/table-view/column-display";
 import type { ComposedText } from "@antelopejs/interface-dms/base/types/composed-text";
+import type { ConfirmDialog } from "@antelopejs/interface-dms/base/types/confirm-dialog";
+import type { Funnel } from "@/db/tables/funnels.table";
 import { MARKETING_MODULE_PATH } from "@/types/constants";
 import { deltaTone, percentText } from "./composed";
 import type { FunnelSummaryRow } from "./funnel-report";
@@ -12,6 +14,7 @@ const ROW_PREFIX = "$page.marketing.funnels.row.";
 const WINNER_PREFIX = "$page.marketing.funnels.winner.";
 const COVERAGE_PREFIX = "$page.marketing.funnels.coverage.";
 const COMPOSE_PREFIX = "$page.marketing.compose.";
+const DELETE_PREFIX = "$page.marketing.funnel.delete.";
 
 const LETTER_A = 65;
 
@@ -283,4 +286,25 @@ export function winnerBanner(
     return coverageBanner(coverage);
   }
   return winnerOf(rows) ?? (coverage ? coverageBanner(coverage) : null);
+}
+
+/**
+ * The delete confirmation of a funnel, the same from its row in the list and
+ * from its own page: a running test says it stops serving variations, and
+ * the name must be typed.
+ */
+export function funnelDeleteConfirmation(funnel: Funnel): ConfirmDialog {
+  const running = funnel.experiment?.status === "running";
+  return {
+    title: `${DELETE_PREFIX}title`,
+    description: `${DELETE_PREFIX}${running ? "description_running" : "description"}`,
+    params: { name: funnel.name, key: funnel.experiment?.key ?? "" },
+    color: "error",
+    icon: "i-ph-trash",
+    confirmLabel: `${DELETE_PREFIX}confirm`,
+    confirmText: funnel.name,
+    impact: running
+      ? [{ icon: "i-ph-stop", label: `${DELETE_PREFIX}impact_running` }]
+      : undefined,
+  };
 }
