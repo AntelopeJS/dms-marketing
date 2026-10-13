@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '#dms/frontend-module'
+import { MAX_EXPERIMENT_KEY_LENGTH } from '../utils/funnel-draft'
 import {
   parseExperimentVariationsValue,
   type ExperimentVariationDraft,
 } from '../composables/useExperiment'
+import { fractionDigits } from '../constants'
 
 /**
  * The arms of an experiment, inside DmsMarketingExperimentInput: a list of
@@ -25,7 +27,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: ExperimentVariationDraft[]]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 function emptyVariation(): ExperimentVariationDraft {
   return { key: '', weight: DEFAULT_WEIGHT }
@@ -36,7 +38,7 @@ function parseValue(
 ): ExperimentVariationDraft[] {
   // Copies, not references: the drafts are mutated by the inputs below and
   // must never write through to the prop value.
-  const variations = parseExperimentVariationsValue(raw).map(variation => ({
+  const variations = parseExperimentVariationsValue(raw).map((variation) => ({
     ...variation,
   }))
   while (variations.length < MIN_VARIATIONS) {
@@ -57,8 +59,9 @@ const totalWeight = computed(() =>
 )
 
 function sharePercent(variation: ExperimentVariationDraft): number {
+  // No weight above 0 serves nobody: the save refuses it, the bars say so.
   if (totalWeight.value <= 0) {
-    return Math.round(100 / variations.value.length)
+    return 0
   }
   return Math.round(
     (Math.max(variation.weight || 0, 0) / totalWeight.value) * 100,
@@ -70,7 +73,7 @@ function sharePercent(variation: ExperimentVariationDraft): number {
 function onEdit(): void {
   emit(
     'update:modelValue',
-    variations.value.map(variation => ({
+    variations.value.map((variation) => ({
       key: variation.key,
       weight: variation.weight,
     })),
@@ -123,6 +126,7 @@ watch(
       <UInput
         v-model="variation.key"
         :placeholder="t('page.marketing.funnels.form.variation_key')"
+        :maxlength="MAX_EXPERIMENT_KEY_LENGTH"
         :disabled="props.disabled"
         class="flex-1 font-mono"
         size="sm"
@@ -138,7 +142,13 @@ watch(
         @update:model-value="onEdit"
       />
       <span class="w-10 shrink-0 text-right text-xs text-muted">
-        {{ sharePercent(variation) }}%
+        {{
+          formatPercentage(
+            sharePercent(variation) / 100,
+            locale,
+            fractionDigits(0),
+          )
+        }}
       </span>
       <UButton
         v-if="!props.disabled"

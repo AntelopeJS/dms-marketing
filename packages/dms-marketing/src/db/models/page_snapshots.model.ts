@@ -17,8 +17,9 @@ export class PageSnapshotsModel extends BasicDataModel(
       .run();
   }
 
-  async countByWebsite(websiteId: string): Promise<number> {
-    return this.table.getAll([websiteId], "websiteId").count().run();
+  /** Captures of one site, or of one path when `url` is given. */
+  async countByWebsite(websiteId: string, url?: string): Promise<number> {
+    return this.byWebsite(websiteId, url).count().run();
   }
 
   async upsert(row: PageSnapshot): Promise<void> {
@@ -26,14 +27,16 @@ export class PageSnapshotsModel extends BasicDataModel(
   }
 
   async deleteByWebsite(websiteId: string, url?: string): Promise<number> {
-    let q = this.table.getAll([websiteId], "websiteId");
-    if (url) {
-      q = q.filter((doc) => doc.key("url").eq(url));
-    }
-    return q.delete().run();
+    return this.byWebsite(websiteId, url).delete().run();
   }
 
   async deleteOlderThan(cutoff: Date): Promise<number> {
     return deleteExpiredRows(this.table, "capturedAt", cutoff);
+  }
+
+  /** One query for count and delete, so the two agree. */
+  private byWebsite(websiteId: string, url?: string) {
+    const rows = this.table.getAll([websiteId], "websiteId");
+    return url ? rows.filter((doc) => doc.key("url").eq(url)) : rows;
   }
 }

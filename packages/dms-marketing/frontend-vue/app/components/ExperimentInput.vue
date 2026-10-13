@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { useI18n } from '#dms/frontend-module'
+import { MAX_EXPERIMENT_KEY_LENGTH } from '../utils/funnel-draft'
 import {
   parseExperimentValue,
   type ExperimentDraft,
@@ -57,7 +58,7 @@ function currentValue(): ExperimentDraft | null {
   }
   return {
     ...draft.value,
-    variations: draft.value.variations.map(variation => ({ ...variation })),
+    variations: draft.value.variations.map((variation) => ({ ...variation })),
   }
 }
 
@@ -98,6 +99,7 @@ watch(
         <UInput
           v-model="draft.key"
           :placeholder="t('page.marketing.funnels.form.key')"
+          :maxlength="MAX_EXPERIMENT_KEY_LENGTH"
           :disabled="inputsDisabled"
           class="font-mono"
           size="sm"

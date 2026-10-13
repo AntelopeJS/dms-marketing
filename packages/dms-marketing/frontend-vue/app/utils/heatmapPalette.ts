@@ -39,3 +39,13 @@ export function heatColorAt(fraction: number, alpha: number): string {
     Math.round(low[1][index]! + (high[1][index]! - low[1][index]!) * mix)
   return heatRgba([channel(0), channel(1), channel(2)], alpha)
 }
+
+/** The ramp as a CSS gradient, for a legend that matches what is drawn:
+ * `reversed` runs it from hot to cold. */
+export function heatLegendGradient(reversed = false): string {
+  const stops = HEAT_STOPS.map(([stop, rgb]) => {
+    const at = reversed ? 1 - stop : stop
+    return `${heatRgba(rgb, 1)} ${Math.round(at * 100)}%`
+  })
+  return `linear-gradient(to right, ${(reversed ? stops.reverse() : stops).join(', ')})`
+}

@@ -10,6 +10,11 @@ export interface SessionInput {
   websiteId: string;
   visitorId: string;
   now: Date;
+  /** First event of the batch: when a session it opens started. */
+  startedAt: Date;
+  /** False for a batch without a pageview: it joins the visitor's last
+   * session, expired or not, and never opens one (see `extendsSession`). */
+  opensSession: boolean;
   sessionIdleTimeoutMs: number;
   entryUrl: string;
   referrerDomain?: string;
@@ -25,6 +30,10 @@ export interface SessionResolution {
   session: MarketingSession;
   isNewSession: boolean;
   isNewVisitor: boolean;
+  /** False when a batch without a pageview joined a session already past
+   * the idle timeout: its events are kept, but the session must not move its
+   * `lastSeenAt` — that would revive it for the next pageview. */
+  extendsSession: boolean;
 }
 
 /**
@@ -52,9 +61,67 @@ function cacheSession(key: string, session: MarketingSession): void {
   setBounded(sessionCache, key, session, SESSION_CACHE_MAX_ENTRIES);
 }
 
-function isFresh(session: MarketingSession, input: SessionInput): boolean {
-  const elapsed = input.now.getTime() - session.lastSeenAt.getTime();
-  return elapsed < input.sessionIdleTimeoutMs;
+function isFresh(
+  session: MarketingSession,
+  now: Date,
+  idleTimeoutMs: number,
+): boolean {
+  return now.getTime() - session.lastSeenAt.getTime() < idleTimeoutMs;
+}
+
+const ACQUISITION_FIELDS = [
+  ["utmSource", "source"],
+  ["utmMedium", "medium"],
+  ["utmCampaign", "campaign"],
+  ["utmTerm", "term"],
+  ["utmContent", "content"],
+] as const;
+
+/**
+ * A campaign landing (UTM parameters or an ad click id) that differs from the
+ * one the session holds starts a visit of its own, as in Google Analytics:
+ * the session's acquisition is fixed at its start, so joining would lose the
+ * campaign entirely. A landing without campaign parameters — an internal
+ * link, a reload of a clean URL — never splits a session.
+ */
+function startsNewCampaign(
+  session: MarketingSession,
+  input: SessionInput,
+): boolean {
+  const hasCampaign =
+    input.clickIdParam !== undefined ||
+    ACQUISITION_FIELDS.some(([, field]) => input.utm[field] !== undefined);
+  // Rows read back carry null where the insert had undefined.
+  return (
+    hasCampaign &&
+    ((session.clickIdParam ?? undefined) !== input.clickIdParam ||
+      ACQUISITION_FIELDS.some(
+        ([column, field]) =>
+          (session[column] ?? undefined) !== input.utm[field],
+      ))
+  );
+}
+
+function joins(session: MarketingSession, input: SessionInput): boolean {
+  if (!input.opensSession) {
+    return true;
+  }
+  return (
+    isFresh(session, input.now, input.sessionIdleTimeoutMs) &&
+    !startsNewCampaign(session, input)
+  );
+}
+
+function joined(
+  session: MarketingSession,
+  input: SessionInput,
+): SessionResolution {
+  return {
+    session,
+    isNewSession: false,
+    isNewVisitor: false,
+    extendsSession: isFresh(session, input.now, input.sessionIdleTimeoutMs),
+  };
 }
 
 function cachedResolution(
@@ -62,16 +129,17 @@ function cachedResolution(
   input: SessionInput,
 ): SessionResolution | undefined {
   const cached = sessionCache.get(key);
-  if (!cached || !isFresh(cached, input)) {
+  if (!cached || !joins(cached, input)) {
     return undefined;
   }
-  return { session: cached, isNewSession: false, isNewVisitor: false };
+  return joined(cached, input);
 }
 
+/** Undefined only for a batch that may not open a session and finds none. */
 export async function resolveSession(
   model: MarketingSessionsModel,
   input: SessionInput,
-): Promise<SessionResolution> {
+): Promise<SessionResolution | undefined> {
   const key = cacheKey(input.websiteId, input.visitorId);
   const cached = cachedResolution(key, input);
   if (cached) {
@@ -84,7 +152,7 @@ async function resolveUncached(
   model: MarketingSessionsModel,
   input: SessionInput,
   key: string,
-): Promise<SessionResolution> {
+): Promise<SessionResolution | undefined> {
   const cached = cachedResolution(key, input);
   if (cached) {
     return cached;
@@ -94,14 +162,22 @@ async function resolveUncached(
     input.websiteId,
     input.visitorId,
   );
-  if (latest && isFresh(latest, input)) {
+  if (latest && joins(latest, input)) {
     cacheSession(key, latest);
-    return { session: latest, isNewSession: false, isNewVisitor: false };
+    return joined(latest, input);
+  }
+  if (!input.opensSession) {
+    return undefined;
   }
 
   const session = await createSession(model, input, latest === undefined);
   cacheSession(key, session);
-  return { session, isNewSession: true, isNewVisitor: latest === undefined };
+  return {
+    session,
+    isNewSession: true,
+    isNewVisitor: latest === undefined,
+    extendsSession: true,
+  };
 }
 
 async function createSession(
@@ -113,8 +189,8 @@ async function createSession(
     _id: randomUUID(),
     websiteId: input.websiteId,
     visitorId: input.visitorId,
-    startedAt: input.now,
-    lastSeenAt: input.now,
+    startedAt: input.startedAt,
+    lastSeenAt: input.startedAt,
     isNewVisitor,
     entryUrl: input.entryUrl,
     exitUrl: input.entryUrl,
@@ -136,4 +212,21 @@ async function createSession(
   } as MarketingSession;
   await model.insert(session);
   return session;
+}
+
+/**
+ * The visitor's session still open on `now`, or undefined: what a snapshot
+ * upload checks its page against. Cache first, then the database.
+ */
+export async function findOpenSession(
+  model: MarketingSessionsModel,
+  websiteId: string,
+  visitorId: string,
+  now: Date,
+  idleTimeoutMs: number,
+): Promise<MarketingSession | undefined> {
+  const session =
+    sessionCache.get(cacheKey(websiteId, visitorId)) ??
+    (await model.findLatestForVisitor(websiteId, visitorId));
+  return session && isFresh(session, now, idleTimeoutMs) ? session : undefined;
 }

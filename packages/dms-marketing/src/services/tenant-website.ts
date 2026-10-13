@@ -2,6 +2,7 @@ import { HTTPResult, type RequestContext } from "@antelopejs/interface-api";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import {
+  FunnelsModel,
   MarketingEventsModel,
   MarketingSessionsModel,
   WebsiteStatisticsModel,
@@ -33,9 +34,9 @@ export async function requireTenantWebsite(
 /**
  * Tracking data dies with its site: the retention prune enumerates tenants
  * through the websites table, so rows left behind by a deleted site — of a
- * tenant whose LAST site it was — would outlive every retention pass.
- * Definitions (funnels, experiments) are owner-authored and not
- * retention-bound; they stay.
+ * tenant whose LAST site it was — would outlive every retention pass. Its
+ * funnels (and their A/B tests) go too: they are read through their site,
+ * so nothing could list, compute or delete them afterwards.
  */
 export async function purgeWebsiteTrackingData(
   tenantId: string,
@@ -45,6 +46,7 @@ export async function purgeWebsiteTrackingData(
   await GetModel(MarketingSessionsModel, tenantId).deleteByWebsite(websiteId);
   await GetModel(WebsiteStatisticsModel, tenantId).deleteByWebsite(websiteId);
   await deleteSnapshots(tenantId, websiteId);
+  await GetModel(FunnelsModel, tenantId).deleteByWebsite(websiteId);
 }
 
 /**

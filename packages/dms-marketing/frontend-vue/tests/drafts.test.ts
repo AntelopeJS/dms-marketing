@@ -33,9 +33,9 @@ describe('parseExperimentValue', () => {
   })
 
   it('reads a value carrying no runs as a split that served no traffic', () => {
-    expect(
-      parseExperimentValue({ key: 'cta', variations: [] })?.runs,
-    ).toEqual([])
+    expect(parseExperimentValue({ key: 'cta', variations: [] })?.runs).toEqual(
+      [],
+    )
   })
 
   it('answers null on anything else', () => {

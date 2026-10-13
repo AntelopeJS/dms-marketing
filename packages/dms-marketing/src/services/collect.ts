@@ -14,12 +14,14 @@ import {
   type MarketingStatsDelta,
   type TopDimension,
   type TrackedEventInput,
+  trackedEventSchema,
 } from "@/types";
 import {
-  MAX_EVENT_DATA_BYTES,
   MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS,
+  MS_PER_MINUTE,
 } from "@/types/constants";
 import { campaignKey, resolveChannel } from "./acquisition";
+import { BoundedCache } from "./bounded-cache";
 import { runningExperimentKeys } from "./experiment-definitions";
 import { lookupCountry } from "./geoip";
 import { addDailyMarketingStats, getUtcMidnight } from "./rollup-write";
@@ -45,7 +47,7 @@ export interface CollectOutcome {
 }
 
 const EXPOSURE_KIND = "exposure";
-const NAME_REQUIRED_KINDS = new Set<string>(["custom", EXPOSURE_KIND]);
+const PAGEVIEW_KIND = "pageview";
 
 interface PreparedEvent {
   input: TrackedEventInput;
@@ -67,14 +69,17 @@ interface BatchContext {
  */
 export async function processCollectBatch(
   website: Website,
-  events: TrackedEventInput[],
+  events: unknown[],
   meta: CollectRequestMeta,
 ): Promise<CollectOutcome> {
   const now = new Date();
-  const prepared = await acceptExposures(website, prepareEvents(events));
-  const dropped = events.length - prepared.length;
+  const prepared = await acceptExposures(
+    website,
+    prepareEvents(website._id, events),
+  );
+  const refused = { accepted: 0, dropped: events.length };
   if (prepared.length === 0) {
-    return { accepted: 0, dropped };
+    return refused;
   }
 
   const context: BatchContext = {
@@ -90,23 +95,55 @@ export async function processCollectBatch(
     ownHostnames: collectOwnHostnames(website, prepared),
   };
 
-  const resolution = await openSession(context, prepared[0], meta);
+  const resolution = await openSession(context, prepared, meta);
+  if (!resolution) {
+    return refused;
+  }
   const docs = prepared.map((event) =>
     buildEventDoc(context, resolution.session, event),
   );
 
   await GetModel(MarketingEventsModel, website.tenantId).insertMany(docs);
   const previous = snapshotSession(resolution.session);
-  await touchSession(context, resolution.session, docs);
+  await touchSession(context, resolution, docs);
 
   recordRollup(context, resolution, docs, previous);
-  return { accepted: docs.length, dropped };
+  return { accepted: docs.length, dropped: events.length - docs.length };
 }
 
-function prepareEvents(events: TrackedEventInput[]): PreparedEvent[] {
-  return events
-    .filter(isAcceptable)
-    .map((input) => ({ input, url: parseTrackedUrl(input.url) }));
+/** One warning per website per minute: enough to notice a page sending a
+ * malformed event on every load, never a log flood. */
+const invalidEventLogGate = new BoundedCache<true>(MS_PER_MINUTE);
+
+/**
+ * Each event stands or falls alone: an over-long name or a malformed click
+ * drops that event (counted in `dropped`), never the pageview batched with it.
+ */
+function prepareEvents(websiteId: string, events: unknown[]): PreparedEvent[] {
+  const prepared: PreparedEvent[] = [];
+  for (const event of events) {
+    const parsed = trackedEventSchema.safeParse(event);
+    if (parsed.success) {
+      const input = parsed.data;
+      prepared.push({ input, url: parseTrackedUrl(input.url) });
+    } else {
+      warnInvalidEvent(websiteId, parsed.error.issues[0]);
+    }
+  }
+  return prepared;
+}
+
+function warnInvalidEvent(
+  websiteId: string,
+  issue: { path: (string | number)[]; message: string } | undefined,
+): void {
+  if (invalidEventLogGate.get(websiteId)) {
+    return;
+  }
+  invalidEventLogGate.set(websiteId, true);
+  Logging.Warn(
+    `[dms-marketing] collect: dropping invalid events for website '${websiteId}' (${issue?.path.join(".") ?? "event"}: ${issue?.message ?? "invalid"}).`,
+  );
 }
 
 /**
@@ -128,17 +165,8 @@ async function acceptExposures(
   return events.filter(
     (event) =>
       event.input.kind !== EXPOSURE_KIND ||
-      // `isAcceptable` already dropped the nameless ones; no key is empty.
+      // The schema refuses a nameless exposure; no key is empty.
       running.has(event.input.name ?? ""),
-  );
-}
-
-function isAcceptable(event: TrackedEventInput): boolean {
-  if (NAME_REQUIRED_KINDS.has(event.kind) && !event.name) {
-    return false;
-  }
-  return (
-    !event.data || JSON.stringify(event.data).length <= MAX_EVENT_DATA_BYTES
   );
 }
 
@@ -157,17 +185,28 @@ function collectOwnHostnames(
   );
 }
 
+/**
+ * Only a pageview opens a session, and it is the batch's first pageview that
+ * describes the visit (entry page, campaign). A batch without one — a click
+ * or a scroll depth sent after half an hour on the same page — joins the
+ * visitor's last session, expired or not, and is dropped when there is none.
+ * Joining an expired session records the events without reopening it.
+ */
 async function openSession(
   context: BatchContext,
-  first: PreparedEvent,
+  prepared: PreparedEvent[],
   meta: CollectRequestMeta,
-): Promise<SessionResolution> {
+): Promise<SessionResolution | undefined> {
+  const pageview = prepared.find((event) => event.input.kind === PAGEVIEW_KIND);
+  const first = pageview ?? prepared[0];
   return resolveSession(
     GetModel(MarketingSessionsModel, context.website.tenantId),
     {
       websiteId: context.website._id,
       visitorId: context.visitorId,
       now: context.now,
+      startedAt: eventTimestamp(first.input, context.now),
+      opensSession: pageview !== undefined,
       sessionIdleTimeoutMs: getConfig().sessionIdleTimeout,
       entryUrl: first.url.path,
       referrerDomain: extractReferrerDomain(
@@ -236,25 +275,35 @@ function snapshotSession(session: MarketingSession): SessionSnapshot {
   };
 }
 
+/**
+ * An expired session joined by a batch without a pageview only counts the
+ * events: advancing `lastSeenAt` would let the next pageview join it instead
+ * of opening a new session, and such a batch never moves the exit page.
+ */
 async function touchSession(
   context: BatchContext,
-  session: MarketingSession,
+  resolution: SessionResolution,
   docs: MarketingEvent[],
 ): Promise<void> {
+  const { session, extendsSession } = resolution;
   const pageviews = docs.filter((doc) => doc.kind === "pageview");
-  const lastPageview = pageviews[pageviews.length - 1];
+  const lastPageview = extendsSession
+    ? pageviews[pageviews.length - 1]
+    : undefined;
   await GetModel(
     MarketingSessionsModel,
     context.website.tenantId,
   ).recordActivity(session._id, {
     pageviews: pageviews.length,
     events: docs.length,
-    lastSeenAt: context.now,
+    lastSeenAt: extendsSession ? context.now : undefined,
     exitUrl: lastPageview?.url,
   });
   session.pageviewsCount += pageviews.length;
   session.eventsCount += docs.length;
-  session.lastSeenAt = context.now;
+  if (extendsSession) {
+    session.lastSeenAt = context.now;
+  }
   if (lastPageview) {
     session.exitUrl = lastPageview.url;
   }
@@ -357,13 +406,16 @@ function bounceDelta(batch: RollupBatch): number {
 }
 
 /**
- * How much this batch stretched the session: zero on a fresh session, else
- * the gap since the previous batch — summed per day, total observed session
- * time. Clamped because a session resumed on another instance can carry a
- * `lastSeenAt` from a clock slightly ahead of ours.
+ * How much this batch stretched the session: the gap since the previous
+ * batch — on a fresh session, since its first event — summed per day, total
+ * observed session time. Clamped below because a session resumed on another
+ * instance can carry a `lastSeenAt` from a clock slightly ahead of ours; a
+ * gap past the idle timeout (an event joining an expired session) is idle
+ * time, not visit time.
  */
 function durationDelta(batch: RollupBatch, now: Date): number {
-  return Math.max(0, now.getTime() - batch.previous.lastSeenAt.getTime());
+  const gap = now.getTime() - batch.previous.lastSeenAt.getTime();
+  return gap < getConfig().sessionIdleTimeout ? Math.max(0, gap) : 0;
 }
 
 function recordRollup(
@@ -390,10 +442,13 @@ function recordRollup(
     tops: collectTops(batch),
     drops: collectDrops(batch),
   };
+  // The events' own clock, as their `day`: the batch's first event dates it,
+  // the one a new session starts at. Across midnight, an event of 23:59 kept
+  // by its timestamp would otherwise be counted in the next day's row.
   void addDailyMarketingStats(
     GetModel(WebsiteStatisticsModel, context.website.tenantId),
     context.website._id,
-    getUtcMidnight(context.now),
+    getUtcMidnight(docs[0]?.timestamp ?? context.now),
     delta,
   ).catch((err) => {
     Logging.Error("[dms-marketing] daily rollup write failed:", err);

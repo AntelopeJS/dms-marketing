@@ -26,6 +26,7 @@ export interface DmsFrontendSdk {
 }
 
 export interface DmsFrontendModule {
+  componentPrefix?: string
   setup(sdk: DmsFrontendSdk): void | Promise<void>
 }
 
@@ -33,15 +34,22 @@ export function defineDmsPlugin(setup: DmsPluginSetup): DmsPluginSetup {
   return setup
 }
 
-export function useI18n(): { t: (key: string) => string, te: () => boolean, locale: { value: string } } {
+export function useI18n(): {
+  t: (key: string) => string
+  te: () => boolean
+  locale: { value: string }
+} {
   return { t: (key: string) => key, te: () => false, locale: { value: 'en' } }
 }
 
-export function useDmsRoute(): { query: Record<string, string>, path: string } {
+export function useDmsRoute(): { query: Record<string, string>; path: string } {
   return { query: {}, path: '/' }
 }
 
-export function useDmsRouter(): { replace: () => Promise<void>, push: () => Promise<void> } {
+export function useDmsRouter(): {
+  replace: () => Promise<void>
+  push: () => Promise<void>
+} {
   return { replace: async () => {}, push: async () => {} }
 }
 
@@ -51,4 +59,11 @@ export function useDmsRuntimeConfig(): { public: Record<string, unknown> } {
 
 export function resolveDmsComponent(): Component | undefined {
   return undefined
+}
+
+export function useDmsCookie<T>(
+  _name: string,
+  options: { default: () => T },
+): { value: T } {
+  return { value: options.default() }
 }

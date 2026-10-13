@@ -8,8 +8,19 @@ import {
   groupBySession,
 } from "@/services/funnels/compute";
 import type { ExposureEventData } from "@/types";
+import {
+  MIN_DECISION_CONVERSIONS,
+  MIN_DECISION_DAYS,
+  MS_PER_DAY,
+} from "@/types/constants";
 import { normalizedWeights } from "./assign";
-import { type SrmCheck, sampleRatioCheck, twoProportionTest } from "./stats";
+import {
+  comparisonAlpha,
+  liftInterval,
+  type SrmCheck,
+  sampleRatioCheck,
+  twoProportionTest,
+} from "./stats";
 
 interface VariationResult {
   key: string;
@@ -20,16 +31,34 @@ interface VariationResult {
    * variation influences, so the funnel's own entered-based rates are not
    * comparable across arms. */
   conversionRate: number;
+  /** Exposed sessions that reached the goal. */
+  conversions: number;
   /** Relative to the control's conversion; null on the control itself. */
   uplift: number | null;
+  /** Bounds of `uplift` at the test's level; null wherever the p-value is. */
+  upliftLow: number | null;
+  upliftHigh: number | null;
   pValue: number | null;
   significant: boolean | null;
 }
 
+/** Whether a verdict may be acted on yet, and what it still waits for. */
+export interface ExperimentDecision {
+  /** Days the split has served traffic, pauses left out. */
+  days: number;
+  minDays: number;
+  minConversions: number;
+  /** A full week served and every arm past the conversions floor. */
+  ready: boolean;
+}
+
 export interface ExperimentResults {
   control: string;
+  /** Level each challenger is tested at (Bonferroni past two arms). */
+  alpha: number;
   variations: VariationResult[];
   srm: SrmCheck;
+  decision: ExperimentDecision;
 }
 
 /** The funnel fields plus `data`, where an exposure carries its variation. */
@@ -71,13 +100,15 @@ function variationBySession(
  * are withheld on a truncated window.
  *
  * Every exposure handed in counts. Bounding them to the split's run is the
- * loader's job (services/funnels/results), which owns the dates.
+ * loader's job (services/funnels/results), which owns the dates and hands in
+ * how long the split served (`servedMs`) for the decision rule.
  */
 export function computeExperimentResults(
   events: ResultEvent[],
   goal: FunnelDefinition,
   experiment: FunnelExperiment,
   truncated: boolean,
+  servedMs = 0,
 ): ExperimentResults {
   const assignments = variationBySession(events, experiment);
 
@@ -129,6 +160,7 @@ export function computeExperimentResults(
   const control = counts[0];
   const controlRate =
     control.exposed > 0 ? control.conversions / control.exposed : 0;
+  const alpha = comparisonAlpha(counts.length);
 
   const variations: VariationResult[] = counts.map((arm, index) => {
     const rate = arm.exposed > 0 ? arm.conversions / arm.exposed : 0;
@@ -141,24 +173,48 @@ export function computeExperimentResults(
             control.exposed,
             arm.conversions,
             arm.exposed,
+            alpha,
+          );
+    const interval =
+      test.pValue === null || controlRate === 0
+        ? null
+        : liftInterval(
+            control.conversions,
+            control.exposed,
+            arm.conversions,
+            arm.exposed,
+            alpha,
           );
     return {
       key: arm.key,
       exposedSessions: arm.exposed,
       computation: arm.computation,
       conversionRate: rate,
+      conversions: arm.conversions,
       uplift:
         isControl || controlRate === 0
           ? null
           : (rate - controlRate) / controlRate,
+      upliftLow: interval?.low ?? null,
+      upliftHigh: interval?.high ?? null,
       pValue: test.pValue,
       significant: test.significant,
     };
   });
 
+  const days = servedMs / MS_PER_DAY;
   return {
     control: control.key,
+    alpha,
     variations,
+    decision: {
+      days,
+      minDays: MIN_DECISION_DAYS,
+      minConversions: MIN_DECISION_CONVERSIONS,
+      ready:
+        days >= MIN_DECISION_DAYS &&
+        counts.every((arm) => arm.conversions >= MIN_DECISION_CONVERSIONS),
+    },
     srm: sampleRatioCheck(
       counts.map((arm) => arm.exposed),
       normalizedWeights(experiment.variations),

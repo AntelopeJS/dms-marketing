@@ -8,7 +8,8 @@ import { deleteExpiredRows } from "./retention";
 export interface SessionActivityDelta {
   pageviews: number;
   events: number;
-  lastSeenAt: Date;
+  /** Absent when the batch joined an expired session it must not revive. */
+  lastSeenAt?: Date;
   exitUrl?: string;
 }
 
@@ -77,10 +78,22 @@ export class MarketingSessionsModel extends BasicDataModel(
       .update((doc) => ({
         pageviewsCount: doc.key("pageviewsCount").add(delta.pageviews),
         eventsCount: doc.key("eventsCount").add(delta.events),
-        lastSeenAt: delta.lastSeenAt,
+        ...(delta.lastSeenAt !== undefined && {
+          lastSeenAt: delta.lastSeenAt,
+        }),
         ...(delta.exitUrl !== undefined && { exitUrl: delta.exitUrl }),
       }))
       .run();
+  }
+
+  /** The most recent session of a website, for the install check. */
+  async getLatest(websiteId: string): Promise<MarketingSession | undefined> {
+    const rows = await this.table
+      .getAll(websiteId, "websiteId")
+      .orderBy("lastSeenAt", "desc")
+      .slice(0, 1)
+      .run();
+    return rows[0];
   }
 
   async deleteOlderThan(cutoff: Date): Promise<number> {

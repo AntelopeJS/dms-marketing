@@ -22,7 +22,7 @@ import { heatColorAt } from '../utils/heatmapPalette'
 const props = defineProps<{
   /** reached[d] = views whose max depth is ≥ d percent, d = 0..100. */
   reached: number[]
-  /** Views that scrolled at all — the denominator of every share shown. */
+  /** Sampled views with a measured depth — the denominator of every share. */
   views: number
   /** Height of the overlay in the pane's own pixels (already scaled). */
   height: number
@@ -35,7 +35,9 @@ const DEPTH_SCALE = 100
  * nothing a reader could see. */
 const GRADIENT_STEP = 5
 const OVERLAY_ALPHA = 0.35
-/** Shares worth a labelled line — the "50% of visitors stop here" reading. */
+/** Shares worth a marked line, labelled with the share alone so the chips
+ * cover as little of the page as possible; the aside explains them and the
+ * pointer readout says the full sentence. */
 const REACH_MARKS = [75, 50, 25]
 
 const { t } = useI18n()
@@ -57,7 +59,9 @@ const gradient = computed(() => {
   const colorFor = (fraction: number) => heatColorAt(fraction, OVERLAY_ALPHA)
   const stops = [`${colorFor(1)} 0%`]
   for (let depth = 0; depth <= DEPTH_SCALE; depth += GRADIENT_STEP) {
-    stops.push(`${colorFor(reachAt(depth))} ${(yRatio(depth) * 100).toFixed(2)}%`)
+    stops.push(
+      `${colorFor(reachAt(depth))} ${(yRatio(depth) * 100).toFixed(2)}%`,
+    )
   }
   return `linear-gradient(to bottom, ${stops.join(', ')})`
 })
@@ -73,12 +77,12 @@ function depthReachedBy(percent: number): number {
 }
 
 const marks = computed(() => {
-  const placed: Array<{ percent: number, y: number }> = []
+  const placed: Array<{ percent: number; y: number }> = []
   for (const percent of REACH_MARKS) {
     const y = yRatio(depthReachedBy(percent)) * props.height
     // Collapsed shares (everyone stops at one depth) would stack identical
     // lines; the strongest claim wins.
-    if (placed.every(mark => Math.abs(mark.y - y) > 1)) {
+    if (placed.every((mark) => Math.abs(mark.y - y) > 1)) {
       placed.push({ percent, y })
     }
   }
@@ -88,17 +92,23 @@ const marks = computed(() => {
 const foldY = computed(() => props.foldRatio * props.height)
 const showFold = computed(() => props.foldRatio > 0 && props.foldRatio < 1)
 
-const hover = ref<{ y: number, percent: number } | null>(null)
+const hover = ref<{ y: number; percent: number } | null>(null)
 
 function onPointerMove(event: PointerEvent): void {
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
   if (rect.height <= 0 || props.foldRatio >= 1) {
     return
   }
-  const ratio = Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 1)
-  const depth = ratio <= props.foldRatio
-    ? 0
-    : Math.round(((ratio - props.foldRatio) / (1 - props.foldRatio)) * DEPTH_SCALE)
+  const ratio = Math.min(
+    Math.max((event.clientY - rect.top) / rect.height, 0),
+    1,
+  )
+  const depth =
+    ratio <= props.foldRatio
+      ? 0
+      : Math.round(
+          ((ratio - props.foldRatio) / (1 - props.foldRatio)) * DEPTH_SCALE,
+        )
   hover.value = {
     y: ratio * props.height,
     percent: Math.round(reachAt(depth) * 100),
@@ -112,18 +122,26 @@ function onPointerMove(event: PointerEvent): void {
     @pointermove="onPointerMove"
     @pointerleave="hover = null"
   >
-    <div class="pointer-events-none absolute inset-0" :style="{ background: gradient }" />
+    <div
+      class="pointer-events-none absolute inset-0"
+      :style="{ background: gradient }"
+    />
 
+    <!-- Named in the legend, not on the page: a label on the line sat on
+         whatever the first screen ends with (a button, a price). -->
     <div
       v-if="showFold"
       class="pointer-events-none absolute inset-x-0"
-      :style="{ top: `${foldY}px`, borderTop: '1px solid rgba(255, 255, 255, 0.55)' }"
+      :aria-label="t('page.marketing.pages.scroll.fold_line')"
+      role="img"
+      :style="{
+        top: `${foldY}px`,
+        borderTop: '1px solid rgba(255, 255, 255, 0.55)',
+      }"
     >
       <span
-        class="absolute left-2 top-0 -translate-y-1/2 rounded-full bg-default/90 px-2 py-0.5 text-xs text-muted shadow"
-      >
-        {{ t('page.marketing.pages.scroll.fold_line') }}
-      </span>
+        class="absolute left-0 top-0 h-2 w-2 -translate-y-1/2 rounded-full bg-default shadow ring-1 ring-white/70"
+      />
     </div>
 
     <div
@@ -137,21 +155,31 @@ function onPointerMove(event: PointerEvent): void {
       }"
     >
       <span
-        class="absolute right-2 top-0 -translate-y-1/2 rounded-full bg-default/90 px-2 py-0.5 text-xs font-medium text-highlighted shadow"
+        class="absolute right-2 top-0 -translate-y-1/2 rounded-full bg-default/90 px-1.5 py-0.5 font-mono text-[11px] font-medium text-highlighted shadow"
+        :title="
+          t('page.marketing.pages.scroll.reach_line', { percent: mark.percent })
+        "
       >
-        {{ t('page.marketing.pages.scroll.reach_line', { percent: mark.percent }) }}
+        {{ t('page.marketing.pages.scroll.mark', { percent: mark.percent }) }}
       </span>
     </div>
 
     <div
       v-if="hover"
       class="pointer-events-none absolute inset-x-0"
-      :style="{ top: `${hover.y}px`, borderTop: '1px solid rgba(255, 255, 255, 0.95)' }"
+      :style="{
+        top: `${hover.y}px`,
+        borderTop: '1px solid rgba(255, 255, 255, 0.95)',
+      }"
     >
       <span
         class="absolute left-2 top-0 -translate-y-1/2 rounded-full bg-default/90 px-2 py-0.5 text-xs font-medium text-highlighted shadow"
       >
-        {{ t('page.marketing.pages.scroll.reach_line', { percent: hover.percent }) }}
+        {{
+          t('page.marketing.pages.scroll.reach_line', {
+            percent: hover.percent,
+          })
+        }}
       </span>
     </div>
   </div>

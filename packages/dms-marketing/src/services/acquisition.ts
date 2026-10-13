@@ -1,4 +1,4 @@
-import type { MarketingChannel } from "@/types";
+import { MARKETING_CHANNELS, type MarketingChannel } from "@/types";
 import { CAMPAIGN_KEY_SEPARATOR } from "@/types/constants";
 
 /**
@@ -120,6 +120,22 @@ const SOCIAL_DOMAINS = new Set([
   "pin.it",
 ]);
 
+/**
+ * Mediums mailing tools tag their links with. Read before the referrer rules:
+ * a click from a desktop mail client or a webmail sends no referrer, or the
+ * webmail's own host, and would otherwise count as direct or referral.
+ */
+const EMAIL_MEDIUMS = new Set([
+  "email",
+  "e-mail",
+  "e_mail",
+  "newsletter",
+  "mail",
+]);
+
+/** Mediums that declare a referral outright, referrer or not (partner links). */
+const REFERRAL_MEDIUMS = new Set(["referral", "affiliate", "partner"]);
+
 function hasListedLabel(
   domain: string | undefined,
   labels: ReadonlySet<string>,
@@ -166,11 +182,11 @@ function isSocialSource(domain: string | undefined, medium: string): boolean {
 }
 
 /**
- * The five-channel grouping of a session, from its referrer domain, utm_medium
- * and ad click-id parameter. Paid wins first: an ad click keeps its referrer
- * (google.com, facebook.com) and would otherwise read as organic or social. A
- * medium the mapping does not know (email, newsletter…) keeps referrer
- * semantics — referral with a referrer, direct without one.
+ * The channel grouping of a session, from its referrer domain, utm_medium and
+ * ad click-id parameter. Paid wins first: an ad click keeps its referrer
+ * (google.com, facebook.com) and would otherwise read as organic or social.
+ * Email comes next, on its medium alone. A medium the mapping does not know
+ * keeps referrer semantics — referral with a referrer, direct without one.
  */
 export function resolveChannel(
   referrerDomain: string | undefined,
@@ -182,13 +198,16 @@ export function resolveChannel(
   if (isPaidMedium(medium) || PAID_CLICK_IDS.has(clickId)) {
     return "paid";
   }
+  if (EMAIL_MEDIUMS.has(medium)) {
+    return "email";
+  }
   if (isSocialSource(referrerDomain, medium) || SOCIAL_CLICK_IDS.has(clickId)) {
     return "social";
   }
   if (medium === "organic" || isSearchDomain(referrerDomain)) {
     return "organic";
   }
-  return referrerDomain ? "referral" : "direct";
+  return referrerDomain || REFERRAL_MEDIUMS.has(medium) ? "referral" : "direct";
 }
 
 export interface CampaignUtm {
@@ -197,31 +216,79 @@ export interface CampaignUtm {
   utmCampaign?: string;
 }
 
+/** What a campaign key reads off its session: the triple and its channel. */
+export interface CampaignSession extends CampaignUtm {
+  referrerDomain?: string;
+  clickIdParam?: string;
+}
+
 /**
- * One `topCampaigns` map key per (source, medium, campaign) triple. Blank
- * slots stay blank — the split answers them as undefined — and a session
- * carrying none of the three contributes nothing: the campaigns table lists
- * campaigns, not traffic.
+ * How a UTM value is compared and stored: trimmed, and source and medium in
+ * lower case — "Email", "email" and "email " are one medium to a marketer,
+ * while a campaign keeps the case it was named with.
  */
-export function campaignKey(utm: CampaignUtm): string | undefined {
-  const parts = [utm.utmSource, utm.utmMedium, utm.utmCampaign];
+export function normalizeUtm(
+  field: "source" | "medium" | "campaign" | "term" | "content",
+  value: string | undefined,
+): string | undefined {
+  const trimmed = value?.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  return field === "source" || field === "medium"
+    ? trimmed.toLowerCase()
+    : trimmed;
+}
+
+/**
+ * One `topCampaigns` map key per (source, medium, campaign) triple and the
+ * channel its session was counted under: without referrer or click id, the
+ * table could only guess the channel from the medium. Blank slots stay blank
+ * — the split answers them as undefined — and a session carrying none of the
+ * three contributes nothing: the campaigns table lists campaigns, not
+ * traffic.
+ */
+export function campaignKey(session: CampaignSession): string | undefined {
+  const parts = [session.utmSource, session.utmMedium, session.utmCampaign];
   if (parts.every((part) => !part)) {
     return undefined;
   }
-  return parts.map((part) => part ?? "").join(CAMPAIGN_KEY_SEPARATOR);
+  const channel = resolveChannel(
+    session.referrerDomain,
+    session.utmMedium,
+    session.clickIdParam,
+  );
+  return [...parts.map((part) => part ?? ""), channel].join(
+    CAMPAIGN_KEY_SEPARATOR,
+  );
 }
 
 export interface CampaignKeyParts {
   source?: string;
   medium?: string;
   campaign?: string;
+  channel: MarketingChannel;
 }
 
-export function splitCampaignKey(key: string): CampaignKeyParts {
-  const [source, medium, campaign] = key.split(CAMPAIGN_KEY_SEPARATOR);
+function isChannel(value: string | undefined): value is MarketingChannel {
+  return (MARKETING_CHANNELS as readonly (string | undefined)[]).includes(
+    value,
+  );
+}
+
+/**
+ * A key `campaignKey` minted, split back: blank slots read as undefined.
+ * Undefined for a key without its channel, which the table cannot place.
+ */
+export function splitCampaignKey(key: string): CampaignKeyParts | undefined {
+  const [source, medium, campaign, channel] = key.split(CAMPAIGN_KEY_SEPARATOR);
+  if (!isChannel(channel)) {
+    return undefined;
+  }
   return {
     source: source || undefined,
     medium: medium || undefined,
     campaign: campaign || undefined,
+    channel,
   };
 }

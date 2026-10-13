@@ -12,7 +12,7 @@ first-party.
 No external service, no cookie; data stays in the project's MongoDB.
 
 <p align="center">
-  <img src="docs/screenshots/overview.png" alt="Overview: pageviews, sessions, new visitors and custom events, a traffic chart, a device split and the top pages, referrers, UTM sources and browsers" width="900">
+  <img src="docs/screenshots/overview.png" alt="Overview: the website and period bar, four KPI cards with their change and sparkline, the session-quality strip, the traffic chart against the previous period, the device split and four tabbed top lists" width="900">
 </p>
 <p align="center">
   <em>The Overview page — every panel reads pre-aggregated daily rollups, never raw events.</em>
@@ -22,15 +22,16 @@ No external service, no cookie; data stays in the project's MongoDB.
 
 | Feature | Where | Guide |
 |---|---|---|
-| **Traffic overview** — pageviews, sessions, visitors, top pages/referrers/UTM/browsers, device split; site registration and tracker snippet | `/modules/marketing/overview` | [usage/overview.md](docs/usage/overview.md) |
-| **Campaigns & channels** — direct/organic/social/referral/paid split, UTM campaign table (source × medium × campaign) | `/modules/marketing/campaigns` | [usage/campaigns.md](docs/usage/campaigns.md) |
-| **Click heatmaps** — clicks drawn over a snapshot of any tracked page | `/modules/marketing/pages` | [usage/heatmap.md](docs/usage/heatmap.md) |
-| **Funnels & A/B** — ordered conversion journeys with per-step drop-off, optionally split into server-assigned variations scored with significance | `/modules/marketing/funnels` | [usage/funnels.md](docs/usage/funnels.md) |
+| **Traffic overview** — pageviews, sessions, new visitors and custom events with their change, session quality, traffic chart, device split, top content/acquisition/audience/event lists | `/modules/marketing/overview` | [usage/overview.md](docs/usage/overview.md) |
+| **Acquisition** — direct/organic/social/email/referral/paid split, UTM campaign table (source × medium × campaign), top referrers and UTM details | `/modules/marketing/acquisition` | [usage/acquisition.md](docs/usage/acquisition.md) |
+| **Pages & heatmaps** — clicks and scroll depth drawn over a snapshot of any tracked page | `/modules/marketing/pages` | [usage/heatmap.md](docs/usage/heatmap.md) |
+| **Funnels & A/B tests** — ordered conversion journeys with per-step drop-off, optionally split into server-assigned variations scored with significance; a report page and a builder per funnel | `/modules/marketing/funnels` | [usage/funnels.md](docs/usage/funnels.md) |
+| **Websites & install guide** — the tracked sites, their live state and capture options; a guided tracker install that checks the first pageview | `/modules/marketing/websites` | [install.md](docs/install.md#2-register-a-website) |
 | **First-party tracker** — cookieless script, SPA-aware, custom events API | visitor sites | [usage/tracking.md](docs/usage/tracking.md) |
 | **Settings** — collection switch, retentions, heatmap sampling | `/modules/marketing/settings` | [usage/settings.md](docs/usage/settings.md) |
 
 <p align="center">
-  <img src="docs/screenshots/heatmap.png" alt="Tracked pages: the inventory of visited paths on the left, and on the right the click heatmap of the selected path drawn over a live preview of the page" width="900">
+  <img src="docs/screenshots/heatmap.png" alt="Pages & heatmaps: the tracked pages with their views and heat bars on the left, and on the right the click heatmap of the selected page drawn over its snapshot, with count pins on the hottest elements and the Most clicked list beside it" width="900">
 </p>
 <p align="center">
   <em>Click heatmap over the page itself. Clicks are anchored to the element
@@ -38,7 +39,7 @@ No external service, no cookie; data stays in the project's MongoDB.
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/funnels.png" alt="Funnels: the funnel list on the left, and on the right the conversion bars of the selected funnel, step by step, with the drop-off between steps" width="900">
+  <img src="docs/screenshots/funnel.png" alt="Funnel report: entered, completed, end-to-end and biggest-loss KPIs over the steps figure, each step with its share of entered sessions and the sessions lost before the next one, the worst step flagged" width="900">
 </p>
 <p align="center">
   <em>Conversion funnels with per-step drop-off. Computed at read time over
@@ -46,12 +47,12 @@ No external service, no cookie; data stays in the project's MongoDB.
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/experiments.png" alt="A split funnel: the funnel list on the left, and on the right the verdict banner over the funnel drawn once per arm — control and challenger mirrored around the step they share, with the drop between steps in the taper" width="900">
+  <img src="docs/screenshots/experiments.png" alt="A/B test report: the verdict sentence with the relative lift, the confidence and the exposed sessions, the sample ratio check, then each arm step by step with A neutral and B in the primary colour" width="900">
 </p>
 <p align="center">
-  <em>The same funnel split into A/B arms: one figure per arm, arm against
-  arm at every step. Verdicts answer "not enough data" rather than
-  overclaim — a sample too thin shows raw counts, never bars.</em>
+  <em>The same funnel split into A/B arms, arm against arm at every step.
+  Verdicts answer "not enough data" rather than overclaim — a sample too
+  thin shows raw counts, never bars.</em>
 </p>
 
 ## What makes it hold
@@ -92,8 +93,8 @@ The reasoning behind each choice is in
 - **[Usage guides](docs/usage/)** — one per feature, linked in the table above.
 - **[Architecture](docs/architecture.md)** — data flow, tenancy, auth model,
   event contract, HTTP surface, heatmap internals, phasing.
-- **[Known issues](KNOWN-ISSUES.md)** — one open behavioural defect, found
-  end-to-end.
+- **[Known issues](KNOWN-ISSUES.md)** — the defects found end-to-end and
+  how each was closed; none is open.
 
 ## Status
 
@@ -119,8 +120,10 @@ pnpm test       # backend suite, then the frontend module's vitest suite
 ```
 
 The admin surfaces ship as a DMS frontend module in `frontend-vue/`: a Vue 3
-project whose root `dms.frontend.ts` registers every component under the
-`DmsMarketing` prefix, plus its own i18n catalogs. It is a separate project
+project whose root `dms.frontend.ts` declares the `DmsMarketing` component
+prefix and registers every component of `app/components/` under it, plus its
+own i18n catalogs. The pages themselves are declared backend-side as trees
+of DMS blocks ([architecture.md](docs/architecture.md#frontend-layout)). It is a separate project
 with a lockfile of its own, published inside this package's tarball and
 materialized by the DMS frontend loader (`ajs dms`) into the console's Inertia
 workspace. Its own vitest suite runs through `pnpm test`.

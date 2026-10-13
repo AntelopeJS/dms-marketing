@@ -11,9 +11,12 @@
  * Privacy, unconditionally: no form value, hidden input, script, event
  * handler or framed document leaves the page. `contenteditable` text is
  * masked, as is everything under `data-dms-marketing-mask` (or the
- * `dms-marketing-mask` class); `data-dms-marketing-block` (or the
- * `dms-marketing-block` class) replaces an element with an empty box of its
- * size. `maskText` masks every text node.
+ * `dms-marketing-mask` class) — text, the attributes that carry text
+ * (title, alt, labels, placeholders, data-*) and the path of its links;
+ * `data-dms-marketing-block` (or the `dms-marketing-block` class) replaces
+ * an element with an empty box of its size. `maskText` masks every text
+ * node and text attribute of the page; data-* and link paths stay, since
+ * styles select on them.
  */
 (() => {
   const CONFIG_GLOBAL = "__dmsMarketingSnapshotConfig";
@@ -81,6 +84,17 @@
     "background",
   ]);
   const LINK_TAGS = new Set(["a", "area"]);
+  /** Attributes that carry text a visitor could read, masked with it. */
+  const TEXT_ATTRIBUTES = new Set([
+    "title",
+    "alt",
+    "label",
+    "placeholder",
+    "aria-label",
+    "aria-description",
+    "aria-placeholder",
+    "aria-valuetext",
+  ]);
   const OPAQUE_URL_PATTERN = /^(#|data:|blob:|about:)/i;
   const SCRIPT_URL_PATTERN = /^javascript:/i;
   const CSS_URL_PATTERN = /url\(\s*(['"]?)([^'")]*)\1\s*\)/g;
@@ -93,10 +107,12 @@
   }
 
   const config = readGlobal(CONFIG_GLOBAL);
+  const maskAllText = config?.maskText === true;
   const context = readGlobal(CONTEXT_GLOBAL);
   if (
     !config ||
     !context ||
+    typeof config.token !== "string" ||
     typeof context.endpoint !== "string" ||
     window.top !== window
   ) {
@@ -144,10 +160,14 @@
   }
 
   /** Links keep their target, never a query or fragment: tokens and
-   * addresses ride there, and nothing in the backdrop is clickable. */
-  function withoutQuery(url) {
+   * addresses ride there, and nothing in the backdrop is clickable. A masked
+   * link keeps its origin alone — a profile path names its person. */
+  function withoutQuery(url, masked) {
     try {
       const parsed = new URL(url);
+      if (masked) {
+        return `${parsed.origin}/`;
+      }
       parsed.search = "";
       parsed.hash = "";
       return parsed.href;
@@ -269,7 +289,7 @@
     return element.dataset.src || current || value;
   }
 
-  function serializeAttributes(element) {
+  function serializeAttributes(element, masked) {
     const tag = element.localName;
     let out = "";
     for (const attribute of element.attributes) {
@@ -277,6 +297,14 @@
       let value = attribute.value;
       if (name.startsWith("on") || DROPPED_ATTRIBUTES.has(name)) {
         continue;
+      }
+      if (
+        ((masked || maskAllText) && TEXT_ATTRIBUTES.has(name)) ||
+        (masked &&
+          name.startsWith("data-") &&
+          !name.startsWith(`data-${MASK_MARKER}`))
+      ) {
+        value = maskText(value);
       }
       if (name === "value" && (tag === "input" || tag === "textarea")) {
         continue;
@@ -309,7 +337,7 @@
         if (absolute === null) {
           continue;
         }
-        value = LINK_TAGS.has(tag) ? withoutQuery(absolute) : absolute;
+        value = LINK_TAGS.has(tag) ? withoutQuery(absolute, masked) : absolute;
       }
       out += ` ${name}="${escapeAttribute(value)}"`;
     }
@@ -334,7 +362,7 @@
     return `<${tag}${attributes} style="${size};overflow:hidden"></${tag}>`;
   }
 
-  function serializeCanvas(element) {
+  function serializeCanvas(element, masked) {
     let dataUrl = "";
     try {
       dataUrl = element.toDataURL();
@@ -342,9 +370,9 @@
       // Tainted by cross-origin drawing: the box stays, the pixels do not.
     }
     if (dataUrl && dataUrl.length <= MAX_CANVAS_DATA_URL_LENGTH) {
-      return `<img${serializeAttributes(element)} src="${dataUrl}">`;
+      return `<img${serializeAttributes(element, masked)} src="${dataUrl}">`;
     }
-    return `<canvas${serializeAttributes(element)}></canvas>`;
+    return `<canvas${serializeAttributes(element, masked)}></canvas>`;
   }
 
   function serializeChildren(node, masked) {
@@ -353,7 +381,8 @@
       if (child.nodeType === Node.ELEMENT_NODE) {
         out += serializeElement(child, masked);
       } else if (child.nodeType === Node.TEXT_NODE) {
-        const text = masked ? maskText(child.data) : child.data;
+        const text =
+          masked || maskAllText ? maskText(child.data) : child.data;
         out += escapeText(text);
       }
     }
@@ -377,12 +406,12 @@
     if (isMarked(element, BLOCK_MARKER)) {
       return serializeBlocked(element);
     }
-    if (tag === "canvas") {
-      return serializeCanvas(element);
-    }
     const mask =
       masked || isMarked(element, MASK_MARKER) || element.isContentEditable;
-    let out = `<${tag}${serializeAttributes(element)}>`;
+    if (tag === "canvas") {
+      return serializeCanvas(element, mask);
+    }
+    let out = `<${tag}${serializeAttributes(element, mask)}>`;
     if (VOID_TAGS.has(tag)) {
       return out;
     }
@@ -403,7 +432,7 @@
   }
 
   function serializeDocument() {
-    return `<!DOCTYPE html>${serializeElement(document.documentElement, config.maskText === true)}`;
+    return `<!DOCTYPE html>${serializeElement(document.documentElement, false)}`;
   }
 
   // --- Timing ---------------------------------------------------------------
@@ -466,6 +495,7 @@
     const root = document.documentElement;
     const page = {
       website: context.website,
+      token: config.token,
       url: (location.origin + location.pathname + location.search).slice(
         0,
         MAX_URL_LENGTH,

@@ -1,9 +1,13 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
-import type { TenantDataExportContribution } from "@antelopejs/interface-dms/hooks";
+import type {
+  TenantDataExportContribution,
+  UserDeletedHookPayload,
+} from "@antelopejs/interface-dms/hooks";
 import { Hook, RegisterHook } from "@antelopejs/interface-dms/hooks";
 import {
   FunnelsModel,
   MarketingEventsModel,
+  MarketingPreferencesModel,
   MarketingSessionsModel,
   PageSnapshotsModel,
   WebsiteStatisticsModel,
@@ -13,9 +17,9 @@ import { MARKETING_MODULE_ID } from "@/types/constants";
 
 /**
  * Every marketing model living in the per-tenant schema — the set both hooks
- * walk. Events, sessions and page snapshots are deleted with the rest but
- * excluded from the export: retention-bounded captures, not the durable data
- * a workspace owns.
+ * walk. Events, sessions, page snapshots and member preferences are deleted
+ * with the rest but excluded from the export: retention-bounded captures and
+ * per-member choices, not the durable data a workspace owns.
  */
 const TENANT_MODELS: ReadonlyArray<Parameters<typeof GetModel>[0]> = [
   MarketingEventsModel,
@@ -23,6 +27,7 @@ const TENANT_MODELS: ReadonlyArray<Parameters<typeof GetModel>[0]> = [
   PageSnapshotsModel,
   WebsiteStatisticsModel,
   FunnelsModel,
+  MarketingPreferencesModel,
 ];
 
 async function purgeTenantMarketingData(tenantId: string): Promise<void> {
@@ -59,4 +64,15 @@ export function registerMarketingHookListeners(): void {
     return undefined;
   });
   RegisterHook(Hook.TENANT_DATA_EXPORT, exportTenantMarketingData);
+  RegisterHook(Hook.USER_DELETED, forgetUserPreferences);
+}
+
+/** A deleted account's website selection goes with it, in every workspace. */
+async function forgetUserPreferences(
+  payload: UserDeletedHookPayload,
+): Promise<undefined> {
+  for (const tenantId of payload.tenantIds) {
+    await GetModel(MarketingPreferencesModel, tenantId).forget(payload.userId);
+  }
+  return undefined;
 }

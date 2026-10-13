@@ -4,13 +4,12 @@ import {
   Context,
   Controller,
   Get,
-  HTTPResult,
   type RequestContext,
 } from "@antelopejs/interface-api";
 import { getConfig } from "@/config";
 import {
   API_BASE_PATH,
-  HTTP_NOT_FOUND,
+  PAUSED_TRACKER_CACHE_MAX_AGE_SECONDS,
   TRACKER_CACHE_MAX_AGE_SECONDS,
 } from "@/types/constants";
 
@@ -22,10 +21,15 @@ const TRACKER_CONTENT_TYPE = "application/javascript; charset=utf-8";
 /** Global the served script reads its settings from (see static/tracker.js). */
 const TRACKER_CONFIG_GLOBAL = "__dmsMarketingTrackerConfig";
 
-/** Settings the tracker honors client-side. Numbers only — the prelude is
- * inlined into a script body, and a number can carry no markup. */
+/** Settings the tracker honors client-side. Numbers and booleans only — the
+ * prelude is inlined into a script body, and neither can carry markup. */
 interface ServedTrackerConfig {
   heatmapSampleRate: number;
+  /**
+   * Collection paused: the tracker only publishes its page API, so page code
+   * calling `window.dmsMarketing.track(…)` keeps working.
+   */
+  paused: boolean;
 }
 
 let cachedScript: string | null = null;
@@ -49,6 +53,7 @@ function loadScript(): string {
 function servedScript(): string {
   const config: ServedTrackerConfig = {
     heatmapSampleRate: getConfig().heatmapSampleRate,
+    paused: !getConfig().trackerEnabled,
   };
   return `window.${TRACKER_CONFIG_GLOBAL}=${JSON.stringify(config)};\n${loadScript()}`;
 }
@@ -61,13 +66,12 @@ function servedScript(): string {
 export class TrackerController extends Controller(API_BASE_PATH) {
   @Get("tracker.js")
   async tracker(@Context() context: RequestContext) {
-    if (!getConfig().trackerEnabled) {
-      throw new HTTPResult(HTTP_NOT_FOUND);
-    }
-    context.response.addHeader(
-      "Cache-Control",
-      `public, max-age=${TRACKER_CACHE_MAX_AGE_SECONDS}`,
-    );
+    // Paused: cached briefly, so resuming reaches visitors within a minute.
+    const enabled = getConfig().trackerEnabled;
+    const maxAge = enabled
+      ? TRACKER_CACHE_MAX_AGE_SECONDS
+      : PAUSED_TRACKER_CACHE_MAX_AGE_SECONDS;
+    context.response.addHeader("Cache-Control", `public, max-age=${maxAge}`);
     context.response.getWriteStream(TRACKER_CONTENT_TYPE).end(servedScript());
   }
 }

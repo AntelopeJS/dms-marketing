@@ -23,7 +23,8 @@ const props = defineProps<{
 }>()
 
 const POINT_RADIUS = 28
-const MAX_RENDER_ALPHA = 210
+// About 60% at the densest spot: the button under a hot spot stays readable.
+const MAX_RENDER_ALPHA = 150
 /** Floor on a point's intensity so single clicks stay visible. */
 const MIN_POINT_ALPHA = 0.08
 /** Flat opacity boost applied when colorising, capped at MAX_RENDER_ALPHA. */
@@ -36,7 +37,7 @@ function buildPalette(): Uint8ClampedArray | null {
   const strip = document.createElement('canvas')
   strip.width = PALETTE_SIZE
   strip.height = 1
-  const ctx = strip.getContext('2d')
+  const ctx = strip.getContext('2d', { willReadFrequently: true })
   if (!ctx) {
     return null
   }
@@ -59,7 +60,12 @@ function drawIntensity(ctx: CanvasRenderingContext2D): void {
     gradient.addColorStop(0, `rgba(0, 0, 0, ${alpha})`)
     gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
     ctx.fillStyle = gradient
-    ctx.fillRect(px - POINT_RADIUS, py - POINT_RADIUS, POINT_RADIUS * 2, POINT_RADIUS * 2)
+    ctx.fillRect(
+      px - POINT_RADIUS,
+      py - POINT_RADIUS,
+      POINT_RADIUS * 2,
+      POINT_RADIUS * 2,
+    )
   }
 }
 
@@ -91,7 +97,7 @@ function render(): void {
   }
   canvas.width = props.width
   canvas.height = props.height
-  const ctx = canvas.getContext('2d')
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
   if (!ctx) {
     return
   }
@@ -110,6 +116,7 @@ onMounted(render)
 <template>
   <canvas
     ref="canvasRef"
+    aria-hidden="true"
     class="pointer-events-none absolute left-0 top-0"
     :style="{ width: `${props.width}px`, height: `${props.height}px` }"
   />

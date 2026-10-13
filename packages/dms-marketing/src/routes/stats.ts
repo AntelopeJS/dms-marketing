@@ -18,20 +18,23 @@ import { getConfig } from "@/config";
 import { type DayTops, WebsiteStatisticsModel, WebsitesModel } from "@/db";
 import type { WebsiteStatistics } from "@/db/tables/website_statistics.table";
 import type { Website } from "@/db/tables/websites.table";
-import {
-  type CampaignKeyParts,
-  splitCampaignKey,
-} from "@/services/acquisition";
 import { isGeoipActive } from "@/services/geoip";
 import {
   computeClickHeatmap,
+  computePageActivity,
   computeScrollDepth,
+  countHeatmapData,
   resetHeatmap as resetHeatmapEvents,
 } from "@/services/heatmap";
-import { parsePeriodDays, periodStart } from "@/services/period";
+import {
+  periodQueryOf,
+  type QueryWindow,
+  resolveQueryWindow,
+} from "@/services/period";
 import { queryString } from "@/services/query-param";
 import { readPageSnapshot } from "@/services/snapshots";
 import { requireTenantWebsite } from "@/services/tenant-website";
+import { parseTrackedUrl } from "@/services/url";
 import {
   byDimension,
   isSnapshotLayout,
@@ -57,7 +60,7 @@ type OverviewTotals = Omit<MarketingDayCounters, "day">;
 interface OverviewSummary {
   totals: OverviewTotals;
   days: MarketingDayStatistics[];
-  /** Same role as `heatmapSampleRate` on /pages: lets the dashboard tell "no
+  /** Same role as `trackerEnabled` on /pages: lets the dashboard tell "no
    * countries yet" from "no GeoIP database configured" and hide the card. */
   geoipEnabled: boolean;
 }
@@ -130,55 +133,16 @@ function toDayStatistics(row: WebsiteStatistics): MarketingDayStatistics {
 /** Full rollup rows — the overview alone needs the scalars and every map. */
 async function loadDaysInRange(
   website: Website,
-  period: string | undefined,
+  window: QueryWindow,
 ): Promise<MarketingDayStatistics[]> {
-  const cutoff = periodStart(parsePeriodDays(period)).getTime();
   const rows = await GetModel(
     WebsiteStatisticsModel,
     website.tenantId,
-  ).getDaysSince(website._id, cutoff);
+  ).getDaysBetween(website._id, window.firstDay, window.lastDay);
   return rows.map(toDayStatistics);
 }
 
-/**
- * The maps a table surface actually charts, and nothing else: /pages reads
- * one dimension of the sixteen, /campaigns five.
- */
-async function loadTopsInRange(
-  website: Website,
-  period: string | undefined,
-  dimensions: readonly TopDimension[],
-): Promise<DayTops[]> {
-  const cutoff = periodStart(parsePeriodDays(period)).getTime();
-  return GetModel(WebsiteStatisticsModel, website.tenantId).getTopsSince(
-    website._id,
-    cutoff,
-    dimensions,
-  );
-}
-
 const PAGES_DIMENSIONS = ["topPages"] as const;
-
-const CAMPAIGNS_DIMENSIONS = [
-  "topCampaigns",
-  "topChannels",
-  "topUtmTerms",
-  "topUtmContents",
-  "topReferrers",
-] as const;
-
-interface CampaignRow extends CampaignKeyParts {
-  sessions: number;
-}
-
-function campaignMatches(row: CampaignRow, needle: string): boolean {
-  if (!needle) {
-    return true;
-  }
-  return [row.source, row.medium, row.campaign].some((part) =>
-    part?.toLowerCase().includes(needle),
-  );
-}
 
 function clampLimit(raw: unknown): number {
   const parsed = Number.parseInt(queryString(raw) ?? "", 10);
@@ -206,6 +170,42 @@ async function resolveHeatmapScope(
   return { tenantId, websiteIds };
 }
 
+/** The days a heatmap-family read covers: the page's `from`/`to`. */
+function requestWindow(context: RequestContext): QueryWindow {
+  return resolveQueryWindow(periodQueryOf(context.url));
+}
+
+/**
+ * The path a heatmap-family route reads, reduced the way the tracker stores
+ * it (pathname only, leading slash, no query or fragment) — so a path typed
+ * as `demo/pricing` or pasted with its query string finds the page's clicks.
+ */
+function requestedPath(path: unknown): string {
+  const wanted = queryString(path);
+  if (!wanted) {
+    throw new HTTPResult(HTTP_BAD_REQUEST, MISSING_PATH_MESSAGE);
+  }
+  return parseTrackedUrl(wanted).path;
+}
+
+/**
+ * Path of a reset: absent means the whole site; present but blank is a
+ * mistake to refuse, never a site-wide delete.
+ */
+function resetPath(context: RequestContext): string | undefined {
+  const params = context.url.searchParams;
+  return params.has("path") ? requestedPath(params.get("path")) : undefined;
+}
+
+type PagesSort = "views" | "clicks";
+
+interface PageRow {
+  path: string;
+  pageviews: number;
+  clicks: number;
+  sampled: number;
+}
+
 /**
  * Dashboard reads. Overview is rollup only — raw events never back it;
  * heatmap is the deliberate exception, backed by the short-retention raw
@@ -217,13 +217,12 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
     @AuthTenantMember() _user: User,
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
-    @Parameter("period", "query") period?: string,
   ) {
     const websiteDoc = await requireTenantWebsite(
       context,
       queryString(website),
     );
-    const inRange = await loadDaysInRange(websiteDoc, period);
+    const inRange = await loadDaysInRange(websiteDoc, requestWindow(context));
 
     const payload: OverviewPayload = {
       totals: sumTotals(inRange),
@@ -239,8 +238,11 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
    * never a route registry or a sitemap. Top maps are capped
    * (MAX_ENTRIES_PER_TOP_MAP) and emptied past TOP_MAPS_RETENTION_DAYS, so a
    * missing path is not "no clicks" — hence the surface also accepts a typed
-   * path. `heatmapSampleRate` and `trackerEnabled` (both already public) ride
-   * along to tell "no clicks yet" from "sampled out" from "collection off".
+   * path. Each path carries its clicks and sampled views (raw events, same
+   * window), and paths with clicks but no rollup entry are listed too.
+   * `sampleRate` is the measured share of sampled page loads — the rate the
+   * snippet really applies — and `trackerEnabled` tells "collection off".
+   * `sort=clicks` orders by clicks, anything else by views.
    */
   @Get("pages")
   // The parameter list of a decorated handler is its HTTP surface, not an
@@ -250,83 +252,51 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
     @AuthTenantMember() _user: User,
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
-    @Parameter("period", "query") period?: string,
     @Parameter("search", "query") search?: string,
     @Parameter("limit", "query") limit?: string,
+    @Parameter("sort", "query") sort?: string,
   ) {
     const websiteDoc = await requireTenantWebsite(
       context,
       queryString(website),
     );
-    const inRange = await loadTopsInRange(websiteDoc, period, PAGES_DIMENSIONS);
+    const window = requestWindow(context);
+    const [inRange, activity] = await Promise.all([
+      GetModel(WebsiteStatisticsModel, websiteDoc.tenantId).getTopsSince(
+        websiteDoc._id,
+        window.firstDay,
+        PAGES_DIMENSIONS,
+        window.lastDay,
+      ),
+      computePageActivity(websiteDoc.tenantId, websiteDoc._id, window),
+    ]);
 
+    const views = mergeDimension(inRange, "topPages");
+    const paths = new Set([...Object.keys(views), ...activity.clicks.keys()]);
     const needle = queryString(search)?.toLowerCase() ?? "";
-    const matching = Object.entries(mergeDimension(inRange, "topPages"))
-      .filter(([path]) => !needle || path.toLowerCase().includes(needle))
-      .sort((a, b) => b[1] - a[1]);
-
-    const max = clampLimit(limit);
-    const config = getConfig();
-    return {
-      pages: matching
-        .slice(0, max)
-        .map(([path, pageviews]) => ({ path, pageviews })),
-      truncated: matching.length > max,
-      heatmapSampleRate: config.heatmapSampleRate,
-      trackerEnabled: config.trackerEnabled,
-    };
-  }
-
-  /**
-   * The acquisition surface: sessions by channel, and the UTM campaign table
-   * as (source, medium, campaign) triples — the composite `topCampaigns` key
-   * is split back server-side so its separator stays a storage detail. Same
-   * caps as every rollup read: a day keeps at most MAX_ENTRIES_PER_TOP_MAP
-   * campaign triples.
-   */
-  @Get("campaigns")
-  // The parameter list of a decorated handler is its HTTP surface, not an
-  // argument list to shorten.
-  // oxlint-disable-next-line eslint/max-params
-  async campaigns(
-    @AuthTenantMember() _user: User,
-    @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
-    @Parameter("period", "query") period?: string,
-    @Parameter("search", "query") search?: string,
-    @Parameter("limit", "query") limit?: string,
-  ) {
-    const websiteDoc = await requireTenantWebsite(
-      context,
-      queryString(website),
-    );
-    const inRange = await loadTopsInRange(
-      websiteDoc,
-      period,
-      CAMPAIGNS_DIMENSIONS,
-    );
-
-    const needle = queryString(search)?.toLowerCase() ?? "";
-    const rows = Object.entries(mergeDimension(inRange, "topCampaigns"))
-      .map(([key, sessions]): CampaignRow => ({
-        ...splitCampaignKey(key),
-        sessions,
+    const order: PagesSort =
+      queryString(sort) === "clicks" ? "clicks" : "views";
+    const matching = [...paths]
+      .filter((path) => !needle || path.toLowerCase().includes(needle))
+      .map((path): PageRow => ({
+        path,
+        pageviews: views[path] ?? 0,
+        clicks: activity.clicks.get(path) ?? 0,
+        sampled: activity.sampled.get(path) ?? 0,
       }))
-      .filter((row) => campaignMatches(row, needle))
-      .sort((a, b) => b.sessions - a.sessions);
+      .sort((a, b) =>
+        order === "clicks"
+          ? b.clicks - a.clicks || b.pageviews - a.pageviews
+          : b.pageviews - a.pageviews || b.clicks - a.clicks,
+      );
 
     const max = clampLimit(limit);
     return {
-      // Exhaustive, not a top list: the classifier only ever mints the five
-      // MARKETING_CHANNELS keys.
-      channels: mergeDimension(inRange, "topChannels"),
-      campaigns: rows.slice(0, max),
-      truncated: rows.length > max,
-      terms: mergeTops(inRange, "topUtmTerms"),
-      contents: mergeTops(inRange, "topUtmContents"),
-      // Referrer domains of every session that carried one — all channels,
-      // not just the donut's referral slice.
-      referrers: mergeTops(inRange, "topReferrers"),
+      pages: matching.slice(0, max),
+      total: matching.length,
+      truncated: matching.length > max,
+      sampleRate: activity.sampleRate,
+      trackerEnabled: getConfig().trackerEnabled,
     };
   }
 
@@ -336,17 +306,18 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
     @Parameter("path", "query") path?: string,
-    @Parameter("period", "query") period?: string,
   ) {
-    const wantedPath = queryString(path);
-    if (!wantedPath) {
-      throw new HTTPResult(HTTP_BAD_REQUEST, MISSING_PATH_MESSAGE);
-    }
+    const wantedPath = requestedPath(path);
     const { tenantId, websiteIds } = await resolveHeatmapScope(
       context,
       website,
     );
-    return computeClickHeatmap(tenantId, websiteIds, wantedPath, period);
+    return computeClickHeatmap(
+      tenantId,
+      websiteIds,
+      wantedPath,
+      requestWindow(context),
+    );
   }
 
   /** Scroll-depth distribution of one path — the heatmap's second overlay,
@@ -357,17 +328,18 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
     @Parameter("path", "query") path?: string,
-    @Parameter("period", "query") period?: string,
   ) {
-    const wantedPath = queryString(path);
-    if (!wantedPath) {
-      throw new HTTPResult(HTTP_BAD_REQUEST, MISSING_PATH_MESSAGE);
-    }
+    const wantedPath = requestedPath(path);
     const { tenantId, websiteIds } = await resolveHeatmapScope(
       context,
       website,
     );
-    return computeScrollDepth(tenantId, websiteIds, wantedPath, period);
+    return computeScrollDepth(
+      tenantId,
+      websiteIds,
+      wantedPath,
+      requestWindow(context),
+    );
   }
 
   /**
@@ -383,10 +355,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
     @Parameter("path", "query") path?: string,
     @Parameter("layout", "query") layout?: string,
   ) {
-    const wantedPath = queryString(path);
-    if (!wantedPath) {
-      throw new HTTPResult(HTTP_BAD_REQUEST, MISSING_PATH_MESSAGE);
-    }
+    const wantedPath = requestedPath(path);
     const websiteDoc = await requireTenantWebsite(
       context,
       queryString(website),
@@ -403,27 +372,46 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
   }
 
   /**
+   * What the reset below would delete — clicks and scrolls (`events`) and
+   * captures (`snapshots`), every period — for its confirmation dialog.
+   * Same scope rules as the reset.
+   */
+  @Get("heatmap/count")
+  async countHeatmap(
+    @AuthTenantOwner() _user: User,
+    @Context() context: RequestContext,
+    @Parameter("website", "query") website?: string,
+  ) {
+    const websiteDoc = await requireTenantWebsite(
+      context,
+      queryString(website),
+    );
+    return countHeatmapData(
+      websiteDoc.tenantId,
+      websiteDoc._id,
+      resetPath(context),
+    );
+  }
+
+  /**
    * Unlike the reads above, `website` is required: deleting across every site
    * of the tenant because a query parameter was omitted is not a merge, it is
    * a surprise. Without `path` the whole site's click and scroll history goes
-   * — the "pages were redesigned" case the reset exists for.
+   * — the "pages were redesigned" case the reset exists for; a blank `path`
+   * is refused rather than read as "no path". Answers `{events, snapshots}`
+   * deleted.
    */
   @Delete("heatmap")
   async resetHeatmap(
     @AuthTenantOwner() _user: User,
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
-    @Parameter("path", "query") path?: string,
   ) {
+    const path = resetPath(context);
     const websiteDoc = await requireTenantWebsite(
       context,
       queryString(website),
     );
-    const deleted = await resetHeatmapEvents(
-      websiteDoc.tenantId,
-      websiteDoc._id,
-      queryString(path),
-    );
-    return { deleted };
+    return resetHeatmapEvents(websiteDoc.tenantId, websiteDoc._id, path);
   }
 }

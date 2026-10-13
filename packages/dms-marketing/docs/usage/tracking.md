@@ -6,10 +6,19 @@ page covers what it records and the JavaScript API it exposes to page code.
 
 ## What is recorded automatically
 
-- **Pageviews** — every page load, plus SPA navigations (the tracker hooks
-  `history.pushState` and `popstate`).
+- **Pageviews** — every page load, plus SPA navigations: the tracker hooks
+  `history.pushState`, `history.replaceState` (a client-side redirect lands
+  on a page too) and `popstate`, and counts a page restored from the
+  back/forward cache. A call that leaves the path unchanged (query or hash
+  update) is no navigation, and hash routes (`#/pricing`) are not told
+  apart: stored paths never carry the fragment.
 - **Clicks and scroll depth** — sampled (10 % of page loads by default; see
-  [settings.md](settings.md)). These feed the heatmaps.
+  [settings.md](settings.md)). These feed the heatmaps. Only clicks the
+  visitor made count — a script's `element.click()` does not — and a click
+  from the keyboard (Enter, Space) is placed at the centre of the element it
+  activated. Every sampled view reports the depth it reached when the
+  visitor leaves, scrolled or not: 0 for a long page read above the fold,
+  100 for a page shorter than the window.
 - **Page snapshots** — only on websites that opted in, and only on visits
   already sampled for clicks: a serialized rendering of the page, form
   values and marked elements masked, that the heatmap is drawn over. What
@@ -19,7 +28,7 @@ page covers what it records and the JavaScript API it exposes to page code.
   `utm_*` parameters — source, medium, campaign, term, content — (extracted
   onto the session; query strings are dropped from stored paths). The
   acquisition channel shown on the dashboards is derived server-side from
-  referrer + `utm_medium` ([campaigns.md](campaigns.md)).
+  referrer, `utm_medium` and ad click ids ([acquisition.md](acquisition.md)).
   When the deployment configures a GeoIP database, the session also carries
   the visitor's country — derived server-side from the request IP, which is
   itself never stored.
@@ -29,13 +38,23 @@ lose nothing. The visitor is identified by a server-side anonymous hash — no
 cookie, no localStorage, nothing stored client-side
 ([architecture.md](../architecture.md#anonymous-identity) has the details).
 
-Server-side, beacons only count when the browser-reported Origin matches the
-website's declared domains, and declared bots and machine-rate sources are
-dropped silently — [architecture.md](../architecture.md#event-contract)
-covers the guard chain.
+Server-side, beacons only count when the browser-reported `Origin` (or,
+failing it, `Referer`) matches the website's declared domains: a foreign
+host is refused (403), a request carrying neither header — no browser sends
+a beacon that way — is dropped silently, as are declared bots and
+machine-rate sources. Each event is validated on its own: an invalid one is
+dropped and counted, never the rest of its batch.
+[architecture.md](../architecture.md#event-contract) covers the guard
+chain. This keeps other sites' pages out of your data; it does not
+authenticate the sender — a script forging a browser's headers is accepted
+like any visitor.
 
-**Do Not Track** is honoured by default: a browser sending DNT is not
+**Do Not Track and Global Privacy Control** are honoured by default: a
+browser sending DNT or GPC (`navigator.globalPrivacyControl`) is not
 collected unless the embed opts out with `data-do-not-track="false"`.
+
+Including the tag twice (theme plus tag manager) is harmless: the second
+copy logs a console warning and does nothing.
 
 ## Custom events
 
@@ -45,13 +64,16 @@ Page code reports business events through the API the tracker installs:
 window.dmsMarketing.track("signup_submitted", { plan: "pro" });
 ```
 
-- `name` — up to 50 characters; required.
-- `data` — optional object, kind-specific, at most 4 KiB serialized. An
-  oversized payload is dropped server-side (counted, not a 400).
+- `name` — up to 50 characters (the tracker cuts a longer one); required.
+- `data` — optional object, at most 4 KiB serialized. An oversized payload
+  drops the event server-side (counted, not a 400); the rest of the batch
+  is kept.
 
-Custom events show up in the overview's KPI row and its **Top events** card
-(counts per name — which CTA gets clicked), and are the second kind of
-funnel step ([funnels.md](funnels.md)).
+Custom events show up in the overview's KPI cards and its **Custom events**
+card (counts per name — which CTA gets clicked), and are the second kind of
+funnel step ([funnels.md](funnels.md)); the funnel builder suggests the
+names the site already sends. An event that ends a funnel is tagged
+**Goal** on the overview.
 
 ## Experiment variations
 
@@ -59,11 +81,15 @@ funnel step ([funnels.md](funnels.md)).
 the exposure ([funnels.md](funnels.md#splitting-a-funnel-into-ab-variations)):
 
 ```js
-const arm = await window.dmsMarketing?.variation("hero-cta");
-if (arm === "b") {
-  showAlternateHero();
-}
+window.dmsMarketing?.variation("hero-cta").then((arm) => {
+  if (arm === "b") {
+    showAlternateHero();
+  }
+});
 ```
+
+Promise-based, so it runs as is in a classic `<script>` (a top-level
+`await` only works in a module script); the builder's snippet has this shape.
 
 Asynchronous by design — the first call loads the per-visitor assignments
 from the backend (nothing is fetched on pages that never ask). A `null`
@@ -79,10 +105,10 @@ stopped test stops counting, whoever reports the arm.
 ### Guard the call
 
 `window.dmsMarketing` is installed as a no-op on the paths that collect
-nothing (no website id, DNT), **but is absent when the script itself never
-runs** — collection disabled serves the script as a 404, and a
-`type="module"` embed defeats `document.currentScript`. Page code should
-still guard:
+nothing (no website id, DNT or GPC, collection paused — the tracker is
+then cached a minute and publishes that no-op alone), **but is absent when the script
+itself never runs** — blocked, failed to load, or a `type="module"` embed,
+which defeats `document.currentScript`. Page code should still guard:
 
 ```js
 window.dmsMarketing?.track("signup_submitted");
@@ -93,13 +119,17 @@ window.dmsMarketing?.track("signup_submitted");
 On a visit sampled for clicks, three seconds after `load` and in idle time,
 the tracker asks `GET /api/marketing/snapshot.js?website=&path=&width=`
 whether the backend wants a capture of this page at this viewport width.
-The answer is either empty or the capture script itself, which waits for
-the DOM to stop mutating, serializes it, and posts the document to
-`POST /api/marketing/snapshot` — or, when the serialization overshoots the
+The answer is either empty or the capture script itself, carrying a
+one-time token, which waits for the DOM to stop mutating, serializes it,
+and posts the document with the token to `POST /api/marketing/snapshot` —
+or, when the serialization overshoots the
 1 MiB cap, posts the size it reached instead, which is what makes the
 console say the page is too heavy rather than show nothing. Nothing is
 asked on websites that have not opted in, from inside a frame, on a hidden
-tab, or past three requests per page load (SPA navigations ask again). The masking rules and the
+tab, or past three requests per page load (SPA navigations ask again). The
+tracker flushes its queued pageview before asking: the upload is only
+accepted from the visitor the token was handed to, while their visit sits
+on that page. The masking rules and the
 `data-dms-marketing-mask` / `data-dms-marketing-block` markers are in
 [heatmap.md](heatmap.md#what-is-and-is-not-captured); the guards on the
 endpoints in [architecture.md](../architecture.md#snapshot-contract).

@@ -117,6 +117,14 @@ function coveredWindow(runs: EventWindow[]): EventWindow {
   };
 }
 
+/** How long the runs served traffic: the pauses between them count for nothing. */
+function servedMs(runs: EventWindow[]): number {
+  return runs.reduce(
+    (sum, run) => sum + Math.max(0, run.until.getTime() - run.since.getTime()),
+    0,
+  );
+}
+
 /**
  * Read-time computation over the raw event window, so a definition change
  * re-reads history — precomputed counters could not. One bounded fetch feeds
@@ -152,7 +160,13 @@ export async function computeFunnelResults(
     ),
     experiment:
       runs && experiment
-        ? computeExperimentResults(usable, funnel, experiment, truncated)
+        ? computeExperimentResults(
+            usable,
+            funnel,
+            experiment,
+            truncated,
+            servedMs(runs),
+          )
         : undefined,
     truncated,
     window: {

@@ -8,6 +8,17 @@ import {
 const RUNNING_STATUS = "running";
 
 export class FunnelsModel extends BasicDataModel(Funnel, funnelsTableName) {
+  async deleteByWebsite(websiteId: string): Promise<number> {
+    return this.table.getAll(websiteId, "websiteId").delete().run();
+  }
+
+  async listByWebsite(websiteId: string): Promise<Funnel[]> {
+    return this.table
+      .getAll(websiteId, "websiteId")
+      .orderBy("createdAt", "desc")
+      .run();
+  }
+
   /** The only slice the public assignments script serves. */
   async listRunning(websiteId: string): Promise<Funnel[]> {
     return this.table

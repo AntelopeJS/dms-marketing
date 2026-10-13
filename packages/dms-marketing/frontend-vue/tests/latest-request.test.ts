@@ -5,9 +5,12 @@ import { useLatestRequest } from '../app/composables/useLatestRequest'
 describe('useLatestRequest loading states', () => {
   it('is unsettled immediately and settles with the fetched path inventory', async () => {
     let resolve: ((value: { pages: { path: string }[] }) => void) | undefined
-    const request = useLatestRequest(() => new Promise((done) => {
-      resolve = done
-    }))
+    const request = useLatestRequest(
+      () =>
+        new Promise((done) => {
+          resolve = done
+        }),
+    )
 
     const pending = request.run()
     expect(request.settled.value).toBe(false)

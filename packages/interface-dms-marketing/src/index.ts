@@ -49,10 +49,12 @@ export interface MarketingHeatmapQuery {
   /** Page path exactly as tracked (e.g. "/pricing"). */
   path: string;
   /**
-   * Look-back window in the "<days>d" wire format of the marketing HTTP
-   * surface (e.g. "7d"); the implementer parses, defaults and caps it.
+   * First and last instants of the days read, ISO 8601, as the `from`/`to`
+   * of the marketing HTTP surface: each bound names the day it falls in, and
+   * the implementer caps the window's length. Without both, the last 7 days.
    */
-  period?: string;
+  from?: string;
+  to?: string;
   /** Restrict to one website of the tenant; defaults to all of them. */
   websiteId?: string;
 }

@@ -3,6 +3,7 @@
 // synchronously when their decorator is invoked at import time.
 import "./module";
 import "./all";
+import "./quick-actions";
 
 export * from "./all";
 export * from "./module";

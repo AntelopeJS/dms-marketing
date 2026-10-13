@@ -2,21 +2,31 @@ import { expect, it, vi } from 'vitest'
 import frontendModule from '../dms.frontend'
 
 /**
- * The backend addresses this module's surfaces by component name — the pages
+ * The backend addresses this module's blocks by component name — the pages
  * through `CustomComponent('DmsMarketing…')`, the DataTypes through their
- * form components — so a name that stops being registered silently falls back
- * to the generic card renderer instead of failing.
+ * form components. The loader puts the module's `componentPrefix` in front of
+ * each registered name, so a name that stops being registered silently
+ * falls back to a bare `<div>` instead of failing.
  */
 const BACKEND_ADDRESSED = [
-  'DmsMarketingOverviewView',
-  'DmsMarketingPagesView',
-  'DmsMarketingCampaignsView',
-  'DmsMarketingFunnelsView',
-  'DmsMarketingFunnelStepsInput',
-  'DmsMarketingExperimentInput',
+  'Context',
+  'TopListTabs',
+  'ChannelsCard',
+  'PagesExplorer',
+  'FunnelTemplates',
+  'FunnelReport',
+  'FunnelBuilder',
+  'WebsitesGrid',
+  'InstallGuide',
+  'FunnelStepsInput',
+  'ExperimentInput',
 ]
 
-it('registers every component under the DmsMarketing prefix', async () => {
+it('declares the DmsMarketing prefix', () => {
+  expect(frontendModule.componentPrefix).toBe('DmsMarketing')
+})
+
+it('registers every backend-addressed component, once, without the prefix', async () => {
   const registerComponent = vi.fn()
   const registerPlugin = vi.fn()
   await frontendModule.setup({
@@ -36,7 +46,7 @@ it('registers every component under the DmsMarketing prefix', async () => {
   expect(names.length).toBeGreaterThan(0)
   expect(new Set(names).size).toBe(names.length)
   for (const name of names) {
-    expect(name.startsWith('DmsMarketing')).toBe(true)
+    expect(name.startsWith('DmsMarketing')).toBe(false)
   }
   for (const name of BACKEND_ADDRESSED) {
     expect(names).toContain(name)

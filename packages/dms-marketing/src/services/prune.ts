@@ -36,9 +36,9 @@ export async function pruneStatistics(
 }
 
 /**
- * Top maps live shorter than their row: past the readable window
- * (`TOP_MAPS_RETENTION_DAYS` = `MAX_QUERY_PERIOD_DAYS`, no endpoint reads
- * further back) the maps are emptied and the scalar counters keep the full
+ * Top maps live shorter than their row: past the oldest day a read or its
+ * comparison reaches (`TOP_MAPS_RETENTION_DAYS`, a year plus
+ * `MAX_QUERY_PERIOD_DAYS`) the maps are emptied and the scalar counters keep the full
  * statistics retention. One functional update bounded on the day index; rows
  * already emptied come back unmodified, so the pass stays cheap.
  */
@@ -59,6 +59,60 @@ export async function pruneSnapshots(
     Date.now() - Math.min(config.snapshotRetention, config.rawEventsRetention),
   );
   return model.deleteOlderThan(cutoff);
+}
+
+const EPOCH_LOWER_BOUND = new Date(0);
+
+async function countAcrossTenants(
+  count: (tenantId: string) => Promise<number>,
+): Promise<number> {
+  const tenantIds = await GetModel(WebsitesModel).listTenantIds();
+  let total = 0;
+  for (const tenantId of tenantIds) {
+    total += await count(tenantId);
+  }
+  return total;
+}
+
+/**
+ * What a retention cut at `cutoff` would delete, every tenant together: the
+ * figure the Settings page asks a lowered retention to be confirmed with.
+ */
+export function countRawEventsBefore(cutoff: Date): Promise<number> {
+  return countAcrossTenants((id) =>
+    GetModel(MarketingEventsModel, id)
+      .table.between("timestamp", EPOCH_LOWER_BOUND, cutoff)
+      .count()
+      .run(),
+  );
+}
+
+export function countSnapshotsBefore(cutoff: Date): Promise<number> {
+  return countAcrossTenants((id) =>
+    GetModel(PageSnapshotsModel, id)
+      .table.between("capturedAt", EPOCH_LOWER_BOUND, cutoff)
+      .count()
+      .run(),
+  );
+}
+
+/** Sessions, the figure shown, and the daily rollups that go with them. */
+export async function countStatisticsBefore(
+  cutoff: Date,
+): Promise<{ sessions: number; days: number }> {
+  const sessions = await countAcrossTenants((id) =>
+    GetModel(MarketingSessionsModel, id)
+      .table.between("lastSeenAt", EPOCH_LOWER_BOUND, cutoff)
+      .count()
+      .run(),
+  );
+  const days = await countAcrossTenants((id) =>
+    GetModel(WebsiteStatisticsModel, id)
+      .table.between("day", 0, cutoff.getTime())
+      .count()
+      .run(),
+  );
+  return { sessions, days };
 }
 
 const TENANT_PRUNES = [

@@ -67,16 +67,14 @@ export function useLatestRequest<T>(
         return
       }
       data.value = result
-    }
-    catch (cause) {
+    } catch (cause) {
       if (request !== latest) {
         return
       }
       failed.value = true
       error.value = cause
       data.value = null
-    }
-    finally {
+    } finally {
       // A superseded run owns none of the shared state — not even the flag
       // that says the newest one is still in flight.
       if (request === latest) {
