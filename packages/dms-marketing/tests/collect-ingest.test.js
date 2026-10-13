@@ -11,7 +11,7 @@ const {
   warnRejectedSource,
 } = require("../dist/services/origin-guard");
 const { parseJsonOr400 } = require("../dist/services/request-body");
-const { clientIp } = require("../dist/services/request-meta");
+const { getClientIp } = require("@antelopejs/interface-dms/client-ip");
 const { sanitizeSnapshotHtml } = require("../dist/services/snapshots");
 const { trackedEventSchema } = require("../dist/types/events");
 const {
@@ -274,34 +274,21 @@ test("every experiment key the builder accepts can be exposed", () => {
   );
 });
 
-test("X-Forwarded-For is ignored unless proxies are declared", () => {
-  const context = (forwarded) => ({
+test("the client address is the DMS's: X-Forwarded-For needs a trusted proxy", async () => {
+  const context = (forwarded, remoteAddress = "10.0.0.9") => ({
     rawRequest: {
       headers: { "x-forwarded-for": forwarded },
-      socket: { remoteAddress: "10.0.0.9" },
+      socket: { remoteAddress },
     },
   });
-  setConfig();
-  try {
-    assert.equal(clientIp(context("198.51.100.7")), "10.0.0.9");
-
-    setConfig({ trustedProxyHops: 1 });
-    assert.equal(clientIp(context("6.6.6.6, 198.51.100.7")), "198.51.100.7");
-    assert.equal(
-      clientIp(context(["6.6.6.6", "7.7.7.7, 198.51.100.7"])),
-      "198.51.100.7",
-    );
-    assert.equal(clientIp(context(undefined)), "10.0.0.9");
-
-    setConfig({ trustedProxyHops: 2 });
-    assert.equal(
-      clientIp(context("6.6.6.6, 198.51.100.7, 10.0.0.2")),
-      "198.51.100.7",
-    );
-    assert.equal(clientIp(context("198.51.100.7")), "10.0.0.9");
-  } finally {
-    setConfig();
-  }
+  // The test DMS trusts no proxy: the socket peer is the client.
+  assert.equal(await getClientIp(context("198.51.100.7")), "10.0.0.9");
+  assert.equal(await getClientIp(context(undefined)), "10.0.0.9");
+  // An IPv4-mapped peer is written as plain IPv4.
+  assert.equal(
+    await getClientIp(context(undefined, "::ffff:203.0.113.4")),
+    "203.0.113.4",
+  );
 });
 
 test("a stored snapshot carries nothing executable and no form value", () => {

@@ -1,3 +1,4 @@
+import { getClientIp } from "@antelopejs/interface-dms/client-ip";
 import {
   Context,
   Controller,
@@ -10,7 +11,7 @@ import { getConfig } from "@/config";
 import { servableExperiments } from "@/services/experiment-definitions";
 import { type AssignmentMap, assignAll } from "@/services/experiments";
 import { queryString } from "@/services/query-param";
-import { clientIp, userAgentOf } from "@/services/request-meta";
+import { userAgentOf } from "@/services/request-meta";
 import { getVisitorHashSecret } from "@/services/settings";
 import { computeVisitorId } from "@/services/visitor-id";
 import {
@@ -67,7 +68,7 @@ export class PublicExperimentsController extends Controller(API_BASE_PATH) {
         const visitorId = computeVisitorId(
           getVisitorHashSecret(),
           id,
-          clientIp(context),
+          await getClientIp(context),
           userAgentOf(context),
         );
         assignments = assignAll(visitorId, running);

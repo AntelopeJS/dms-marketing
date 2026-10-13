@@ -1,3 +1,4 @@
+import { getClientIp } from "@antelopejs/interface-dms/client-ip";
 import {
   Context,
   Controller,
@@ -16,7 +17,7 @@ import {
   websiteAcceptsHostname,
 } from "@/services/origin-guard";
 import { parseJsonOr400 } from "@/services/request-body";
-import { clientIp, userAgentOf } from "@/services/request-meta";
+import { userAgentOf } from "@/services/request-meta";
 import { resolveWebsite } from "@/services/website-cache";
 import { recordAcceptedSource } from "@/services/website-hosts";
 import { collectRequestSchema } from "@/types";
@@ -64,7 +65,7 @@ export class CollectController extends Controller(API_BASE_PATH) {
       throw new HTTPResult(HTTP_FORBIDDEN, ORIGIN_NOT_ALLOWED_MESSAGE);
     }
     const userAgent = userAgentOf(context);
-    const ip = clientIp(context);
+    const ip = await getClientIp(context);
     // Every browser stamps Origin on a POST; a beacon without it (nor a
     // Referer) was not sent by a page of the site.
     if (

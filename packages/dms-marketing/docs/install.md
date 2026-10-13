@@ -44,20 +44,29 @@ export default defineConfig({
         // its EULA, or a commercial db) is the operator's licensing and
         // compliance decision. Replacing the file takes a restart.
         geoipDatabasePath: "/var/lib/geoip/GeoLite2-Country.mmdb",
-        // Optional: reverse proxies in front of the backend that append the
-        // client address to X-Forwarded-For (e.g. 1 behind one nginx, 2
-        // behind a CDN and a load balancer). Default 0: the header is
-        // ignored and the connection's address identifies the visitor —
-        // left at 0 behind a proxy, every visitor looks like the proxy.
-        // Never set it higher than the proxies actually there: the entries
-        // past them are written by the client.
-        trustedProxyHops: 1,
       },
     },
     // … dms, mongodb, api, auth-jwt as in any DMS project
   },
 });
 ```
+
+### Behind a reverse proxy
+
+The module identifies a visitor and rate-limits a source by the client
+address the DMS resolves (`getClientIp`): `X-Forwarded-For` is only read
+behind the reverse proxies the DMS trusts, its `auth.trustedProxies` option
+(e.g. 1 behind one nginx, 2 behind a CDN and a load balancer). Left at its
+default 0 behind a proxy, every visitor looks like the proxy; never set it
+higher than the proxies actually there, as the entries past them are written
+by the client.
+
+**Upgrading from 0.3.** The module's own `trustedProxyHops` option is gone:
+move its value to the DMS's `auth.trustedProxies`, which now covers both. An
+IPv4-mapped address (`::ffff:198.51.100.7`, a backend listening on IPv6) is
+now read as plain IPv4, so the visitors reaching it that way get a new
+visitor hash once, as on the monthly salt rotation: they count as new
+visitors and may draw another arm of a running A/B test.
 
 ### Allow the tracked sites' origins (CORS)
 

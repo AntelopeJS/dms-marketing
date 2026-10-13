@@ -209,11 +209,11 @@ the data, each scoped to the misuse it can actually see:
   in-memory, per-instance — caps how fast any single source can write.
   Sized an order of magnitude above a heavy visitor so carrier-grade NAT
   never trips it; refusals are silent 200s for the same reason. The IP is
-  the socket's: `X-Forwarded-For` is only read behind the
-  `trustedProxyHops` proxies the deployment declares (module config,
-  default 0), at the entry the outermost of them appended — anything left
-  of it is the client's word, and would mint a visitor, dodge this budget
-  or spend someone else's.
+  the one the DMS resolves (`getClientIp`, `@antelopejs/interface-dms/client-ip`):
+  `X-Forwarded-For` is only read behind the reverse proxies the DMS trusts
+  (`auth.trustedProxies`, default 0), at the entry the outermost of them
+  appended — anything left of it is the client's word, and would mint a
+  visitor, dodge this budget or spend someone else's.
 
 What remains — a scripted client forging a browser UA and a matching Origin
 — is accepted as unsolvable for an endpoint that must take anonymous

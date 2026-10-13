@@ -1,3 +1,4 @@
+import { getClientIp } from "@antelopejs/interface-dms/client-ip";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
@@ -24,7 +25,7 @@ import {
 } from "@/services/origin-guard";
 import { queryString } from "@/services/query-param";
 import { parseJsonOr400 } from "@/services/request-body";
-import { clientIp, userAgentOf } from "@/services/request-meta";
+import { userAgentOf } from "@/services/request-meta";
 import { getVisitorHashSecret } from "@/services/settings";
 import { storeSnapshot, wantsSnapshot } from "@/services/snapshots";
 import { parseTrackedUrl } from "@/services/url";
@@ -93,11 +94,15 @@ function trackedPath(raw: unknown): string | undefined {
 
 /** Same identity as collect's, so the upload can be matched to the visit
  * that negotiated it. */
-function visitorOf(context: RequestContext, website: Website): string {
+function visitorOf(
+  context: RequestContext,
+  website: Website,
+  ip: string,
+): string {
   return computeVisitorId(
     getVisitorHashSecret(),
     website._id,
-    clientIp(context),
+    ip,
     userAgentOf(context),
   );
 }
@@ -158,7 +163,7 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
       site,
       url,
       viewportWidth,
-      visitorOf(context, site),
+      visitorOf(context, site, await getClientIp(context)),
     );
     return token ? servedScript(site, token) : "";
   }
@@ -192,16 +197,21 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
       warnRejectedSource(website._id, source, headers);
       throw new HTTPResult(HTTP_FORBIDDEN, ORIGIN_NOT_ALLOWED_MESSAGE);
     }
+    const ip = await getClientIp(context);
     if (
       source === undefined ||
       !website.snapshotsEnabled ||
       isAutomatedClient(userAgentOf(context)) ||
-      !snapshotRateLimiter.consume(`${website._id}\n${clientIp(context)}`, 1)
+      !snapshotRateLimiter.consume(`${website._id}\n${ip}`, 1)
     ) {
       return REFUSED;
     }
     return {
-      accepted: await storeSnapshot(website, data, visitorOf(context, website)),
+      accepted: await storeSnapshot(
+        website,
+        data,
+        visitorOf(context, website, ip),
+      ),
     };
   }
 }
