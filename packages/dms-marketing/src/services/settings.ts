@@ -310,14 +310,13 @@ export async function confirmRetentionCuts(
       continue;
     }
     warnedCuts.set(warning, now + CUT_CONFIRM_WINDOW_MS);
-    // `{ field, message, values }`: the DMS form shows it under the field as
-    // "message: values" — the count rides there, an error message taking no
-    // params. Bare digits: the server does not know the reader's language,
-    // and "4,127" reads as a decimal in French as "4 127" looks wrong in English.
+    // `{ field, message, params }`: the DMS form shows the message under the
+    // field, its `{deleted}` filled from `params` (a figure in parentheses,
+    // which no singular form has to agree with).
     throw new HTTPResult(HTTP_CONFLICT, {
       field: cut.id,
       message: `${CUT_MESSAGE_PREFIX}${deleted.what}`,
-      values: [String(deleted.count)],
+      params: { deleted: deleted.count },
     });
   }
 }

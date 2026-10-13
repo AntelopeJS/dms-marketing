@@ -21,9 +21,9 @@ const SETTINGS_URL = `${API_BASE_PATH}/settings`;
 
 /**
  * Optional by design: an emptied numeric field arrives as `null`, which puts
- * the config default back in force. The bounds validate (here and on the
- * route) but are left off the input: the number field clamps to them on
- * blur, turning a mistyped 0 into 1 without a word instead of refusing it.
+ * the config default back in force. The bounds validate here and on the
+ * route; the input keeps a value typed outside them (`clamp: false`) and says
+ * so under the field, rather than turning a mistyped 0 into 1 without a word.
  */
 function numberField(setting: NumberSetting) {
   return {
@@ -35,7 +35,12 @@ function numberField(setting: NumberSetting) {
       max: setting.max,
       step: 1,
     }),
-    inputComponent: FormComponents.InputNumber({ step: 1 }),
+    inputComponent: FormComponents.InputNumber({
+      min: setting.min,
+      max: setting.max,
+      step: 1,
+      clamp: false,
+    }),
   };
 }
 

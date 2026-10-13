@@ -136,8 +136,8 @@ describe("lowering a retention that deletes data", () => {
         error.getStatus() === 409 &&
         bodyOf(error).field === "rawEventsRetentionDays" &&
         bodyOf(error).message.endsWith("retention_cut.raw_events") &&
-        // Whatever the reader's language: no locale's separator.
-        bodyOf(error).values[0] === "1234",
+        bodyOf(error).params.deleted === 1234 &&
+        !("values" in bodyOf(error)),
     );
     assert.equal(model.row.rawEventsRetention, 60 * DAY);
     await applySettingsForm(
@@ -223,5 +223,19 @@ describe("the collection paused notice", () => {
         color: "neutral",
       },
     ]);
+  });
+});
+
+describe("the settings form", () => {
+  test("keeps a number typed out of bounds and says so under the field", () => {
+    const { retentionForm } = require("../dist/pages/settings/form");
+    const { fields } = retentionForm.serializeSync().options;
+    assert.equal(fields.length, 3);
+    for (const field of fields) {
+      const options = field.component.options;
+      assert.equal(options.clamp, false);
+      assert.equal(typeof options.min, "number");
+      assert.equal(typeof options.max, "number");
+    }
   });
 });

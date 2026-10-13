@@ -442,10 +442,10 @@
         "missing_path": "A page path is required.",
         "no_website": "This workspace tracks no website yet.",
         "retention_cut": {
-          "raw_events": "Save again to confirm. On the hour, the cleanup deletes the raw events older than this",
-          "rollups": "Save again to confirm. On the hour, the cleanup deletes the daily statistics older than this (days × websites)",
-          "sessions": "Save again to confirm. On the hour, the cleanup deletes the sessions older than this, and their daily statistics",
-          "snapshots": "Save again to confirm. On the hour, the cleanup deletes the page snapshots older than this"
+          "raw_events": "Save again to confirm. On the hour, the cleanup deletes the raw events older than this ({deleted}).",
+          "rollups": "Save again to confirm. On the hour, the cleanup deletes the daily statistics older than this ({deleted}, days × websites).",
+          "sessions": "Save again to confirm. On the hour, the cleanup deletes the sessions older than this, and their daily statistics ({deleted}).",
+          "snapshots": "Save again to confirm. On the hour, the cleanup deletes the page snapshots older than this ({deleted})."
         },
         "snapshot_retention_above_raw": "Snapshots can't be kept longer than raw events: they would outlive every click they back.",
         "statistics_retention_below_raw": "Statistics can't be kept shorter than raw events: funnels and A/B results would lose the sessions of their events.",

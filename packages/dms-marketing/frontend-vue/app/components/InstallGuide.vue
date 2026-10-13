@@ -459,10 +459,7 @@ const stepTwoState = computed(() =>
                 :loading="creating"
                 :label="t('page.marketing.install.add')"
               />
-              <p class="text-xs text-dimmed md:col-span-3">
-                <span class="text-error" aria-hidden="true">*</span>
-                {{ t('dms.form.required_legend') }}
-              </p>
+              <DmsFormRequiredLegend class="md:col-span-3" />
             </form>
           </div>
         </li>

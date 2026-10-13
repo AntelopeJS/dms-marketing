@@ -1424,10 +1424,7 @@ const websiteItems = computed(() =>
         </section>
 
         <div class="px-5 py-3">
-          <p class="text-xs text-dimmed">
-            <span class="text-error" aria-hidden="true">*</span>
-            {{ t('dms.form.required_legend') }}
-          </p>
+          <DmsFormRequiredLegend />
         </div>
       </div>
 

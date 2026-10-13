@@ -442,10 +442,10 @@
         "missing_path": "Le chemin de la page est requis.",
         "no_website": "Cet espace ne suit encore aucun site.",
         "retention_cut": {
-          "raw_events": "Enregistrez à nouveau pour confirmer. À l'heure pile, le nettoyage supprime les événements bruts plus anciens",
-          "rollups": "Enregistrez à nouveau pour confirmer. À l'heure pile, le nettoyage supprime les statistiques quotidiennes plus anciennes (jours × sites)",
-          "sessions": "Enregistrez à nouveau pour confirmer. À l'heure pile, le nettoyage supprime les sessions plus anciennes et leurs statistiques quotidiennes",
-          "snapshots": "Enregistrez à nouveau pour confirmer. À l'heure pile, le nettoyage supprime les instantanés de page plus anciens"
+          "raw_events": "Enregistrez à nouveau pour confirmer. À l'heure pile, le nettoyage supprime les événements bruts plus anciens ({deleted}).",
+          "rollups": "Enregistrez à nouveau pour confirmer. À l'heure pile, le nettoyage supprime les statistiques quotidiennes plus anciennes ({deleted}, jours × sites).",
+          "sessions": "Enregistrez à nouveau pour confirmer. À l'heure pile, le nettoyage supprime les sessions plus anciennes et leurs statistiques quotidiennes ({deleted}).",
+          "snapshots": "Enregistrez à nouveau pour confirmer. À l'heure pile, le nettoyage supprime les instantanés de page plus anciens ({deleted})."
         },
         "snapshot_retention_above_raw": "Les instantanés de page ne peuvent pas durer plus longtemps que les événements bruts : ils survivraient aux clics qu'ils illustrent.",
         "statistics_retention_below_raw": "Les statistiques ne peuvent pas durer moins longtemps que les événements bruts : funnels et résultats A/B perdraient les sessions de leurs événements.",
