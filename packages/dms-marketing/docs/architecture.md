@@ -360,8 +360,10 @@ that wraps the blocks of each page.
   query parameter, else the caller's stored selection while it still belongs
   to the tenant, else the most recently active site; 404 while the tenant
   has none (`services/context.ts`). Links between the module's pages carry
-  the website and the selector's keys (`linkInContext()`); a row action only
-  interpolates its row, so the funnels rows carry them in a `context` field.
+  the website and the selector's keys: the module's own components through
+  `useContextLink()` (the website, then the DMS `withPeriodQuery`), a declared
+  row action through `{{query.X}}` tokens the DMS fills from the page URL
+  (`CONTEXT_QUERY`, `src/pages/blocks.ts`).
 - **First run.** While the tenant has no website, the container renders a
   first-run hero instead of its children, so no block fetches for a tenant
   without a site.

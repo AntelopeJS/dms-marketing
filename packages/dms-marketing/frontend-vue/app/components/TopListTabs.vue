@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useDmsRoute, useI18n } from '#dms/frontend-module'
-import { linkInContext } from '../composables/useMarketingRoutes'
+import { useI18n } from '#dms/frontend-module'
+import { useContextLink } from '../composables/useContextLink'
 import { displayName, formatNumber, percentChangeTrend } from '../utils/format'
 import { fractionDigits } from '../constants'
 
@@ -65,7 +65,7 @@ const RANK_DIGITS = 2
 
 const { t, te, locale } = useI18n()
 const { processI18n } = useTranslation()
-const route = useDmsRoute()
+const inContext = useContextLink()
 
 const { data, isLoading, error, refresh } = useChartFetch<TopTabsResponse>({
   fetchUrl: props.fetchUrl,
@@ -118,10 +118,6 @@ const DELTA_TONES = {
 
 function rank(index: number): string {
   return String(index + 1).padStart(RANK_DIGITS, '0')
-}
-
-function inContext(link: string): string {
-  return linkInContext(link, route.query)
 }
 
 function deltaLabel(delta: number | null | undefined): string {

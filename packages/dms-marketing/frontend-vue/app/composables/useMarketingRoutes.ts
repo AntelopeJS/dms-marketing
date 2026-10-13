@@ -4,11 +4,10 @@
  * The `/modules/marketing` prefix comes from the pages being registered under
  * a DMS module. The context bar reads the website and the period from the
  * page URL, the reader's saved ones standing in for what it leaves out: a
- * link followed from an analytics page carries the page's own through
- * {@link linkInContext}, or it would open on whatever another tab saved last.
+ * link followed from an analytics page carries the page's own, or it would
+ * open on whatever another tab saved last: {@link withWebsite} for the
+ * website, the DMS `withPeriodQuery` for the period selector's keys.
  */
-
-import { PERIOD_SCOPE } from '../constants'
 
 const MODULE_BASE = '/modules/marketing'
 
@@ -86,32 +85,23 @@ export function settingsLink(): string {
 }
 
 /**
- * What an analytics page keeps in its URL: the context bar's website and its
- * period selector's keys (see the DMS `periodQueryKeys`).
+ * `link` on the website of the page it is followed from (`query`, that page's
+ * route query), unless the link names one itself. `useContextLink` adds the
+ * period through the DMS `withPeriodQuery`.
  */
-const CONTEXT_KEYS = [
-  'website',
-  ...['period', 'compare', 'from', 'to', 'compareFrom', 'compareTo'].map(
-    (key) => `${PERIOD_SCOPE}.${key}`,
-  ),
-]
-
-/**
- * `link` with the website and the period of the page it is followed from
- * (`query`, that page's route query); what the link names itself wins.
- */
-export function linkInContext(
+export function withWebsite(
   link: string,
   query: Record<string, unknown>,
 ): string {
+  const website = query.website
+  if (typeof website !== 'string' || !website) {
+    return link
+  }
   const [path, search = ''] = link.split('?')
   const params = new URLSearchParams(search)
-  for (const key of CONTEXT_KEYS) {
-    const value = query[key]
-    if (typeof value === 'string' && value && !params.has(key)) {
-      params.set(key, value)
-    }
+  if (params.has('website')) {
+    return link
   }
-  const suffix = params.toString()
-  return suffix ? `${path}?${suffix}` : path!
+  params.set('website', website)
+  return `${path}?${params.toString()}`
 }

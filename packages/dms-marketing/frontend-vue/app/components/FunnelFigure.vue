@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useDmsRoute, useI18n } from '#dms/frontend-module'
+import { useI18n } from '#dms/frontend-module'
 import type { MarketingFunnelResults } from '../composables/useMarketingApi'
 import {
   funnelBuilderLink,
-  linkInContext,
   overviewLink,
   pagesLink,
 } from '../composables/useMarketingRoutes'
+import { useContextLink } from '../composables/useContextLink'
 import {
   formatNumber,
   formatShortDate,
@@ -35,14 +35,11 @@ const PERCENT = 100
 const MS_PER_HOUR = 3_600_000
 
 const { t, locale } = useI18n()
-const route = useDmsRoute()
 
 const basis = ref<Basis>('entered')
 
 /** In the page's own context: the funnel's website and the period. */
-function inContext(link: string): string {
-  return linkInContext(link, route.query as Record<string, unknown>)
-}
+const inContext = useContextLink()
 
 const steps = computed(() => props.results.computation.steps)
 const previous = computed(() => props.results.previous?.steps ?? null)

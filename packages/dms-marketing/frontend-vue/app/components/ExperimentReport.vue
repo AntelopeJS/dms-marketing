@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useDmsRoute, useI18n } from '#dms/frontend-module'
+import { useI18n } from '#dms/frontend-module'
 import type {
   MarketingFunnelResults,
   MarketingVariationResult,
 } from '../composables/useMarketingApi'
-import { linkInContext, pagesLink } from '../composables/useMarketingRoutes'
+import { pagesLink } from '../composables/useMarketingRoutes'
+import { useContextLink } from '../composables/useContextLink'
 import { formatNumber } from '../utils/format'
 import {
   localizedSnippetComments,
@@ -56,11 +57,7 @@ const ARM_STYLES = [
 ]
 
 const { t, locale } = useI18n()
-const route = useDmsRoute()
-
-function inContext(link: string): string {
-  return linkInContext(link, route.query as Record<string, unknown>)
-}
+const inContext = useContextLink()
 
 const experiment = computed(() => props.results.experiment ?? null)
 const definition = computed(() => props.results.funnel.experiment!)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
+import { useDmsRouter, useI18n } from '#dms/frontend-module'
 import { useMarketingContext } from '../composables/useMarketingContext'
 import {
   useMarketingApi,
@@ -10,8 +10,8 @@ import {
 import {
   funnelBuilderLink,
   installLink,
-  linkInContext,
 } from '../composables/useMarketingRoutes'
+import { useContextLink } from '../composables/useContextLink'
 import { formatNumber } from '../utils/format'
 import { PERIOD_SCOPE } from '../constants'
 
@@ -29,7 +29,7 @@ const props = withDefaults(
 void props
 
 const { t, locale } = useI18n()
-const route = useDmsRoute()
+const inContext = useContextLink()
 const router = useDmsRouter()
 const api = useMarketingApi()
 const context = useMarketingContext()
@@ -62,10 +62,7 @@ const waiting = computed(() => context.selected.value?.state === 'waiting')
 
 function startFrom(steps: MarketingFunnelStep[] | null): void {
   void router.push(
-    linkInContext(
-      funnelBuilderLink(null, { steps: steps ?? undefined }),
-      route.query as Record<string, unknown>,
-    ),
+    inContext(funnelBuilderLink(null, { steps: steps ?? undefined })),
   )
 }
 

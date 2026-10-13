@@ -31,7 +31,6 @@ import {
 } from "@/services/funnel-report";
 import {
   type FunnelCoverage,
-  funnelRowContext,
   funnelTablePayload,
   winnerBanner,
 } from "@/services/funnels-table";
@@ -145,11 +144,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
   ) {
     const kind = queryString(kindFilter)?.replace(/^is:/, "");
     const { rows } = await summarizeWebsiteFunnels(context, user, website);
-    return funnelTablePayload(
-      rows,
-      kind,
-      funnelRowContext(periodQueryOf(context.url), queryString(website)),
-    );
+    return funnelTablePayload(rows, kind);
   }
 
   /**

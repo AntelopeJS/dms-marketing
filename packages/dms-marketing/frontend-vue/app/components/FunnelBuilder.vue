@@ -16,8 +16,8 @@ import {
   funnelBuilderLink,
   funnelLink,
   funnelsLink,
-  linkInContext,
 } from '../composables/useMarketingRoutes'
+import { useContextLink } from '../composables/useContextLink'
 import {
   draftIssues,
   isWindowHours,
@@ -749,9 +749,7 @@ function discard(): void {
 }
 
 /** A link out of the builder, on the website and period it was opened from. */
-function inContext(link: string): string {
-  return linkInContext(link, route.query as Record<string, unknown>)
-}
+const inContext = useContextLink()
 
 const backLink = computed(() => {
   if (isEdit) {

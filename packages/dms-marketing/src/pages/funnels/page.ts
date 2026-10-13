@@ -17,6 +17,7 @@ import {
 } from "@/types/constants";
 import {
   blockMeta,
+  CONTEXT_QUERY,
   MARKETING_PERIOD_SCOPE,
   CONTEXT_PAGE_LIVE,
   MarketingContext,
@@ -36,17 +37,6 @@ const STATUS_TONES = {
 /** The table's own actions over `/api/marketing/tables/funnels`. */
 const FUNNELS_TABLE_API = `${API_BASE_PATH}/tables/funnels`;
 const BUILDER_URL = `${MARKETING_MODULE_PATH}/funnel-builder`;
-
-/**
- * The page's website and period on a row's link: a row action fills its URL
- * from the row alone, so the rows carry the context they were read in.
- */
-const ROW_CONTEXT = [
-  "website={context.website}",
-  ...(["period", "from", "to", "compare"] as const).map(
-    (key) => `${MARKETING_PERIOD_SCOPE}.${key}={context.${key}}`,
-  ),
-].join("&");
 
 /**
  * The funnels of the context's website: a stock source table over
@@ -155,21 +145,24 @@ const funnelsTable = TableView.fromSource({
         icon: "i-ph-arrow-right",
         target: {
           type: "page",
-          url: `${MARKETING_MODULE_PATH}/funnel?id={_id}&${ROW_CONTEXT}`,
+          url: `${MARKETING_MODULE_PATH}/funnel?id={_id}&${CONTEXT_QUERY}`,
         },
         isDefault: true,
       },
       {
         label: `${FUNNELS_PREFIX}actions.edit`,
         icon: "i-ph-pencil-simple",
-        target: { type: "page", url: `${BUILDER_URL}?id={_id}&${ROW_CONTEXT}` },
+        target: {
+          type: "page",
+          url: `${BUILDER_URL}?id={_id}&${CONTEXT_QUERY}`,
+        },
       },
       {
         label: `${FUNNELS_PREFIX}actions.duplicate`,
         icon: "i-ph-copy",
         target: {
           type: "page",
-          url: `${BUILDER_URL}?copy={_id}&${ROW_CONTEXT}`,
+          url: `${BUILDER_URL}?copy={_id}&${CONTEXT_QUERY}`,
         },
       },
       {

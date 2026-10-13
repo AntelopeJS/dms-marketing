@@ -31,6 +31,30 @@ export function websiteUrl(path: string): string {
   return `${path}${path.includes("?") ? "&" : "?"}${WEBSITE_QUERY}`;
 }
 
+/** The keys the period selector keeps in the page URL (the DMS `periodQueryKeys`). */
+const PERIOD_KEYS = [
+  "period",
+  "compare",
+  "from",
+  "to",
+  "compareFrom",
+  "compareTo",
+] as const;
+
+/**
+ * The page's website and period, as the query of a link leaving it: a `page`
+ * or `external` action target fills the page URL's tokens, a pair the page
+ * has no value for being left out, so the page it opens shows the same
+ * context.
+ */
+export const CONTEXT_QUERY = [
+  WEBSITE_QUERY,
+  ...PERIOD_KEYS.map(
+    (key) =>
+      `${MARKETING_PERIOD_SCOPE}.${key}={{query.${MARKETING_PERIOD_SCOPE}.${key}}}`,
+  ),
+].join("&");
+
 /** Options every module block reads its data with. */
 export interface ScopedBlockOptions {
   fetchUrl?: string;

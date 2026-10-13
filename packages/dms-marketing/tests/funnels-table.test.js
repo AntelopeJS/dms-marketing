@@ -1,10 +1,10 @@
 const assert = require("node:assert/strict");
 const test = it;
 const {
-  funnelRowContext,
   funnelTablePayload,
   winnerBanner,
 } = require("../dist/services/funnels-table");
+const { CONTEXT_QUERY } = require("../dist/pages/blocks");
 
 function summary(overrides = {}) {
   return {
@@ -99,35 +99,21 @@ test("a kind filter narrows the table to funnels or tests", () => {
   assert.equal(funnelTablePayload(rows, "funnel").results[0]._id, "f1");
 });
 
-test("each row carries the context its actions link with", () => {
-  const context = { website: "w1", from: "2026-10-01", to: "2026-10-11" };
-  const { results } = funnelTablePayload([summary()], undefined, context);
-  assert.deepEqual(results[0].context, context);
-});
-
-test("the row context names a preset, or a custom range's bounds", () => {
-  const scope = {
-    from: "2026-09-11T22:00:00.000Z",
-    to: "2026-10-11T21:59:59.999Z",
-    comparison: "previous-year",
-  };
-  assert.deepEqual(
-    funnelRowContext({ ...scope, preset: "last-30-days" }, "w1"),
-    {
-      website: "w1",
-      period: "last-30-days",
-      from: "",
-      to: "",
-      compare: "previous-year",
-    },
+test("a row's links name the page's website and period as page tokens", () => {
+  assert.equal(
+    CONTEXT_QUERY,
+    [
+      "website={{query.website}}",
+      "marketing.period={{query.marketing.period}}",
+      "marketing.compare={{query.marketing.compare}}",
+      "marketing.from={{query.marketing.from}}",
+      "marketing.to={{query.marketing.to}}",
+      "marketing.compareFrom={{query.marketing.compareFrom}}",
+      "marketing.compareTo={{query.marketing.compareTo}}",
+    ].join("&"),
   );
-  assert.deepEqual(funnelRowContext({ ...scope, preset: "custom" }, "w1"), {
-    website: "w1",
-    period: "",
-    from: "2026-09-12",
-    to: "2026-10-11",
-    compare: "previous-year",
-  });
+  const { results } = funnelTablePayload([summary()], undefined);
+  assert.equal("context" in results[0], false);
 });
 
 test("only a test ready to decide gets the winner banner", () => {

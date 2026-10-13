@@ -5,9 +5,9 @@ import {
   funnelLink,
   funnelsLink,
   installLink,
-  linkInContext,
   overviewLink,
   pagesLink,
+  withWebsite,
 } from '../app/composables/useMarketingRoutes'
 
 describe('module links', () => {
@@ -54,36 +54,30 @@ describe('module links', () => {
     )
   })
 
-  it('carry the website and the period of the page they are followed from', () => {
+  it('carry the website of the page they are followed from', () => {
     const query = {
       website: 'site-1',
       'marketing.period': 'last-7-days',
-      'marketing.compare': 'previous-year',
       path: '/ignored',
-      from: '2026-09-01',
     }
-    expect(linkInContext(pagesLink('/pricing'), query)).toBe(
-      '/modules/marketing/pages?path=%2Fpricing&website=site-1&marketing.period=last-7-days&marketing.compare=previous-year',
+    expect(withWebsite(pagesLink('/pricing'), query)).toBe(
+      '/modules/marketing/pages?path=%2Fpricing&website=site-1',
     )
-    expect(linkInContext(overviewLink('site-2'), query)).toBe(
-      '/modules/marketing/overview?website=site-2&marketing.period=last-7-days&marketing.compare=previous-year',
-    )
-    expect(linkInContext(acquisitionLink(), {})).toBe(
-      '/modules/marketing/acquisition',
+    expect(withWebsite(acquisitionLink(), query)).toBe(
+      '/modules/marketing/acquisition?website=site-1',
     )
   })
 
-  it('carry a custom range of the period selector', () => {
-    const link = linkInContext(funnelBuilderLink(null, { copy: 'f1' }), {
-      website: 'w1',
-      'marketing.from': '2026-10-01',
-      'marketing.to': '2026-10-11',
-      'marketing.compare': 'none',
-    })
-    const query = new URLSearchParams(link.split('?')[1])
-    expect(query.get('copy')).toBe('f1')
-    expect(query.get('marketing.from')).toBe('2026-10-01')
-    expect(query.get('marketing.to')).toBe('2026-10-11')
-    expect(query.get('website')).toBe('w1')
+  it('keep the website a link names, and stay bare without one', () => {
+    const query = { website: 'site-1' }
+    expect(withWebsite(overviewLink('site-2'), query)).toBe(
+      '/modules/marketing/overview?website=site-2',
+    )
+    expect(withWebsite(acquisitionLink(), {})).toBe(
+      '/modules/marketing/acquisition',
+    )
+    expect(withWebsite(acquisitionLink(), { website: ['site-1'] })).toBe(
+      '/modules/marketing/acquisition',
+    )
   })
 })

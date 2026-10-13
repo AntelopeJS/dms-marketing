@@ -7,8 +7,6 @@ import type { ComposedText } from "@antelopejs/interface-dms/base/types/composed
 import { MARKETING_MODULE_PATH } from "@/types/constants";
 import { deltaTone, percentText } from "./composed";
 import type { FunnelSummaryRow } from "./funnel-report";
-import { type PeriodQuery, periodDayOf } from "./period";
-import { queryString } from "./query-param";
 
 const ROW_PREFIX = "$page.marketing.funnels.row.";
 const WINNER_PREFIX = "$page.marketing.funnels.winner.";
@@ -20,38 +18,6 @@ const LETTER_A = 65;
 const KIND_ICONS = { funnel: "i-ph-funnel", ab: "i-ph-flask" } as const;
 
 /** A row of the funnels table, the shape `TableView.fromSource` lists. */
-/**
- * The context a table was read in, as the context bar's period selector
- * keeps it in the page URL, which its row actions link with: a preset's name
- * in `period`, or a custom range's days in `from`/`to`. The keys a read
- * leaves out are empty, as the selector reads an empty key as absent.
- */
-export interface FunnelRowContext {
-  website?: string;
-  period?: string;
-  from?: string;
-  to?: string;
-  compare?: string;
-}
-
-const CUSTOM_PRESET = "custom";
-
-/** The row context of a read, from the period scope's parameters. */
-export function funnelRowContext(
-  query: PeriodQuery,
-  website: string | undefined,
-): FunnelRowContext {
-  const preset = queryString(query.preset);
-  const custom = preset === CUSTOM_PRESET;
-  return {
-    website,
-    period: custom ? "" : (preset ?? ""),
-    from: custom ? (periodDayOf(query.from, "start") ?? "") : "",
-    to: custom ? (periodDayOf(query.to, "end") ?? "") : "",
-    compare: queryString(query.comparison) ?? "",
-  };
-}
-
 export interface FunnelTableRow {
   _id: string;
   name: string;
@@ -70,7 +36,6 @@ export interface FunnelTableRow {
   /** Under the conversion: its change, or the test's run. */
   comparison: CellSubline | null;
   status: string | null;
-  context: FunnelRowContext;
 }
 
 function letter(index: number): string {
@@ -214,7 +179,6 @@ function comparisonOf(row: FunnelSummaryRow): CellSubline | null {
 export function funnelTablePayload(
   rows: FunnelSummaryRow[],
   kind: string | undefined,
-  context: FunnelRowContext = {},
 ): { results: FunnelTableRow[]; total: number } {
   const results = rows
     .filter((row) => !kind || row.kind === kind)
@@ -231,7 +195,6 @@ export function funnelTablePayload(
       conversionText: percentText(row.conversion),
       comparison: comparisonOf(row),
       status: row.experiment?.status ?? null,
-      context,
     }));
   return { results, total: results.length };
 }

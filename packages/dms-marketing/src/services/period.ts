@@ -96,23 +96,6 @@ function lastDayOf(instant: number): number {
   return Math.round((instant + 1) / MS_PER_DAY) * MS_PER_DAY - MS_PER_DAY;
 }
 
-/**
- * The day a bound the period scope sent names, `YYYY-MM-DD` (see
- * {@link firstDayOf}): the reader's local day, as their period selector
- * writes a day-aligned bound in the page URL. Undefined for anything else.
- */
-export function periodDayOf(
-  value: unknown,
-  bound: "start" | "end",
-): string | undefined {
-  const instant = parseInstant(value);
-  if (instant === undefined) {
-    return undefined;
-  }
-  const day = bound === "start" ? firstDayOf(instant) : lastDayOf(instant);
-  return new Date(day).toISOString().slice(0, 10);
-}
-
 function windowOfDays(
   firstDay: number,
   lastDay: number,

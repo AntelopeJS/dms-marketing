@@ -10,8 +10,8 @@ import {
 import {
   funnelBuilderLink,
   funnelsLink,
-  linkInContext,
 } from '../composables/useMarketingRoutes'
+import { useContextLink } from '../composables/useContextLink'
 import { formatShortDate } from '../utils/format'
 import { MS_PER_DAY, fractionDigits } from '../constants'
 
@@ -51,9 +51,7 @@ const funnelId = computed(() => {
 })
 
 /** In the page's own context: website and period follow the link. */
-function inContext(link: string): string {
-  return linkInContext(link, route.query as Record<string, unknown>)
-}
+const inContext = useContextLink()
 
 // No id at all: nothing to name, back to the list.
 watch(
