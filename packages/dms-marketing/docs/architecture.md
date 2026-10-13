@@ -346,9 +346,8 @@ that wraps the blocks of each page.
 - **Clock.** While the period reaches today, the bar asks the blocks to
   read again every minute (`refreshLivePageBlocks()`), through the live gate
   of the pages it sits on (`live: CONTEXT_PAGE_LIVE`, at most one read a
-  minute per block); past midnight it mounts the selector again so a day
-  preset moves on. The bar's Refresh reads every block again at once
-  (`refreshPageBlocks()`).
+  minute per block); the DMS selector moves a day preset on at midnight. The
+  bar's Refresh reads every block again at once (`refreshPageBlocks()`).
 - **Website.** The page URL names it (`?website=`), so each tab keeps its
   own and a copied link opens on the same site; a stock block reads it
   through a `{{query.website}}` token (`websiteUrl()`, `src/pages/blocks.ts`)

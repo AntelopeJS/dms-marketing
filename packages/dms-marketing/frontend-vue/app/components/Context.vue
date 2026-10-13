@@ -130,21 +130,6 @@ async function refreshActivity(): Promise<void> {
   }
 }
 
-/**
- * The page's query as the browser has it: the period selector writes the
- * address bar first and the route catches up later, so a query built from the
- * route alone could put back the period it just replaced.
- */
-function currentQuery(): Record<string, unknown> {
-  if (typeof window === 'undefined') {
-    return { ...route.query }
-  }
-  return {
-    ...route.query,
-    ...Object.fromEntries(new URLSearchParams(window.location.search)),
-  }
-}
-
 async function select(id: string): Promise<void> {
   if (id === selectedId.value) {
     return
@@ -155,7 +140,7 @@ async function select(id: string): Promise<void> {
     // and the blocks follow the URL once it names it. A pick is a history
     // entry, so Back takes it back.
     context.value = await api.selectContextWebsite(id)
-    await router.push({ query: { ...currentQuery(), website: id } })
+    await router.push({ query: { ...route.query, website: id } })
   } catch {
     toast.add({
       color: 'error',
@@ -174,7 +159,7 @@ watch(
   [selectedId, () => route.query],
   ([id]) => {
     if (id && route.query.website !== id) {
-      void router.replace({ query: { ...currentQuery(), website: id } })
+      void router.replace({ query: { ...route.query, website: id } })
     }
   },
   { immediate: true },
@@ -214,45 +199,24 @@ onMounted(reload)
 
 // --- Clock -------------------------------------------------------------------
 // A period reaching today follows the clock: its blocks read again every
-// minute, through the page's live gate, and a preset moves on at midnight.
+// minute, through the page's live gate. The selector itself moves a day
+// preset on at midnight.
 
 const now = ref(Date.now())
-/** Bumped to mount the period selector again. */
-const selectorKey = ref(0)
 
 /** The period covers the present: its counts are still moving. */
 const reachesToday = computed(
   () => !!range.value && range.value.to.getTime() >= now.value,
 )
 
-/**
- * The DMS resolves a day preset once (only its hour presets follow the
- * clock): past midnight, a tab left open or a laptop woken up, "Today" would
- * still read yesterday. Mounting the selector again resolves its preset anew
- * from the URL, which keeps naming it.
- */
-function followClock(): void {
-  const state = selected.value ? period.value : null
-  if (!state || state.preset === 'custom') {
-    return
-  }
-  const midnight = new Date()
-  midnight.setHours(0, 0, 0, 0)
-  if (state.range.to.getTime() < midnight.getTime()) {
-    selectorKey.value++
-  }
-}
-
-/** Refresh: the period moved on to today if a day passed, and every block reads again. */
+/** Refresh: every block reads again. */
 function refresh(): void {
-  followClock()
   refreshToken.value++
   void refreshActivity()
 }
 
 function tick(): void {
   now.value = Date.now()
-  followClock()
 }
 
 function liveRefresh(): void {
@@ -418,7 +382,6 @@ const utcHint = computed(() => {
         <div class="flex flex-wrap items-center gap-2">
           <DmsPeriodSelector
             :id="periodScope"
-            :key="selectorKey"
             :component-id="`${componentId ?? 'marketing-context'}-period`"
             :page-id="pageId"
             variant="segmented"
