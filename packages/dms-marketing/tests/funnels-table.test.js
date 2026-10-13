@@ -4,7 +4,10 @@ const {
   funnelTablePayload,
   winnerBanner,
 } = require("../dist/services/funnels-table");
+const { GetMetadata } = require("@antelopejs/interface-core");
+const { PageMetadata } = require("@antelopejs/interface-dms/page");
 const { CONTEXT_QUERY } = require("../dist/pages/blocks");
+const { MarketingFunnelPage } = require("../dist/pages/funnel/page");
 
 function summary(overrides = {}) {
   return {
@@ -114,6 +117,17 @@ test("a row's links name the page's website and period as page tokens", () => {
   );
   const { results } = funnelTablePayload([summary()], undefined);
   assert.equal("context" in results[0], false);
+});
+
+test("a funnel page opened without an id goes back to the list in context", () => {
+  const { validation } = GetMetadata(
+    MarketingFunnelPage,
+    PageMetadata,
+  ).pageInfo;
+  assert.deepEqual(validation, {
+    requiredQueryParams: ["id"],
+    redirectTo: `/modules/marketing/funnels?${CONTEXT_QUERY}`,
+  });
 });
 
 test("only a test ready to decide gets the winner banner", () => {

@@ -53,17 +53,6 @@ const funnelId = computed(() => {
 /** In the page's own context: website and period follow the link. */
 const inContext = useContextLink()
 
-// No id at all: nothing to name, back to the list.
-watch(
-  funnelId,
-  (id) => {
-    if (!id) {
-      void router.replace(inContext(funnelsLink()))
-    }
-  },
-  { immediate: true },
-)
-
 const reloadToken = ref(0)
 
 // The id is read off the URL on every request, so another `?id=` opened in
