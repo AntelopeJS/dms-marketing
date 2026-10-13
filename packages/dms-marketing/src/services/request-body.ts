@@ -4,16 +4,14 @@ import { HTTP_BAD_REQUEST } from "@/types/constants";
 const INVALID_BODY_MESSAGE = "invalid body";
 
 /**
- * A `@RawBody` buffer parsed as JSON. A body that is not JSON is the
- * caller's mistake: 400 with `message`, where `@JSONBody` answers 500.
+ * A size-capped `@RawBody` buffer (collect, snapshot) parsed as JSON. A body
+ * that is not JSON is the caller's mistake: 400, as `@JSONBody` answers on
+ * the routes without a cap of their own.
  */
-export function parseJsonOr400(
-  body: Buffer,
-  message: string = INVALID_BODY_MESSAGE,
-): unknown {
+export function parseJsonOr400(body: Buffer): unknown {
   try {
     return JSON.parse(body.toString("utf8"));
   } catch {
-    throw new HTTPResult(HTTP_BAD_REQUEST, message);
+    throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_BODY_MESSAGE);
   }
 }

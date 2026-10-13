@@ -382,14 +382,14 @@ test("only browser-stamped hostnames are offered for Allow this host", () => {
   );
 });
 
-test("a body that is not JSON is a 400 carrying the caller's message", () => {
+test("a capped body that is not JSON is a 400", () => {
   assert.deepEqual(parseJsonOr400(Buffer.from('{"a":1}')), { a: 1 });
   assert.throws(
     () => parseJsonOr400(Buffer.from("{not json")),
     (error) => error.getStatus() === 400 && error.getBody() === "invalid body",
   );
   assert.throws(
-    () => parseJsonOr400(Buffer.from(""), "custom"),
-    (error) => error.getStatus() === 400 && error.getBody() === "custom",
+    () => parseJsonOr400(Buffer.from("")),
+    (error) => error.getStatus() === 400 && error.getBody() === "invalid body",
   );
 });

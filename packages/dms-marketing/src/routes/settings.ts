@@ -3,10 +3,10 @@ import {
   Controller,
   Get,
   HTTPResult,
+  JSONBody,
   Parameter,
   Post,
   Put,
-  RawBody,
   type RequestContext,
 } from "@antelopejs/interface-api";
 import { assertValidation } from "@antelopejs/interface-api-util";
@@ -24,7 +24,6 @@ import {
   retentionGlance,
   settingsFormValues,
 } from "@/services/settings";
-import { parseJsonOr400 } from "@/services/request-body";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { z } from "zod";
 import { API_BASE_PATH, HTTP_BAD_REQUEST } from "@/types/constants";
@@ -60,8 +59,7 @@ export class MarketingSettingsController extends Controller(
    * confirmed by saving it twice (see `confirmRetentionCuts`).
    */
   @Put("")
-  async submitSettings(@AuthOwnerOnly() user: User, @RawBody() body: Buffer) {
-    const json = parseJsonOr400(body, INVALID_SETTINGS_MESSAGE);
+  async submitSettings(@AuthOwnerOnly() user: User, @JSONBody() json: unknown) {
     // zod v3 binds `parse` to its schema in the ZodType constructor, so the
     // reference passed here is not actually unbound.
     // oxlint-disable-next-line typescript/unbound-method
@@ -100,10 +98,10 @@ export class MarketingSettingsController extends Controller(
   async setCollection(
     @AuthOwnerOnly() _user: User,
     @Context() context: RequestContext,
-    @RawBody() body: Buffer,
+    @JSONBody() body: unknown,
   ) {
     const data = assertValidation(
-      parseJsonOr400(body, INVALID_SETTINGS_MESSAGE),
+      body,
       // zod v3 binds `parse` to its schema in the ZodType constructor, so the
       // reference passed here is not actually unbound.
       // oxlint-disable-next-line typescript/unbound-method
