@@ -16,7 +16,13 @@ export default defineConfig({
   logging: { channelFilter: { "*": "warn" } },
   modules: {
     local: {
-      source: { type: "local", path: ".", installCommand: ["pnpm build"] },
+      source: {
+        type: "local",
+        path: ".",
+        // CI builds once before the suite and sets DMS_PREBUILT; locally the
+        // harness keeps rebuilding so a run always tests the current sources.
+        installCommand: process.env.DMS_PREBUILT ? [] : ["pnpm build"],
+      },
     },
     dms: {
       source: {
