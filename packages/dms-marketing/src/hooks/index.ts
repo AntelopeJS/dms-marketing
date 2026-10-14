@@ -59,10 +59,7 @@ async function exportTenantMarketingData(
  * from `construct()`, before any tenant can be deleted or exported.
  */
 export function registerMarketingHookListeners(): void {
-  RegisterHook(Hook.TENANT_DELETED, async (tenantId: string) => {
-    await purgeTenantMarketingData(tenantId);
-    return undefined;
-  });
+  RegisterHook(Hook.TENANT_DELETED, purgeTenantMarketingData);
   RegisterHook(Hook.TENANT_DATA_EXPORT, exportTenantMarketingData);
   RegisterHook(Hook.USER_DELETED, forgetUserPreferences);
 }
@@ -70,9 +67,8 @@ export function registerMarketingHookListeners(): void {
 /** A deleted account's website selection goes with it, in every workspace. */
 async function forgetUserPreferences(
   payload: UserDeletedHookPayload,
-): Promise<undefined> {
+): Promise<void> {
   for (const tenantId of payload.tenantIds) {
     await GetModel(MarketingPreferencesModel, tenantId).forget(payload.userId);
   }
-  return undefined;
 }
