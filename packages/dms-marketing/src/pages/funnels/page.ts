@@ -145,7 +145,7 @@ const funnelsTable = TableView.fromSource({
         icon: "i-ph-arrow-right",
         target: {
           type: "page",
-          url: `${MARKETING_MODULE_PATH}/funnel?id={_id}&${CONTEXT_QUERY}`,
+          url: `${MARKETING_MODULE_PATH}/funnel?id={{row._id}}&${CONTEXT_QUERY}`,
         },
         isDefault: true,
       },
@@ -154,7 +154,7 @@ const funnelsTable = TableView.fromSource({
         icon: "i-ph-pencil-simple",
         target: {
           type: "page",
-          url: `${BUILDER_URL}?id={_id}&${CONTEXT_QUERY}`,
+          url: `${BUILDER_URL}?id={{row._id}}&${CONTEXT_QUERY}`,
         },
       },
       {
@@ -162,7 +162,7 @@ const funnelsTable = TableView.fromSource({
         icon: "i-ph-copy",
         target: {
           type: "page",
-          url: `${BUILDER_URL}?copy={_id}&${CONTEXT_QUERY}`,
+          url: `${BUILDER_URL}?copy={{row._id}}&${CONTEXT_QUERY}`,
         },
       },
       {
@@ -172,10 +172,10 @@ const funnelsTable = TableView.fromSource({
         target: {
           type: "api",
           method: "DELETE",
-          url: `${FUNNELS_TABLE_API}/delete?id={_id}`,
+          url: `${FUNNELS_TABLE_API}/delete?id={{row._id}}`,
           successMessage: "$page.marketing.funnel.delete.done",
         },
-        confirm: { from: `${FUNNELS_API}/{id}/delete-confirmation` },
+        confirm: { from: `${FUNNELS_API}/{{row.id}}/delete-confirmation` },
       },
     ],
   },

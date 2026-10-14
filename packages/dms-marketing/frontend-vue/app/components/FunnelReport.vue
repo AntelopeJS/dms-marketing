@@ -323,7 +323,7 @@ async function resume(): Promise<void> {
 
 /** Worded by the server, as the funnels table's own Delete. */
 const DELETE_CONFIRMATION_URL =
-  '/api/marketing/funnels/{id}/delete-confirmation'
+  '/api/marketing/funnels/{{row.id}}/delete-confirmation'
 
 async function remove(): Promise<void> {
   const shown = funnel.value

@@ -56,7 +56,7 @@ export async function construct(
  * own start, in unspecified order relative to this module.
  * DATABASE_INITIALIZED is the "schemas exist" signal.
  */
-async function onDatabaseInitialized(): Promise<undefined> {
+async function onDatabaseInitialized(): Promise<void> {
   const settings = GetModel(MarketingSettingsModel);
   await loadSettings(settings);
 
@@ -71,7 +71,6 @@ async function onDatabaseInitialized(): Promise<undefined> {
       .then(() => pruneAllTenants(logPruneError))
       .catch(logPruneError);
   });
-  return undefined;
 }
 
 function logPruneError(err: unknown): void {
