@@ -29,3 +29,5 @@ import { GetInterfaceInstances } from "@antelopejs/interface-core";
 const available =
   GetInterfaceInstances("@antelopejs/interface-dms-marketing").length > 0;
 ```
+
+Usage guide: [dms.antelopejs.com/docs/modules/marketing/extending](https://dms.antelopejs.com/docs/modules/marketing/extending).

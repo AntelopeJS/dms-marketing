@@ -11,6 +11,7 @@
     "dist",
     "!dist/.tsbuildinfo",
     "frontend-vue",
+    "skills",
     "static"
   ],
   "main": "dist/index.js",
@@ -88,6 +89,9 @@
       "@/*": [
         "*"
       ]
-    }
+    },
+    "skills": [
+      "./skills"
+    ]
   }
 }

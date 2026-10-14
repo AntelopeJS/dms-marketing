@@ -12,7 +12,7 @@ Both are published publicly on npm under the `@antelopejs` scope (npm trusted
 publishing, with provenance) and released independently from
 `.github/workflows/release.yml` and `.github/workflows/release-interface.yml`.
 
-Start with the module's own [README](packages/dms-marketing/README.md).
+Start with the module's own [README](packages/dms-marketing/README.md) and the documentation at [dms.antelopejs.com/docs/modules/marketing](https://dms.antelopejs.com/docs/modules/marketing).
 
 ## Development
 

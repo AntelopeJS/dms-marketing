@@ -7,7 +7,7 @@ Three earlier entries are fixed or no longer reachable, kept here only as one-li
 
 - Click coordinates depended on the visitor's window size — fixed by
   anchoring clicks to the element they hit (see *Heatmap anchoring* in
-  [docs/architecture.md](docs/architecture.md#heatmap-anchoring)). Clicks
+  [docs/7.architecture.md](docs/7.architecture.md#heatmap-anchoring)). Clicks
   captured before that fix keep document fractions only, so their position
   under the overlay is still approximate.
 - A deep link to a heatmap path landed on the first page of the inventory

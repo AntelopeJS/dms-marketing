@@ -41,7 +41,7 @@ const GHOST_TILES = 3
           color="neutral"
           variant="ghost"
           :label="t('page.marketing.first_run.how')"
-          to="https://github.com/AntelopeJS/dms-marketing/blob/main/packages/dms-marketing/docs/usage/tracking.md"
+          to="https://dms.antelopejs.com/docs/modules/marketing/usage/tracking"
           target="_blank"
         />
       </div>
