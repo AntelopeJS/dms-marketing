@@ -13,8 +13,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Two jobs in parallel so the wall clock is the slower of them, not the sum:
+# the backend suite boots a real DMS, everything else is static checks and the
+# layer tests. `ubuntu` gathers them under the name the branch protection
+# knows.
 jobs:
-  ubuntu:
+  static:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -28,9 +32,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          # The workspace lockfile. The frontend module and the playground are
-          # separate projects with lockfiles of their own, not installed here.
-          cache-dependency-path: pnpm-lock.yaml
+          # The frontend module is a project of its own with its own lockfile;
+          # without it the cache key ignores half of what the job installs.
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            packages/dms-marketing/frontend-vue/pnpm-lock.yaml
 
       # Everything installs from the public npm registry; the module resolves
       # the interface to the workspace sibling through `link-workspace-packages`.
@@ -43,6 +49,7 @@ jobs:
 
       - run: pnpm --dir packages/interface-dms-marketing lint
       - run: pnpm --dir packages/interface-dms-marketing typecheck
+      # The module typechecks against the interface's built declarations.
       - run: pnpm --dir packages/interface-dms-marketing build
 
       - run: pnpm --dir packages/dms-marketing lint
@@ -52,7 +59,59 @@ jobs:
       # Unused dependencies only. `pnpm knip:all` also reports dead files and
       # exports, which need a human to confirm, so they stay out of the gate.
       - run: pnpm --dir packages/dms-marketing knip
+      # vitest over the Vue layer; needs neither the build nor a database.
+      - run: pnpm --dir packages/dms-marketing test:layer
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --filter @antelopejs/dms-marketing... --frozen-lockfile
+
+      # `ajs module test` packs and installs the package-sourced modules
+      # (dms, api, auth-jwt...) into `.antelope/cache`, and mongodb-memory-server
+      # downloads its mongod binary; both used to be fetched on every run.
+      # Ranges are still resolved against the registry, so a stale cache only
+      # costs a download, never an outdated module.
+      - uses: actions/cache@v4
+        with:
+          path: packages/dms-marketing/.antelope/cache
+          key: antelope-${{ runner.os }}-${{ hashFiles('packages/dms-marketing/antelope.test.ts', 'pnpm-lock.yaml') }}
+          restore-keys: antelope-${{ runner.os }}-
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          # The version pinned as MONGO_VERSION in antelope.test.ts.
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('packages/dms-marketing/antelope.test.ts') }}
+          restore-keys: mongodb-binaries-${{ runner.os }}-
+
+      # The only build of the job (interface first, then the module).
+      # DMS_PREBUILT below makes the test script and the harness's
+      # `installCommand` reuse it instead of building twice more.
       - run: pnpm --dir packages/dms-marketing build
       # `ajs module test .` boots the module against a real DMS, a
-      # mongodb-memory replica set and the api module, so it runs last.
-      - run: pnpm --dir packages/dms-marketing test
+      # mongodb-memory replica set and the api module.
+      - run: pnpm --dir packages/dms-marketing test:backend
+        env:
+          DMS_PREBUILT: "1"
+
+  # The job name the branch protection requires; it passes only when every
+  # job above passed.
+  ubuntu:
+    if: always()
+    needs: [static, backend]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo '${{ toJSON(needs) }}'
+          [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}" = "false" ]

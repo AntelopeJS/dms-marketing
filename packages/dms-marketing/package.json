@@ -30,7 +30,7 @@
   "scripts": {
     "build": "pnpm --filter @antelopejs/interface-dms-marketing build && rimraf dist && tsc",
     "test": "pnpm run test:backend && pnpm run test:layer",
-    "test:backend": "pnpm run build && ajs module test .",
+    "test:backend": "([ -n \"$DMS_PREBUILT\" ] || pnpm run build) && ajs module test .",
     "test:layer": "cd frontend-vue && pnpm test",
     "dev": "ajs project run -w -p playground",
     "frontend:dev": "cd playground && pnpm frontend:dev",

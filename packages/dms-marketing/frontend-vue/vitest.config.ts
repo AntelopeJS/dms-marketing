@@ -14,7 +14,9 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'jsdom',
+    // No test touches the DOM: the suites drive composables, pure helpers
+    // and the module's setup. jsdom only added its boot to every file.
+    environment: 'node',
     include: ['tests/**/*.test.ts'],
   },
 })
