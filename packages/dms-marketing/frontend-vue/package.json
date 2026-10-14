@@ -24,7 +24,6 @@
     "@vitejs/plugin-vue": "^6.0.0",
     "eslint": "^9.0.0",
     "eslint-plugin-vue": "^10.0.0",
-    "jsdom": "^26",
     "prettier": "^3.5.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.0.0",
