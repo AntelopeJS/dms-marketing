@@ -10,6 +10,7 @@ const {
   DrainSchemaInitializations,
 } = require("@antelopejs/mongodb/dist/schema-initialization");
 const models = require("@antelopejs/interface-database-decorators/model");
+const { internal } = require("@antelopejs/interface-mongodb");
 const { MongoClient } = require("mongodb");
 const {
   MarketingEventsModel,
@@ -126,13 +127,14 @@ describe("the Today hourly series", () => {
     assert.equal(await series("new-visitors"), null);
   });
 
-  test("a busy day keeps its last hours", async function () {
-    // Inserting past the old cap takes a few seconds.
-    this.timeout(60_000);
+  test("a busy day keeps its last hours", async () => {
+    // The series used to read the raw events in ascending order up to a cap
+    // of 200 000, so a busy day lost its latest hours in silence. Proving it
+    // with 200 000 rows took seconds per run; instead the day is busy enough
+    // to dwarf any page of rows, and the reads must be grouped in the
+    // database with no limit stage, whatever the volume.
     const { since, at } = today();
-    // Past the 200 000 raw events the series used to read at most: the
-    // ascending read cut the latest hours off in silence.
-    const busy = 200_100;
+    const busy = 1_000;
     const batch = [];
     for (let index = 0; index < busy; index++) {
       batch.push(event("pageview", at(0, index % 60), `b${index % 500}`));
@@ -142,11 +144,28 @@ describe("the Today hourly series", () => {
       event("pageview", at(5), "late"),
       event("pageview", at(5, 30), "late"),
     ]);
-    const pageviews = await hourlyValues(WEBSITE, since, 24, "pageviews");
-    assert.equal(pageviews[0], busy);
-    assert.equal(pageviews[5], 2);
-    const sessions = await hourlyValues(WEBSITE, since, 24, "sessions");
-    assert.equal(sessions[0], 500);
-    assert.equal(sessions[5], 1);
+    const reads = [];
+    const providerClient = await internal.client;
+    const record = (started) => {
+      if (started.command.aggregate === events.collectionName) {
+        reads.push(started.command.pipeline);
+      }
+    };
+    providerClient.on("commandStarted", record);
+    try {
+      const pageviews = await hourlyValues(WEBSITE, since, 24, "pageviews");
+      assert.equal(pageviews[0], busy);
+      assert.equal(pageviews[5], 2);
+      const sessions = await hourlyValues(WEBSITE, since, 24, "sessions");
+      assert.equal(sessions[0], 500);
+      assert.equal(sessions[5], 1);
+    } finally {
+      providerClient.off("commandStarted", record);
+    }
+    assert.equal(reads.length, 2);
+    for (const pipeline of reads) {
+      assert.ok(pipeline.some((stage) => "$group" in stage));
+      assert.ok(!pipeline.some((stage) => "$limit" in stage));
+    }
   });
 });
