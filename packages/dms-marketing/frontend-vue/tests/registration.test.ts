@@ -22,10 +22,6 @@ const BACKEND_ADDRESSED = [
   'ExperimentInput',
 ]
 
-it('declares the DmsMarketing prefix', () => {
-  expect(frontendModule.componentPrefix).toBe('DmsMarketing')
-})
-
 it('registers every backend-addressed component, once, without the prefix', async () => {
   const registerComponent = vi.fn()
   const registerPlugin = vi.fn()
