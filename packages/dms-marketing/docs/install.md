@@ -12,7 +12,7 @@ tag). A third section covers running the module's own development playground.
 
 ### Requirements
 
-- An AntelopeJS project running the DMS (`@antelopejs/dms` >=0.9.0 <0.10.0,
+- An AntelopeJS project running the DMS (`@antelopejs/dms` >=0.9.0 <1.0.0,
   with `@antelopejs/interface-dms` 0.7: its `useApiData` reads the module's
   pages on the server) on `@antelopejs/core`
   >=1.13.5, with its usual companions: `@antelopejs/mongodb` ^1.4.2 (earlier
