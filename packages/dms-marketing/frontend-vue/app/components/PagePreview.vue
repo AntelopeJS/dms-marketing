@@ -83,9 +83,10 @@ const props = defineProps<{
   usedIn?: MarketingFunnelListItem[]
 }>()
 
-/** The site's snapshot options were changed here; the parent owns the row. */
+/** The site's snapshot options were saved here, as the backend answered
+ * them; the parent owns the row. */
 const emit = defineEmits<{
-  'website-updated': []
+  'website-updated': [website: MarketingWebsite]
   /** The page lost its clicks: the inventory counts them too. */
   'heatmap-reset': []
 }>()
@@ -345,8 +346,7 @@ async function updateSnapshotOptions(
   }
   savingOptions.value = true
   try {
-    await api.updateWebsite(website._id, patch)
-    emit('website-updated')
+    emit('website-updated', await api.updateWebsite(website._id, patch))
   } catch {
     toast.add({
       color: 'error',

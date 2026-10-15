@@ -683,7 +683,13 @@ its bare file name (`Context`, `FunnelReport`…) — `@antelopejs/dms-frontend`
 0.5 adds the prefix, so the backend addresses them as `DmsMarketingContext`,
 `DmsMarketingFunnelReport`… It also registers the funnel-steps DataType
 plugin. Composables and utils are imported by path, not auto-imported, which
-keeps them testable with plain vitest. i18n keys live under
+keeps them testable with plain vitest. What a page renders is read with the
+DMS's `useApiData` (`composables/useMarketingReads.ts`): a server render
+reads it and hands it to the browser with the page. `Context` reads the
+websites before its blocks set up, so a URL naming no website is redirected
+to the saved one and its blocks render on the server with their period (once
+the browser's time zone cookie is known); the page preview's frames and the
+funnel builder's working copy read in the browser (`useMarketingApi`). i18n keys live under
 `page.marketing.*` (en-GB + fr-FR) in `frontend-vue/i18n/locales/`, which
 the loader merges into the console's catalog. `AddFrontendModule`
 (`src/index.ts`) publishes the directory to the backend's frontend manifest,

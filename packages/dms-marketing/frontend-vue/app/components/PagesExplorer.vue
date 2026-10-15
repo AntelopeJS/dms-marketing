@@ -1,15 +1,18 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
-import { useLatestRequest } from '../composables/useLatestRequest'
 import {
   useMarketingApi,
-  type MarketingFunnelListItem,
-  type MarketingPages,
   type MarketingPageEntry,
+  type MarketingPages,
   type MarketingPagesSort,
   type MarketingWebsite,
 } from '../composables/useMarketingApi'
+import {
+  usePageInventory,
+  useWebsiteFunnels,
+  useWebsites,
+} from '../composables/useMarketingReads'
 import { useMarketingContext } from '../composables/useMarketingContext'
 import { installLink } from '../composables/useMarketingRoutes'
 import { PERIOD_SCOPE } from '../constants'
@@ -55,78 +58,87 @@ const { confirm } = useConfirm()
 const websiteId = computed(() => context.selected.value?.id ?? '')
 const period = usePeriodScope(props.periodScope)
 /** The days read: a comparison change alone reads nothing again. */
-const periodDays = computed(() => {
-  const range = period.value?.range
-  return range ? `${range.from.toISOString()}|${range.to.toISOString()}` : ''
-})
+const pagesPeriod = computed(() =>
+  period.value
+    ? {
+        ...period.value,
+        comparison: 'none' as const,
+        compareRange: null,
+      }
+    : null,
+)
 
 const queryPath = () =>
   typeof route.query.path === 'string' ? route.query.path : ''
 const selectedPath = ref<string | undefined>(queryPath() || undefined)
 const search = ref('')
+/** The search the list is read with, once the box holds still. */
+const searchedTerm = ref('')
 const sort = ref<MarketingPagesSort>('views')
 
 // The full row: the context carries the id, the preview needs the snapshot options.
-const website = ref<MarketingWebsite | null>(null)
-
-async function loadWebsite(): Promise<void> {
-  const list = await api.listWebsites()
-  website.value = list.find((site) => site._id === websiteId.value) ?? null
-}
-
-const {
-  data: inventory,
-  loading,
-  settled,
-  failed,
-  run: loadPages,
-} = useLatestRequest<MarketingPages>(() =>
-  websiteId.value && !import.meta.env.SSR
-    ? api.listPages(
-        websiteId.value,
-        period.value,
-        search.value.trim(),
-        sort.value,
-      )
-    : null,
+const websitesRead = useWebsites()
+const website = computed(
+  () =>
+    websitesRead.data.value?.find((site) => site._id === websiteId.value) ??
+    null,
 )
 
-const funnels = ref<MarketingFunnelListItem[]>([])
+/** The websites list, read again with the context bar's refresh. */
+const loadWebsite = (): Promise<void> => websitesRead.refresh()
 
-async function loadFunnels(): Promise<void> {
-  try {
-    funnels.value = (await api.listFunnels(websiteId.value)).results
-  } catch {
-    funnels.value = []
+/** A site as its update answered it, in place: the list is not read again. */
+function putWebsite(saved: MarketingWebsite): void {
+  const sites = websitesRead.data.value
+  if (sites) {
+    websitesRead.data.value = sites.map((site) =>
+      site._id === saved._id ? saved : site,
+    )
   }
 }
 
-watch(
-  [websiteId, context.refreshToken],
-  ([id], previous) => {
-    if (previous?.[0] !== undefined && id !== previous[0]) {
-      selectedPath.value = undefined
-    }
-    if (id) {
-      void loadWebsite()
-      void loadFunnels()
-    }
-  },
-  { immediate: true },
+const inventoryRead = usePageInventory({
+  websiteId,
+  period: pagesPeriod,
+  search: searchedTerm,
+  sort,
+  refreshToken: context.refreshToken,
+})
+const inventory = computed(() =>
+  inventoryRead.error.value ? null : inventoryRead.data.value,
+)
+const loading = computed(() => inventoryRead.status.value === 'pending')
+/** A list is on screen (the previous one while another loads), or failed. */
+const settled = computed(
+  () =>
+    inventoryRead.data.value !== null ||
+    inventoryRead.status.value === 'success' ||
+    inventoryRead.status.value === 'error',
+)
+const failed = computed(
+  () => !!inventoryRead.error.value && inventoryRead.status.value !== 'pending',
+)
+const loadPages = (): Promise<void> => inventoryRead.refresh()
+
+const funnelsRead = useWebsiteFunnels(websiteId, context.refreshToken)
+const funnels = computed(() =>
+  funnelsRead.error.value ? [] : (funnelsRead.data.value ?? []),
 )
 
-watch(
-  [websiteId, periodDays, context.refreshToken, sort],
-  () => void loadPages(),
-  { immediate: true },
-)
+watch(websiteId, () => {
+  selectedPath.value = undefined
+})
+watch(context.refreshToken, () => void loadWebsite())
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
-watch(search, () => {
+watch(search, (value) => {
   if (searchTimer) {
     clearTimeout(searchTimer)
   }
-  searchTimer = setTimeout(() => void loadPages(), SEARCH_DEBOUNCE_MS)
+  searchTimer = setTimeout(
+    () => (searchedTerm.value = value.trim()),
+    SEARCH_DEBOUNCE_MS,
+  )
 })
 onBeforeUnmount(() => searchTimer && clearTimeout(searchTimer))
 
@@ -170,13 +182,15 @@ watch(queryPath, (path) => {
 })
 
 // A first impression that shows the feature: the first page with clicks,
-// else the first page.
-watch(inventory, (data) => {
+// else the first page. In the browser: the list a server render hands over
+// is chosen from once mounted.
+function selectFirst(data: MarketingPages | null): void {
   if (!selectedPath.value && data?.pages.length) {
     const withClicks = data.pages.find((page) => page.clicks > 0)
     selectPath((withClicks ?? data.pages[0])?.path, 'replace')
   }
-})
+}
+watch(inventory, selectFirst)
 
 const previewWrapper = ref<HTMLElement | null>(null)
 
@@ -222,10 +236,13 @@ const usedIn = computed(() =>
 
 const refreshToken = ref(0)
 
-// Client-only: the server renders no session, so its markup (an empty list)
-// would not match the client's and hydration would misplace the preview.
+// The preview draws in the browser only (frames, canvases): a server render
+// holds its place.
 const mounted = ref(false)
-onMounted(() => (mounted.value = true))
+onMounted(() => {
+  mounted.value = true
+  selectFirst(inventory.value)
+})
 
 const countLabel = computed(() => {
   const listed = pages.value.length
@@ -323,18 +340,7 @@ const moreItems = computed(() => [
         :description="t('page.marketing.pages.tracking_off.description')"
       />
 
-      <div
-        v-if="!mounted"
-        class="grid items-start gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]"
-        aria-hidden="true"
-      >
-        <USkeleton class="h-[32rem] rounded-xl" />
-        <USkeleton class="h-[32rem] rounded-xl" />
-      </div>
-      <div
-        v-else
-        class="grid items-start gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]"
-      >
+      <div class="grid items-start gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
         <section
           class="dms-card flex min-w-0 flex-col overflow-hidden p-0 xl:sticky xl:top-4"
         >
@@ -516,11 +522,17 @@ const moreItems = computed(() => [
         </section>
 
         <div
-          v-if="selectedPath && website"
+          v-if="(selectedPath && website) || (!mounted && pages.length > 0)"
           ref="previewWrapper"
           class="min-w-0 scroll-mt-4"
         >
+          <USkeleton
+            v-if="!mounted || !selectedPath || !website"
+            class="h-[32rem] rounded-xl"
+            aria-hidden="true"
+          />
           <DmsMarketingPagePreview
+            v-else
             :website="website"
             :path="selectedPath"
             :period="period"
@@ -529,7 +541,7 @@ const moreItems = computed(() => [
             :pageviews="selectedPage?.pageviews"
             :refresh-token="refreshToken + context.refreshToken.value"
             :used-in="usedIn"
-            @website-updated="loadWebsite"
+            @website-updated="putWebsite"
             @heatmap-reset="loadPages"
           />
         </div>

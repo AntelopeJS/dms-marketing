@@ -6,19 +6,14 @@ import {
   useDmsRuntimeConfig,
   useI18n,
 } from '#dms/frontend-module'
-import {
-  useMarketingApi,
-  type MarketingConnectionStatus,
-} from '../composables/useMarketingApi'
+import { useMarketingApi } from '../composables/useMarketingApi'
+import { useWebsiteConnection } from '../composables/useMarketingReads'
 import {
   installLink,
   overviewLink,
   websitesLink,
 } from '../composables/useMarketingRoutes'
-import {
-  allowHostConfirmation,
-  hostConflictOf,
-} from '../utils/host-conflict'
+import { allowHostConfirmation, hostConflictOf } from '../utils/host-conflict'
 import { trackerSnippet } from '../utils/snippet'
 
 /**
@@ -57,12 +52,16 @@ const fieldErrors = useFieldErrors({
 const websiteId = ref(
   typeof route.query.website === 'string' ? route.query.website : '',
 )
-const status = ref<MarketingConnectionStatus | null>(null)
-const failed = ref(false)
-/** The `?website=` names no site of the workspace (deleted, mistyped). */
-const missing = ref(false)
 /** Server time "Check again" waits from; null: since the site's creation. */
 const recheckSince = ref<number | null>(null)
+const connection = useWebsiteConnection(websiteId, recheckSince)
+const status = connection.data
+/** The `?website=` names no site of the workspace (deleted, mistyped). */
+const missing = computed(
+  () => apiErrorStatus(connection.error.value) === HTTP_NOT_FOUND,
+)
+/** The last check failed; the next one is on its way. */
+const failed = computed(() => !!connection.error.value && !missing.value)
 
 // --- Step 1 ----------------------------------------------------------------------
 
@@ -124,28 +123,21 @@ function stopPolling(): void {
   }
 }
 
+/** Checks again in a while, until a pageview arrives or the site is gone. */
+function schedulePoll(): void {
+  stopPolling()
+  if (websiteId.value && !missing.value && !status.value?.visit) {
+    timer = setTimeout(() => void poll(), POLL_MS)
+  }
+}
+
 async function poll(): Promise<void> {
   stopPolling()
   if (!websiteId.value) {
     return
   }
-  try {
-    status.value = await api.getConnection(
-      websiteId.value,
-      recheckSince.value ?? undefined,
-    )
-    failed.value = false
-  } catch (error) {
-    if (apiErrorStatus(error) === HTTP_NOT_FOUND) {
-      missing.value = true
-      status.value = null
-      return
-    }
-    failed.value = true
-  }
-  if (!status.value?.visit) {
-    timer = setTimeout(() => void poll(), POLL_MS)
-  }
+  await connection.refresh()
+  schedulePoll()
 }
 
 /** Waits for a pageview sent from now on, to re-verify an installed tag. */
@@ -164,7 +156,8 @@ onMounted(() => {
   apiOrigin.value = String(
     (config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? '',
   )
-  void poll()
+  // The first check came with the page (or is on its way): the next one waits.
+  void connection.then(schedulePoll)
 })
 onBeforeUnmount(stopPolling)
 
@@ -174,9 +167,8 @@ watch(
     const next = typeof value === 'string' ? value : ''
     if (next !== websiteId.value) {
       websiteId.value = next
-      status.value = null
-      missing.value = false
       recheckSince.value = null
+      connection.clear()
       void poll()
     }
   },
@@ -638,7 +630,9 @@ const stepTwoState = computed(() =>
                   />
                 </span>
                 <span class="min-w-0 flex-1">
-                  <span class="block font-semibold break-words text-highlighted">
+                  <span
+                    class="block font-semibold break-words text-highlighted"
+                  >
                     {{
                       t(
                         recheckSince === null
@@ -677,7 +671,9 @@ const stepTwoState = computed(() =>
               >
                 <DmsIconWell icon="i-ph-prohibit" tone="error" />
                 <span class="min-w-0 flex-1">
-                  <span class="block font-semibold break-words text-highlighted">
+                  <span
+                    class="block font-semibold break-words text-highlighted"
+                  >
                     {{
                       t(
                         'page.marketing.install.refused',
