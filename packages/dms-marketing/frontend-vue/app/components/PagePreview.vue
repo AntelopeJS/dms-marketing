@@ -276,6 +276,7 @@ const snapshotRead = usePageSnapshot({
   path: () => props.path,
   layout,
   enabled: snapshotsEnabled,
+  maskText: () => props.website?.snapshotMaskText === true,
 })
 const isSnapshotAsked = computed(
   () => snapshotsEnabled.value && !!props.website?._id && !!props.path,

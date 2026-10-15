@@ -205,6 +205,7 @@ describe('the page preview', () => {
       path: '/pricing',
       layout: 'phone',
       enabled,
+      maskText: false,
     })
     const [snapshot] = calls
     expect(snapshot?.url()).toBeNull()
@@ -214,6 +215,28 @@ describe('the page preview', () => {
       website: 'acme-shop',
       path: '/pricing',
       layout: 'phone',
+    })
+  })
+
+  it('reads the capture again once the text mask changes, which discards it', () => {
+    const maskText = ref(false)
+    usePageSnapshot({
+      websiteId: 'acme-shop',
+      path: '/pricing',
+      layout: 'desktop',
+      enabled: true,
+      maskText,
+    })
+    const [snapshot] = calls
+    // Same URL and query: only a watched source reads it again.
+    const sources = snapshot?.options.watch as (() => unknown)[] | undefined
+    expect(sources?.map((source) => source())).toEqual([false])
+    maskText.value = true
+    expect(sources?.map((source) => source())).toEqual([true])
+    expect(query(snapshot)).toEqual({
+      website: 'acme-shop',
+      path: '/pricing',
+      layout: 'desktop',
     })
   })
 })
