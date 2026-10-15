@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import { useDmsRouter, useI18n } from '#dms/frontend-module'
 import { useMarketingContext } from '../composables/useMarketingContext'
-import {
-  useMarketingApi,
-  type MarketingFunnelStep,
-  type MarketingFunnelTemplate,
-} from '../composables/useMarketingApi'
+import type { MarketingFunnelStep } from '../composables/useMarketingApi'
+import { useFunnelTemplates } from '../composables/useMarketingReads'
 import {
   funnelBuilderLink,
   installLink,
@@ -31,31 +28,23 @@ void props
 const { t, locale } = useI18n()
 const inContext = useContextLink()
 const router = useDmsRouter()
-const api = useMarketingApi()
 const context = useMarketingContext()
 const period = usePeriodScope(PERIOD_SCOPE)
 
-const templates = ref<MarketingFunnelTemplate[] | null>(null)
-
-watch(
-  [
-    () => context.selected.value?.id,
-    () => period.value?.range?.from.getTime(),
-    () => period.value?.range?.to.getTime(),
-  ],
-  async ([website]) => {
-    if (!website) {
-      return
-    }
-    templates.value = null
-    try {
-      templates.value = await api.getFunnelTemplates(website, period.value)
-    } catch {
-      templates.value = []
-    }
-  },
-  { immediate: true },
+const templatesRead = useFunnelTemplates(
+  () => context.selected.value?.id,
+  period,
 )
+/**
+ * The site's templates; `null` while they load (the previous site's or
+ * period's included), none once the read failed.
+ */
+const templates = computed(() => {
+  if (templatesRead.error.value && templatesRead.status.value !== 'pending') {
+    return []
+  }
+  return templatesRead.placeholder.value ? null : templatesRead.data.value
+})
 
 /** The site has sent nothing yet: templates cannot come before the tracker. */
 const waiting = computed(() => context.selected.value?.state === 'waiting')

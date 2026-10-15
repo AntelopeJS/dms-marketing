@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   displayName,
   formatDuration,
+  formatShortDate,
   formatSignedDelta,
   initials,
   percentChangeTrend,
+  utcDayStart,
 } from '../app/utils/format'
 import { sampleSizePerArm } from '../app/utils/sample-size'
 import { normalizeFunnelStepPath } from '../app/utils/step-path'
@@ -69,5 +71,24 @@ describe('helpers', () => {
     expect(
       trackerSnippet('nuxt', 'https://dms.example.com', 'site-1'),
     ).toContain('"data-website-id": "site-1"')
+  })
+})
+
+describe('dates in the reader zone', () => {
+  // 16 Oct 2026: Paris on summer time (UTC+2), New York on UTC-4.
+  const now = Date.UTC(2026, 9, 16, 12)
+
+  it('says when the statistics day starts on the reader clock, nothing at UTC', () => {
+    expect(utcDayStart(now, 'en-GB', 'Europe/Paris')).toBe('02:00')
+    expect(utcDayStart(now, 'en-GB', 'America/New_York')).toBe('20:00')
+    expect(utcDayStart(now, 'en-GB', 'UTC')).toBe('')
+  })
+
+  it('writes a short date on the reader day, wherever the code runs', () => {
+    const lateEvening = Date.UTC(2026, 9, 16, 2)
+    expect(formatShortDate(lateEvening, 'en', 'Europe/Paris')).toBe('Oct 16')
+    expect(formatShortDate(lateEvening, 'en', 'America/New_York')).toBe(
+      'Oct 15',
+    )
   })
 })

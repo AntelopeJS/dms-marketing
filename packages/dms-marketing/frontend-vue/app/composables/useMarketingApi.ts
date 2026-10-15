@@ -1,9 +1,9 @@
 /**
  * Frontend marketing facade.
  *
- * Single composable wrapping every /api/marketing/* fetch the module pages
- * need — the one file to update when endpoint shapes change (same swap-point
- * convention as dms-api's useApiIntrospection).
+ * The /api/marketing/* writes, and the reads of the browser-only surfaces
+ * (the page preview, the funnel builder). What the pages render is read
+ * through `useMarketingReads`. The response shapes are declared here.
  */
 
 import type {
@@ -398,17 +398,10 @@ function periodUrl(url: string, period: MarketingPeriod): string {
   return appendPeriodToUrl(url, period) ?? url
 }
 
-/** Far above any real tenant's funnel count — the data-api list answers 10
- * rows unless told otherwise, and caps at 100 whatever is asked. */
-const FUNNEL_LIST_LIMIT = 100
-
 export function useMarketingApi() {
   const { $authFetch } = useAuthFetch()
 
   return {
-    listWebsites: () =>
-      $authFetch<MarketingWebsite[]>('/api/marketing/websites'),
-
     getContext: () =>
       $authFetch<MarketingContextPayload>('/api/marketing/context'),
 
@@ -423,16 +416,6 @@ export function useMarketingApi() {
         method: 'PUT',
         body: { website },
       }),
-
-    listWebsiteCards: () =>
-      $authFetch<MarketingWebsiteCard[]>('/api/marketing/websites/summary'),
-
-    // `since` (epoch ms, server clock): only a pageview from then on counts.
-    getConnection: (website: string, since?: number) =>
-      $authFetch<MarketingConnectionStatus>(
-        `/api/marketing/websites/${encodeURIComponent(website)}/connection`,
-        { query: { since } },
-      ),
 
     getWebsiteDeletionImpact: (website: string) =>
       $authFetch<MarketingWebsiteDeletionImpact>(
@@ -449,14 +432,6 @@ export function useMarketingApi() {
       $authFetch<{ deleted: string }>(
         `/api/marketing/websites/${encodeURIComponent(website)}`,
         { method: 'DELETE' },
-      ),
-
-    getFunnelTemplates: (website: string, period: MarketingPeriod) =>
-      $authFetch<MarketingFunnelTemplate[]>(
-        periodUrl('/api/marketing/funnels/templates', period),
-        {
-          query: { website },
-        },
       ),
 
     getFunnelSuggestions: (website: string) =>
@@ -485,19 +460,6 @@ export function useMarketingApi() {
       ),
 
     // Query strings via ofetch's `query` option — encoding is its job.
-    listPages: (
-      website: string,
-      period: MarketingPeriod,
-      search = '',
-      sort: MarketingPagesSort = 'views',
-    ) =>
-      $authFetch<MarketingPages>(
-        periodUrl('/api/marketing/stats/pages', period),
-        {
-          query: { website, search, sort },
-        },
-      ),
-
     getHeatmap: (website: string, path: string, period: MarketingPeriod) =>
       $authFetch<MarketingHeatmap>(
         periodUrl('/api/marketing/stats/heatmap', period),
@@ -540,23 +502,9 @@ export function useMarketingApi() {
         query: { website, path },
       }),
 
-    // Definitions CRUD over the funnels data-api routes. `is` is the DMS
-    // DataType compare mode — the data-api's own `eq` parses but matches
-    // nothing. The list defaults to 10 rows, hence the explicit limit.
-    listFunnels: (website: string) =>
-      $authFetch<{ results: MarketingFunnelListItem[]; total: number }>(
-        '/api/marketing/tables/funnels/list',
-        {
-          query: {
-            filter_websiteId: `is:${website}`,
-            limit: FUNNEL_LIST_LIMIT,
-            sortKey: 'createdAt',
-            sortDirection: 'asc',
-          },
-        },
-      ),
-
-    // One definition, as the builder edits it: no results computed.
+    // Definitions CRUD over the funnels data-api routes (the list is read by
+    // `useWebsiteFunnels`). One definition, as the builder edits it: no
+    // results computed.
     getFunnel: (id: string) =>
       $authFetch<MarketingFunnelListItem>('/api/marketing/tables/funnels/get', {
         query: { id },
