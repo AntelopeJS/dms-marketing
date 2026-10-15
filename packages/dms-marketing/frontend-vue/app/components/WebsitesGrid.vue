@@ -109,8 +109,9 @@ async function runCardAction(
   try {
     await action()
     toast.add({ color: 'success', title: successTitle })
-    // Their state and counts are the backend's: the page reads them again.
-    refreshPageBlocks()
+    // Their state and counts are the backend's: the page reads them again,
+    // the card's spinner on until it shows them.
+    await refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)
     if (conflict) {

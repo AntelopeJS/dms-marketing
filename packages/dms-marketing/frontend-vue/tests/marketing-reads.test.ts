@@ -166,6 +166,18 @@ describe('the reads with triggers of their own', () => {
     const [connection] = calls
     expect(connection?.options.refreshInterval).toBe(4000)
   })
+
+  it('follows a reactive polling period, which stops the check at 0', () => {
+    const interval = ref(4000)
+    useWebsiteConnection('acme-shop', null, { refreshInterval: interval })
+    // One read: the polling is the check's own interval, not a second caller.
+    expect(calls).toHaveLength(1)
+    const [connection] = calls
+    const polling = () => toValue(connection?.options.refreshInterval as number)
+    expect(polling()).toBe(4000)
+    interval.value = 0
+    expect(polling()).toBe(0)
+  })
 })
 
 describe('the page preview', () => {

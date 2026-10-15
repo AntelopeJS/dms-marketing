@@ -54,7 +54,11 @@ const websiteId = ref(
 )
 /** Server time "Check again" waits from; null: since the site's creation. */
 const recheckSince = ref<number | null>(null)
-const connection = useWebsiteConnection(websiteId, recheckSince)
+/** The check's polling period: `POLL_MS` while it waits for a pageview, 0 (stopped) otherwise. */
+const pollInterval = ref(0)
+const connection = useWebsiteConnection(websiteId, recheckSince, {
+  refreshInterval: pollInterval,
+})
 const status = connection.data
 /** The `?website=` names no site of the workspace (deleted, mistyped). */
 const missing = computed(
@@ -117,12 +121,14 @@ async function createWebsite(): Promise<void> {
 const isWaiting = computed(
   () => !!websiteId.value && !missing.value && !status.value?.visit,
 )
-// The same read, polled while it waits: it shares the check's data, and
-// names no website (reads nothing) once a pageview arrived or the site is gone.
-useWebsiteConnection(
-  () => (isWaiting.value ? websiteId.value : ''),
-  recheckSince,
-  { refreshInterval: POLL_MS },
+// The check polls while it waits, and stops once a pageview arrived or the
+// site is gone.
+watch(
+  isWaiting,
+  (waiting) => {
+    pollInterval.value = waiting ? POLL_MS : 0
+  },
+  { immediate: true },
 )
 
 /** Waits for a pageview sent from now on, to re-verify an installed tag. */
@@ -173,7 +179,8 @@ async function allow(hostname: string): Promise<void> {
       color: 'success',
       title: t('page.marketing.install.allowed', { host: hostname }),
     })
-    refreshPageBlocks()
+    // The refused host leaves the check before its button comes back.
+    await refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)
     if (conflict) {
@@ -204,7 +211,7 @@ async function resumeTracking(): Promise<void> {
       color: 'success',
       title: t('page.marketing.websites.resumed'),
     })
-    refreshPageBlocks()
+    await refreshPageBlocks()
   } catch (error) {
     fieldErrors.toastError(error, {
       toastTitle: 'page.marketing.websites.save_error',

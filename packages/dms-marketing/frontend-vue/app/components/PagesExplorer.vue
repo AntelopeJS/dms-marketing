@@ -282,7 +282,8 @@ async function resetSite(): Promise<void> {
           what: heatmapDataLabel(deleted, t, locale.value),
         }),
       })
-      refreshPageBlocks()
+      // The dialog closes once the pages show the emptied counts.
+      await refreshPageBlocks()
     },
   })
 }

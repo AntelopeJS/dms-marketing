@@ -49,8 +49,11 @@ function periodRead(
 
 /** How the context bar reads the context: on its own clock. */
 export interface ContextReadOptions {
-  /** Reads again every this many milliseconds while the bar shows. */
-  refreshInterval?: number
+  /**
+   * Reads again every this many milliseconds while the caller shows the
+   * data; a ref or a getter changes it, and `0` or `null` stops it.
+   */
+  refreshInterval?: MaybeRefOrGetter<number | null | undefined>
 }
 
 /**
@@ -138,8 +141,8 @@ export function useFunnelTemplates(
 
 /**
  * Whether a website's tag reached the collector: since its creation, or
- * since `since` (epoch ms, server clock). Read again with `refresh()` to
- * poll it.
+ * since `since` (epoch ms, server clock). Polled every
+ * `options.refreshInterval` while it is above 0.
  */
 export function useWebsiteConnection(
   websiteId: MaybeRefOrGetter<string>,

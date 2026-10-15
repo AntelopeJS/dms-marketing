@@ -246,7 +246,8 @@ async function resetPageHeatmap() {
             what: heatmapDataLabel(deleted, t, locale.value),
           }),
         })
-        refreshPageBlocks()
+        // The preview shows the emptied page before the button comes back.
+        await refreshPageBlocks()
       } finally {
         resetting.value = false
       }
