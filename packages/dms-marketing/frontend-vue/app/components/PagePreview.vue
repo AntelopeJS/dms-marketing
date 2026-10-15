@@ -1,18 +1,21 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from '#dms/frontend-module'
-import { useLatestRequest } from '../composables/useLatestRequest'
 import {
   useMarketingApi,
   type MarketingPeriod,
-  type MarketingHeatmap,
-  type MarketingPageSnapshotResponse,
-  type MarketingScrollDepth,
   type MarketingSnapshotLayout,
   type MarketingWebsite,
   type MarketingWebsitePatch,
   type MarketingFunnelListItem,
 } from '../composables/useMarketingApi'
+import {
+  useHeatmapCountRead,
+  usePageHeatmap,
+  usePageScrollDepth,
+  usePageSnapshot,
+  type PagePreviewRequest,
+} from '../composables/useMarketingReads'
 import { funnelLink, settingsLink } from '../composables/useMarketingRoutes'
 import { formatNumber, formatShortDate } from '../utils/format'
 import {
@@ -77,8 +80,6 @@ const props = defineProps<{
   trackerEnabled: boolean
   /** Pageviews of this path over the window, for the sampling hint. */
   pageviews?: number
-  /** Bumped by the parent when it resets clicks out from under this view. */
-  refreshToken?: number
   /** Funnels with a page step on this path. */
   usedIn?: MarketingFunnelListItem[]
 }>()
@@ -87,8 +88,6 @@ const props = defineProps<{
  * them; the parent owns the row. */
 const emit = defineEmits<{
   'website-updated': [website: MarketingWebsite]
-  /** The page lost its clicks: the inventory counts them too. */
-  'heatmap-reset': []
 }>()
 
 interface LayoutPreset {
@@ -139,19 +138,20 @@ const { t, locale } = useI18n()
 
 // --- Heatmap ----------------------------------------------------------------
 
-// Path, site and period all retrigger a load and the answers can land out of
-// order: a slow answer for the page the user just left would otherwise repaint
-// over the one on screen — see useLatestRequest.
-const {
-  data: heatmap,
-  loading,
-  failed,
-  run: loadHeatmap,
-} = useLatestRequest<MarketingHeatmap>(() =>
-  props.website && props.path && !import.meta.env.SSR
-    ? api.getHeatmap(props.website._id, props.path, props.period)
-    : null,
+// Path, site and period all read again, and a newer read replaces one still
+// in flight: a slow answer for the page the user just left never repaints
+// over the one on screen. Drawn in the browser only.
+const previewRequest: PagePreviewRequest = {
+  websiteId: () => props.website?._id,
+  path: () => props.path,
+  period: () => props.period,
+}
+const heatmapRead = usePageHeatmap(previewRequest)
+const heatmap = computed(() =>
+  heatmapRead.error.value ? null : heatmapRead.data.value,
 )
+const loading = computed(() => heatmapRead.pending.value)
+const failed = computed(() => !!heatmapRead.error.value && !loading.value)
 
 const points = computed(() => heatmap.value?.points ?? [])
 const maxWeight = computed(() => heatmap.value?.maxWeight ?? 0)
@@ -164,30 +164,13 @@ const overlayMode = ref<'clicks' | 'scroll'>('clicks')
 // Read with the clicks, not when its overlay opens: every sampled view
 // reports one depth, so its count is the page's sampled views the header
 // and the empty states speak of.
-const {
-  data: scrollDepth,
-  loading: loadingScroll,
-  failed: scrollFailed,
-  run: loadScrollDepth,
-} = useLatestRequest<MarketingScrollDepth>(() =>
-  props.website && props.path && !import.meta.env.SSR
-    ? api.getScrollDepth(props.website._id, props.path, props.period)
-    : null,
+const scrollRead = usePageScrollDepth(previewRequest)
+const scrollDepth = computed(() =>
+  scrollRead.error.value ? null : scrollRead.data.value,
 )
-
-watch(
-  () => [
-    props.website?._id,
-    props.path,
-    props.period?.range?.from.getTime(),
-    props.period?.range?.to.getTime(),
-    props.refreshToken,
-  ],
-  () => {
-    void loadHeatmap()
-    void loadScrollDepth()
-  },
-  { immediate: true },
+const loadingScroll = computed(() => scrollRead.pending.value)
+const scrollFailed = computed(
+  () => !!scrollRead.error.value && !loadingScroll.value,
 )
 
 const scrollViews = computed(() => scrollDepth.value?.views ?? 0)
@@ -222,8 +205,13 @@ const { confirm } = useConfirm()
 const toast = useToast()
 const resetting = ref(false)
 
+const countPageHeatmap = useHeatmapCountRead(
+  () => props.website?._id ?? '',
+  () => props.path,
+)
+
 /** Deletes the clicks, scrolls and snapshots of the page (every period),
- *  counted by the server before asking, then refetches both overlays. */
+ *  counted by the server before asking; the page's reads follow. */
 async function resetPageHeatmap() {
   const website = props.website
   if (!website) {
@@ -231,8 +219,7 @@ async function resetPageHeatmap() {
   }
   const path = props.path
   resetting.value = true
-  const counts = await api
-    .countHeatmap(website._id, path)
+  const counts = await countPageHeatmap()
     .catch(() => null)
     .finally(() => (resetting.value = false))
   await confirm({
@@ -259,8 +246,7 @@ async function resetPageHeatmap() {
             what: heatmapDataLabel(deleted, t, locale.value),
           }),
         })
-        emit('heatmap-reset')
-        await Promise.all([loadHeatmap(), loadScrollDepth(), loadSnapshot()])
+        refreshPageBlocks()
       } finally {
         resetting.value = false
       }
@@ -284,29 +270,26 @@ const snapshotsEnabled = computed(
 
 // Not fetched while the site has snapshots off: the option's banner is the
 // whole story then, and a leftover capture must not contradict it.
-const {
-  data: snapshotResponse,
-  settled: snapshotSettled,
-  run: loadSnapshot,
-} = useLatestRequest<MarketingPageSnapshotResponse>(() =>
-  props.website && snapshotsEnabled.value && props.path && !import.meta.env.SSR
-    ? api.getSnapshot(props.website._id, props.path, layout.value)
-    : null,
+const snapshotRead = usePageSnapshot({
+  websiteId: () => props.website?._id,
+  path: () => props.path,
+  layout,
+  enabled: snapshotsEnabled,
+})
+const isSnapshotAsked = computed(
+  () => snapshotsEnabled.value && !!props.website?._id && !!props.path,
+)
+/** A capture was asked and answered, or there is none to ask for. */
+const snapshotSettled = computed(
+  () =>
+    !isSnapshotAsked.value ||
+    snapshotRead.status.value === 'success' ||
+    snapshotRead.status.value === 'error',
 )
 
-watch(
-  () => [
-    props.website?._id,
-    snapshotsEnabled.value,
-    props.path,
-    layout.value,
-    props.refreshToken,
-  ],
-  () => void loadSnapshot(),
-  { immediate: true },
+const snapshot = computed(() =>
+  snapshotRead.error.value ? null : (snapshotRead.data.value?.snapshot ?? null),
 )
-
-const snapshot = computed(() => snapshotResponse.value?.snapshot ?? null)
 
 const backdrop = computed(() => snapshot.value?.html ?? null)
 
@@ -627,10 +610,10 @@ const activeLoading = computed(() =>
 
 function retryActive(): void {
   if (overlayMode.value === 'clicks') {
-    void loadHeatmap()
+    void heatmapRead.refresh()
     return
   }
-  void loadScrollDepth()
+  void scrollRead.refresh()
 }
 
 const truncatedState = computed(() => {

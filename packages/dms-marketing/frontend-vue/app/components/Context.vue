@@ -91,7 +91,10 @@ const comparisonLabels = computed(() =>
   ),
 )
 
-const contextRead = useMarketingContextRead()
+// The minute's activity of every website: read on the bar's own clock.
+const contextRead = useMarketingContextRead({
+  refreshInterval: LIVE_REFRESH_MS,
+})
 const context = contextRead.data
 /**
  * The context could not be read, and none is shown: a failed re-read (the
@@ -104,7 +107,6 @@ const failed = computed(
     !context.value,
 )
 const switching = ref(false)
-const refreshToken = ref(0)
 
 const websites = computed(() => context.value?.websites ?? [])
 /** The URL's website, while it is one of the tenant's. */
@@ -161,8 +163,6 @@ watch(
   { immediate: true },
 )
 
-watch(refreshToken, () => refreshPageBlocks())
-
 // --- Period --------------------------------------------------------------------
 
 const period = usePeriodScope(props.periodScope)
@@ -186,7 +186,6 @@ const cutHint = computed(() => {
 provide(MARKETING_CONTEXT_KEY, {
   websites,
   selected,
-  refreshToken,
   select,
   reload,
 })
@@ -203,17 +202,17 @@ const reachesToday = computed(
   () => !!range.value && range.value.to.getTime() >= now.value,
 )
 
-/** Refresh: every block reads again. */
+/** Refresh: every block reads again, and the bar. */
 function refresh(): void {
-  refreshToken.value++
+  refreshPageBlocks()
   void reload()
 }
 
+/** A period reaching today: its blocks read again, through the live gate. */
 function liveRefresh(): void {
   if (reachesToday.value && linkedId.value) {
     refreshLivePageBlocks()
   }
-  void reload()
 }
 
 let live: ReturnType<typeof setInterval> | null = null

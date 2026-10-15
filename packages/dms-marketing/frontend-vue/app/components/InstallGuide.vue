@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   useDmsRoute,
   useDmsRouter,
@@ -114,40 +114,25 @@ async function createWebsite(): Promise<void> {
 
 // --- Step 3: connection check ---------------------------------------------------
 
-let timer: ReturnType<typeof setTimeout> | null = null
-
-function stopPolling(): void {
-  if (timer) {
-    clearTimeout(timer)
-    timer = null
-  }
-}
-
-/** Checks again in a while, until a pageview arrives or the site is gone. */
-function schedulePoll(): void {
-  stopPolling()
-  if (websiteId.value && !missing.value && !status.value?.visit) {
-    timer = setTimeout(() => void poll(), POLL_MS)
-  }
-}
-
-async function poll(): Promise<void> {
-  stopPolling()
-  if (!websiteId.value) {
-    return
-  }
-  await connection.refresh()
-  schedulePoll()
-}
+/** No pageview yet, and the site is there: the check polls. */
+const isWaiting = computed(
+  () => !!websiteId.value && !missing.value && !status.value?.visit,
+)
+// The same read, polled while it waits: it shares the check's data, and
+// names no website (reads nothing) once a pageview arrived or the site is gone.
+useWebsiteConnection(
+  () => (isWaiting.value ? websiteId.value : ''),
+  recheckSince,
+  { refreshInterval: POLL_MS },
+)
 
 /** Waits for a pageview sent from now on, to re-verify an installed tag. */
-async function checkAgain(): Promise<void> {
+function checkAgain(): void {
   if (!status.value) {
     return
   }
   recheckSince.value = status.value.checkedAt
   status.value = { ...status.value, visit: null }
-  await poll()
 }
 
 const apiOrigin = ref('')
@@ -156,10 +141,7 @@ onMounted(() => {
   apiOrigin.value = String(
     (config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? '',
   )
-  // The first check came with the page (or is on its way): the next one waits.
-  void connection.then(schedulePoll)
 })
-onBeforeUnmount(stopPolling)
 
 watch(
   () => route.query.website,
@@ -169,7 +151,6 @@ watch(
       websiteId.value = next
       recheckSince.value = null
       connection.clear()
-      void poll()
     }
   },
 )

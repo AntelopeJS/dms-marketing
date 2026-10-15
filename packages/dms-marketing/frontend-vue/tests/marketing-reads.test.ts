@@ -3,7 +3,11 @@ import { renderToString } from 'vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   useFunnelTemplates,
+  useHeatmapCountRead,
+  useMarketingContextRead,
+  usePageHeatmap,
   usePageInventory,
+  usePageSnapshot,
   useWebsiteConnection,
   useWebsiteFunnels,
 } from '../app/composables/useMarketingReads'
@@ -63,7 +67,6 @@ describe('the reads the pages render', () => {
       period,
       search: '',
       sort: 'views',
-      refreshToken: 0,
     })
     useFunnelTemplates(website, period)
     const [pages, templates] = calls
@@ -85,8 +88,7 @@ describe('the reads the pages render', () => {
   })
 
   it('lists a website funnels oldest first, read again with the page refresh', () => {
-    const token = ref(0)
-    useWebsiteFunnels('acme-shop', token)
+    useWebsiteFunnels('acme-shop')
     const [funnels] = calls
     expect(funnels?.url()).toBe('/api/marketing/tables/funnels/list')
     expect(query(funnels)).toMatchObject({
@@ -94,9 +96,9 @@ describe('the reads the pages render', () => {
       sortKey: 'createdAt',
       sortDirection: 'asc',
     })
-    const [source] = funnels?.options.watch as (() => number)[]
-    token.value = 3
-    expect(source?.()).toBe(3)
+    // No trigger of its own: the page's refreshes read it again.
+    expect(funnels?.options.watch).toBeUndefined()
+    expect(funnels?.options.refreshOnPageRefresh).toBeUndefined()
     const transform = funnels?.options.transform as (value: unknown) => unknown
     expect(transform({ results: [{ _id: 'f1' }], total: 1 })).toEqual([
       { _id: 'f1' },
@@ -146,5 +148,93 @@ describe('useMarketingNow', () => {
     )
     expect(await renderToString(app)).toBe('<span>1000</span>')
     expect(transferred).toEqual(['marketing-rendered-at'])
+  })
+})
+
+describe('the reads with triggers of their own', () => {
+  it('reads the context bar on its own clock, not with the page', () => {
+    useMarketingContextRead({ refreshInterval: 60_000 })
+    const [context] = calls
+    expect(context?.options).toMatchObject({
+      refreshOnPageRefresh: false,
+      refreshInterval: 60_000,
+    })
+  })
+
+  it('polls the connection check when asked to', () => {
+    useWebsiteConnection('acme-shop', null, { refreshInterval: 4000 })
+    const [connection] = calls
+    expect(connection?.options.refreshInterval).toBe(4000)
+  })
+})
+
+describe('the page preview', () => {
+  it('reads the clicks in the browser only, once there is a site and a path', () => {
+    const website = ref<string | undefined>(undefined)
+    const period = ref<typeof PERIOD | null>(null)
+    usePageHeatmap({ websiteId: website, path: '/pricing', period })
+    const [heatmap] = calls
+    expect(heatmap?.options.server).toBe(false)
+    expect(heatmap?.url()).toBeNull()
+    website.value = 'acme-shop'
+    // Without a period, the route's default window.
+    expect(heatmap?.url()).toBe('/api/marketing/stats/heatmap')
+    period.value = PERIOD
+    expect(heatmap?.url()).toBe(
+      '/api/marketing/stats/heatmap?from=2026-10-09T00:00:00.000Z&to=2026-10-15T23:59:59.999Z',
+    )
+    expect(query(heatmap)).toEqual({ website: 'acme-shop', path: '/pricing' })
+  })
+
+  it('reads no capture while the site keeps none', () => {
+    const enabled = ref(false)
+    usePageSnapshot({
+      websiteId: 'acme-shop',
+      path: '/pricing',
+      layout: 'phone',
+      enabled,
+    })
+    const [snapshot] = calls
+    expect(snapshot?.url()).toBeNull()
+    enabled.value = true
+    expect(snapshot?.url()).toBe('/api/marketing/stats/snapshot')
+    expect(query(snapshot)).toEqual({
+      website: 'acme-shop',
+      path: '/pricing',
+      layout: 'phone',
+    })
+  })
+})
+
+describe('the reads a dialog makes when it asks', () => {
+  it('reads nothing before, then answers or rejects with the read', async () => {
+    const data = ref<unknown>(null)
+    const error = ref<unknown>(null)
+    const execute = vi.fn(async () => {
+      data.value = { events: 3, snapshots: 1 }
+    })
+    vi.stubGlobal(
+      'useApiData',
+      (url: unknown, options: Record<string, unknown> = {}) => {
+        calls.push({ url: () => toValue(url as () => string | null), options })
+        return { data, error, execute }
+      },
+    )
+    const countHeatmap = useHeatmapCountRead('acme-shop', '/pricing')
+    const [count] = calls
+    expect(count?.options).toMatchObject({
+      immediate: false,
+      refreshOnPageRefresh: false,
+    })
+    expect(execute).not.toHaveBeenCalled()
+    expect(count?.url()).toBe('/api/marketing/stats/heatmap/count')
+    expect(query(count)).toEqual({ website: 'acme-shop', path: '/pricing' })
+    await expect(countHeatmap()).resolves.toEqual({ events: 3, snapshots: 1 })
+
+    const failure = new Error('gone')
+    execute.mockImplementationOnce(async () => {
+      error.value = failure
+    })
+    await expect(countHeatmap()).rejects.toBe(failure)
   })
 })

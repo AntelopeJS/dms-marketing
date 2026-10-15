@@ -11,6 +11,11 @@ import {
   type MarketingFunnelStep,
   type MarketingFunnelSuggestions,
 } from '../composables/useMarketingApi'
+import {
+  useContextOnDemand,
+  useFunnelRead,
+  useFunnelSuggestions,
+} from '../composables/useMarketingReads'
 import type { ContextWebsite } from '../composables/useMarketingContext'
 import {
   funnelBuilderLink,
@@ -199,9 +204,13 @@ function clearVariationError(): void {
 
 // --- Loading -------------------------------------------------------------------
 
+// The definition edited, or the one a Duplicate copies.
+const readDefinition = useFunnelRead(funnelId || sourceId)
+const readContext = useContextOnDemand()
+
 /** A stored definition as the form holds it. */
-async function fetchDefinition(id: string) {
-  const row = await api.getFunnel(id)
+async function fetchDefinition() {
+  const row = await readDefinition()
   const experiment = parseExperimentValue(row.experiment)
   const draft: FunnelDraftValues = {
     name: row.name,
@@ -230,7 +239,7 @@ function objectiveOf(draft: FunnelDraftValues): string {
 }
 
 async function loadExisting(): Promise<void> {
-  const { draft, experiment } = await fetchDefinition(funnelId)
+  const { draft, experiment } = await fetchDefinition()
   applyValues(draft)
   original.value = experiment
   savedObjective.value = objectiveOf(draft)
@@ -242,7 +251,7 @@ const copied = ref<FunnelDraftValues | null>(null)
 /** Duplicate: the copy is a new draft, unsaved until the user saves it — its
  * experiment key must change, keys being unique per site. */
 async function loadCopy(): Promise<void> {
-  const { draft } = await fetchDefinition(sourceId)
+  const { draft } = await fetchDefinition()
   applyValues({
     ...draft,
     name: t('page.marketing.builder.copy_name', { name: draft.name }).slice(
@@ -260,7 +269,7 @@ async function loadCopy(): Promise<void> {
 const websites = ref<ContextWebsite[]>([])
 
 async function loadWebsites(): Promise<void> {
-  const payload = await api.getContext()
+  const payload = await readContext()
   websites.value = payload.websites
   const linked = queryParam('website')
   websiteId.value ||=
@@ -301,21 +310,15 @@ onMounted(load)
 
 // --- Suggestions and preview -------------------------------------------------
 
-const suggestions = ref<MarketingFunnelSuggestions>({ pages: [], events: [] })
+const NO_SUGGESTIONS: MarketingFunnelSuggestions = { pages: [], events: [] }
 
-async function loadSuggestions(): Promise<void> {
-  if (!websiteId.value) {
-    return
-  }
-  try {
-    suggestions.value = await api.getFunnelSuggestions(websiteId.value)
-  } catch {
-    suggestions.value = { pages: [], events: [] }
-  }
-}
-
-// Fires once the site is known (the context, or the funnel being edited).
-watch(websiteId, () => void loadSuggestions())
+// Read once the site is known (the context, or the funnel being edited).
+const suggestionsRead = useFunnelSuggestions(websiteId)
+const suggestions = computed(() =>
+  suggestionsRead.error.value
+    ? NO_SUGGESTIONS
+    : (suggestionsRead.data.value ?? NO_SUGGESTIONS),
+)
 
 const focusedStep = ref<number | null>(null)
 /** The step whose list Escape closed, until it is typed in again. */

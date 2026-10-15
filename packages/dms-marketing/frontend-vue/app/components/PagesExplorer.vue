@@ -9,6 +9,7 @@ import {
   type MarketingWebsite,
 } from '../composables/useMarketingApi'
 import {
+  useHeatmapCountRead,
   usePageInventory,
   useWebsiteFunnels,
   useWebsites,
@@ -84,9 +85,6 @@ const website = computed(
     null,
 )
 
-/** The websites list, read again with the context bar's refresh. */
-const loadWebsite = (): Promise<void> => websitesRead.refresh()
-
 /** A site as its update answered it, in place: the list is not read again. */
 function putWebsite(saved: MarketingWebsite): void {
   const sites = websitesRead.data.value
@@ -102,7 +100,6 @@ const inventoryRead = usePageInventory({
   period: pagesPeriod,
   search: searchedTerm,
   sort,
-  refreshToken: context.refreshToken,
 })
 const inventory = computed(() =>
   inventoryRead.error.value ? null : inventoryRead.data.value,
@@ -120,7 +117,8 @@ const failed = computed(
 )
 const loadPages = (): Promise<void> => inventoryRead.refresh()
 
-const funnelsRead = useWebsiteFunnels(websiteId, context.refreshToken)
+const funnelsRead = useWebsiteFunnels(websiteId)
+const countSiteHeatmap = useHeatmapCountRead(websiteId)
 const funnels = computed(() =>
   funnelsRead.error.value ? [] : (funnelsRead.data.value ?? []),
 )
@@ -128,7 +126,6 @@ const funnels = computed(() =>
 watch(websiteId, () => {
   selectedPath.value = undefined
 })
-watch(context.refreshToken, () => void loadWebsite())
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
 watch(search, (value) => {
@@ -234,8 +231,6 @@ const usedIn = computed(() =>
   ),
 )
 
-const refreshToken = ref(0)
-
 // The preview draws in the browser only (frames, canvases): a server render
 // holds its place.
 const mounted = ref(false)
@@ -262,7 +257,7 @@ async function resetSite(): Promise<void> {
   if (!site) {
     return
   }
-  const counts = await api.countHeatmap(site._id).catch(() => null)
+  const counts = await countSiteHeatmap().catch(() => null)
   await confirm({
     title: t('page.marketing.pages.reset.site_title', { name: site.name }),
     description: t('page.marketing.pages.reset.site_description'),
@@ -287,7 +282,7 @@ async function resetSite(): Promise<void> {
           what: heatmapDataLabel(deleted, t, locale.value),
         }),
       })
-      refreshToken.value++
+      refreshPageBlocks()
     },
   })
 }
@@ -539,10 +534,8 @@ const moreItems = computed(() => [
             :sample-rate-label="sampleRateLabel"
             :tracker-enabled="trackerEnabled"
             :pageviews="selectedPage?.pageviews"
-            :refresh-token="refreshToken + context.refreshToken.value"
             :used-in="usedIn"
             @website-updated="putWebsite"
-            @heatmap-reset="loadPages"
           />
         </div>
         <DmsEmptyState

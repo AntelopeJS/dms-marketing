@@ -1,9 +1,9 @@
 /**
  * Frontend marketing facade.
  *
- * The /api/marketing/* writes, and the reads of the browser-only surfaces
- * (the page preview, the funnel builder). What the pages render is read
- * through `useMarketingReads`. The response shapes are declared here.
+ * The /api/marketing/* writes, and the funnel preview the builder posts its
+ * draft to. Every read goes through `useMarketingReads`. The response shapes
+ * are declared here.
  */
 
 import type {
@@ -394,17 +394,10 @@ export interface MarketingScrollDepth {
 
 // --- Facade -----------------------------------------------------------------
 
-function periodUrl(url: string, period: MarketingPeriod): string {
-  return appendPeriodToUrl(url, period) ?? url
-}
-
 export function useMarketingApi() {
   const { $authFetch } = useAuthFetch()
 
   return {
-    getContext: () =>
-      $authFetch<MarketingContextPayload>('/api/marketing/context'),
-
     createWebsite: (input: MarketingWebsiteInput) =>
       $authFetch<MarketingWebsite>('/api/marketing/websites', {
         method: 'POST',
@@ -417,11 +410,6 @@ export function useMarketingApi() {
         body: { website },
       }),
 
-    getWebsiteDeletionImpact: (website: string) =>
-      $authFetch<MarketingWebsiteDeletionImpact>(
-        `/api/marketing/websites/${encodeURIComponent(website)}/deletion`,
-      ),
-
     allowHost: (website: string, hostname: string) =>
       $authFetch<MarketingWebsite>(
         `/api/marketing/websites/${encodeURIComponent(website)}/allow-host`,
@@ -432,14 +420,6 @@ export function useMarketingApi() {
       $authFetch<{ deleted: string }>(
         `/api/marketing/websites/${encodeURIComponent(website)}`,
         { method: 'DELETE' },
-      ),
-
-    getFunnelSuggestions: (website: string) =>
-      $authFetch<MarketingFunnelSuggestions>(
-        '/api/marketing/funnels/suggestions',
-        {
-          query: { website },
-        },
       ),
 
     previewFunnel: (
@@ -459,58 +439,17 @@ export function useMarketingApi() {
         { method: 'PUT', body: patch },
       ),
 
-    // Query strings via ofetch's `query` option — encoding is its job.
-    getHeatmap: (website: string, path: string, period: MarketingPeriod) =>
-      $authFetch<MarketingHeatmap>(
-        periodUrl('/api/marketing/stats/heatmap', period),
-        {
-          query: { website, path },
-        },
-      ),
-
-    getScrollDepth: (website: string, path: string, period: MarketingPeriod) =>
-      $authFetch<MarketingScrollDepth>(
-        periodUrl('/api/marketing/stats/scroll', period),
-        {
-          query: { website, path },
-        },
-      ),
-
-    getSnapshot: (
-      website: string,
-      path: string,
-      layout: MarketingSnapshotLayout,
-    ) =>
-      $authFetch<MarketingPageSnapshotResponse>(
-        '/api/marketing/stats/snapshot',
-        {
-          query: { website, path, layout },
-        },
-      ),
-
     // Whole click and scroll history, every period: without `path` the whole
-    // site's.
+    // site's (counted first by `useHeatmapCountRead`).
     resetHeatmap: (website: string, path?: string) =>
       $authFetch<MarketingHeatmapData>('/api/marketing/stats/heatmap', {
         method: 'DELETE',
         query: { website, path },
       }),
 
-    /** What `resetHeatmap` would delete with the same arguments. */
-    countHeatmap: (website: string, path?: string) =>
-      $authFetch<MarketingHeatmapData>('/api/marketing/stats/heatmap/count', {
-        query: { website, path },
-      }),
-
-    // Definitions CRUD over the funnels data-api routes (the list is read by
-    // `useWebsiteFunnels`). One definition, as the builder edits it: no
-    // results computed.
-    getFunnel: (id: string) =>
-      $authFetch<MarketingFunnelListItem>('/api/marketing/tables/funnels/get', {
-        query: { id },
-      }),
-
-    // The insert answers the generated keys, an array — not the row.
+    // Definitions CRUD over the funnels data-api routes; the list is read by
+    // `useWebsiteFunnels`, one definition by `useFunnelRead`. The insert
+    // answers the generated keys, an array — not the row.
     createFunnel: (input: MarketingFunnelInput) =>
       $authFetch<string[]>('/api/marketing/tables/funnels/new', {
         method: 'POST',

@@ -6,7 +6,10 @@ import {
   type MarketingWebsiteCard,
 } from '../composables/useMarketingApi'
 import { installLink, overviewLink } from '../composables/useMarketingRoutes'
-import { useWebsiteCards } from '../composables/useMarketingReads'
+import {
+  useWebsiteCards,
+  useWebsiteDeletionImpactRead,
+} from '../composables/useMarketingReads'
 import { useMarketingNow } from '../composables/useMarketingNow'
 import {
   formatNumber,
@@ -60,8 +63,12 @@ const failed = computed(
   () => !!cardsRead.error.value && cardsRead.status.value !== 'pending',
 )
 
-/** The cards again, after a change. */
+/** The cards again: a retry after a failed read. */
 const load = (): Promise<void> => cardsRead.refresh()
+
+/** The website a deletion is asked about. */
+const deletionTarget = ref('')
+const readDeletionImpact = useWebsiteDeletionImpactRead(deletionTarget)
 
 const now = useMarketingNow(CLOCK_TICK_MS)
 /** The browser's zone, which a server render writes the dates in. */
@@ -102,7 +109,8 @@ async function runCardAction(
   try {
     await action()
     toast.add({ color: 'success', title: successTitle })
-    await load()
+    // Their state and counts are the backend's: the page reads them again.
+    refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)
     if (conflict) {
@@ -222,7 +230,7 @@ async function save(): Promise<void> {
     })
     toast.add({ color: 'success', title: t('page.marketing.websites.saved') })
     drawerOpen.value = false
-    await load()
+    refreshPageBlocks()
   } catch (error) {
     // A refused field lives on the General tab: show it there.
     const conflict = hostConflictOf(error)
@@ -249,7 +257,8 @@ async function save(): Promise<void> {
 async function remove(card: MarketingWebsiteCard): Promise<void> {
   let impact
   try {
-    impact = await api.getWebsiteDeletionImpact(card.id)
+    deletionTarget.value = card.id
+    impact = await readDeletionImpact()
   } catch (error) {
     fieldErrors.toastError(error, {
       toastTitle: 'page.marketing.websites.delete.impact_error',
