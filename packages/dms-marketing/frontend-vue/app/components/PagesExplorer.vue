@@ -6,6 +6,7 @@ import {
   type MarketingPageEntry,
   type MarketingPages,
   type MarketingPagesSort,
+  type MarketingWebsite,
 } from '../composables/useMarketingApi'
 import {
   usePageInventory,
@@ -83,8 +84,18 @@ const website = computed(
     null,
 )
 
-/** The selected site's websites list, read again after a change to it. */
+/** The websites list, read again with the context bar's refresh. */
 const loadWebsite = (): Promise<void> => websitesRead.refresh()
+
+/** A site as its update answered it, in place: the list is not read again. */
+function putWebsite(saved: MarketingWebsite): void {
+  const sites = websitesRead.data.value
+  if (sites) {
+    websitesRead.data.value = sites.map((site) =>
+      site._id === saved._id ? saved : site,
+    )
+  }
+}
 
 const inventoryRead = usePageInventory({
   websiteId,
@@ -530,7 +541,7 @@ const moreItems = computed(() => [
             :pageviews="selectedPage?.pageviews"
             :refresh-token="refreshToken + context.refreshToken.value"
             :used-in="usedIn"
-            @website-updated="loadWebsite"
+            @website-updated="putWebsite"
             @heatmap-reset="loadPages"
           />
         </div>

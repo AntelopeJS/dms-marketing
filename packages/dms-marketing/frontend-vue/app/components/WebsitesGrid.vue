@@ -301,7 +301,8 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
         title: t('page.marketing.websites.delete.done', { name: card.name }),
       })
       drawerOpen.value = false
-      await load()
+      // Its card goes; the others are unchanged, so nothing is read again.
+      cards.value = cards.value?.filter((other) => other.id !== card.id) ?? null
     },
   })
 }
