@@ -94,7 +94,6 @@ async function createWebsite(): Promise<void> {
     await api.selectContextWebsite(created._id)
     websiteId.value = created._id
     await router.replace(installLink(created._id))
-    await poll()
   } catch (error) {
     const conflict = hostConflictOf(error)
     if (conflict) {
@@ -174,7 +173,7 @@ async function allow(hostname: string): Promise<void> {
       color: 'success',
       title: t('page.marketing.install.allowed', { host: hostname }),
     })
-    await poll()
+    refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)
     if (conflict) {
@@ -205,7 +204,7 @@ async function resumeTracking(): Promise<void> {
       color: 'success',
       title: t('page.marketing.websites.resumed'),
     })
-    await poll()
+    refreshPageBlocks()
   } catch (error) {
     fieldErrors.toastError(error, {
       toastTitle: 'page.marketing.websites.save_error',

@@ -930,7 +930,7 @@ const moreItems = computed(() => [
       type: 'checkbox' as const,
       label: t('page.marketing.pages.preview.snapshots_enabled'),
       checked: snapshotsEnabled.value,
-      onUpdateChecked: (value: boolean) =>
+      onUpdateChecked: (value: boolean): void =>
         void updateSnapshotOptions({ snapshotsEnabled: value }),
     },
     {
@@ -938,7 +938,7 @@ const moreItems = computed(() => [
       label: t('page.marketing.pages.preview.mask_text'),
       checked: props.website?.snapshotMaskText === true,
       disabled: !snapshotsEnabled.value,
-      onUpdateChecked: (value: boolean) =>
+      onUpdateChecked: (value: boolean): void =>
         void updateSnapshotOptions({ snapshotMaskText: value }),
     },
   ],
