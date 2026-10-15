@@ -12,6 +12,7 @@ import { AddFrontendModule } from "@antelopejs/interface-dms/page";
 import cron, { type ScheduledTask } from "node-cron";
 import { type DmsMarketingConfig, setConfig } from "./config";
 import { registerMarketingHookListeners } from "./hooks";
+import { TRACKER_PUBLIC_ENDPOINTS } from "./routes/public-endpoints";
 import {
   loadGeoipDatabase,
   loadSettings,
@@ -47,6 +48,7 @@ export async function construct(
     sourcePath: path.join(__dirname, "../frontend-vue"),
     renderer: { name: "vue", version: "3" },
     priority: 0,
+    publicEndpoints: TRACKER_PUBLIC_ENDPOINTS,
   });
 }
 
