@@ -50,7 +50,7 @@ The implementation is `@antelopejs/dms-marketing >=0.5.0`. The interface declare
 
 | Package | Range |
 | --- | --- |
-| `@antelopejs/interface-core` | `>=0.2.3 <1.0.0` |
+| `@antelopejs/interface-core` | `>=0.2.4 <1.0.0` |
 
 ## Documentation
 
