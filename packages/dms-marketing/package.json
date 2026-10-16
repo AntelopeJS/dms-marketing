@@ -1,10 +1,25 @@
 {
   "name": "@antelopejs/dms-marketing",
   "version": "0.5.0",
+  "description": "First-party marketing analytics for the AntelopeJS DMS: traffic dashboards, conversion funnels with A/B splits and click heatmaps, without cookies or external services.",
+  "keywords": [
+    "ab-testing",
+    "analytics",
+    "antelopejs",
+    "dms",
+    "dms-module",
+    "heatmap",
+    "marketing"
+  ],
+  "homepage": "https://dms.antelopejs.com/docs/modules/marketing",
+  "bugs": {
+    "url": "https://github.com/AntelopeJS/dms-marketing/issues"
+  },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AntelopeJS/dms-marketing.git"
+    "url": "git+https://github.com/AntelopeJS/dms-marketing.git",
+    "directory": "packages/dms-marketing"
   },
   "files": [
     "LICENSE",

@@ -9,10 +9,15 @@
     "interface",
     "marketing"
   ],
+  "homepage": "https://dms.antelopejs.com/docs/modules/marketing/extending",
+  "bugs": {
+    "url": "https://github.com/AntelopeJS/dms-marketing/issues"
+  },
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AntelopeJS/dms-marketing.git"
+    "url": "git+https://github.com/AntelopeJS/dms-marketing.git",
+    "directory": "packages/interface-dms-marketing"
   },
   "files": [
     "LICENSE",
