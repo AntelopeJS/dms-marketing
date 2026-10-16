@@ -301,6 +301,12 @@ Kind-specific `data` payloads:
 | `GET /api/marketing/settings/collection/banner` | platform owner | the Collection section for a stock `Banner`: state, coverage and the pause (confirmed) or resume action |
 | `GET /api/marketing/settings/glance?item=` | platform owner | one `Meter` of *At a glance*: `raw`, `statistics` or `snapshots` retention on a shared scale |
 
+The five public routes are declared to the DMS as the module's
+`publicEndpoints` (`src/routes/public-endpoints.ts`): the snippet the install
+guide shows points at the dashboard's origin, whose frontend server lets a
+tracked site's scripts and beacons through, without a session, only for
+declared routes.
+
 Routes marked tenant member under `/blocks`, `/stats`, `/funnels/rows`,
 `/funnels/winner`, `/funnels/templates` and `/funnels/:id/results` read their
 window from the period scope (see *Context and period*); without `from`/`to`
