@@ -212,6 +212,11 @@ export interface PageSnapshotRequest {
   path: MaybeRefOrGetter<string>
   layout: MaybeRefOrGetter<MarketingSnapshotLayout>
   enabled: MaybeRefOrGetter<boolean>
+  /**
+   * The site's text mask. Changing it discards the site's captures on the
+   * backend while the request stays the same, so the capture is read again.
+   */
+  maskText: MaybeRefOrGetter<boolean>
 }
 
 /** A page's capture in a layout, drawn in the browser. */
@@ -231,6 +236,7 @@ export function usePageSnapshot(
         path: toValue(request.path),
         layout: toValue(request.layout),
       }),
+      watch: [() => toValue(request.maskText)],
       server: false,
     },
   )
