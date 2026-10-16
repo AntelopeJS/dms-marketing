@@ -1,10 +1,4 @@
-import {
-  computed,
-  inject,
-  type ComputedRef,
-  type InjectionKey,
-  type Ref,
-} from 'vue'
+import { computed, inject, type ComputedRef, type InjectionKey } from 'vue'
 
 export type WebsiteState = 'live' | 'waiting' | 'paused'
 
@@ -25,8 +19,6 @@ export interface MarketingContextPayload {
 export interface MarketingContextState {
   websites: ComputedRef<ContextWebsite[]>
   selected: ComputedRef<ContextWebsite | null>
-  /** Bumped by the bar's refresh button. */
-  refreshToken: Ref<number>
   select: (id: string) => Promise<void>
   reload: () => Promise<void>
 }
@@ -48,7 +40,6 @@ function detachedContext(): MarketingContextState {
   return {
     websites: computed(() => []),
     selected: computed(() => null),
-    refreshToken: { value: 0 } as Ref<number>,
     select: async () => {},
     reload: async () => {},
   }

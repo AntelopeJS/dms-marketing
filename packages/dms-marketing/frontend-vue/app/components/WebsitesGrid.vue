@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useDmsRouter, useI18n } from '#dms/frontend-module'
 import {
   useMarketingApi,
   type MarketingWebsiteCard,
 } from '../composables/useMarketingApi'
 import { installLink, overviewLink } from '../composables/useMarketingRoutes'
+import {
+  useWebsiteCards,
+  useWebsiteDeletionImpactRead,
+} from '../composables/useMarketingReads'
+import { useMarketingNow } from '../composables/useMarketingNow'
 import {
   formatNumber,
   formatRelativeTime,
@@ -51,25 +56,23 @@ const { confirm } = useConfirm()
 
 void props
 
-const cards = ref<MarketingWebsiteCard[] | null>(null)
-const failed = ref(false)
+const cardsRead = useWebsiteCards()
+const cards = cardsRead.data
+/** The cards could not be read; shown once a retry is over. */
+const failed = computed(
+  () => !!cardsRead.error.value && cardsRead.status.value !== 'pending',
+)
 
-async function load(): Promise<void> {
-  failed.value = false
-  try {
-    cards.value = await api.listWebsiteCards()
-  } catch {
-    failed.value = true
-  }
-}
+/** The cards again: a retry after a failed read. */
+const load = (): Promise<void> => cardsRead.refresh()
 
-const now = ref(Date.now())
-let clock: ReturnType<typeof setInterval> | null = null
-onMounted(() => {
-  void load()
-  clock = setInterval(() => (now.value = Date.now()), CLOCK_TICK_MS)
-})
-onBeforeUnmount(() => clock && clearInterval(clock))
+/** The website a deletion is asked about. */
+const deletionTarget = ref('')
+const readDeletionImpact = useWebsiteDeletionImpactRead(deletionTarget)
+
+const now = useMarketingNow(CLOCK_TICK_MS)
+/** The browser's zone, which a server render writes the dates in. */
+const readerZone = readerTimeZone()
 
 function stateLine(card: MarketingWebsiteCard): string {
   if (card.state === 'live' && card.lastActivityAt) {
@@ -106,7 +109,9 @@ async function runCardAction(
   try {
     await action()
     toast.add({ color: 'success', title: successTitle })
-    await load()
+    // Their state and counts are the backend's: the page reads them again,
+    // the card's spinner on until it shows them.
+    await refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)
     if (conflict) {
@@ -226,7 +231,7 @@ async function save(): Promise<void> {
     })
     toast.add({ color: 'success', title: t('page.marketing.websites.saved') })
     drawerOpen.value = false
-    await load()
+    refreshPageBlocks()
   } catch (error) {
     // A refused field lives on the General tab: show it there.
     const conflict = hostConflictOf(error)
@@ -253,7 +258,8 @@ async function save(): Promise<void> {
 async function remove(card: MarketingWebsiteCard): Promise<void> {
   let impact
   try {
-    impact = await api.getWebsiteDeletionImpact(card.id)
+    deletionTarget.value = card.id
+    impact = await readDeletionImpact()
   } catch (error) {
     fieldErrors.toastError(error, {
       toastTitle: 'page.marketing.websites.delete.impact_error',
@@ -305,7 +311,8 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
         title: t('page.marketing.websites.delete.done', { name: card.name }),
       })
       drawerOpen.value = false
-      await load()
+      // Its card goes; the others are unchanged, so nothing is read again.
+      cards.value = cards.value?.filter((other) => other.id !== card.id) ?? null
     },
   })
 }
@@ -565,7 +572,9 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
                   card.rejected.length > 0
                     ? 'page.marketing.websites.waiting_refused'
                     : 'page.marketing.websites.waiting_description',
-                  { date: formatShortDate(card.createdAt, locale) },
+                  {
+                    date: formatShortDate(card.createdAt, locale, readerZone),
+                  },
                 )
               }}
             </p>

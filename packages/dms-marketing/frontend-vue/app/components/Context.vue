@@ -4,11 +4,12 @@ import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import {
   MARKETING_CONTEXT_KEY,
   type ContextWebsite,
-  type MarketingContextPayload,
 } from '../composables/useMarketingContext'
 import { useMarketingApi } from '../composables/useMarketingApi'
+import { useMarketingContextRead } from '../composables/useMarketingReads'
+import { useMarketingNow } from '../composables/useMarketingNow'
 import { installLink } from '../composables/useMarketingRoutes'
-import { formatRelativeTime, initials } from '../utils/format'
+import { formatRelativeTime, initials, utcDayStart } from '../utils/format'
 import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
 
 /**
@@ -30,7 +31,9 @@ import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
  * Its children render once the URL names one of the tenant's websites; with
  * no website at all the first-run hero takes their place, and with
  * `waitingGuide` a website still waiting for its first event shows the way
- * to its install guide instead.
+ * to its install guide instead. A server render reads the context first: a
+ * URL naming no website (or one the tenant does not have) is redirected to
+ * the one saved, and the page renders on it.
  */
 const props = withDefaults(
   defineProps<{
@@ -88,11 +91,22 @@ const comparisonLabels = computed(() =>
   ),
 )
 
-const context = ref<MarketingContextPayload | null>(null)
-const loading = ref(true)
-const failed = ref(false)
+// The minute's activity of every website: read on the bar's own clock.
+const contextRead = useMarketingContextRead({
+  refreshInterval: LIVE_REFRESH_MS,
+})
+const context = contextRead.data
+/**
+ * The context could not be read, and none is shown: a failed re-read (the
+ * minute's activity, a retry) keeps the bar as it is.
+ */
+const failed = computed(
+  () =>
+    !!contextRead.error.value &&
+    contextRead.status.value !== 'pending' &&
+    !context.value,
+)
 const switching = ref(false)
-const refreshToken = ref(0)
 
 const websites = computed(() => context.value?.websites ?? [])
 /** The URL's website, while it is one of the tenant's. */
@@ -109,26 +123,8 @@ const selected = computed<ContextWebsite | null>(
   () => websites.value.find((site) => site.id === selectedId.value) ?? null,
 )
 
-async function reload(): Promise<void> {
-  loading.value = true
-  failed.value = false
-  try {
-    context.value = await api.getContext()
-  } catch {
-    failed.value = true
-  } finally {
-    loading.value = false
-  }
-}
-
-/** The websites' last events again, quietly: a failure keeps the bar as is. */
-async function refreshActivity(): Promise<void> {
-  try {
-    context.value = await api.getContext()
-  } catch {
-    // The next refresh tries again.
-  }
-}
+/** The websites and their last events again; a failure keeps the bar as is. */
+const reload = (): Promise<void> => contextRead.refresh()
 
 async function select(id: string): Promise<void> {
   if (id === selectedId.value) {
@@ -153,8 +149,10 @@ async function select(id: string): Promise<void> {
 }
 
 // The URL names no website, or one the tenant does not have: fill in the
-// saved one, without a history entry. Watched with the query too, so a block
-// rewriting the URL for its own state (the heatmap path) keeps it.
+// saved one, without a history entry (a server render redirects to it).
+// Watched with the query too, so a block rewriting the URL for its own state
+// (the heatmap path) keeps it. Set up once the context is read.
+await contextRead
 watch(
   [selectedId, () => route.query],
   ([id]) => {
@@ -164,8 +162,6 @@ watch(
   },
   { immediate: true },
 )
-
-watch(refreshToken, () => refreshPageBlocks())
 
 // --- Period --------------------------------------------------------------------
 
@@ -190,52 +186,40 @@ const cutHint = computed(() => {
 provide(MARKETING_CONTEXT_KEY, {
   websites,
   selected,
-  refreshToken,
   select,
   reload,
 })
-
-onMounted(reload)
 
 // --- Clock -------------------------------------------------------------------
 // A period reaching today follows the clock: its blocks read again every
 // minute, through the page's live gate. The selector itself moves a day
 // preset on at midnight.
 
-const now = ref(Date.now())
+const now = useMarketingNow(CLOCK_TICK_MS)
 
 /** The period covers the present: its counts are still moving. */
 const reachesToday = computed(
   () => !!range.value && range.value.to.getTime() >= now.value,
 )
 
-/** Refresh: every block reads again. */
+/** Refresh: every block reads again, and the bar. */
 function refresh(): void {
-  refreshToken.value++
-  void refreshActivity()
+  refreshPageBlocks()
+  void reload()
 }
 
-function tick(): void {
-  now.value = Date.now()
-}
-
+/** A period reaching today: its blocks read again, through the live gate. */
 function liveRefresh(): void {
   if (reachesToday.value && linkedId.value) {
     refreshLivePageBlocks()
   }
-  void refreshActivity()
 }
 
-let clock: ReturnType<typeof setInterval> | null = null
 let live: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
-  clock = setInterval(tick, CLOCK_TICK_MS)
   live = setInterval(liveRefresh, LIVE_REFRESH_MS)
 })
 onBeforeUnmount(() => {
-  if (clock) {
-    clearInterval(clock)
-  }
   if (live) {
     clearInterval(live)
   }
@@ -298,18 +282,10 @@ const websiteItems = computed(() => [
  * UTC's, the bar says when their days really start.
  */
 const utcHint = computed(() => {
-  const today = new Date(now.value)
-  if (today.getTimezoneOffset() === 0) {
-    return ''
-  }
-  const utcMidnight = new Date(
-    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
-  )
-  const time = new Intl.DateTimeFormat(locale.value, {
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(utcMidnight)
-  return t('page.marketing.context.utc_days', { time })
+  // The reader's zone: the browser's, which a server render reads from its
+  // cookie.
+  const time = utcDayStart(now.value, locale.value, readerTimeZone())
+  return time ? t('page.marketing.context.utc_days', { time }) : ''
 })
 </script>
 
@@ -320,7 +296,7 @@ const utcHint = computed(() => {
       role="toolbar"
       :aria-label="t('page.marketing.context.label')"
     >
-      <USkeleton v-if="loading && !context" class="h-7 w-72" />
+      <USkeleton v-if="!context && !failed" class="h-7 w-72" />
       <template v-else-if="selected">
         <UDropdownMenu :items="websiteItems" :content="{ align: 'start' }">
           <UButton

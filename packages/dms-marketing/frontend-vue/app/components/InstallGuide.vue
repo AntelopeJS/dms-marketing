@@ -1,24 +1,19 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import {
   useDmsRoute,
   useDmsRouter,
   useDmsRuntimeConfig,
   useI18n,
 } from '#dms/frontend-module'
-import {
-  useMarketingApi,
-  type MarketingConnectionStatus,
-} from '../composables/useMarketingApi'
+import { useMarketingApi } from '../composables/useMarketingApi'
+import { useWebsiteConnection } from '../composables/useMarketingReads'
 import {
   installLink,
   overviewLink,
   websitesLink,
 } from '../composables/useMarketingRoutes'
-import {
-  allowHostConfirmation,
-  hostConflictOf,
-} from '../utils/host-conflict'
+import { allowHostConfirmation, hostConflictOf } from '../utils/host-conflict'
 import { trackerSnippet } from '../utils/snippet'
 
 /**
@@ -57,12 +52,20 @@ const fieldErrors = useFieldErrors({
 const websiteId = ref(
   typeof route.query.website === 'string' ? route.query.website : '',
 )
-const status = ref<MarketingConnectionStatus | null>(null)
-const failed = ref(false)
-/** The `?website=` names no site of the workspace (deleted, mistyped). */
-const missing = ref(false)
 /** Server time "Check again" waits from; null: since the site's creation. */
 const recheckSince = ref<number | null>(null)
+/** The check's polling period: `POLL_MS` while it waits for a pageview, 0 (stopped) otherwise. */
+const pollInterval = ref(0)
+const connection = useWebsiteConnection(websiteId, recheckSince, {
+  refreshInterval: pollInterval,
+})
+const status = connection.data
+/** The `?website=` names no site of the workspace (deleted, mistyped). */
+const missing = computed(
+  () => apiErrorStatus(connection.error.value) === HTTP_NOT_FOUND,
+)
+/** The last check failed; the next one is on its way. */
+const failed = computed(() => !!connection.error.value && !missing.value)
 
 // --- Step 1 ----------------------------------------------------------------------
 
@@ -95,7 +98,6 @@ async function createWebsite(): Promise<void> {
     await api.selectContextWebsite(created._id)
     websiteId.value = created._id
     await router.replace(installLink(created._id))
-    await poll()
   } catch (error) {
     const conflict = hostConflictOf(error)
     if (conflict) {
@@ -115,47 +117,27 @@ async function createWebsite(): Promise<void> {
 
 // --- Step 3: connection check ---------------------------------------------------
 
-let timer: ReturnType<typeof setTimeout> | null = null
-
-function stopPolling(): void {
-  if (timer) {
-    clearTimeout(timer)
-    timer = null
-  }
-}
-
-async function poll(): Promise<void> {
-  stopPolling()
-  if (!websiteId.value) {
-    return
-  }
-  try {
-    status.value = await api.getConnection(
-      websiteId.value,
-      recheckSince.value ?? undefined,
-    )
-    failed.value = false
-  } catch (error) {
-    if (apiErrorStatus(error) === HTTP_NOT_FOUND) {
-      missing.value = true
-      status.value = null
-      return
-    }
-    failed.value = true
-  }
-  if (!status.value?.visit) {
-    timer = setTimeout(() => void poll(), POLL_MS)
-  }
-}
+/** No pageview yet, and the site is there: the check polls. */
+const isWaiting = computed(
+  () => !!websiteId.value && !missing.value && !status.value?.visit,
+)
+// The check polls while it waits, and stops once a pageview arrived or the
+// site is gone.
+watch(
+  isWaiting,
+  (waiting) => {
+    pollInterval.value = waiting ? POLL_MS : 0
+  },
+  { immediate: true },
+)
 
 /** Waits for a pageview sent from now on, to re-verify an installed tag. */
-async function checkAgain(): Promise<void> {
+function checkAgain(): void {
   if (!status.value) {
     return
   }
   recheckSince.value = status.value.checkedAt
   status.value = { ...status.value, visit: null }
-  await poll()
 }
 
 const apiOrigin = ref('')
@@ -164,9 +146,7 @@ onMounted(() => {
   apiOrigin.value = String(
     (config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? '',
   )
-  void poll()
 })
-onBeforeUnmount(stopPolling)
 
 watch(
   () => route.query.website,
@@ -174,10 +154,8 @@ watch(
     const next = typeof value === 'string' ? value : ''
     if (next !== websiteId.value) {
       websiteId.value = next
-      status.value = null
-      missing.value = false
       recheckSince.value = null
-      void poll()
+      connection.clear()
     }
   },
 )
@@ -201,7 +179,8 @@ async function allow(hostname: string): Promise<void> {
       color: 'success',
       title: t('page.marketing.install.allowed', { host: hostname }),
     })
-    await poll()
+    // The refused host leaves the check before its button comes back.
+    await refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)
     if (conflict) {
@@ -232,7 +211,7 @@ async function resumeTracking(): Promise<void> {
       color: 'success',
       title: t('page.marketing.websites.resumed'),
     })
-    await poll()
+    await refreshPageBlocks()
   } catch (error) {
     fieldErrors.toastError(error, {
       toastTitle: 'page.marketing.websites.save_error',
@@ -638,7 +617,9 @@ const stepTwoState = computed(() =>
                   />
                 </span>
                 <span class="min-w-0 flex-1">
-                  <span class="block font-semibold break-words text-highlighted">
+                  <span
+                    class="block font-semibold break-words text-highlighted"
+                  >
                     {{
                       t(
                         recheckSince === null
@@ -677,7 +658,9 @@ const stepTwoState = computed(() =>
               >
                 <DmsIconWell icon="i-ph-prohibit" tone="error" />
                 <span class="min-w-0 flex-1">
-                  <span class="block font-semibold break-words text-highlighted">
+                  <span
+                    class="block font-semibold break-words text-highlighted"
+                  >
                     {{
                       t(
                         'page.marketing.install.refused',

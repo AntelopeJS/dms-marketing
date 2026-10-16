@@ -101,10 +101,46 @@ export function formatDateRange(from: Date, to: Date, locale: string): string {
   }).formatRange(from, to)
 }
 
-export function formatShortDate(at: number | Date, locale: string): string {
+/**
+ * When the statistics' day (a UTC day) starts on the reader's clock today,
+ * "02:00"; empty where it starts at their midnight. `timeZone` is the
+ * reader's (`undefined`: the zone the code runs in).
+ */
+export function utcDayStart(
+  now: number,
+  locale: string,
+  timeZone?: string,
+): string {
+  const today = new Date(now)
+  const utcMidnight = new Date(
+    Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
+  )
+  const clock = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23',
+    timeZone,
+  }).format(utcMidnight)
+  if (clock === '0:00' || clock === '00:00') {
+    return ''
+  }
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone,
+  }).format(utcMidnight)
+}
+
+/** "Sep 29", in `timeZone` (`undefined`: the zone the code runs in). */
+export function formatShortDate(
+  at: number | Date,
+  locale: string,
+  timeZone?: string,
+): string {
   return new Intl.DateTimeFormat(locale, {
     month: 'short',
     day: 'numeric',
+    timeZone,
   }).format(at)
 }
 

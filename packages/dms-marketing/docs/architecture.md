@@ -301,6 +301,12 @@ Kind-specific `data` payloads:
 | `GET /api/marketing/settings/collection/banner` | platform owner | the Collection section for a stock `Banner`: state, coverage and the pause (confirmed) or resume action |
 | `GET /api/marketing/settings/glance?item=` | platform owner | one `Meter` of *At a glance*: `raw`, `statistics` or `snapshots` retention on a shared scale |
 
+The five public routes are declared to the DMS as the module's
+`publicEndpoints` (`src/routes/public-endpoints.ts`): the snippet the install
+guide shows points at the dashboard's origin, whose frontend server lets a
+tracked site's scripts and beacons through, without a session, only for
+declared routes.
+
 Routes marked tenant member under `/blocks`, `/stats`, `/funnels/rows`,
 `/funnels/winner`, `/funnels/templates` and `/funnels/:id/results` read their
 window from the period scope (see *Context and period*); without `from`/`to`
@@ -683,7 +689,13 @@ its bare file name (`Context`, `FunnelReport`…) — `@antelopejs/dms-frontend`
 0.5 adds the prefix, so the backend addresses them as `DmsMarketingContext`,
 `DmsMarketingFunnelReport`… It also registers the funnel-steps DataType
 plugin. Composables and utils are imported by path, not auto-imported, which
-keeps them testable with plain vitest. i18n keys live under
+keeps them testable with plain vitest. What a page renders is read with the
+DMS's `useApiData` (`composables/useMarketingReads.ts`): a server render
+reads it and hands it to the browser with the page. `Context` reads the
+websites before its blocks set up, so a URL naming no website is redirected
+to the saved one and its blocks render on the server with their period (once
+the browser's time zone cookie is known); the page preview's frames and the
+funnel builder's working copy read in the browser (`useMarketingApi`). i18n keys live under
 `page.marketing.*` (en-GB + fr-FR) in `frontend-vue/i18n/locales/`, which
 the loader merges into the console's catalog. `AddFrontendModule`
 (`src/index.ts`) publishes the directory to the backend's frontend manifest,
