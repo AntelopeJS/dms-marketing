@@ -15,6 +15,8 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
 
 ## Setup
 
+- Marketing 0.5 requires `@antelopejs/dms` >=0.9 (interface-dms 0.7, renderer `@antelopejs/dms-frontend` 0.6);
+  0.4 is the DMS 0.8 line.
 - `ajs project modules add @antelopejs/dms-marketing`. Options: `trackerEnabled`, `rawEventsRetention`,
   `statisticsRetention`, `snapshotRetention`, `sessionIdleTimeout` (all ms), `heatmapSampleRate` (0-1),
   `visitorHashSecret` (set it when running several instances), `geoipDatabasePath` (.mmdb, opt-in).
@@ -26,7 +28,7 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
 ## Visitor site
 
 ```html
-<script defer src="https://<backend>/api/marketing/tracker.js" data-website-id="<id>"></script>
+<script defer src="https://<dashboard>/api/marketing/tracker.js" data-website-id="<id>"></script>
 ```
 
 ```javascript
@@ -34,6 +36,8 @@ window.dmsMarketing?.track("signup_submitted", { plan: "pro" }); // name <= 50 c
 const arm = await window.dmsMarketing?.variation("hero-cta");      // null = render the control
 ```
 
+- The dashboard origin forwards the scripts and beacons because the module declares them `publicEndpoints`
+  (renderer 0.6 refuses other cross-origin writes); the backend origin works too.
 - Never `type="module"` (breaks `document.currentScript`). Always guard with `?.`.
 - Snapshots (heatmap backdrops) are opt-in per site; mask with `data-dms-marketing-mask` / `data-dms-marketing-block`.
 
