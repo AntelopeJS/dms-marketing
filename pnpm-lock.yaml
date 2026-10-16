@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@antelopejs/tooling-configs':
-        specifier: '>=0.0.7 <1.0.0'
-        version: 0.0.8(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
+        specifier: '>=0.0.9 <1.0.0'
+        version: 0.0.9(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
       oxfmt:
         specifier: ^0.66.0
         version: 0.66.0
@@ -118,11 +118,11 @@ importers:
   packages/interface-dms-marketing:
     devDependencies:
       '@antelopejs/interface-core':
-        specifier: '>=0.2.3 <1.0.0'
-        version: 0.2.3
+        specifier: '>=0.2.4 <1.0.0'
+        version: 0.2.4
       '@antelopejs/tooling-configs':
-        specifier: '>=0.0.7 <1.0.0'
-        version: 0.0.8(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
+        specifier: '>=0.0.9 <1.0.0'
+        version: 0.0.9(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
       '@types/node':
         specifier: 22.20.1
         version: 22.20.1
@@ -175,6 +175,9 @@ packages:
   '@antelopejs/interface-core@0.2.3':
     resolution: {integrity: sha512-Vn4XdMhNcqwyuSnIRmyAMDtYVNa8p2EWvTemPndTFzfa8y7l3RC4rkAEYKpPnMTbVWCNmgL/kSssMTvykCWjyA==}
 
+  '@antelopejs/interface-core@0.2.4':
+    resolution: {integrity: sha512-2qF6/KwahCQvvNuC/piUvPWD4wq2Npmco941HMg2/bMBoJKbhMH16WcXXRvPYznNSkU0U+6vqK6KE+2N5NojSA==}
+
   '@antelopejs/interface-data-api@0.2.0':
     resolution: {integrity: sha512-1o7aoE6/7y1COkMx2+9LjrG28B3FokOWVa3NQDJKFiFTwl9d/LoUT5uOTj5OO1gwyuClq5Hm6527e2imGZovHA==}
     peerDependencies:
@@ -221,6 +224,28 @@ packages:
 
   '@antelopejs/tooling-configs@0.0.8':
     resolution: {integrity: sha512-0oYe8o6if5cO444akfSuwfwiCQJtSeGXcJUM85K1uS11ir99p/QPRXYhAtiKBTpHBfGgeXKgm/KLaeWH5nThIg==}
+    engines: {node: '>=22.18.0'}
+    hasBin: true
+    peerDependencies:
+      '@nuxt/eslint-config': '>=1.2.0'
+      eslint-plugin-perfectionist: '>=5.0.0'
+      knip: '>=6.0.0'
+      oxfmt: ^0.66.0
+      oxlint: 1.81.0
+    peerDependenciesMeta:
+      '@nuxt/eslint-config':
+        optional: true
+      eslint-plugin-perfectionist:
+        optional: true
+      knip:
+        optional: true
+      oxfmt:
+        optional: true
+      oxlint:
+        optional: true
+
+  '@antelopejs/tooling-configs@0.0.9':
+    resolution: {integrity: sha512-ceAS76KVZ1zDbXldNg/6cVDA9Xsh5FCG4WQgt51W0aJbv9XvpNDVuS53QCIyDL8Pwj0QaCCuK3a4p/QSAgCdDg==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
@@ -2694,6 +2719,10 @@ snapshots:
     dependencies:
       reflect-metadata: 0.2.2
 
+  '@antelopejs/interface-core@0.2.4':
+    dependencies:
+      reflect-metadata: 0.2.2
+
   '@antelopejs/interface-data-api@0.2.0(@antelopejs/interface-api-util@0.1.2(@antelopejs/interface-api@0.0.13(@antelopejs/interface-core@0.2.3))(@antelopejs/interface-core@0.2.3))(@antelopejs/interface-api@0.0.13(@antelopejs/interface-core@0.2.3))(@antelopejs/interface-core@0.2.3)(@antelopejs/interface-database-decorators@0.1.7(@antelopejs/interface-api@0.0.13(@antelopejs/interface-core@0.2.3))(@antelopejs/interface-core@0.2.3)(@antelopejs/interface-database@0.1.8(@antelopejs/interface-core@0.2.3)))(@antelopejs/interface-database@0.1.8(@antelopejs/interface-core@0.2.3))':
     dependencies:
       '@antelopejs/interface-api': 0.0.13(@antelopejs/interface-core@0.2.3)
@@ -2765,6 +2794,14 @@ snapshots:
       - socks
 
   '@antelopejs/tooling-configs@0.0.8(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
+    dependencies:
+      '@oxlint/plugins': 1.81.0
+    optionalDependencies:
+      knip: 6.36.0
+      oxfmt: 0.66.0
+      oxlint: 1.81.0(oxlint-tsgolint@7.0.2001)
+
+  '@antelopejs/tooling-configs@0.0.9(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
     dependencies:
       '@oxlint/plugins': 1.81.0
     optionalDependencies:
