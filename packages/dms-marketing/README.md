@@ -1,147 +1,73 @@
+<div align="center">
+
 # @antelopejs/dms-marketing
 
-<div align="center">
-<a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue?style=for-the-badge&labelColor=000000"></a>
-<a href="https://discord.gg/sjK28QHrA7"><img src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000" alt="Discord"></a>
-<a href="https://antelopejs.com"><img src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000" alt="Documentation"></a>
+<a href="https://www.npmjs.com/package/@antelopejs/dms-marketing"><img alt="npm" src="https://img.shields.io/npm/v/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
+<a href="./LICENSE"><img alt="License" src="https://img.shields.io/npm/l/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
+<a href="https://discord.gg/sjK28QHrA7"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://dms.antelopejs.com/docs/modules/marketing"><img alt="Documentation" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
+
+First-party marketing analytics for the AntelopeJS DMS: traffic, funnels, A/B splits and heatmaps.
+
 </div>
 
-Marketing analytics module for the AntelopeJS DMS: traffic dashboards,
-conversion funnels with optional A/B splits, and click heatmaps — fully
-first-party.
-No external service, no cookie; data stays in the project's MongoDB.
+![The Marketing overview: KPI cards, session quality and the traffic chart against the previous period](https://raw.githubusercontent.com/AntelopeJS/dms-marketing/main/packages/dms-marketing/docs/images/overview.png)
 
-<p align="center">
-  <img src="docs/screenshots/overview.png" alt="Overview: the website and period bar, four KPI cards with their change and sparkline, the session-quality strip, the traffic chart against the previous period, the device split and four tabbed top lists" width="900">
-</p>
-<p align="center">
-  <em>The Overview page — every panel reads pre-aggregated daily rollups, never raw events.</em>
-</p>
+## What it does
 
-## Features
+- Shows pageviews, sessions, new visitors and custom events against the previous period, with acquisition channels and UTM campaigns.
+- Draws clicks and scroll depth over a snapshot of any tracked page, even on sites that refuse framing.
+- Measures ordered conversion funnels with per-step drop-off, optionally split into server-assigned A/B variations.
+- Stays first-party and cookieless: no external service, no IP or user agent stored, and the data stays in the project's MongoDB.
 
-| Feature | Where | Guide |
-|---|---|---|
-| **Traffic overview** — pageviews, sessions, new visitors and custom events with their change, session quality, traffic chart, device split, top content/acquisition/audience/event lists | `/modules/marketing/overview` | [usage/overview.md](docs/usage/overview.md) |
-| **Acquisition** — direct/organic/social/email/referral/paid split, UTM campaign table (source × medium × campaign), top referrers and UTM details | `/modules/marketing/acquisition` | [usage/acquisition.md](docs/usage/acquisition.md) |
-| **Pages & heatmaps** — clicks and scroll depth drawn over a snapshot of any tracked page | `/modules/marketing/pages` | [usage/heatmap.md](docs/usage/heatmap.md) |
-| **Funnels & A/B tests** — ordered conversion journeys with per-step drop-off, optionally split into server-assigned variations scored with significance; a report page and a builder per funnel | `/modules/marketing/funnels` | [usage/funnels.md](docs/usage/funnels.md) |
-| **Websites & install guide** — the tracked sites, their live state and capture options; a guided tracker install that checks the first pageview | `/modules/marketing/websites` | [install.md](docs/install.md#2-register-a-website) |
-| **First-party tracker** — cookieless script, SPA-aware, custom events API | visitor sites | [usage/tracking.md](docs/usage/tracking.md) |
-| **Settings** — collection switch, retentions, heatmap sampling | `/modules/marketing/settings` | [usage/settings.md](docs/usage/settings.md) |
+## Install
 
-<p align="center">
-  <img src="docs/screenshots/heatmap.png" alt="Pages & heatmaps: the tracked pages with their views and heat bars on the left, and on the right the click heatmap of the selected page drawn over its snapshot, with count pins on the hottest elements and the Most clicked list beside it" width="900">
-</p>
-<p align="center">
-  <em>Click heatmap over the page itself. Clicks are anchored to the element
-  they hit, so they stay on the right button at every viewport width.</em>
-</p>
+Run the AntelopeJS CLI from the root of a project that already loads `@antelopejs/dms`:
 
-<p align="center">
-  <img src="docs/screenshots/funnel.png" alt="Funnel report: entered, completed, end-to-end and biggest-loss KPIs over the steps figure, each step with its share of entered sessions and the sessions lost before the next one, the worst step flagged" width="900">
-</p>
-<p align="center">
-  <em>Conversion funnels with per-step drop-off. Computed at read time over
-  the period's sessions, so a new definition immediately scores past traffic.</em>
-</p>
+```bash
+ajs project modules add @antelopejs/dms-marketing
+```
 
-<p align="center">
-  <img src="docs/screenshots/experiments.png" alt="A/B test report: the verdict sentence with the relative lift, the confidence and the exposed sessions, the sample ratio check, then each arm step by step with A neutral and B in the primary colour" width="900">
-</p>
-<p align="center">
-  <em>The same funnel split into A/B arms, arm against arm at every step.
-  Verdicts answer "not enough data" rather than overclaim — a sample too
-  thin shows raw counts, never bars.</em>
-</p>
+## Quick start
 
-## What makes it hold
+Restart the backend, then the frontend, and open **Modules › Marketing**. Click **Add a website** on the Websites page: the install guide that opens gives the tracker snippet, in HTML, Nuxt or Google Tag Manager form. In HTML:
 
-- **First-party and cookieless.** Visitors are identified by a server-side
-  anonymous hash (salted monthly, raw inputs never stored) — the shape
-  audience-measurement consent exemptions ask for. Events store no IP, no
-  user agent, no headers. Page content is stored in one place only — the
-  heatmap's page snapshots — and that is opt-in per site, form values
-  always masked, under a short retention of its own.
-- **Dashboards never scan raw events.** Statistics are rolled up at write
-  time into one bounded row per website-day, counters as native server-side
-  increments; raw events are kept short-term only for heatmaps and funnel
-  computation.
-- **Heatmaps work on any site.** The surface is keyed on the pathnames the
-  tracker reports — no route registry, no sitemap, no framework convention —
-  clicks are anchored to the element they hit, not to screen coordinates,
-  and the backdrop is a snapshot the tracker captured in a visitor's
-  browser, so it shows on sites that refuse framing (most of them) and on
-  client-rendered ones alike.
-- **A/B without an experiment server or a client SDK.** A split is a
-  facet of a funnel, not a second object: variations are assigned
-  server-side from the same anonymous visitor hash, the page asks with one
-  call (`await dmsMarketing.variation("key")`), and the funnel's own steps
-  score the arms — z-test verdicts that answer "not enough data" rather
-  than overclaim.
-- **Tenant isolation is structural.** Analytics tables live in per-tenant
-  database instances, the same model as the rest of the DMS — not a filter
-  someone can forget.
+```html
+<script defer src="https://<backend>/api/marketing/tracker.js"
+        data-website-id="<website id>"></script>
+```
 
-The reasoning behind each choice is in
-[docs/architecture.md](docs/architecture.md).
+Behind a reverse proxy, set the DMS `auth.trustedProxies` option: see [Installation](https://dms.antelopejs.com/docs/modules/marketing/installation).
+
+## Compatibility
+
+| Package | Version |
+| --- | --- |
+| `@antelopejs/dms` | `>=0.9.0 <1.0.0` |
+| `@antelopejs/interface-dms` | `>=0.7.0 <1.0.0` |
+| `@antelopejs/dms-frontend` (renderer) | `>=0.6.0 <0.7.0` |
+| `@antelopejs/interface-dms-marketing` | `>=0.4.0 <0.5.0` |
+| `@antelopejs/core` | `>=1.13.5` |
+| Database | `@antelopejs/mongodb` `^1.4.2` |
+
+On DMS 0.8, use `@antelopejs/dms-marketing` 0.4.
 
 ## Documentation
 
-- **[Installation](docs/install.md)** — DMS side, visitor-site tracker embed,
-  development playground.
-- **[Usage guides](docs/usage/)** — one per feature, linked in the table above.
-- **[Architecture](docs/architecture.md)** — data flow, tenancy, auth model,
-  event contract, HTTP surface, heatmap internals, phasing.
-- **[Known issues](KNOWN-ISSUES.md)** — the defects found end-to-end and
-  how each was closed; none is open.
+- [Introduction](https://dms.antelopejs.com/docs/modules/marketing/introduction)
+- [Installation](https://dms.antelopejs.com/docs/modules/marketing/installation)
+- [Configuration](https://dms.antelopejs.com/docs/modules/marketing/configuration)
+- [Usage](https://dms.antelopejs.com/docs/modules/marketing/usage/overview)
+- [Extending](https://dms.antelopejs.com/docs/modules/marketing/extending)
+- [FAQ](https://dms.antelopejs.com/docs/modules/marketing/faq)
+- [Architecture](https://dms.antelopejs.com/docs/modules/marketing/architecture)
 
-## Status
+The guide's sources live in [`packages/dms-marketing/docs`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/docs); [`KNOWN-ISSUES.md`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/KNOWN-ISSUES.md) lists the defects found end to end and how each was closed. The module ships the `dms-marketing` Claude Code skill in [`packages/dms-marketing/skills`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/skills), declared under `antelopeJs.skills`.
 
-Pre-release, published on npm as `@antelopejs/dms-marketing`. Audience
-measurement, funnels, A/B splits and click heatmaps are functional end-to-end
-against the playground; session cohorts and session replay are not built yet.
-The full phase plan and current limits are in
-[architecture.md](docs/architecture.md#phasing).
+## Contributing
 
-## Development
-
-This package is one half of the `dms-marketing` pnpm workspace; run the
-commands from the repository root.
-
-```bash
-pnpm install --filter @antelopejs/dms-marketing...
-pnpm --dir packages/dms-marketing/frontend-vue install
-pnpm build      # interface, then tsc
-pnpm lint       # oxlint + oxfmt over the backend, eslint over frontend-vue
-pnpm typecheck  # tsc over both packages, skipLibCheck off
-pnpm knip       # unused dependencies
-pnpm test       # backend suite, then the frontend module's vitest suite
-```
-
-The admin surfaces ship as a DMS frontend module in `frontend-vue/`: a Vue 3
-project whose root `dms.frontend.ts` declares the `DmsMarketing` component
-prefix and registers every component of `app/components/` under it, plus its
-own i18n catalogs. The pages themselves are declared backend-side as trees
-of DMS blocks ([architecture.md](docs/architecture.md#frontend-layout)). It is a separate project
-with a lockfile of its own, published inside this package's tarball and
-materialized by the DMS frontend loader (`ajs dms`) into the console's Inertia
-workspace. Its own vitest suite runs through `pnpm test`.
-
-The interface this module implements is the workspace's other package,
-`packages/interface-dms-marketing`, published under the same `@antelopejs`
-scope. This package implements it, so it caps it below the next minor,
-`>=<interface version> <0.<minor+1>.0`, rather than taking the fleet's
-`<1.0.0` ceiling: a breaking interface minor never reaches a module that does
-not implement it. pnpm links that range to the sibling inside the workspace,
-so `pnpm build` builds the interface first.
-Each is released on its own from GitHub Actions — `release-interface.yml`
-then `release.yml`; the module's workflow refuses to run until the interface
-version it links is resolvable on npm.
-
-A full consumer project with a tracked demo site lives under `playground/` —
-setup in [docs/install.md](docs/install.md#4-development-playground).
+This package lives in the [`AntelopeJS/dms-marketing`](https://github.com/AntelopeJS/dms-marketing) pnpm workspace, next to `@antelopejs/interface-dms-marketing`. Read [CONTRIBUTING.md](https://github.com/AntelopeJS/dms-marketing/blob/main/CONTRIBUTING.md) and the [repository README](https://github.com/AntelopeJS/dms-marketing#contributing) for the development commands.
 
 ## License
 
-Apache-2.0
+[Apache-2.0](./LICENSE)
