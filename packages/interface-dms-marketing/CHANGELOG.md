@@ -1,6 +1,45 @@
 # Changelog
 
 
+## v0.4.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.4.0...v0.4.1)
+
+### 🚀 Enhancements
+
+- **deps:** Bump @antelopejs/dms to 0.8.0 ([#35](https://github.com/AntelopeJS/dms-marketing/pull/35))
+- ⚠️  Migrate to DMS 0.9 and renderer 0.6 ([#39](https://github.com/AntelopeJS/dms-marketing/pull/39))
+
+### 🩹 Fixes
+
+- **frontend:** Read the page capture again once the text mask changes ([#40](https://github.com/AntelopeJS/dms-marketing/pull/40))
+
+### 📖 Documentation
+
+- Restructure the user guide, refresh screenshots and add dms-marketing skill ([#36](https://github.com/AntelopeJS/dms-marketing/pull/36))
+- Establish the marketing consumer reference ([#41](https://github.com/AntelopeJS/dms-marketing/pull/41))
+- Make dense guide sections easier to scan ([#42](https://github.com/AntelopeJS/dms-marketing/pull/42))
+
+### 🏡 Chore
+
+- **release:** @antelopejs/dms-marketing v0.4.0 ([089420f](https://github.com/AntelopeJS/dms-marketing/commit/089420f))
+- **release:** @antelopejs/dms-marketing v0.4.1 ([6479e38](https://github.com/AntelopeJS/dms-marketing/commit/6479e38))
+- **release:** @antelopejs/dms-marketing v0.5.0 ([e1c5b2f](https://github.com/AntelopeJS/dms-marketing/commit/e1c5b2f))
+- **interface:** Raise verified foundation dependency floors ([#43](https://github.com/AntelopeJS/dms-marketing/pull/43))
+
+### 🤖 CI
+
+- Speed up pipeline ([#34](https://github.com/AntelopeJS/dms-marketing/pull/34))
+
+#### ⚠️ Breaking Changes
+
+- ⚠️  Migrate to DMS 0.9 and renderer 0.6 ([#39](https://github.com/AntelopeJS/dms-marketing/pull/39))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Alessandro Aloisio ([@alessaloisio](http://github.com/alessaloisio))
+
 ## v0.4.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.3.1...v0.4.0)
