@@ -1,93 +1,73 @@
+<div align="center">
+
 # @antelopejs/dms-marketing
 
-<div align="center">
-<a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue?style=for-the-badge&labelColor=000000"></a>
-<a href="https://discord.gg/sjK28QHrA7"><img src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000" alt="Discord"></a>
-<a href="https://antelopejs.com"><img src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000" alt="Documentation"></a>
+<a href="https://www.npmjs.com/package/@antelopejs/dms-marketing"><img alt="npm" src="https://img.shields.io/npm/v/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
+<a href="./LICENSE"><img alt="License" src="https://img.shields.io/npm/l/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
+<a href="https://discord.gg/sjK28QHrA7"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://dms.antelopejs.com/docs/modules/marketing"><img alt="Documentation" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
+
+First-party marketing analytics for the AntelopeJS DMS: traffic, funnels, A/B splits and heatmaps.
+
 </div>
 
-Marketing analytics module for the AntelopeJS DMS: traffic dashboards,
-conversion funnels with optional A/B splits, and click heatmaps, fully
-first-party. No external service, no cookie; data stays in the project's
-MongoDB.
+![The Marketing overview: KPI cards, session quality and the traffic chart against the previous period](https://raw.githubusercontent.com/AntelopeJS/dms-marketing/main/packages/dms-marketing/docs/images/overview.png)
 
-<p align="center">
-  <img src="docs/images/overview.png" alt="The Marketing overview: KPI cards, session quality and the traffic chart" width="900">
-</p>
+## What it does
 
-**Documentation: [dms.antelopejs.com/docs/modules/marketing](https://dms.antelopejs.com/docs/modules/marketing)**
-(sources in [`docs/`](docs); design notes in [`docs/design/`](docs/design)).
+- Shows pageviews, sessions, new visitors and custom events against the previous period, with acquisition channels and UTM campaigns.
+- Draws clicks and scroll depth over a snapshot of any tracked page, even on sites that refuse framing.
+- Measures ordered conversion funnels with per-step drop-off, optionally split into server-assigned A/B variations.
+- Stays first-party and cookieless: no external service, no IP or user agent stored, and the data stays in the project's MongoDB.
 
-| Feature | Where |
-|---|---|
-| Traffic overview | `/modules/marketing/overview` |
-| Acquisition | `/modules/marketing/acquisition` |
-| Pages & heatmaps | `/modules/marketing/pages` |
-| Funnels & A/B tests | `/modules/marketing/funnels` |
-| Websites & install guide | `/modules/marketing/websites` |
-| Settings | `/modules/marketing/settings` |
+## Install
 
-## Installation
+Run the AntelopeJS CLI from the root of a project that already loads `@antelopejs/dms`:
 
 ```bash
 ajs project modules add @antelopejs/dms-marketing
 ```
 
-Then embed the tracker on each visitor site:
+## Quick start
+
+Restart the backend, then the frontend, and open **Modules › Marketing**. Click **Add a website** on the Websites page: the install guide that opens gives the tracker snippet, in HTML, Nuxt or Google Tag Manager form. In HTML:
 
 ```html
 <script defer src="https://<backend>/api/marketing/tracker.js"
         data-website-id="<website id>"></script>
 ```
 
-See [Installation](https://dms.antelopejs.com/docs/modules/marketing/installation)
-and [Configuration](https://dms.antelopejs.com/docs/modules/marketing/configuration).
-[Known issues](KNOWN-ISSUES.md) lists the defects found end-to-end and how each
-was closed; none is open.
+Behind a reverse proxy, set the DMS `auth.trustedProxies` option: see [Installation](https://dms.antelopejs.com/docs/modules/marketing/installation).
 
-## Claude Code skill
+## Compatibility
 
-The package ships the `dms-marketing` skill in [`skills/`](skills), declared
-in `package.json` under `antelopeJs.skills`.
+| Package | Version |
+| --- | --- |
+| `@antelopejs/dms` | `>=0.9.0 <1.0.0` |
+| `@antelopejs/interface-dms` | `>=0.7.0 <1.0.0` |
+| `@antelopejs/dms-frontend` (renderer) | `>=0.6.0 <0.7.0` |
+| `@antelopejs/interface-dms-marketing` | `>=0.4.0 <0.5.0` |
+| `@antelopejs/core` | `>=1.13.5` |
+| Database | `@antelopejs/mongodb` `^1.4.2` |
 
-## Development
+On DMS 0.8, use `@antelopejs/dms-marketing` 0.4.
 
-This package is one half of the `dms-marketing` pnpm workspace; run the
-commands from the repository root.
+## Documentation
 
-```bash
-pnpm install --filter @antelopejs/dms-marketing...
-pnpm --dir packages/dms-marketing/frontend-vue install
-pnpm build      # interface, then tsc
-pnpm lint       # oxlint + oxfmt over the backend, eslint over frontend-vue
-pnpm typecheck  # tsc over both packages, skipLibCheck off
-pnpm knip       # unused dependencies
-pnpm test       # backend suite, then the frontend module's vitest suite
-```
+- [Introduction](https://dms.antelopejs.com/docs/modules/marketing/introduction)
+- [Installation](https://dms.antelopejs.com/docs/modules/marketing/installation)
+- [Configuration](https://dms.antelopejs.com/docs/modules/marketing/configuration)
+- [Usage](https://dms.antelopejs.com/docs/modules/marketing/usage/overview)
+- [Extending](https://dms.antelopejs.com/docs/modules/marketing/extending)
+- [FAQ](https://dms.antelopejs.com/docs/modules/marketing/faq)
+- [Architecture](https://dms.antelopejs.com/docs/modules/marketing/architecture)
 
-The admin surfaces ship as a DMS frontend module in `frontend-vue/`: a Vue 3
-project whose root `dms.frontend.ts` declares the `DmsMarketing` component
-prefix and registers every component of `app/components/` under it, plus its
-own i18n catalogs. The pages themselves are declared backend-side as trees
-of DMS blocks ([Architecture](https://dms.antelopejs.com/docs/modules/marketing/architecture#frontend-layout)). It is a separate project
-with a lockfile of its own, published inside this package's tarball and
-materialized by the DMS frontend loader (`ajs dms`) into the console's Inertia
-workspace. Its own vitest suite runs through `pnpm test`.
+The guide's sources live in [`packages/dms-marketing/docs`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/docs); [`KNOWN-ISSUES.md`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/KNOWN-ISSUES.md) lists the defects found end to end and how each was closed. The module ships the `dms-marketing` Claude Code skill in [`packages/dms-marketing/skills`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/skills), declared under `antelopeJs.skills`.
 
-The interface this module implements is the workspace's other package,
-`packages/interface-dms-marketing`, published under the same `@antelopejs`
-scope. This package implements it, so it caps it below the next minor,
-`>=<interface version> <0.<minor+1>.0`, rather than taking the fleet's
-`<1.0.0` ceiling: a breaking interface minor never reaches a module that does
-not implement it. pnpm links that range to the sibling inside the workspace,
-so `pnpm build` builds the interface first.
-Each is released on its own from GitHub Actions — `release-interface.yml`
-then `release.yml`; the module's workflow refuses to run until the interface
-version it links is resolvable on npm.
+## Contributing
 
-A full consumer project with a tracked demo site lives under `playground/` —
-setup in [Installation](https://dms.antelopejs.com/docs/modules/marketing/installation#3-development-playground).
+This package lives in the [`AntelopeJS/dms-marketing`](https://github.com/AntelopeJS/dms-marketing) pnpm workspace, next to `@antelopejs/interface-dms-marketing`. Read [CONTRIBUTING.md](https://github.com/AntelopeJS/dms-marketing/blob/main/CONTRIBUTING.md) and the [repository README](https://github.com/AntelopeJS/dms-marketing#contributing) for the development commands.
 
 ## License
 
-Apache-2.0
+[Apache-2.0](./LICENSE)

@@ -1,33 +1,63 @@
+<div align="center">
+
 # @antelopejs/interface-dms-marketing
 
-<div align="center">
-<a href="./LICENSE"><img alt="License" src="https://img.shields.io/badge/license-Apache--2.0-blue?style=for-the-badge&labelColor=000000"></a>
-<a href="https://discord.gg/sjK28QHrA7"><img src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000" alt="Discord"></a>
-<a href="https://antelopejs.com"><img src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000" alt="Documentation"></a>
+<a href="https://www.npmjs.com/package/@antelopejs/interface-dms-marketing"><img alt="npm" src="https://img.shields.io/npm/v/@antelopejs/interface-dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
+<a href="./LICENSE"><img alt="License" src="https://img.shields.io/npm/l/@antelopejs/interface-dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
+<a href="https://discord.gg/sjK28QHrA7"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://dms.antelopejs.com/docs/modules/marketing/extending"><img alt="Documentation" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
+
+The AntelopeJS interface to read aggregated first-party analytics of the DMS marketing module from any module.
+
 </div>
 
-AntelopeJS interface for the DMS marketing module (`@antelopejs/dms-marketing`):
-read aggregated first-party analytics from any module.
+## What it does
 
-- **Implemented by** `@antelopejs/dms-marketing` (declared in its
-  `antelopeJs.implements`).
-- **Consumed by** modules that want marketing data without a hard dependency —
-  declare this package in `optionalDependencies`: calls reject when no
-  implementer is loaded, so consumers catch and degrade gracefully. No
-  in-tree consumer today: dms-api dropped its route heatmap tab.
+- Reads the click heatmap of one page path across a tenant's websites, aggregated on the implementer's grid (`GetClickHeatmap`).
+- Returns normalised points with the clicked element's anchor, so an overlay stays stable across window sizes.
+- Lets you show marketing data to tenant users on your own pages, since every `/modules/` page of the DMS is reserved to the platform owner.
+- Keeps your module independent of the implementation, [`@antelopejs/dms-marketing`](https://www.npmjs.com/package/@antelopejs/dms-marketing).
 
-## Surface
+## Install
 
-- `GetClickHeatmap(query)` — click heatmap of one page path across a tenant's
-  websites, aggregated on the implementer's grid.
+Add the interface as an optional dependency of the module that reads analytics: calls reject when no module implements it, so your module can catch and degrade.
 
-## Availability detection
+```bash
+pnpm add --save-optional @antelopejs/interface-dms-marketing
+```
+
+## Quick start
 
 ```ts
 import { GetInterfaceInstances } from "@antelopejs/interface-core";
+import { GetClickHeatmap } from "@antelopejs/interface-dms-marketing";
 
-const available =
-  GetInterfaceInstances("@antelopejs/interface-dms-marketing").length > 0;
+const isAvailable = GetInterfaceInstances("@antelopejs/interface-dms-marketing").length > 0;
+
+export async function pricingHeatmap(tenantId: string) {
+  if (!isAvailable) return null;
+  return GetClickHeatmap({ tenantId, path: "/pricing" });
+}
 ```
 
-Usage guide: [dms.antelopejs.com/docs/modules/marketing/extending](https://dms.antelopejs.com/docs/modules/marketing/extending).
+Without `from` and `to`, the heatmap covers the last 7 days. Pass an authenticated tenant id only.
+
+## Compatibility
+
+| Package | Version |
+| --- | --- |
+| `@antelopejs/dms-marketing` (implementation) | `>=0.5.0` |
+| `@antelopejs/interface-core` | `>=0.1.1 <1.0.0` |
+
+## Documentation
+
+- [Extending the marketing module](https://dms.antelopejs.com/docs/modules/marketing/extending): the interface, the tracker's JavaScript API and the HTTP API
+- [Marketing module guide](https://dms.antelopejs.com/docs/modules/marketing)
+
+## Contributing
+
+This package lives in the [`AntelopeJS/dms-marketing`](https://github.com/AntelopeJS/dms-marketing) pnpm workspace, next to the module that implements it. Read [CONTRIBUTING.md](https://github.com/AntelopeJS/dms-marketing/blob/main/CONTRIBUTING.md) and the [repository README](https://github.com/AntelopeJS/dms-marketing#contributing) for the development commands. Release this package before the module that implements it.
+
+## License
+
+[Apache-2.0](./LICENSE)
