@@ -52,6 +52,16 @@ jobs:
       # The module typechecks against the interface's built declarations.
       - run: pnpm --dir packages/interface-dms-marketing build
 
+      - uses: AntelopeJS/tooling-configs/actions/docs@310e3d861b2da2244902854379176c91e1ebc68e
+        with:
+          files: |
+            README.md
+            packages/dms-marketing/README.md
+            packages/dms-marketing/docs
+            packages/interface-dms-marketing/README.md
+            packages/interface-dms-marketing/docs
+          typescript-project: packages/interface-dms-marketing/docs/tsconfig.json
+
       - run: pnpm --dir packages/dms-marketing lint
       # oxlint's type-aware pass degrades to `any` on a broken tsconfig
       # without failing, so the typecheck is what catches it.

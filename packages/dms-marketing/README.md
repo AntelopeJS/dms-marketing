@@ -47,8 +47,8 @@ Behind a reverse proxy, set the DMS `auth.trustedProxies` option: see [Installat
 | `@antelopejs/interface-dms` | `>=0.7.0 <1.0.0` |
 | `@antelopejs/dms-frontend` (renderer) | `>=0.6.0 <0.7.0` |
 | `@antelopejs/interface-dms-marketing` | `>=0.4.0 <0.5.0` |
-| `@antelopejs/core` | `>=1.13.5` |
-| Database | `@antelopejs/mongodb` `^1.4.2` |
+| `@antelopejs/core` (development dependency) | `>=1.15.2 <2` |
+| Database (development dependency) | `@antelopejs/mongodb` `1.4.2` |
 
 On DMS 0.8, use `@antelopejs/dms-marketing` 0.4.
 

@@ -29,14 +29,14 @@ pnpm add --save-optional @antelopejs/interface-dms-marketing
 ## Quick start
 
 ```ts
-import { GetInterfaceInstances } from "@antelopejs/interface-core";
 import { GetClickHeatmap } from "@antelopejs/interface-dms-marketing";
 
-const isAvailable = GetInterfaceInstances("@antelopejs/interface-dms-marketing").length > 0;
-
 export async function pricingHeatmap(tenantId: string) {
-  if (!isAvailable) return null;
-  return GetClickHeatmap({ tenantId, path: "/pricing" });
+  try {
+    return await GetClickHeatmap({ tenantId, path: "/pricing" });
+  } catch {
+    return null; // Analytics are optional for this page.
+  }
 }
 ```
 
@@ -44,13 +44,17 @@ Without `from` and `to`, the heatmap covers the last 7 days. Pass an authenticat
 
 ## Compatibility
 
-| Package | Version |
+The implementation is `@antelopejs/dms-marketing >=0.5.0`. The interface declares this peer dependency:
+
+<!-- docs-compat: ./package.json#peerDependencies -->
+
+| Package | Range |
 | --- | --- |
-| `@antelopejs/dms-marketing` (implementation) | `>=0.5.0` |
-| `@antelopejs/interface-core` | `>=0.1.1 <1.0.0` |
+| `@antelopejs/interface-core` | `>=0.2.3 <1.0.0` |
 
 ## Documentation
 
+- [Consumer reference](./docs/1.index.md): heatmap query, results, limits and tenant boundaries
 - [Extending the marketing module](https://dms.antelopejs.com/docs/modules/marketing/extending): the interface, the tracker's JavaScript API and the HTTP API
 - [Marketing module guide](https://dms.antelopejs.com/docs/modules/marketing)
 
