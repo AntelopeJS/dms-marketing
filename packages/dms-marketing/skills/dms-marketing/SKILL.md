@@ -19,7 +19,8 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
   0.4 is the DMS 0.8 line.
 - `ajs project modules add @antelopejs/dms-marketing`. Options: `trackerEnabled`, `rawEventsRetention`,
   `statisticsRetention`, `snapshotRetention`, `sessionIdleTimeout` (all ms), `heatmapSampleRate` (0-1),
-  `visitorHashSecret` (set it when running several instances), `geoipDatabasePath` (.mmdb, opt-in).
+  `visitorHashSecret` (set it when running several instances), `geoipDatabasePath` (.mmdb, opt-in),
+  `dashboardTracking` (see below).
   The Settings page overrides switch, retentions and sampling at runtime for the whole deployment.
 - Behind a proxy set the DMS `auth.trustedProxies`; the old `trustedProxyHops` option is gone.
 - One website row per tracked site (Websites page or `POST /api/marketing/websites {name, domain, extraDomains?}`).
@@ -40,6 +41,22 @@ const arm = await window.dmsMarketing?.variation("hero-cta");      // null = ren
   (renderer 0.6 refuses other cross-origin writes); the backend origin works too.
 - Never `type="module"` (breaks `document.currentScript`). Always guard with `?.`.
 - Snapshots (heatmap backdrops) are opt-in per site; mask with `data-dms-marketing-mask` / `data-dms-marketing-block`.
+
+## Tracking the dashboard itself
+
+For a demo, a playground or a back office measuring its own admin, no tag to write:
+
+```typescript
+config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludePaths: ["/settings/**"] } }
+```
+
+- Off by default. On, the module's frontend loads the tracker on every signed-in dashboard page and
+  `POST /api/marketing/dashboard-tracking` creates one website per tenant on first use (domain = the
+  dashboard's host; later hosts join `extraDomains`). Rename, pause or delete it like any site.
+- `/auth/**` is never counted; signing out pauses the tag, a workspace switch retargets it. SPA navigations
+  count. Restart `ajs dms dev` / rebuild the frontend after toggling the option.
+- Tracker attributes behind it, usable on any site: `data-exclude-paths="/x,/x/*,/x/**"`, and a live
+  `data-website-id` (changing it retargets, removing it pauses).
 
 ## Other modules
 
