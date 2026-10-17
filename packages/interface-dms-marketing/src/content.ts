@@ -1,19 +1,20 @@
 import { InterfaceFunction } from "@antelopejs/interface-core";
 
 /**
- * Marketing content declared from code: websites and funnels a project ships
- * (a demo, a template, a migration), and history imported from elsewhere.
+ * Marketing content declared from code: websites, funnels and page
+ * snapshots a project ships (a demo, a template, a migration), and history
+ * imported from elsewhere.
  *
- * Every call is keyed by an id the caller chooses and is safe to repeat on
- * each boot or hot reload. Calls made before the implementing module is ready
- * wait for it. They need the DMS database, which is ready once the DMS has
+ * Every call is keyed by an id (or, for a snapshot, a page) the caller
+ * chooses and is safe to repeat on each boot or hot reload. Calls made
+ * before the implementing module is ready wait for it. They need the DMS database, which is ready once the DMS has
  * settled `Hook.DATABASE_INITIALIZED` from its own `start()`: await them from
  * a module's `start()` or later, never inside `construct()` — fire and forget
  * there, catching the rejection.
  * These are trusted backend calls, not tenant provisioning or authorization.
  * `start()` runs per process, not per tenant. SaaS callers supply an authorized
  * tenantId and ensure its storage exists through their own tenant lifecycle.
- * All three calls require an explicit nonempty tenantId, without surrounding
+ * Every call requires an explicit nonempty tenantId, without surrounding
  * whitespace; "default" is valid only when explicitly chosen. This neither
  * authorizes the caller nor proves provisioning has completed. SaaS applications
  * should register a durable "created" workspace lifecycle consumer before
@@ -127,6 +128,56 @@ export interface MarketingFunnelDeclaration {
   conversionWindowHours?: number;
   /** Null or absent for a plain funnel. */
   experiment?: MarketingExperimentDeclaration | null;
+}
+
+/** The layouts a page is captured for, by the width of its viewport. */
+export type MarketingSnapshotLayout = "desktop" | "tablet" | "phone";
+
+/**
+ * A rendering of one page declared from code: the backdrop its heatmap is
+ * drawn over, for a page the tracker cannot capture (a site not online yet,
+ * imported history). Keyed by the website, the page path and the layout its
+ * viewport falls in: one declaration per path and layout.
+ */
+export interface MarketingPageSnapshotDeclaration {
+  /** Explicit authorized tenant of the website, nonempty without surrounding whitespace. */
+  tenantId: string;
+  /** A website of the tenant, with `snapshotsEnabled`. */
+  websiteId: string;
+  /**
+   * The page, absolute, on a host the website accepts
+   * (`https://shop.example.com/pricing`). Stored as its path, like a capture;
+   * the origin is what the dashboard's "open in a new tab" targets.
+   */
+  url: string;
+  /**
+   * The serialized document, at most 1 MiB, as the capture script sends it:
+   * styles inline or absolute, images by absolute URL. Sanitized like a
+   * capture (scripts, frames, handlers and form values stripped). Stored as
+   * given otherwise: the website's `snapshotMaskText` is applied by the
+   * capture script, not here.
+   */
+  html: string;
+  /**
+   * The viewport the document was laid out at (1-10,000 px). Its width
+   * picks the layout: desktop from 1024 px, tablet from 600 px, phone below.
+   */
+  viewport: { width: number; height: number };
+  /** The full document at that viewport (1-200,000 px). */
+  document: { width: number; height: number };
+  colorScheme?: "light" | "dark";
+}
+
+export interface MarketingPageSnapshotResult {
+  /** The page path the snapshot is stored under. */
+  url: string;
+  layout: MarketingSnapshotLayout;
+  /**
+   * As for the other declarations. `"kept"`: a capture of the live page
+   * replaced the declared one since (or there was one already): a capture
+   * always wins over a declaration and is never overwritten.
+   */
+  status: MarketingDeclarationStatus;
 }
 
 /** The kinds of events an import replays, as the tracker sends them. */
@@ -256,6 +307,25 @@ export const EnsureFunnel =
     (
       declaration: MarketingFunnelDeclaration,
     ) => Promise<MarketingDeclarationResult>
+  >();
+
+/**
+ * Creates or refreshes the snapshot of one page at one layout from its
+ * declaration. Same idempotency rule as {@link EnsureWebsite}: a snapshot
+ * still identical to what was last declared is refreshed to the new
+ * declaration; one the tracker captured since is kept. The tracker
+ * recaptures a page once its snapshot is older than the refresh age (a day),
+ * so a declared backdrop gives way to the real page once it is online and
+ * sampled; the snapshot retention prunes it like a capture. Rejects on
+ * invalid input, an unknown website, a website with snapshots off, a page
+ * on a host the website does not accept, and a new page past the website's
+ * snapshot cap (1,000).
+ */
+export const EnsurePageSnapshot =
+  InterfaceFunction<
+    (
+      declaration: MarketingPageSnapshotDeclaration,
+    ) => Promise<MarketingPageSnapshotResult>
   >();
 
 /**

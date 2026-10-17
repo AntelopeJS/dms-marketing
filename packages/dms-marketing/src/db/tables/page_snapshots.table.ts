@@ -58,4 +58,12 @@ export class PageSnapshot extends Table {
   /** Gzipped document, base64. */
   @Field("string")
   declare html: string;
+
+  /**
+   * Fingerprint of the content EnsurePageSnapshot last wrote; absent on a
+   * capture, which replaces the whole row — so a declaration never
+   * overwrites one.
+   */
+  @Field("string")
+  declare declaredHash?: string;
 }

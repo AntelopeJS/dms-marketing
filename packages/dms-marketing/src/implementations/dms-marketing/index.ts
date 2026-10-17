@@ -5,10 +5,13 @@ import type {
   MarketingHeatmapPayload,
   MarketingHeatmapQuery,
   MarketingImportResult,
+  MarketingPageSnapshotDeclaration,
+  MarketingPageSnapshotResult,
   MarketingWebsiteDeclaration,
 } from "@antelopejs/interface-dms-marketing";
 import { importAnalytics } from "@/services/analytics-import";
 import { ensureFunnel } from "@/services/declared-funnel";
+import { ensurePageSnapshot } from "@/services/declared-snapshot";
 import { ensureWebsite } from "@/services/declared-website";
 import { buildTenantHeatmap } from "@/services/heatmap";
 import { whenMarketingReady } from "@/services/readiness";
@@ -34,6 +37,13 @@ export async function EnsureFunnel(
 ): Promise<MarketingDeclarationResult> {
   await whenMarketingReady();
   return ensureFunnel(declaration);
+}
+
+export async function EnsurePageSnapshot(
+  declaration: MarketingPageSnapshotDeclaration,
+): Promise<MarketingPageSnapshotResult> {
+  await whenMarketingReady();
+  return ensurePageSnapshot(declaration);
 }
 
 export async function ImportAnalytics(

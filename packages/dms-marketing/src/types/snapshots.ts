@@ -67,3 +67,13 @@ export const snapshotRequestSchema = z.union([
 ]);
 
 export type SnapshotRequestInput = z.infer<typeof snapshotRequestSchema>;
+
+/** A snapshot declared from code (EnsurePageSnapshot): an upload's page and
+ * document, same limits, without the negotiation token. */
+export const snapshotDeclarationSchema = snapshotPageSchema
+  .omit({ website: true, token: true })
+  .extend({
+    websiteId: z.string().min(1),
+    document: dimensionSchema(MAX_SNAPSHOT_DOCUMENT_PX),
+    html: z.string().min(1).max(MAX_SNAPSHOT_BYTES),
+  });

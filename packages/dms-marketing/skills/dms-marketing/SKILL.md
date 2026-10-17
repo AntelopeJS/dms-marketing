@@ -64,12 +64,16 @@ Never write the module's tables. From a module's `start()` (await) — or unawai
 `construct()` / a DATABASE_INITIALIZED handler — use `@antelopejs/interface-dms-marketing`:
 
 ```typescript
-await EnsureWebsite({ id: "shop-site", name: "Shop", domain: "shop.example.com" }); // id = data-website-id, global
-await EnsureFunnel({ id: "shop-quote", websiteId: "shop-site", name: "Quote",
+const tenantId = "default"; // explicit, never implied
+await EnsureWebsite({ tenantId, id: "shop-site", name: "Shop", domain: "shop.example.com",
+  snapshotsEnabled: true }); // id = data-website-id, global
+await EnsureFunnel({ tenantId, id: "shop-quote", websiteId: "shop-site", name: "Quote",
   steps: [{ kind: "url", value: "/pricing" }, { kind: "custom", value: "quote_submitted" }],
   experiment: { key: "hero-cta", status: "running", startedAt: "2026-07-01T00:00:00Z",
     variations: [{ key: "control", weight: 1 }, { key: "bold", weight: 1 }] } });
-await ImportAnalytics({ importId: "shop-history", websiteId: "shop-site", sessions: [
+await EnsurePageSnapshot({ tenantId, websiteId: "shop-site", url: "https://shop.example.com/pricing",
+  html, viewport: { width: 1280, height: 800 }, document: { width: 1280, height: 2600 } });
+await ImportAnalytics({ tenantId, importId: "shop-history", websiteId: "shop-site", sessions: [
   { visitor: "v1", userAgent, country: "BE", events: [{ kind: "pageview", at: "2026-10-01T09:00:00Z", url }] }] });
 ```
 
@@ -81,7 +85,11 @@ await ImportAnalytics({ importId: "shop-history", websiteId: "shop-site", sessio
   then `skipped` (or `failed`); ≤ 10,000 sessions and
   1,000 events/session per call; drops future, past-retention, invalid and bot events and exposures of
   draft splits. `startedAt` on a running split makes imported exposures count.
-- `tenantId` defaults to `"default"`. Full contract: the interface package's `docs/1.index.md`.
+- EnsurePageSnapshot: the heatmap backdrop of a page the tracker cannot capture (not online, imported
+  history); keyed by path + layout of `viewport` (desktop ≥ 1024, tablet ≥ 600, phone); sanitized like a
+  capture; needs `snapshotsEnabled`; a live capture replaces it and is never overwritten (`kept`).
+- `tenantId` is required on every content call: no default. Full contract: the interface package's
+  `docs/1.index.md`.
 
 ## Other modules
 

@@ -17,6 +17,7 @@ The AntelopeJS interface to read aggregated first-party analytics of the DMS mar
 - Returns normalised points with the clicked element's anchor, so an overlay stays stable across window sizes.
 - Lets you show marketing data to tenant users on your own pages, since every `/modules/` page of the DMS is reserved to the platform owner.
 - Declares websites and funnels with their A/B splits from code, idempotently and without overwriting what a user changed (`EnsureWebsite`, `EnsureFunnel`).
+- Declares page snapshots, the backdrops of the heatmaps, for pages the tracker cannot capture (`EnsurePageSnapshot`).
 - Imports historical analytics through the live collection pipeline, once per import id (`ImportAnalytics`): demo instances and migrations from another tool.
 - Keeps your module independent of the implementation, [`@antelopejs/dms-marketing`](https://www.npmjs.com/package/@antelopejs/dms-marketing).
 
@@ -44,7 +45,7 @@ export async function pricingHeatmap(tenantId: string) {
 
 Without `from` and `to`, the heatmap covers the last 7 days. Pass an authenticated tenant id only.
 
-For an explicitly selected global demo, declare content from `start()`. All three content APIs require `tenantId`; omission, blank strings and surrounding whitespace reject. For SaaS tenants, prefer the application's durable `created` consumer, with operation deduplication and persisted receipts; see the [lifecycle integration guide](docs/1.index.md#saas-lifecycle-integration). Marketing does not provision or authorize tenants.
+For an explicitly selected global demo, declare content from `start()`. All four content APIs require `tenantId`; omission, blank strings and surrounding whitespace reject. For SaaS tenants, prefer the application's durable `created` consumer, with operation deduplication and persisted receipts; see the [lifecycle integration guide](docs/1.index.md#saas-lifecycle-integration). Marketing does not provision or authorize tenants.
 
 ```ts
 import { EnsureFunnel, EnsureWebsite } from "@antelopejs/interface-dms-marketing";
@@ -67,7 +68,7 @@ export async function start() {
 
 ## Compatibility
 
-The implementation is `@antelopejs/dms-marketing`: `>=0.5.0` for `GetClickHeatmap`, and the first release after 0.5.1 for `EnsureWebsite`, `EnsureFunnel` and `ImportAnalytics` — against an older one, those calls wait for an implementation that never comes. The interface declares this peer dependency:
+The implementation is `@antelopejs/dms-marketing`: `>=0.5.0` for `GetClickHeatmap`, and the first release after 0.5.1 for `EnsureWebsite`, `EnsureFunnel`, `EnsurePageSnapshot` and `ImportAnalytics` — against an older one, those calls wait for an implementation that never comes. The interface declares this peer dependency:
 
 <!-- docs-compat: ./package.json#peerDependencies -->
 
