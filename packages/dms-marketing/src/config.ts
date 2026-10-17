@@ -23,6 +23,14 @@ export interface DashboardTrackingConfig {
    * `/x/**` (the page and everything below).
    */
   excludePaths: string[];
+  /**
+   * Page snapshots on the provisioned website, for click heatmaps drawn over
+   * the dashboard's pages. Off by default: a capture of an admin page stores
+   * the records it shows (text masked, as on every dashboard website). The
+   * config owns the value until a person changes it on the Websites page;
+   * from then on the owner's choice stands.
+   */
+  snapshots: boolean;
 }
 
 export interface DmsMarketingConfig {
@@ -76,6 +84,7 @@ const DEFAULT_CONFIG: DmsMarketingConfig = {
     enabled: false,
     websiteName: DEFAULT_DASHBOARD_WEBSITE_NAME,
     excludePaths: [],
+    snapshots: false,
   },
 };
 
@@ -87,7 +96,7 @@ function isDashboardPathPattern(value: unknown): value is string {
  * Read field by field rather than merged: defu would append the excluded
  * paths to the defaults, and a malformed value must fall back to the default
  * instead of reaching the tag or the website record. Only `enabled: true`
- * turns it on.
+ * turns it on, and only `snapshots: true` enables the captures.
  */
 function parseDashboardTracking(input: unknown): DashboardTrackingConfig {
   const value =
@@ -105,6 +114,7 @@ function parseDashboardTracking(input: unknown): DashboardTrackingConfig {
     excludePaths: Array.isArray(value.excludePaths)
       ? [...new Set(value.excludePaths.filter(isDashboardPathPattern))]
       : [],
+    snapshots: value.snapshots === true,
   };
 }
 
