@@ -23,6 +23,7 @@ import { z } from "zod";
 import { WebsitesModel } from "@/db";
 import type { Website } from "@/db/tables/websites.table";
 import { invalidateExperimentDefinitions } from "@/services/experiment-definitions";
+import { isDashboardWebsite } from "@/services/dashboard-tracking";
 import { deleteSnapshots } from "@/services/snapshots";
 import {
   listTenantWebsites,
@@ -99,12 +100,18 @@ function distinctExtraHosts(domain: string, hosts: string[]): string[] {
 /**
  * 409 when another site of the tenant declares one of these hosts, tied to
  * the field that names it (`{ field, message }`, which the DMS forms show
- * under that field).
+ * under that field). The dashboard's own site is left out both ways: it
+ * shares its host with whatever else answers there (a site in development
+ * on localhost), and its tag is the module's, so no traffic is split.
  */
 async function assertHostsFree(website: Website): Promise<void> {
+  if (isDashboardWebsite(website)) {
+    return;
+  }
+  const websites = await GetModel(WebsitesModel).getByTenant(website.tenantId);
   const conflict = findHostConflict(
     website,
-    await GetModel(WebsitesModel).getByTenant(website.tenantId),
+    websites.filter((site) => !isDashboardWebsite(site)),
   );
   if (conflict) {
     throw new HTTPResult(HTTP_CONFLICT, {

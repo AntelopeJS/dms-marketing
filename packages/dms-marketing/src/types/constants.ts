@@ -11,6 +11,9 @@ export const MARKETING_MODULE_PATH = `/modules/${MARKETING_MODULE_ID}`;
 /** Package name of the Vue frontend module this package ships beside. */
 export const FRONTEND_MODULE_NAME = "@antelopejs/dms-marketing-frontend-vue";
 
+/** Where its public options land in the frontend runtime config. */
+export const FRONTEND_CONFIG_KEY = "dmsMarketing";
+
 // =============================================================================
 // Time
 // =============================================================================
@@ -174,6 +177,17 @@ export const SESSION_CACHE_MAX_ENTRIES = 10_000;
 export const MAX_CACHE_ENTRIES = 1_000;
 export const WEBSITE_CACHE_TTL_MS = 30_000;
 export const EXPERIMENT_DEFINITIONS_CACHE_TTL_MS = 30_000;
+
+// =============================================================================
+// Dashboard tracking
+// =============================================================================
+
+/**
+ * The sign-in, sign-up, recovery and account-switcher pages: never counted,
+ * whatever the configuration. Collection pauses while signed out as well;
+ * this covers the account switcher a signed-in user can open.
+ */
+export const DASHBOARD_AUTH_PATHS = ["/auth/**"];
 
 // =============================================================================
 // Ingestion guards
