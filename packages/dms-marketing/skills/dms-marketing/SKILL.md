@@ -77,7 +77,8 @@ await ImportAnalytics({ importId: "shop-history", websiteId: "shop-site", sessio
   declaration (hash stored on the row) is never overwritten; delete it in the dashboard to re-take it.
   Dashboard rules apply (hostnames, 1-10 steps, 2-8 arms, draft → running ⇄ stopped, arms frozen out of draft).
 - ImportAnalytics replays through the live collect pipeline with trusted timestamps (same sessions,
-  raw events and daily rows); once per importId + website, later calls `skipped`; ≤ 10,000 sessions and
+  raw events and daily rows); once per importId + website, later calls `in_progress` (first still replaying, counts not final),
+  then `skipped` (or `failed`); ≤ 10,000 sessions and
   1,000 events/session per call; drops future, past-retention, invalid and bot events and exposures of
   draft splits. `startedAt` on a running split makes imported exposures count.
 - `tenantId` defaults to `"default"`. Full contract: the interface package's `docs/1.index.md`.

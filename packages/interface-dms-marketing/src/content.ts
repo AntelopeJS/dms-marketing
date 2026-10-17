@@ -187,8 +187,9 @@ export interface MarketingImportSession {
 export interface MarketingAnalyticsImport {
   /**
    * Stable id of this import, chosen by the caller: an import id is applied
-   * once per website, and every later call with it is skipped whatever its
-   * payload. History cannot be imported twice or replaced.
+   * once per website, and every later call with it is not replayed whatever
+   * its payload (see {@link MarketingImportResult.status}). History cannot be
+   * imported twice or replaced.
    */
   importId: string;
   /** Explicit authorized tenant of the website, nonempty without surrounding whitespace. */
@@ -197,10 +198,26 @@ export interface MarketingAnalyticsImport {
   sessions: MarketingImportSession[];
 }
 
+export type MarketingImportStatus =
+  | "imported"
+  | "in_progress"
+  | "skipped"
+  | "failed";
+
 export interface MarketingImportResult {
   importId: string;
-  /** `"skipped"`: the import id was already applied (or is being applied). */
-  status: "imported" | "skipped";
+  /**
+   * What this call did with the import id:
+   * - `"imported"`: this call replayed the history.
+   * - `"in_progress"`: another call (this instance or another) claimed it and
+   *   is still replaying: nothing was written, the counts are not final yet.
+   *   Call again later to read them; a call that never moves past it was
+   *   interrupted and needs reconciliation.
+   * - `"skipped"`: it was applied by an earlier call, whose counts these are.
+   * - `"failed"`: an earlier call failed part-way; it is never replayed and
+   *   its counts are not authoritative.
+   */
+  status: MarketingImportStatus;
   /** Visits the replay opened, which can differ from the sessions sent. */
   sessions: number;
   /** Events written. */

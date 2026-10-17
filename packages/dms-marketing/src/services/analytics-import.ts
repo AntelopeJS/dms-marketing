@@ -301,10 +301,17 @@ async function requireWebsite(
   return website;
 }
 
-function skipped(row: MarketingImport): MarketingImportResult {
+/** What a call answers for an import id it finds already claimed. */
+const CLAIMED_STATUS = {
+  running: "in_progress",
+  done: "skipped",
+  failed: "failed",
+} as const satisfies Record<MarketingImport["status"], string>;
+
+function claimed(row: MarketingImport): MarketingImportResult {
   return {
     importId: row.importId,
-    status: "skipped",
+    status: CLAIMED_STATUS[row.status],
     sessions: row.sessions,
     events: row.events,
     dropped: row.dropped,
@@ -314,8 +321,9 @@ function skipped(row: MarketingImport): MarketingImportResult {
 /**
  * ImportAnalytics: claims the import id for the website, then replays the
  * history. Claimed first, so a second call — another instance booting the
- * same project, the next boot — is skipped rather than counted twice; a
- * failure leaves the claim marked failed for the same reason.
+ * same project, the next boot — is not counted twice: it answers
+ * `in_progress` while the first is still replaying, `skipped` once it is
+ * done, `failed` if it failed (the claim stays, for the same reason).
  */
 export async function importAnalytics(
   batch: MarketingAnalyticsImport,
@@ -332,7 +340,7 @@ export async function importAnalytics(
   const rowId = importRowId(websiteId, importId);
   const applied = await imports.get(rowId);
   if (applied) {
-    return skipped(applied);
+    return claimed(applied);
   }
   // Prepare before claiming: validation failures have written no analytics.
   const { visitors, dropped } = acceptedEventsByVisitor(
@@ -367,12 +375,12 @@ export async function importAnalytics(
   } catch (err) {
     const raced = await imports.get(rowId);
     if (raced) {
-      return skipped(raced);
+      return claimed(raced);
     }
     const owner = await imports.get(claimId);
     if (owner && owner.claimToken !== claimToken) {
       if (owner.importId === importId) {
-        return skipped(owner);
+        return claimed(owner);
       }
       throw refuse(
         importId,
@@ -388,7 +396,7 @@ export async function importAnalytics(
     const raced = await imports.get(rowId);
     if (raced) {
       await imports.releaseClaim(claimId, claimToken);
-      return skipped(raced);
+      return claimed(raced);
     }
     for (const previous of await imports.listByWebsite(websiteId)) {
       if (previous._id === claimId) {

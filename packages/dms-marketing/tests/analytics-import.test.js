@@ -377,7 +377,7 @@ describe("an analytics import's claims", () => {
       throw new Error("storage failed");
     });
     await assert.rejects(importAnalytics(batch("first")), /failed part-way/);
-    assert.equal((await importAnalytics(batch("first"))).status, "skipped");
+    assert.equal((await importAnalytics(batch("first"))).status, "failed");
     await assert.rejects(importAnalytics(batch("next")), /another import/);
     assert.equal(store.events.length, 0);
   });
@@ -424,7 +424,7 @@ describe("an analytics import's claims", () => {
     assert.equal(store.events.length, 10);
   });
 
-  test("an import id is applied once, even when two calls race", async () => {
+  test("an import id is applied once; a racing call sees it in progress", async () => {
     const site = website("once");
     const batch = {
       tenantId: "default",
@@ -436,13 +436,13 @@ describe("an analytics import's claims", () => {
       importAnalytics(batch),
       importAnalytics(batch),
     ]);
+    const statuses = [first, second].map((r) => `${r.status}:${r.events}`);
     assert.deepEqual(
-      [first.status, second.status].sort((x, y) => x.localeCompare(y)),
-      ["imported", "skipped"],
+      statuses.sort((x, y) => x.localeCompare(y)),
+      ["imported:3", "in_progress:0"],
     );
     const again = await importAnalytics({ ...batch, sessions: HISTORY });
-    assert.equal(again.status, "skipped");
-    assert.equal(again.events, 3);
+    assert.deepEqual([again.status, again.events], ["skipped", 3]);
     assert.equal(
       store.events.filter((e) => e.websiteId === site._id).length,
       3,
