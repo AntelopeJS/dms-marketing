@@ -1,6 +1,6 @@
 ---
 name: dms-marketing
-description: First-party, cookieless web analytics with the @antelopejs/dms-marketing module of the AntelopeJS DMS. Use when installing or configuring dms-marketing, embedding its tracker on a site, sending custom events or A/B variations from page code (dmsMarketing.track / variation), defining funnels or A/B tests, reading heatmaps from another module via GetClickHeatmap, or debugging missing, refused (403/404) or empty analytics.
+description: First-party, cookieless web analytics with the @antelopejs/dms-marketing module of the AntelopeJS DMS. Use when installing or configuring dms-marketing, embedding its tracker on a site, sending custom events or A/B variations from page code (dmsMarketing.track / variation), defining funnels or A/B tests, shipping websites, funnels or demo/migrated history from code (EnsureWebsite / EnsureFunnel / ImportAnalytics), reading heatmaps from another module via GetClickHeatmap, or debugging missing, refused (403/404) or empty analytics.
 icon: i-lucide-chart-line
 category: analytics
 tags: [analytics, tracking, funnels, ab-testing, heatmaps, dms-module]
@@ -57,6 +57,30 @@ config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludeP
   count. Restart `ajs dms dev` / rebuild the frontend after toggling the option.
 - Tracker attributes behind it, usable on any site: `data-exclude-paths="/x,/x/*,/x/**"`, and a live
   `data-website-id` (changing it retargets, removing it pauses).
+
+## Content from code
+
+Never write the module's tables. From a module's `start()` (await) — or unawaited with a `.catch` in
+`construct()` / a DATABASE_INITIALIZED handler — use `@antelopejs/interface-dms-marketing`:
+
+```typescript
+await EnsureWebsite({ id: "helio-site", name: "Helio", domain: "helio.example.com" }); // id = data-website-id, global
+await EnsureFunnel({ id: "helio-quote", websiteId: "helio-site", name: "Quote",
+  steps: [{ kind: "url", value: "/pricing" }, { kind: "custom", value: "quote_submitted" }],
+  experiment: { key: "hero-cta", status: "running", startedAt: "2026-07-01T00:00:00Z",
+    variations: [{ key: "control", weight: 1 }, { key: "bold", weight: 1 }] } });
+await ImportAnalytics({ importId: "helio-history", websiteId: "helio-site", sessions: [
+  { visitor: "v1", userAgent, country: "BE", events: [{ kind: "pageview", at: "2026-10-01T09:00:00Z", url }] }] });
+```
+
+- Ensure* answer `created` / `unchanged` / `updated` / `kept`: a record someone changed since the last
+  declaration (hash stored on the row) is never overwritten; delete it in the dashboard to re-take it.
+  Dashboard rules apply (hostnames, 1-10 steps, 2-8 arms, draft → running ⇄ stopped, arms frozen out of draft).
+- ImportAnalytics replays through the live collect pipeline with trusted timestamps (same sessions,
+  raw events and daily rows); once per importId + website, later calls `skipped`; ≤ 10,000 sessions and
+  1,000 events/session per call; drops future, past-retention, invalid and bot events and exposures of
+  draft splits. `startedAt` on a running split makes imported exposures count.
+- `tenantId` defaults to `"default"`. Full contract: the interface package's `docs/1.index.md`.
 
 ## Other modules
 
