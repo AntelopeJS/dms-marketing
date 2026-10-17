@@ -278,6 +278,7 @@ async function openSession(
       screen: first.input.screen,
       language: first.input.language,
       country: context.identity.country,
+      bypassCache: context.identity.trustTimestamps,
     },
   );
 }

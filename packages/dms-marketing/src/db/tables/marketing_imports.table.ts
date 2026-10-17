@@ -43,4 +43,12 @@ export class MarketingImport extends Table {
 
   @Field("date")
   declare finishedAt?: Date;
+
+  /** Latest eligible event of a completed import; epoch for an empty one. */
+  @Field("date")
+  declare importedThrough?: Date;
+
+  /** Only the reserved per-website mutex row carries this acquisition token. */
+  @Field("string")
+  declare claimToken?: string;
 }

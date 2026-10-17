@@ -42,14 +42,21 @@ function fakeModels() {
   };
   const sessions = {
     async findLatestForVisitor(websiteId, visitorId) {
-      return store.sessions
+      const row = store.sessions
         .filter((s) => s.websiteId === websiteId && s.visitorId === visitorId)
         .sort((a, b) => b.startedAt - a.startedAt)[0];
+      return row && structuredClone(row);
     },
     async insert(session) {
-      store.sessions.push(session);
+      store.sessions.push(structuredClone(session));
     },
-    async recordActivity() {},
+    async recordActivity(id, delta) {
+      const session = store.sessions.find((s) => s._id === id);
+      session.pageviewsCount += delta.pageviews;
+      session.eventsCount += delta.events;
+      if (delta.lastSeenAt !== undefined) session.lastSeenAt = delta.lastSeenAt;
+      if (delta.exitUrl !== undefined) session.exitUrl = delta.exitUrl;
+    },
   };
   const events = {
     async insertMany(docs) {
@@ -93,6 +100,16 @@ function fakeModels() {
     },
     async update(id, patch) {
       store.imports.set(id, { ...store.imports.get(id), ...patch });
+    },
+    async listByWebsite(websiteId) {
+      return [...store.imports.values()].filter(
+        (row) => row.websiteId === websiteId,
+      );
+    },
+    async releaseClaim(id, token) {
+      if (store.imports.get(id)?.claimToken === token) {
+        store.imports.delete(id);
+      }
     },
   };
   const websites = {
@@ -267,8 +284,139 @@ describe("an analytics import", () => {
   });
 });
 
-describe("an analytics import's guards", () => {
+describe("an analytics import's chronology", () => {
   useFakeModels();
+
+  test("rejects older windows before writing, even for another visitor", async () => {
+    const site = website("ordered");
+    const batch = (importId, hour, visitor = "same") => ({
+      importId,
+      websiteId: site._id,
+      sessions: [
+        {
+          visitor,
+          events: [{ kind: "pageview", at: at(0, hour, 0), url: "/" }],
+        },
+      ],
+    });
+    await importAnalytics(batch("later", 12));
+    const before = structuredClone({
+      events: store.events,
+      sessions: store.sessions,
+      stats: [...store.stats],
+    });
+    await assert.rejects(
+      importAnalytics(batch("earlier", 10)),
+      /chronological/,
+    );
+    await assert.rejects(
+      importAnalytics(batch("other-visitor", 11, "other")),
+      /chronological/,
+    );
+    assert.deepEqual(
+      {
+        events: store.events,
+        sessions: store.sessions,
+        stats: [...store.stats],
+      },
+      before,
+    );
+    // A preflight refusal does not consume the import id; equal instants are allowed.
+    assert.equal((await importAnalytics(batch("earlier", 12))).events, 1);
+    assert.equal((await importAnalytics(batch("next", 14))).sessions, 1);
+  });
+
+  test("reads another instance's session changes instead of its cached counters", async () => {
+    const site = website("durable-session");
+    const batch = (importId, minute) => ({
+      importId,
+      websiteId: site._id,
+      sessions: [
+        {
+          visitor: "same",
+          events: [{ kind: "pageview", at: at(0, 10, minute), url: "/" }],
+        },
+      ],
+    });
+    await importAnalytics(batch("first", 0));
+    // Another instance has completed a pageview at 10:20 in this visit.
+    Object.assign(store.sessions[0], {
+      lastSeenAt: new Date(at(0, 10, 20)),
+      pageviewsCount: 2,
+      eventsCount: 2,
+    });
+    const stats = [...store.stats.values()][0];
+    Object.assign(stats, {
+      pageviews: 2,
+      bouncedSessions: 0,
+      sessionDurationMs: 20 * MINUTE,
+    });
+    assert.equal((await importAnalytics(batch("next", 25))).sessions, 0);
+    assert.equal(store.sessions[0].pageviewsCount, 3);
+    assert.equal(dayRows(site._id)[0].sessionDurationMs, 25 * MINUTE);
+    assert.equal(dayRows(site._id)[0].bouncedSessions, 0);
+  });
+});
+
+describe("an analytics import's claims", () => {
+  useFakeModels();
+
+  test("a failed replay blocks later imports", async () => {
+    const site = website("failed");
+    const batch = (importId) => ({
+      importId,
+      websiteId: site._id,
+      sessions: HISTORY,
+    });
+    const events = models.GetModel(MarketingEventsModel);
+    mock.method(events, "insertMany", async () => {
+      throw new Error("storage failed");
+    });
+    await assert.rejects(importAnalytics(batch("first")), /failed part-way/);
+    assert.equal((await importAnalytics(batch("first"))).status, "skipped");
+    await assert.rejects(importAnalytics(batch("next")), /another import/);
+    assert.equal(store.events.length, 0);
+  });
+
+  test("legacy claims without a chronology boundary require reconciliation", async () => {
+    const site = website("legacy");
+    store.imports.set(`${site._id}:old`, {
+      _id: `${site._id}:old`,
+      websiteId: site._id,
+      importId: "old",
+      status: "done",
+      events: 1,
+    });
+    await assert.rejects(
+      importAnalytics({
+        importId: "new",
+        websiteId: site._id,
+        sessions: HISTORY,
+      }),
+      /reconciliation/,
+    );
+    assert.equal(store.events.length, 0);
+    assert.equal(store.imports.has(`${site._id}:new`), false);
+  });
+
+  test("different import ids cannot replay the same website concurrently", async () => {
+    const site = website("exclusive");
+    const batch = (importId) => ({
+      importId,
+      websiteId: site._id,
+      sessions: HISTORY,
+    });
+    const results = await Promise.allSettled([
+      importAnalytics(batch("a")),
+      importAnalytics(batch("b")),
+    ]);
+    assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
+    assert.match(
+      results.find((r) => r.status === "rejected").reason.message,
+      /another import/,
+    );
+    assert.equal(store.events.length, 10);
+  });
 
   test("an import id is applied once, even when two calls race", async () => {
     const site = website("once");
@@ -294,6 +442,10 @@ describe("an analytics import's guards", () => {
     );
     assert.equal(store.imports.get(`${site._id}:seed`).status, "done");
   });
+});
+
+describe("an analytics import's guards", () => {
+  useFakeModels();
 
   test("what live collection would refuse, or nothing could read, is dropped", async () => {
     const site = website("drops");
@@ -340,11 +492,15 @@ describe("an analytics import's guards", () => {
           userAgent: "Googlebot/2.1 (+http://www.google.com/bot.html)",
           events: [{ kind: "pageview", at: at(0, 9, 0), url: `${ORIGIN}/` }],
         },
+        {
+          visitor: `orphan-${runCount}`,
+          events: [{ kind: "custom", name: "buy", at: at(0, 10, 0), url: "/" }],
+        },
       ],
     });
     assert.deepEqual(
       { events: result.events, dropped: result.dropped },
-      { events: 2, dropped: 6 },
+      { events: 2, dropped: 7 },
     );
     const session = store.sessions.find((s) => s.websiteId === site._id);
     assert.equal(session.country, "BE");

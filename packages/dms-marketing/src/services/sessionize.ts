@@ -24,6 +24,9 @@ export interface SessionInput {
   screen?: string;
   language?: string;
   country?: string;
+  /** Imports hold the website claim, but another instance may have changed
+   * the last session since this process cached it. Read durable state. */
+  bypassCache?: boolean;
 }
 
 export interface SessionResolution {
@@ -128,6 +131,9 @@ function cachedResolution(
   key: string,
   input: SessionInput,
 ): SessionResolution | undefined {
+  if (input.bypassCache) {
+    return undefined;
+  }
   const cached = sessionCache.get(key);
   if (!cached || !joins(cached, input)) {
     return undefined;

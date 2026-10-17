@@ -87,5 +87,55 @@ describe("the content interface", () => {
       dropped: 0,
     });
     assert.equal((await ImportAnalytics(batch)).status, "skipped");
+    await assert.rejects(
+      ImportAnalytics({
+        ...batch,
+        importId: "wrong-tenant",
+        tenantId: "another-tenant",
+      }),
+      /no website.*another-tenant/,
+    );
+    await assert.rejects(
+      EnsureFunnel({ ...funnel, tenantId: "another-tenant" }),
+      /no website.*another-tenant/,
+    );
+    await assert.rejects(
+      EnsureWebsite({ ...site, tenantId: "another-tenant" }),
+      /another tenant/,
+    );
+    await assert.rejects(
+      ImportAnalytics({ ...batch, importId: "older-window" }),
+      /chronological/,
+    );
+    // Exercise the database-backed website claim through the public proxy.
+    const next = (importId) => ({
+      ...batch,
+      importId,
+      sessions: [
+        {
+          visitor: "visitor-1",
+          events: [
+            {
+              kind: "pageview",
+              at: start + 2 * MINUTE,
+              url: `${ORIGIN}/pricing`,
+            },
+          ],
+        },
+      ],
+    });
+    const raced = await Promise.allSettled([
+      ImportAnalytics(next("next-a")),
+      ImportAnalytics(next("next-b")),
+    ]);
+    assert.equal(
+      raced.filter((result) => result.status === "fulfilled").length,
+      1,
+    );
+    assert.match(
+      raced.find((result) => result.status === "rejected").reason.message,
+      /another import/,
+    );
+    assert.equal((await ImportAnalytics(next("last"))).events, 1);
   });
 });

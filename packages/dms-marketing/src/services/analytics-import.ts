@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type {
   MarketingAnalyticsImport,
@@ -83,6 +84,7 @@ interface VisitorEvent {
 interface ReplayCounts {
   sessions: number;
   events: number;
+  dropped: number;
 }
 
 function refuse(id: string, reason: string): MarketingDeclarationError {
@@ -233,9 +235,8 @@ async function replayVisitor(
   website: Website,
   visitor: string,
   events: VisitorEvent[],
-  rollups: Promise<void>[],
 ): Promise<ReplayCounts> {
-  const counts: ReplayCounts = { sessions: 0, events: 0 };
+  const counts: ReplayCounts = { sessions: 0, events: 0, dropped: 0 };
   for (const batch of trackerBatches(events)) {
     const first = batch[0]!;
     const last = batch[batch.length - 1]!;
@@ -257,11 +258,12 @@ async function replayVisitor(
       },
     );
     if (!outcome) {
+      counts.dropped += batch.length;
       continue;
     }
     counts.events += outcome.accepted;
     counts.sessions += outcome.isNewSession ? 1 : 0;
-    rollups.push(outcome.rollup);
+    await outcome.rollup;
   }
   return counts;
 }
@@ -271,17 +273,16 @@ async function replayAll(
   visitors: Map<string, VisitorEvent[]>,
 ): Promise<ReplayCounts> {
   const queue = [...visitors.entries()];
-  const rollups: Promise<void>[] = [];
-  const total: ReplayCounts = { sessions: 0, events: 0 };
+  const total: ReplayCounts = { sessions: 0, events: 0, dropped: 0 };
   const worker = async () => {
     for (let next = queue.shift(); next; next = queue.shift()) {
-      const counts = await replayVisitor(website, next[0], next[1], rollups);
+      const counts = await replayVisitor(website, next[0], next[1]);
       total.sessions += counts.sessions;
       total.events += counts.events;
+      total.dropped += counts.dropped;
     }
   };
   await Promise.all(Array.from({ length: IMPORT_CONCURRENCY }, worker));
-  await Promise.all(rollups);
   return total;
 }
 
@@ -333,40 +334,102 @@ export async function importAnalytics(
   if (applied) {
     return skipped(applied);
   }
-  const row = {
-    _id: rowId,
-    websiteId,
-    importId,
-    status: "running",
-    sessions: 0,
-    events: 0,
-    dropped: 0,
-    startedAt: new Date(),
-  } as MarketingImport;
-  try {
-    await imports.insert(row);
-  } catch (err) {
-    const raced = await imports.get(rowId);
-    if (!raced) {
-      throw err;
-    }
-    return skipped(raced);
-  }
-
+  // Prepare before claiming: validation failures have written no analytics.
   const { visitors, dropped } = acceptedEventsByVisitor(
     websiteId,
     sessions,
     await startedExperimentKeys(tenantId, websiteId),
   );
+  let earliest = Number.POSITIVE_INFINITY;
+  let latest = 0;
+  for (const events of visitors.values()) {
+    for (const event of events) {
+      earliest = Math.min(earliest, event.at);
+      latest = Math.max(latest, event.at);
+    }
+  }
+  const row = {
+    _id: rowId,
+    websiteId,
+    importId,
+    status: "running" as const,
+    sessions: 0,
+    events: 0,
+    dropped: 0,
+    startedAt: new Date(),
+  };
+  // An empty import id cannot be declared, so this row cannot collide with
+  // caller ids. A plain insert gives one writer per website across instances.
+  const claimId = importRowId(websiteId, "");
+  const claimToken = randomUUID();
   try {
+    await imports.insert({ ...row, _id: claimId, claimToken });
+  } catch (err) {
+    const raced = await imports.get(rowId);
+    if (raced) {
+      return skipped(raced);
+    }
+    const owner = await imports.get(claimId);
+    if (owner && owner.claimToken !== claimToken) {
+      if (owner.importId === importId) {
+        return skipped(owner);
+      }
+      throw refuse(
+        importId,
+        "another import owns this website; retry after it completes (an interrupted import requires reconciliation)",
+      );
+    }
+    // An uncertain insert must not be retried or its claim released.
+    throw err;
+  }
+
+  let importedThrough = 0;
+  try {
+    const raced = await imports.get(rowId);
+    if (raced) {
+      await imports.releaseClaim(claimId, claimToken);
+      return skipped(raced);
+    }
+    for (const previous of await imports.listByWebsite(websiteId)) {
+      if (previous._id === claimId) {
+        continue;
+      }
+      if (previous.status !== "done" || previous.importedThrough == null) {
+        throw refuse(
+          importId,
+          "previous import needs reconciliation before more history can be imported",
+        );
+      }
+      importedThrough = Math.max(
+        importedThrough,
+        previous.importedThrough.getTime(),
+      );
+    }
+    if (earliest < importedThrough) {
+      throw refuse(
+        importId,
+        "imports must use chronological, non-overlapping windows for the entire website",
+      );
+    }
+  } catch (err) {
+    await imports.releaseClaim(claimId, claimToken);
+    throw err;
+  }
+
+  // From this point, an uncertain write or a crash retains the website claim.
+  // Never release in finally: other replay workers may still be writing.
+  try {
+    await imports.insert(row);
     const counts = await replayAll(website, visitors);
+    counts.dropped += dropped;
     await imports.update(rowId, {
       status: "done",
       ...counts,
-      dropped,
+      importedThrough: new Date(Math.max(importedThrough, latest)),
       finishedAt: new Date(),
     });
-    return { importId, status: "imported", ...counts, dropped };
+    await imports.releaseClaim(claimId, claimToken);
+    return { importId, status: "imported", ...counts };
   } catch (err) {
     await imports
       .update(rowId, { status: "failed", dropped, finishedAt: new Date() })
