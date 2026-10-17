@@ -20,7 +20,7 @@ const CHROME =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 const IPHONE =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
-const ORIGIN = "https://helio.example.com";
+const ORIGIN = "https://shop.example.com";
 /** Three days ago at midnight UTC: well inside every retention. */
 const DAY_ONE = Math.floor((Date.now() - 3 * DAY) / DAY) * DAY;
 let runCount = 0;
@@ -123,7 +123,7 @@ function website(name) {
     _id: `${name}-${runCount}`,
     tenantId: "default",
     name,
-    domain: "helio.example.com",
+    domain: "shop.example.com",
     trackingEnabled: true,
   };
   store.websites.set(site._id, site);

@@ -88,9 +88,9 @@ function useFakeModels() {
 }
 
 const SITE = {
-  id: "helio-site",
-  name: "Helio",
-  domain: "https://Helio.Example.com/home",
+  id: "shop-site",
+  name: "Shop",
+  domain: "https://Shop.Example.com/home",
 };
 
 /** What a user does from the dashboard: edit the stored row directly. */
@@ -103,12 +103,12 @@ describe("EnsureWebsite", () => {
 
   test("creates the website under the declared id, in the default tenant", async () => {
     assert.deepEqual(await ensureWebsite(SITE), {
-      id: "helio-site",
+      id: "shop-site",
       status: "created",
     });
-    const row = websites.rows.get("helio-site");
+    const row = websites.rows.get("shop-site");
     assert.equal(row.tenantId, "default");
-    assert.equal(row.domain, "helio.example.com");
+    assert.equal(row.domain, "shop.example.com");
     assert.equal(row.trackingEnabled, true);
     assert.equal(row.snapshotsEnabled, false);
     assert.equal(typeof row.declaredHash, "string");
@@ -116,33 +116,33 @@ describe("EnsureWebsite", () => {
 
   test("a repeated declaration writes nothing", async () => {
     await ensureWebsite(SITE);
-    const before = websites.rows.get("helio-site");
+    const before = websites.rows.get("shop-site");
     assert.equal((await ensureWebsite(SITE)).status, "unchanged");
-    assert.deepEqual(websites.rows.get("helio-site"), before);
+    assert.deepEqual(websites.rows.get("shop-site"), before);
   });
 
   test("a new declaration refreshes a site nobody touched", async () => {
     await ensureWebsite(SITE);
     const result = await ensureWebsite({
       ...SITE,
-      name: "Helio Solar",
-      extraDomains: ["localhost", "helio.example.com"],
+      name: "Main Shop",
+      extraDomains: ["localhost", "shop.example.com"],
       snapshotsEnabled: true,
     });
     assert.equal(result.status, "updated");
-    const row = websites.rows.get("helio-site");
-    assert.equal(row.name, "Helio Solar");
+    const row = websites.rows.get("shop-site");
+    assert.equal(row.name, "Main Shop");
     assert.deepEqual(row.extraDomains, ["localhost"]);
-    assert.deepEqual(snapshotDeletes, ["helio-site"]);
+    assert.deepEqual(snapshotDeletes, ["shop-site"]);
   });
 
   test("a site a user changed is kept, whatever is declared next", async () => {
     await ensureWebsite(SITE);
-    userEdits(websites, "helio-site", { trackingEnabled: false });
+    userEdits(websites, "shop-site", { trackingEnabled: false });
     const result = await ensureWebsite({ ...SITE, name: "Renamed by code" });
     assert.equal(result.status, "kept");
-    const row = websites.rows.get("helio-site");
-    assert.equal(row.name, "Helio");
+    const row = websites.rows.get("shop-site");
+    assert.equal(row.name, "Shop");
     assert.equal(row.trackingEnabled, false);
   });
 
@@ -163,7 +163,7 @@ describe("EnsureWebsite", () => {
     await ensureWebsite({ ...SITE, tenantId: "tenant-a" });
     await assert.rejects(
       ensureWebsite({ ...SITE, tenantId: "tenant-b" }),
-      /EnsureWebsite\("helio-site"\): this id already names a website of another tenant/,
+      /EnsureWebsite\("shop-site"\): this id already names a website of another tenant/,
     );
     await assert.rejects(
       ensureWebsite({ ...SITE, id: "-bad id" }),
@@ -178,8 +178,8 @@ describe("EnsureWebsite", () => {
   test("a host another site of the tenant declares is refused, the dashboard's excepted", async () => {
     await ensureWebsite(SITE);
     await assert.rejects(
-      ensureWebsite({ ...SITE, id: "copy", domain: "helio.example.com" }),
-      /the host "helio.example.com" is already declared by the website "Helio"/,
+      ensureWebsite({ ...SITE, id: "copy", domain: "shop.example.com" }),
+      /the host "shop.example.com" is already declared by the website "Shop"/,
     );
     const dashboard = dashboardWebsiteId("default");
     websites.rows.set(dashboard, {
@@ -199,10 +199,10 @@ describe("EnsureWebsite", () => {
 
 const FUNNEL = {
   id: "quote-request",
-  websiteId: "helio-site",
+  websiteId: "shop-site",
   name: "Quote request",
   steps: [
-    { kind: "url", value: "https://helio.example.com/pricing/?x=1" },
+    { kind: "url", value: "https://shop.example.com/pricing/?x=1" },
     { kind: "custom", value: "quote_submitted" },
   ],
 };
@@ -343,7 +343,7 @@ describe("EnsureFunnel on an existing funnel", () => {
     );
     await assert.rejects(
       ensureFunnel({ ...FUNNEL, tenantId: "tenant-b" }),
-      /no website "helio-site" in the tenant "tenant-b"/,
+      /no website "shop-site" in the tenant "tenant-b"/,
     );
     await ensureFunnel({ ...FUNNEL, experiment: SPLIT });
     await assert.rejects(

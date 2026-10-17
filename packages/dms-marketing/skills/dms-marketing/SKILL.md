@@ -64,12 +64,12 @@ Never write the module's tables. From a module's `start()` (await) — or unawai
 `construct()` / a DATABASE_INITIALIZED handler — use `@antelopejs/interface-dms-marketing`:
 
 ```typescript
-await EnsureWebsite({ id: "helio-site", name: "Helio", domain: "helio.example.com" }); // id = data-website-id, global
-await EnsureFunnel({ id: "helio-quote", websiteId: "helio-site", name: "Quote",
+await EnsureWebsite({ id: "shop-site", name: "Shop", domain: "shop.example.com" }); // id = data-website-id, global
+await EnsureFunnel({ id: "shop-quote", websiteId: "shop-site", name: "Quote",
   steps: [{ kind: "url", value: "/pricing" }, { kind: "custom", value: "quote_submitted" }],
   experiment: { key: "hero-cta", status: "running", startedAt: "2026-07-01T00:00:00Z",
     variations: [{ key: "control", weight: 1 }, { key: "bold", weight: 1 }] } });
-await ImportAnalytics({ importId: "helio-history", websiteId: "helio-site", sessions: [
+await ImportAnalytics({ importId: "shop-history", websiteId: "shop-site", sessions: [
   { visitor: "v1", userAgent, country: "BE", events: [{ kind: "pageview", at: "2026-10-01T09:00:00Z", url }] }] });
 ```
 
