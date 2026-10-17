@@ -942,6 +942,7 @@
           "overflow_hint": "The snapshot lays out at {width}px. The overlay follows the document, so it stays aligned; the backdrop may be cut off.",
           "oversized": "Page too tall to preview accurately",
           "oversized_hint": "The document exceeds the largest surface that can be drawn, so the overlay and the backdrop no longer line up. The click figures are unaffected.",
+          "snapshot_settings": "Snapshot settings",
           "snapshots_enabled": "Page snapshots",
           "snapshots_off": "Page snapshots are off for this site",
           "snapshots_off_hint": "Clicks and scrolls are still counted, but the heatmap is only drawn over a snapshot of the page as visitors see it: its text and images are then stored, every form field masked, for the snapshot retention set in the module settings. Enable it if that fits this site's privacy commitments.",
@@ -1091,7 +1092,6 @@
         "description": "The sites sending data to this workspace, their tracker, and what is captured on each.",
         "drawer": {
           "added": "added {date}",
-          "capture": "Capture",
           "close": "Close",
           "danger": "Danger zone",
           "eyebrow": "Website",
@@ -1124,6 +1124,7 @@
         "save_error": "The website could not be saved.",
         "saved": "Website saved",
         "snapshots": "Page snapshots",
+        "snapshots_edit": "Page snapshot settings of {name}",
         "snapshots_masked": "On · text masked",
         "snapshots_off": "Off",
         "snapshots_on": "On · text visible",

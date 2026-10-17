@@ -16,12 +16,13 @@ import {
   usePageSnapshot,
   type PagePreviewRequest,
 } from '../composables/useMarketingReads'
-import { funnelLink, settingsLink } from '../composables/useMarketingRoutes'
-import { formatNumber, formatShortDate } from '../utils/format'
 import {
-  heatmapDataLabel,
-  heatmapResetImpact,
-} from '../utils/heatmap'
+  funnelLink,
+  settingsLink,
+  websitesLink,
+} from '../composables/useMarketingRoutes'
+import { formatNumber, formatShortDate } from '../utils/format'
+import { heatmapDataLabel, heatmapResetImpact } from '../utils/heatmap'
 import { heatLegendGradient } from '../utils/heatmapPalette'
 import {
   DEFAULT_RENDER_HEIGHT,
@@ -560,7 +561,6 @@ const paneStyle = computed(() => ({
 
 // --- Emptiness, explained ---------------------------------------------------
 
-
 /** Silence has shared causes (collection off, no view sampled) before the
  *  per-overlay one; both overlays explain themselves through this. */
 function captureEmptyReason(fallbackKey: string): string {
@@ -670,6 +670,23 @@ interface StatusStrip {
   title: string
   description: string
   action?: StripAction
+  /** A second, quieter action: the setting behind the strip, where it lives. */
+  secondary?: StripAction
+}
+
+/** Where the site's snapshot switch lives: the Websites page's settings,
+ * scrolled to it. The menu's toggles are only a shortcut to it. */
+const snapshotSettingsLink = computed(() =>
+  props.website ? websitesLink(props.website._id, 'snapshots') : '',
+)
+
+function snapshotSettingsAction(): StripAction | undefined {
+  return snapshotSettingsLink.value
+    ? {
+        label: t('page.marketing.pages.preview.snapshot_settings'),
+        to: snapshotSettingsLink.value,
+      }
+    : undefined
 }
 
 /**
@@ -701,6 +718,7 @@ const statusStrip = computed<StatusStrip | null>(() => {
             label: t('page.marketing.pages.preview.enable_snapshots'),
             run: () => void updateSnapshotOptions({ snapshotsEnabled: true }),
           },
+          secondary: snapshotSettingsAction(),
         }
       : null,
     noSnapshotYet.value
@@ -714,6 +732,7 @@ const statusStrip = computed<StatusStrip | null>(() => {
               : t('page.marketing.pages.preview.no_snapshot_hint_rate', {
                   rate: props.sampleRateLabel,
                 }),
+          secondary: snapshotSettingsAction(),
         }
       : null,
     snapshot.value && tooHeavy.value
@@ -725,6 +744,7 @@ const statusStrip = computed<StatusStrip | null>(() => {
             size: mebibytes(snapshot.value.bytes),
             limit: mebibytes(SNAPSHOT_BYTE_CAP),
           }),
+          secondary: snapshotSettingsAction(),
         }
       : null,
     truncatedState.value
@@ -943,6 +963,15 @@ const moreItems = computed(() => [
       onUpdateChecked: (value: boolean): void =>
         void updateSnapshotOptions({ snapshotMaskText: value }),
     },
+    ...(snapshotSettingsLink.value
+      ? [
+          {
+            label: t('page.marketing.pages.preview.snapshot_settings'),
+            icon: 'i-ph-gear-six',
+            to: snapshotSettingsLink.value,
+          },
+        ]
+      : []),
   ],
   ...(externalUrl.value
     ? [
@@ -1100,8 +1129,9 @@ const surfaceEmpty = computed(() => {
         :title="statusStrip.title"
         :description="statusStrip.description"
       >
-        <template v-if="statusStrip.action" #actions>
+        <template v-if="statusStrip.action || statusStrip.secondary" #actions>
           <UButton
+            v-if="statusStrip.action"
             size="xs"
             color="neutral"
             variant="outline"
@@ -1109,6 +1139,15 @@ const surfaceEmpty = computed(() => {
             :label="statusStrip.action.label"
             :to="statusStrip.action.to"
             @click="statusStrip.action.run?.()"
+          />
+          <UButton
+            v-if="statusStrip.secondary"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            :label="statusStrip.secondary.label"
+            :to="statusStrip.secondary.to"
+            @click="statusStrip.secondary.run?.()"
           />
         </template>
       </DmsBanner>
@@ -1122,6 +1161,16 @@ const surfaceEmpty = computed(() => {
         {{ statusLine }}
       </span>
       <span class="text-dimmed">· {{ maskLine }}</span>
+      <UButton
+        v-if="snapshotSettingsLink"
+        :to="snapshotSettingsLink"
+        size="xs"
+        color="neutral"
+        variant="link"
+        icon="i-ph-gear-six"
+        class="ms-auto"
+        :label="t('page.marketing.pages.preview.snapshot_settings')"
+      />
     </p>
 
     <div class="grid min-h-0 xl:grid-cols-[minmax(0,1fr)_15rem]">

@@ -942,6 +942,7 @@
           "overflow_hint": "L'instantané se dispose sur {width} px. La heatmap suit le document et reste donc alignée ; l'instantané, lui, peut être coupé.",
           "oversized": "Page trop haute pour un aperçu fidèle",
           "oversized_hint": "Le document dépasse la plus grande surface dessinable : la heatmap et l'instantané ne coïncident plus. Les chiffres de clics ne sont pas affectés.",
+          "snapshot_settings": "Réglages des instantanés",
           "snapshots_enabled": "Instantanés de page",
           "snapshots_off": "Les instantanés de page sont désactivés pour ce site",
           "snapshots_off_hint": "Les clics et défilements sont toujours comptés, mais la heatmap ne se dessine que par-dessus un instantané de la page telle que les visiteurs la voient : son texte et ses images sont alors stockés, tous les champs de formulaire masqués, pendant la rétention des instantanés fixée dans les réglages du module. Activez-le si c'est compatible avec les engagements de confidentialité de ce site.",
@@ -1091,7 +1092,6 @@
         "description": "Les sites qui envoient des données à cet espace, leur traceur et ce qui est enregistré sur chacun.",
         "drawer": {
           "added": "ajouté le {date}",
-          "capture": "Instantanés",
           "close": "Fermer",
           "danger": "Zone de danger",
           "eyebrow": "Site",
@@ -1124,6 +1124,7 @@
         "save_error": "Le site n'a pas pu être enregistré.",
         "saved": "Site enregistré",
         "snapshots": "Instantanés de page",
+        "snapshots_edit": "Réglages des instantanés de page de {name}",
         "snapshots_masked": "Actives · texte masqué",
         "snapshots_off": "Désactivées",
         "snapshots_on": "Actives · texte visible",
