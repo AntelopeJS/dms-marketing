@@ -76,9 +76,10 @@ The guide's sources live in [`packages/dms-marketing/docs`](./packages/dms-marke
 
 Read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull request. The playground expects MongoDB on `mongodb://localhost:27017` (`MONGO_URL` overrides it) and serves a tracked demo site at `http://localhost:5010/demo`.
 
+Run these commands from the repository root. One install covers the shared tooling, backend, interface and Vue development dependencies, retaining each project's lockfile. The playground remains independent and needs its own install.
+
 ```bash
-pnpm install --filter @antelopejs/dms-marketing...
-pnpm --dir packages/dms-marketing/frontend-vue install
+pnpm install
 pnpm build          # the interface, then the module
 pnpm lint
 pnpm typecheck
