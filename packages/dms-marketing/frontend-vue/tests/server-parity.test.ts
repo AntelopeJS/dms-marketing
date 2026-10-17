@@ -8,9 +8,14 @@ import { normalizeFunnelStepPath } from '../app/utils/step-path'
 import {
   MAX_WEBSITE_DOMAIN_LENGTH,
   MAX_WEBSITE_NAME_LENGTH,
+  MODULE_CONFIG_KEY,
 } from '../app/constants'
 
 describe('front rules mirror the server', () => {
+  it('reads its public options where the backend puts them', () => {
+    expect(MODULE_CONFIG_KEY).toBe(server.FRONTEND_CONFIG_KEY)
+  })
+
   it('caps a funnel draft as the server does', () => {
     expect(draft.MAX_NAME_LENGTH).toBe(server.MAX_NAME_LENGTH)
     expect(draft.MAX_STEPS).toBe(server.MAX_FUNNEL_STEPS)

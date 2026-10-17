@@ -392,6 +392,11 @@ export interface MarketingScrollDepth {
   truncated: boolean
 }
 
+/** The website the dashboard's own pages report to (dashboardTracking). */
+export interface MarketingDashboardTracking {
+  websiteId: string
+}
+
 // --- Facade -----------------------------------------------------------------
 
 export function useMarketingApi() {
@@ -468,5 +473,12 @@ export function useMarketingApi() {
         method: 'DELETE',
         query: { id },
       }),
+
+    // Provisions the signed-in workspace's dashboard website on first use.
+    dashboardTracking: () =>
+      $authFetch<MarketingDashboardTracking>(
+        '/api/marketing/dashboard-tracking',
+        { method: 'POST' },
+      ),
   }
 }

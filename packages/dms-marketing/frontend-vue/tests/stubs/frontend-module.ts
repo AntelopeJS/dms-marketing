@@ -67,3 +67,10 @@ export function useDmsCookie<T>(
 ): { value: T } {
   return { value: options.default() }
 }
+
+export function useDmsUserSession(): {
+  loggedIn: { value: boolean }
+  session: { value: { activeTenantId?: string } | null }
+} {
+  return { loggedIn: { value: false }, session: { value: null } }
+}

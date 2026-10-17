@@ -10,9 +10,10 @@ import { GetModel } from "@antelopejs/interface-database-decorators";
 import { Hook, RegisterHook } from "@antelopejs/interface-dms/hooks";
 import { AddFrontendModule } from "@antelopejs/interface-dms/page";
 import cron, { type ScheduledTask } from "node-cron";
-import { type DmsMarketingConfig, setConfig } from "./config";
+import { type DmsMarketingConfigInput, getConfig, setConfig } from "./config";
 import { registerMarketingHookListeners } from "./hooks";
 import { TRACKER_PUBLIC_ENDPOINTS } from "./routes/public-endpoints";
+import { dashboardFrontendOptions } from "./services/dashboard-tracking";
 import {
   loadGeoipDatabase,
   loadSettings,
@@ -29,7 +30,7 @@ let pruneTask: ScheduledTask | null = null;
 let settingsReload: NodeJS.Timeout | null = null;
 
 export async function construct(
-  config?: Partial<DmsMarketingConfig>,
+  config?: DmsMarketingConfigInput,
 ): Promise<void> {
   setConfig(config);
   await loadGeoipDatabase();
@@ -49,6 +50,7 @@ export async function construct(
     renderer: { name: "vue", version: "3" },
     priority: 0,
     publicEndpoints: TRACKER_PUBLIC_ENDPOINTS,
+    ...dashboardFrontendOptions(getConfig().dashboardTracking),
   });
 }
 
