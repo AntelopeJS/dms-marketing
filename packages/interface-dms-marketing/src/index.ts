@@ -68,3 +68,4 @@ export const GetClickHeatmap =
   InterfaceFunction<
     (query: MarketingHeatmapQuery) => Promise<MarketingHeatmapPayload>
   >();
+export * from "./content";
