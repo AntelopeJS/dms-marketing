@@ -363,6 +363,28 @@ test("a sanitized snapshot keeps what renders the page", () => {
   assert.doesNotMatch(html, /<\/(br|img|wbr)>/);
 });
 
+test("a stylesheet survives a < that opens no markup, never one that does", () => {
+  // Tailwind v4 writes media ranges with a bare `<`.
+  const tailwind =
+    "@media (width < 48rem){.a{display:none}}.b:has(> p){margin:0}";
+  assert.match(
+    sanitizeSnapshotHtml(`<style>${tailwind}</style>`),
+    /<style>@media \(width < 48rem\)\{\.a\{display:none\}\}\.b:has\(> p\)\{margin:0\}<\/style>/,
+  );
+  const breakouts = [
+    '<style>a{content:"</style><script>alert(1)</script>"}</style>',
+    "<style>a{}</STYLE ><img src=x onerror=alert(2)></style>",
+    "<svg><style><img src=x onerror=alert(3)></style></svg>",
+    "<math><style><!--</style><img src=x onerror=alert(4)>--></style></math>",
+  ];
+  for (const breakout of breakouts) {
+    assert.doesNotMatch(
+      sanitizeSnapshotHtml(breakout),
+      /alert|onerror|<script/i,
+    );
+  }
+});
+
 test("only browser-stamped hostnames are offered for Allow this host", () => {
   const browser = { "sec-fetch-mode": "no-cors" };
   warnRejectedSource(WEBSITE._id, "null", browser);

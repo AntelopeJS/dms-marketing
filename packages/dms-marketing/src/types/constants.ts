@@ -153,8 +153,22 @@ export const MAX_ANCHORED_HEATMAP_CELLS = 2000;
 // Page snapshots
 // =============================================================================
 
-/** Cap on one upload — the whole body, serialized document included. */
+/**
+ * Default cap on one upload as it travels — the whole body, compressed when
+ * the browser gzips it. `snapshotMaxBytes` changes it.
+ */
 export const MAX_SNAPSHOT_BYTES = 1024 * 1024;
+/** Bounds of `snapshotMaxBytes`. The upper one keeps a stored row (the
+ * document gzipped again, then base64: about 4/3 of the upload) well under
+ * MongoDB's 16 MiB document limit. */
+export const MIN_SNAPSHOT_MAX_BYTES = 64 * 1024;
+export const MAX_SNAPSHOT_MAX_BYTES = 8 * 1024 * 1024;
+/** Cap on a compressed upload once inflated, and so on any document: past
+ * it the upload is refused (413) rather than decompressed further. */
+export const MAX_SNAPSHOT_INFLATED_BYTES = 32 * 1024 * 1024;
+/** A stored document (gzip, base64) past this is kept as an oversize
+ * report instead: a row must stay under MongoDB's 16 MiB. */
+export const MAX_STORED_SNAPSHOT_CHARS = 12 * 1024 * 1024;
 export const MAX_SNAPSHOTS_PER_WEBSITE = 1000;
 export const MAX_REPORTED_SNAPSHOT_BYTES = 256 * 1024 * 1024;
 export const MAX_SNAPSHOT_VIEWPORT_PX = 10_000;
@@ -218,3 +232,4 @@ export const HTTP_BAD_REQUEST = 400;
 export const HTTP_FORBIDDEN = 403;
 export const HTTP_NOT_FOUND = 404;
 export const HTTP_CONFLICT = 409;
+export const HTTP_PAYLOAD_TOO_LARGE = 413;

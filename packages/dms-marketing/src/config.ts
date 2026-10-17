@@ -6,6 +6,9 @@ import {
   DEFAULT_SNAPSHOT_RETENTION_MS,
   DEFAULT_STATISTICS_RETENTION_MS,
   MAX_NAME_LENGTH,
+  MAX_SNAPSHOT_BYTES,
+  MAX_SNAPSHOT_MAX_BYTES,
+  MIN_SNAPSHOT_MAX_BYTES,
 } from "./types/constants";
 
 /**
@@ -23,6 +26,14 @@ export interface DashboardTrackingConfig {
    * `/x/**` (the page and everything below).
    */
   excludePaths: string[];
+  /**
+   * Page snapshots on the provisioned website, for click heatmaps drawn over
+   * the dashboard's pages. Off by default: a capture of an admin page stores
+   * the records it shows (text masked, as on every dashboard website). The
+   * config owns the value until a person changes it on the Websites page;
+   * from then on the owner's choice stands.
+   */
+  snapshots: boolean;
 }
 
 export interface DmsMarketingConfig {
@@ -35,6 +46,13 @@ export interface DmsMarketingConfig {
    * prune bounds it by `rawEventsRetention`.
    */
   snapshotRetention: number;
+  /**
+   * Cap on one snapshot upload as it travels (gzipped where the browser
+   * compresses it), in bytes. Clamped to 64 KiB – 8 MiB so a stored row
+   * stays well under MongoDB's 16 MiB document limit; a page past it gets
+   * no backdrop and the preview says so.
+   */
+  snapshotMaxBytes: number;
   sessionIdleTimeout: number;
   heatmapSampleRate: number;
   /**
@@ -68,6 +86,7 @@ const DEFAULT_CONFIG: DmsMarketingConfig = {
   rawEventsRetention: DEFAULT_RAW_EVENTS_RETENTION_MS,
   statisticsRetention: DEFAULT_STATISTICS_RETENTION_MS,
   snapshotRetention: DEFAULT_SNAPSHOT_RETENTION_MS,
+  snapshotMaxBytes: MAX_SNAPSHOT_BYTES,
   sessionIdleTimeout: DEFAULT_SESSION_IDLE_TIMEOUT_MS,
   heatmapSampleRate: DEFAULT_HEATMAP_SAMPLE_RATIO,
   visitorHashSecret: "",
@@ -76,6 +95,7 @@ const DEFAULT_CONFIG: DmsMarketingConfig = {
     enabled: false,
     websiteName: DEFAULT_DASHBOARD_WEBSITE_NAME,
     excludePaths: [],
+    snapshots: false,
   },
 };
 
@@ -87,7 +107,7 @@ function isDashboardPathPattern(value: unknown): value is string {
  * Read field by field rather than merged: defu would append the excluded
  * paths to the defaults, and a malformed value must fall back to the default
  * instead of reaching the tag or the website record. Only `enabled: true`
- * turns it on.
+ * turns it on, and only `snapshots: true` enables the captures.
  */
 function parseDashboardTracking(input: unknown): DashboardTrackingConfig {
   const value =
@@ -105,7 +125,19 @@ function parseDashboardTracking(input: unknown): DashboardTrackingConfig {
     excludePaths: Array.isArray(value.excludePaths)
       ? [...new Set(value.excludePaths.filter(isDashboardPathPattern))]
       : [],
+    snapshots: value.snapshots === true,
   };
+}
+
+/** A number within the bounds, the default for anything else. */
+function parseSnapshotMaxBytes(input: unknown): number {
+  if (typeof input !== "number" || !Number.isFinite(input)) {
+    return MAX_SNAPSHOT_BYTES;
+  }
+  return Math.min(
+    MAX_SNAPSHOT_MAX_BYTES,
+    Math.max(MIN_SNAPSHOT_MAX_BYTES, Math.floor(input)),
+  );
 }
 
 let baseConfig: DmsMarketingConfig = DEFAULT_CONFIG;
@@ -119,6 +151,7 @@ function mergeEffective(): void {
 export function setConfig(input?: DmsMarketingConfigInput): void {
   baseConfig = {
     ...defu(input ?? {}, DEFAULT_CONFIG),
+    snapshotMaxBytes: parseSnapshotMaxBytes(input?.snapshotMaxBytes),
     dashboardTracking: parseDashboardTracking(input?.dashboardTracking),
   };
   mergeEffective();

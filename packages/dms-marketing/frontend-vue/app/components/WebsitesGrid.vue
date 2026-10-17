@@ -1,11 +1,16 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useDmsRouter, useI18n } from '#dms/frontend-module'
+import { computed, nextTick, ref, watch } from 'vue'
+import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import {
   useMarketingApi,
   type MarketingWebsiteCard,
 } from '../composables/useMarketingApi'
-import { installLink, overviewLink } from '../composables/useMarketingRoutes'
+import {
+  installLink,
+  overviewLink,
+  websiteSettingTarget,
+  type WebsiteSetting,
+} from '../composables/useMarketingRoutes'
 import {
   useWebsiteCards,
   useWebsiteDeletionImpactRead,
@@ -28,19 +33,21 @@ import {
  * The Websites page: one card per site with its state, volumes, accepted
  * hosts and capture options; a site still waiting for its first pageview
  * leads to the install guide. Hosts the guard refused show on any card, with
- * the fix. The pencil opens a drawer with the site's General, Capture and
- * Danger zone tabs.
+ * the fix. The pencil opens a drawer with the site's General (tracking and
+ * page snapshots side by side) and Danger zone tabs; `?edit=<id>` opens it
+ * from a link, `&setting=snapshots` scrolled to the snapshot switch.
  */
 const props = withDefaults(
   defineProps<{ fetchUrl?: string; componentId?: string; pageId?: string }>(),
   { fetchUrl: undefined, componentId: undefined, pageId: undefined },
 )
 
-type DrawerTab = 'general' | 'capture' | 'danger'
+type DrawerTab = 'general' | 'danger'
 
 const CLOCK_TICK_MS = 15_000
 
 const { t, locale } = useI18n()
+const route = useDmsRoute()
 const router = useDmsRouter()
 const api = useMarketingApi()
 const toast = useToast()
@@ -168,13 +175,15 @@ const draftSnapshots = ref(false)
 const draftMask = ref(false)
 const saving = ref(false)
 
-function edit(
-  card: MarketingWebsiteCard,
-  initialTab: DrawerTab = 'general',
-): void {
+/** Control of each setting a link can scroll the drawer to. */
+const SETTING_CONTROL_IDS: Record<WebsiteSetting, string> = {
+  snapshots: 'website-snapshots',
+}
+
+function edit(card: MarketingWebsiteCard, setting?: WebsiteSetting): void {
   fieldErrors.clear()
   editing.value = card
-  tab.value = initialTab
+  tab.value = 'general'
   draftName.value = card.name
   draftDomain.value = card.domain
   draftHosts.value = [...card.extraDomains]
@@ -182,7 +191,38 @@ function edit(
   draftSnapshots.value = card.snapshotsEnabled
   draftMask.value = card.snapshotMaskText
   drawerOpen.value = true
+  if (setting) {
+    void scrollToSetting(setting)
+  }
 }
+
+/** Waits for the drawer to render the row, then brings it into view. */
+async function scrollToSetting(setting: WebsiteSetting): Promise<void> {
+  await nextTick()
+  requestAnimationFrame(() => {
+    document
+      .getElementById(SETTING_CONTROL_IDS[setting])
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  })
+}
+
+// A link names the site to edit (the heatmap preview's "Snapshot settings"):
+// the drawer opens on it once the cards are there, and the key leaves the URL
+// so a reload or a back navigation does not reopen it.
+watch(
+  [cards, () => route.query.edit],
+  ([list]) => {
+    const target = websiteSettingTarget(route.query)
+    const card = target && list?.find((item) => item.id === target.id)
+    if (!target || !card) {
+      return
+    }
+    edit(card, target.setting)
+    const { edit: _edit, setting: _setting, ...rest } = route.query
+    void router.replace({ query: rest })
+  },
+  { immediate: true },
+)
 
 // The content stays while the drawer slides out; it goes once it is gone.
 function onDrawerClosed(): void {
@@ -191,7 +231,6 @@ function onDrawerClosed(): void {
 
 const tabItems = computed(() => [
   { value: 'general', label: t('page.marketing.websites.drawer.general') },
-  { value: 'capture', label: t('page.marketing.websites.drawer.capture') },
   { value: 'danger', label: t('page.marketing.websites.drawer.danger') },
 ])
 
@@ -505,20 +544,31 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
                   {{ t('page.marketing.websites.snapshots') }}
                 </dt>
                 <dd>
-                  <DmsStatusPill
-                    size="sm"
-                    :mono="false"
-                    :tone="card.snapshotsEnabled ? 'success' : 'neutral'"
-                    :label="
-                      card.snapshotsEnabled
-                        ? t(
-                            card.snapshotMaskText
-                              ? 'page.marketing.websites.snapshots_masked'
-                              : 'page.marketing.websites.snapshots_on',
-                          )
-                        : t('page.marketing.websites.snapshots_off')
+                  <button
+                    type="button"
+                    class="cursor-pointer rounded-full"
+                    :title="
+                      t('page.marketing.websites.snapshots_edit', {
+                        name: card.name,
+                      })
                     "
-                  />
+                    @click="edit(card, 'snapshots')"
+                  >
+                    <DmsStatusPill
+                      size="sm"
+                      :mono="false"
+                      :tone="card.snapshotsEnabled ? 'success' : 'neutral'"
+                      :label="
+                        card.snapshotsEnabled
+                          ? t(
+                              card.snapshotMaskText
+                                ? 'page.marketing.websites.snapshots_masked'
+                                : 'page.marketing.websites.snapshots_on',
+                            )
+                          : t('page.marketing.websites.snapshots_off')
+                      "
+                    />
+                  </button>
                 </dd>
               </div>
               <div class="flex items-center justify-between gap-3">
@@ -720,9 +770,6 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
             >
               <USwitch id="website-tracking" v-model="draftTracking" />
             </DmsFieldRow>
-            <DmsFormRequiredLegend />
-          </template>
-          <template v-else-if="tab === 'capture'">
             <DmsFieldRow
               spacing="list"
               :inset="false"
@@ -758,6 +805,7 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
                 )
               "
             />
+            <DmsFormRequiredLegend />
           </template>
           <template v-else>
             <div

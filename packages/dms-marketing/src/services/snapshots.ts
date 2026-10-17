@@ -15,6 +15,7 @@ import {
 } from "@/types";
 import {
   MAX_SNAPSHOTS_PER_WEBSITE,
+  MAX_STORED_SNAPSHOT_CHARS,
   SNAPSHOT_CACHE_MAX_ENTRIES,
   SNAPSHOT_PROMISE_TTL_MS,
   SNAPSHOT_REFRESH_AGE_MS,
@@ -181,9 +182,15 @@ function withoutUnsafeAttributes(
  * inline styles, `hidden`, data-* — except what the denylists above name;
  * URL attributes (href, src, srcset, xlink:href…) are scheme-checked after
  * entity decoding. A `<style>` is re-emitted verbatim, so one holding a `<`
- * (no stylesheet the capture serializes does) is dropped rather than risk
- * a parser disagreement reopening markup.
+ * that could open markup — followed by a letter, `!`, `/` or `?`: a tag, a
+ * comment or `</style` itself, which inside `<svg>` or `<math>` the browser
+ * parses as markup — is dropped rather than risk a parser disagreement. A
+ * `<` before anything else is text everywhere and stays: Tailwind's
+ * `@media (width < 48rem)`. The capture escapes the character after a `<`
+ * in the CSS it serializes, so no sheet of a real page is dropped.
  */
+const MARKUP_OPENING = /<[a-z!/?]/i;
+
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: false,
   allowedAttributes: false,
@@ -194,7 +201,7 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   selfClosing: VOID_TAGS,
   exclusiveFilter: (frame) =>
     DROPPED_TAGS.has(frame.tag) ||
-    (frame.tag === "style" && frame.text.includes("<")),
+    (frame.tag === "style" && MARKUP_OPENING.test(frame.text)),
   transformTags: {
     textarea: (tagName, attribs) => ({ tagName, attribs, text: "" }),
     "*": withoutUnsafeAttributes,
@@ -263,6 +270,32 @@ async function claimPromise(
   return true;
 }
 
+/**
+ * The row's document: gzipped and base64 (the size a row reaches is about
+ * 4/3 of the compressed upload), or an oversize report — the upload's own,
+ * or a document that would not fit a row once stored (`bytes` is then the
+ * serialized size).
+ */
+export function storedDocument(input: SnapshotRequestInput): {
+  document: { width: number; height: number };
+  bytes: number;
+  html: string;
+} {
+  if ("html" in input) {
+    const html = gzipSync(sanitizeSnapshotHtml(input.html)).toString("base64");
+    const bytes = Buffer.byteLength(input.html);
+    if (html.length <= MAX_STORED_SNAPSHOT_CHARS) {
+      return { document: input.document, bytes, html };
+    }
+    return { document: { width: 0, height: 0 }, bytes, html: "" };
+  }
+  return {
+    document: { width: 0, height: 0 },
+    bytes: input.oversizeBytes,
+    html: "",
+  };
+}
+
 /** False when the capture is refused: no matching negotiation, an origin
  * the site does not declare, or a site already holding its cap of
  * snapshots and this key being a new one. */
@@ -289,18 +322,7 @@ export async function storeSnapshot(
   ) {
     return false;
   }
-  const stored =
-    "html" in input
-      ? {
-          document: input.document,
-          bytes: Buffer.byteLength(input.html),
-          html: gzipSync(sanitizeSnapshotHtml(input.html)).toString("base64"),
-        }
-      : {
-          document: { width: 0, height: 0 },
-          bytes: input.oversizeBytes,
-          html: "",
-        };
+  const stored = storedDocument(input);
   const now = new Date();
   await model.upsert({
     _id: id,
@@ -332,6 +354,8 @@ export interface PageSnapshotPayload {
   document: { width: number; height: number };
   colorScheme?: SnapshotColorScheme;
   bytes: number;
+  /** The upload cap in force (`snapshotMaxBytes`), for an oversize notice. */
+  maxBytes: number;
   html: string | null;
 }
 
@@ -373,6 +397,7 @@ export async function readPageSnapshot(
     document: { width: row.documentWidth, height: row.documentHeight },
     colorScheme: row.colorScheme,
     bytes: row.bytes,
+    maxBytes: getConfig().snapshotMaxBytes,
     html: row.html
       ? gunzipSync(Buffer.from(row.html, "base64")).toString("utf8")
       : null,
