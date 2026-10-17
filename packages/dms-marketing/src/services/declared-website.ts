@@ -118,7 +118,9 @@ async function refreshWebsite(
     // Once divergence is observed, restoring the old values must not give
     // ownership back to code. Change only metadata, never the owner's fields.
     if (existing.declaredHash) {
-      await GetModel(WebsitesModel).update(id, { declaredHash: "" });
+      await GetModel(WebsitesModel).compareDeclared(existing, {
+        declaredHash: "",
+      });
     }
     return { id, status: "kept" };
   }
@@ -127,9 +129,12 @@ async function refreshWebsite(
     return { id, status: "unchanged" };
   }
   const before = storedContent(existing);
-  Object.assign(existing, content, { declaredHash, updatedAt: new Date() });
-  await assertHostsFree(existing);
-  await GetModel(WebsitesModel).update(existing);
+  const patch = { ...content, declaredHash, updatedAt: new Date() };
+  const refreshed = Object.assign({}, existing, patch);
+  await assertHostsFree(refreshed);
+  if (!(await GetModel(WebsitesModel).compareDeclared(existing, patch))) {
+    return { id, status: "kept" };
+  }
   if (
     before.snapshotsEnabled !== content.snapshotsEnabled ||
     before.snapshotMaskText !== content.snapshotMaskText
@@ -138,7 +143,7 @@ async function refreshWebsite(
   }
   invalidateWebsiteCache(id);
   invalidateExperimentDefinitions(id);
-  forgetAcceptedSources(existing);
+  forgetAcceptedSources(refreshed);
   return { id, status: "updated" };
 }
 

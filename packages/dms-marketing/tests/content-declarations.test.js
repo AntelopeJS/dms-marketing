@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const { mock } = require("node:test");
+const { isDeepStrictEqual } = require("node:util");
 const test = it;
 const models = require("@antelopejs/interface-database-decorators/model");
 const {
@@ -28,6 +29,11 @@ function table() {
         throw new Error("duplicate key");
       }
       rows.set(row._id, structuredClone(row));
+    },
+    async compareDeclared(expected, patch) {
+      if (!isDeepStrictEqual(rows.get(expected._id), expected)) return false;
+      rows.set(expected._id, { ...expected, ...structuredClone(patch) });
+      return true;
     },
     async update(row, patch) {
       if (typeof row === "string") {

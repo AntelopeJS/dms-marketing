@@ -288,7 +288,7 @@ async function refreshFunnel(
     !isUntouchedSinceDeclared(existing.declaredHash, storedContent(existing))
   ) {
     if (existing.declaredHash) {
-      await model.update(id, { declaredHash: "" });
+      await model.compareDeclared(existing, { declaredHash: "" });
     }
     return { id, status: "kept" };
   }
@@ -299,7 +299,7 @@ async function refreshFunnel(
   const experiment = resolvedExperiment(id, content, existing, declaration);
   await assertUniqueKey(id, model, content.websiteId, experiment);
   const previousWebsiteId = existing.websiteId;
-  Object.assign(existing, {
+  const applied = await model.compareDeclared(existing, {
     websiteId: content.websiteId,
     name: content.name,
     steps: content.steps,
@@ -307,7 +307,9 @@ async function refreshFunnel(
     experiment,
     declaredHash,
   });
-  await model.update(existing);
+  if (!applied) {
+    return { id, status: "kept" };
+  }
   invalidateExperimentDefinitions(content.websiteId);
   if (previousWebsiteId !== content.websiteId) {
     invalidateExperimentDefinitions(previousWebsiteId);

@@ -8,6 +8,33 @@ import {
 const RUNNING_STATUS = "running";
 
 export class FunnelsModel extends BasicDataModel(Funnel, funnelsTableName) {
+  /** Include runs and the hash: neither may be replaced from a stale read. */
+  async compareDeclared(
+    expected: Funnel,
+    patch: Partial<Funnel>,
+  ): Promise<boolean> {
+    const count = await this.table
+      .filter((row) =>
+        row
+          .key("_id")
+          .eq(expected._id)
+          .and(row.key("websiteId").eq(expected.websiteId))
+          .and(row.key("name").eq(expected.name))
+          .and(row.key("steps").eq(expected.steps))
+          .and(row.key("conversionWindowMs").eq(expected.conversionWindowMs))
+          .and(row.key("experiment").eq(expected.experiment))
+          .and(
+            row
+              .key("declaredHash")
+              .default("")
+              .eq(expected.declaredHash ?? ""),
+          ),
+      )
+      .update(FunnelsModel.toDatabase({ ...patch, updatedAt: new Date() }))
+      .run();
+    return count === 1;
+  }
+
   async deleteByWebsite(websiteId: string): Promise<number> {
     return this.table.getAll(websiteId, "websiteId").delete().run();
   }
