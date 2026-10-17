@@ -5,9 +5,13 @@ import {
   splitSampleSize,
   templateSteps,
   variationSnippet,
+  DEFAULT_WINDOW_HOURS,
+  WINDOW_PRESET_HOURS,
   type FunnelDraftValues,
 } from '../app/utils/funnel-draft'
 import { sampleSizePerArm } from '../app/utils/sample-size'
+import en from '../i18n/locales/marketing-en-GB.json'
+import fr from '../i18n/locales/marketing-fr-FR.json'
 
 function draft(overrides: Partial<FunnelDraftValues> = {}): FunnelDraftValues {
   return {
@@ -190,5 +194,23 @@ describe('variation snippet', () => {
     })
     expect(code).toContain('// afficher bold')
     expect(code).toContain('// garder control')
+  })
+})
+
+describe('window presets', () => {
+  // QA m8: a preset read "Whole session" while the funnel saved "24 h".
+  it('label each preset with the hours it saves, in every locale', () => {
+    for (const messages of [en, fr]) {
+      const labels: Record<string, string> =
+        messages.page.marketing.builder.window_presets
+      expect(Object.keys(labels).map(Number)).toEqual([...WINDOW_PRESET_HOURS])
+      for (const hours of WINDOW_PRESET_HOURS) {
+        expect(labels[hours]?.replace(/\s/g, '')).toBe(`${hours}h`)
+      }
+    }
+  })
+
+  it('preselect the default window', () => {
+    expect(WINDOW_PRESET_HOURS).toContain(DEFAULT_WINDOW_HOURS)
   })
 })

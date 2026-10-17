@@ -15,6 +15,16 @@ export const MIN_VARIATIONS = 2
 export const MAX_VARIATIONS = 8
 export const MAX_EXPERIMENT_KEY_LENGTH = 64
 
+/**
+ * The windows the builder offers as one click, in hours. A funnel is matched
+ * within one session, which ends after 30 minutes without activity: a window
+ * of days would change nothing (FB-11). Each preset's label states the hours
+ * it saves, so the form shows what the funnel stores.
+ */
+export const WINDOW_PRESET_HOURS = [1, 24] as const
+/** A new funnel's window, as the backend defaults it. */
+export const DEFAULT_WINDOW_HOURS = 24
+
 /** The slug page code passes to `dmsMarketing.variation(…)`, both for the
  * experiment and its arms: it starts with a letter or a digit. */
 const EXPERIMENT_KEY_PATTERN = /^[a-z0-9][a-z0-9_-]*$/

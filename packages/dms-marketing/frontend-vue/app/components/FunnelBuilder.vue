@@ -24,6 +24,7 @@ import {
 } from '../composables/useMarketingRoutes'
 import { useContextLink } from '../composables/useContextLink'
 import {
+  DEFAULT_WINDOW_HOURS,
   draftIssues,
   isWindowHours,
   MAX_EXPERIMENT_KEY_LENGTH,
@@ -37,6 +38,7 @@ import {
   templateSteps,
   localizedSnippetComments,
   variationSnippet,
+  WINDOW_PRESET_HOURS,
   type DraftField,
   type FunnelDraftValues,
   type StepValue,
@@ -72,9 +74,6 @@ interface VariationDraft {
   weight: number | string
 }
 
-// A funnel is matched within one session, which ends after 30 minutes
-// without activity: a window of days would change nothing (FB-11).
-const WINDOW_PRESETS = [1, 24]
 const PREVIEW_DEBOUNCE_MS = 450
 const SUGGESTIONS_SHOWN = 6
 const MINIMUM_DETECTABLE_LIFT = 0.2
@@ -109,7 +108,7 @@ const uid = () => nextUid++
 const name = ref('')
 const websiteId = ref<string>('')
 const steps = ref<StepDraft[]>([{ uid: uid(), kind: 'url', value: '' }])
-const windowHours = ref<number | string>(24)
+const windowHours = ref<number | string>(DEFAULT_WINDOW_HOURS)
 const splitEnabled = ref(route.query.split === '1')
 const experimentKey = ref('')
 const variations = ref<VariationDraft[]>([
@@ -575,7 +574,7 @@ function moveStep(index: number, offset: number): void {
 }
 
 const windowItems = computed(() =>
-  WINDOW_PRESETS.map((hours) => ({
+  WINDOW_PRESET_HOURS.map((hours) => ({
     value: hours,
     label: t(`page.marketing.builder.window_presets.${hours}`),
   })),
