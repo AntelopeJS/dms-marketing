@@ -10,6 +10,9 @@ import { InterfaceFunction } from "@antelopejs/interface-core";
  * settled `Hook.DATABASE_INITIALIZED` from its own `start()`: await them from
  * a module's `start()` or later, never inside `construct()` — fire and forget
  * there, catching the rejection.
+ * These are trusted backend calls, not tenant provisioning or authorization.
+ * `start()` runs per process, not per tenant. SaaS callers supply an authorized
+ * tenantId and ensure its storage exists through their own tenant lifecycle.
  */
 
 /** How a declaration call left the stored record. */
@@ -22,7 +25,9 @@ export type MarketingDeclarationStatus =
   | "unchanged"
   /**
    * Someone changed the record since it was last declared (or it was never
-   * declared from code): it is left as it is, declaration ignored.
+   * declared from code): its content is left as it is, declaration ignored.
+   * Observed divergence clears the hash so restoring old values does not
+   * return ownership to code. Edits reverted before observation are invisible.
    */
   | "kept";
 
@@ -164,7 +169,13 @@ export interface MarketingImportSession {
   events: MarketingImportEvent[];
 }
 
-/** A server-side import of historical analytics into one website. */
+/**
+ * A server-side import of historical analytics into one website.
+ * Send chronological windows for the whole website: eligible timestamps may
+ * equal, but never precede, the previous completed import's latest timestamp.
+ * Different import ids cannot write the same website concurrently. Retry a
+ * busy refusal after completion; an interrupted replay requires reconciliation.
+ */
 export interface MarketingAnalyticsImport {
   /**
    * Stable id of this import, chosen by the caller: an import id is applied
@@ -188,7 +199,8 @@ export interface MarketingImportResult {
   events: number;
   /**
    * Events refused: invalid, in the future, older than the statistics
-   * retention, or an exposure of an experiment that never left draft.
+   * retention, an interaction without a session, or an exposure of an
+   * experiment that never left draft.
    */
   dropped: number;
 }
