@@ -51,7 +51,9 @@ export class PageSnapshot extends Table {
   @Field("date")
   declare capturedAt: Date;
 
-  /** Serialized size before compression. */
+  /** Serialized size before compression; on a capture refused as too
+   * heavy, the size it was refused at (the upload's, compressed when the
+   * browser compressed it). */
   @Field("number")
   declare bytes: number;
 
