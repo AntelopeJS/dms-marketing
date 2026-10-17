@@ -1,6 +1,30 @@
 # Changelog
 
 
+## v0.5.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.5.0...v0.5.1)
+
+### 🩹 Fixes
+
+- **frontend:** Read the page capture again once the text mask changes ([#40](https://github.com/AntelopeJS/dms-marketing/pull/40))
+
+### 📖 Documentation
+
+- Restructure the user guide, refresh screenshots and add dms-marketing skill ([#36](https://github.com/AntelopeJS/dms-marketing/pull/36))
+- Establish the marketing consumer reference ([#41](https://github.com/AntelopeJS/dms-marketing/pull/41))
+- Make dense guide sections easier to scan ([#42](https://github.com/AntelopeJS/dms-marketing/pull/42))
+
+### 🏡 Chore
+
+- **interface:** Raise verified foundation dependency floors ([#43](https://github.com/AntelopeJS/dms-marketing/pull/43))
+- **release:** @antelopejs/interface-dms-marketing v0.4.1 ([687d41f](https://github.com/AntelopeJS/dms-marketing/commit/687d41f))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Alessandro Aloisio ([@alessaloisio](http://github.com/alessaloisio))
+
 ## v0.5.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.4.1...v0.5.0)

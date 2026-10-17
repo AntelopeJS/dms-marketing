@@ -96,7 +96,6 @@ jobs:
         with:
           path: packages/dms-marketing/.antelope/cache
           key: antelope-${{ runner.os }}-${{ hashFiles('packages/dms-marketing/antelope.test.ts', 'packages/*/pnpm-lock.yaml') }}
-          restore-keys: antelope-${{ runner.os }}-
       - uses: actions/cache@v4
         with:
           path: ~/.cache/mongodb-binaries
