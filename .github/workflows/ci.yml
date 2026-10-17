@@ -32,20 +32,16 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          # The frontend module is a project of its own with its own lockfile;
-          # without it the cache key ignores half of what the job installs.
+          # Each workspace project retains its own dependency resolutions.
           cache-dependency-path: |
             pnpm-lock.yaml
-            packages/dms-marketing/frontend-vue/pnpm-lock.yaml
+            packages/*/pnpm-lock.yaml
+            packages/*/frontend-vue/pnpm-lock.yaml
 
       # Everything installs from the public npm registry; the module resolves
       # the interface to the workspace sibling through `link-workspace-packages`.
-      # `...` selects the module's dependencies, the workspace interface
-      # included; nothing else in the workspace is installed.
-      - run: pnpm install --filter @antelopejs/dms-marketing... --frozen-lockfile
-      # The Vue frontend module is a project of its own, with its own lockfile;
-      # the module's lint and layer tests both run from inside it.
-      - run: pnpm --dir packages/dms-marketing/frontend-vue install --frozen-lockfile
+      # Includes the Vue development dependencies, but not the playground.
+      - run: pnpm install --frozen-lockfile
 
       - run: pnpm --dir packages/interface-dms-marketing lint
       - run: pnpm --dir packages/interface-dms-marketing typecheck
@@ -84,8 +80,11 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            packages/*/pnpm-lock.yaml
 
+      # Backend-only job: do not install the Vue layer or playground.
       - run: pnpm install --filter @antelopejs/dms-marketing... --frozen-lockfile
 
       # `ajs module test` packs and installs the package-sourced modules
@@ -96,7 +95,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: packages/dms-marketing/.antelope/cache
-          key: antelope-${{ runner.os }}-${{ hashFiles('packages/dms-marketing/antelope.test.ts', 'pnpm-lock.yaml') }}
+          key: antelope-${{ runner.os }}-${{ hashFiles('packages/dms-marketing/antelope.test.ts', 'packages/*/pnpm-lock.yaml') }}
           restore-keys: antelope-${{ runner.os }}-
       - uses: actions/cache@v4
         with:
