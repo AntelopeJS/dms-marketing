@@ -44,14 +44,16 @@ export async function pricingHeatmap(tenantId: string) {
 
 Without `from` and `to`, the heatmap covers the last 7 days. Pass an authenticated tenant id only.
 
-Ship content from your module's `start()`; each call is safe on every boot:
+For an explicitly selected global demo, declare content from `start()`. All three content APIs require `tenantId`; omission, blank strings and surrounding whitespace reject. For SaaS tenants, prefer the application's durable `created` consumer, with operation deduplication and persisted receipts; see the [lifecycle integration guide](docs/1.index.md#saas-lifecycle-integration). Marketing does not provision or authorize tenants.
 
 ```ts
 import { EnsureFunnel, EnsureWebsite } from "@antelopejs/interface-dms-marketing";
 
 export async function start() {
-  await EnsureWebsite({ id: "shop", name: "Shop", domain: "shop.example.com" });
+  const tenantId = "default"; // Explicit global demo, not an implicit fallback.
+  await EnsureWebsite({ tenantId, id: "shop", name: "Shop", domain: "shop.example.com" });
   await EnsureFunnel({
+    tenantId,
     id: "shop-checkout",
     websiteId: "shop",
     name: "Checkout",
