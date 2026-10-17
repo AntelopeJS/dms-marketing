@@ -12,6 +12,30 @@ export class MarketingImportsModel extends BasicDataModel(
     return this.table.getAll(websiteId, "websiteId").run();
   }
 
+  /**
+   * Per website, the latest instant its completed imports filled (epoch ms):
+   * activity no newer than it came from an import. Websites without a
+   * completed import are absent.
+   */
+  async getImportedThroughByWebsites(
+    websiteIds: string[],
+  ): Promise<Map<string, number>> {
+    const rows = await Promise.all(
+      websiteIds.map((websiteId) => this.listByWebsite(websiteId)),
+    );
+    const through = new Map<string, number>();
+    for (const row of rows.flat()) {
+      if (row.status === "done" && row.importedThrough) {
+        const at = new Date(row.importedThrough).getTime();
+        through.set(
+          row.websiteId,
+          Math.max(through.get(row.websiteId) ?? at, at),
+        );
+      }
+    }
+    return through;
+  }
+
   /** Never release an acquisition owned by another instance. */
   async releaseClaim(id: string, token: string): Promise<void> {
     const outcome = await this.table

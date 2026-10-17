@@ -3,6 +3,7 @@ import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import {
+  MarketingImportsModel,
   MarketingPreferencesModel,
   MarketingSessionsModel,
   WebsitesModel,
@@ -17,16 +18,30 @@ const NO_WEBSITE_MESSAGE = "$page.marketing.errors.no_website";
 /**
  * The state a website shows in the context bar and on its card: `live` once a
  * pageview arrived, `waiting` until then, `paused` when its own switch is off.
+ * `imported` when it has data but its latest activity came from an import
+ * (`ImportAnalytics`): no newer than what its completed imports filled, so
+ * nothing proves the tag collects.
  */
-export type WebsiteState = "live" | "waiting" | "paused";
+export type WebsiteState = "live" | "imported" | "waiting" | "paused";
 
 export interface ContextWebsite {
   id: string;
   name: string;
   domain: string;
   state: WebsiteState;
-  /** Epoch milliseconds of the last tracked activity, null before the first. */
+  /**
+   * Epoch milliseconds of the last tracked activity, imported or live, null
+   * before the first.
+   */
   lastActivityAt: number | null;
+}
+
+/** What the state of a set of websites is read from. */
+export interface WebsiteActivity {
+  /** Epoch ms of each website's last session activity, imported or live. */
+  lastActivity: ReadonlyMap<string, number>;
+  /** Epoch ms up to which each website's completed imports filled it. */
+  importedThrough: ReadonlyMap<string, number>;
 }
 
 export interface MarketingContextPayload {
@@ -35,37 +50,64 @@ export interface MarketingContextPayload {
   selectedId: string | null;
 }
 
-function websiteState(website: Website, lastActivityAt: number | null) {
+function websiteState(
+  website: Website,
+  lastActivityAt: number | null,
+  importedThrough: number | undefined,
+): WebsiteState {
   if (!website.trackingEnabled) {
     return "paused";
   }
-  return lastActivityAt === null ? "waiting" : "live";
+  if (lastActivityAt === null) {
+    return "waiting";
+  }
+  return importedThrough !== undefined && lastActivityAt <= importedThrough
+    ? "imported"
+    : "live";
 }
 
 export function toContextWebsite(
   website: Website,
-  activity: ReadonlyMap<string, number>,
+  activity: WebsiteActivity,
 ): ContextWebsite {
-  const lastActivityAt = activity.get(website._id) ?? null;
+  const lastActivityAt = activity.lastActivity.get(website._id) ?? null;
   return {
     id: website._id,
     name: website.name,
     domain: website.domain,
-    state: websiteState(website, lastActivityAt),
+    state: websiteState(
+      website,
+      lastActivityAt,
+      activity.importedThrough.get(website._id),
+    ),
     lastActivityAt,
   };
+}
+
+/** What the import boundaries of these websites are. */
+export async function loadImportedThrough(
+  tenantId: string,
+  websites: Website[],
+): Promise<Map<string, number>> {
+  return GetModel(MarketingImportsModel, tenantId).getImportedThroughByWebsites(
+    websites.map((website) => website._id),
+  );
 }
 
 export async function loadWebsiteActivity(
   tenantId: string,
   websites: Website[],
-): Promise<Map<string, number>> {
+): Promise<WebsiteActivity> {
   if (websites.length === 0) {
-    return new Map();
+    return { lastActivity: new Map(), importedThrough: new Map() };
   }
-  return GetModel(MarketingSessionsModel, tenantId).getLastActivityByWebsites(
-    websites.map((website) => website._id),
-  );
+  const [lastActivity, importedThrough] = await Promise.all([
+    GetModel(MarketingSessionsModel, tenantId).getLastActivityByWebsites(
+      websites.map((website) => website._id),
+    ),
+    loadImportedThrough(tenantId, websites),
+  ]);
+  return { lastActivity, importedThrough };
 }
 
 async function preferredWebsiteId(
@@ -113,8 +155,9 @@ export async function loadMarketingContext(
   const all = await GetModel(WebsitesModel).getByTenant(tenantId);
   const activity = await loadWebsiteActivity(tenantId, all);
   // listTenantWebsites' order, without reading the activity a second time.
+  const { lastActivity } = activity;
   const websites = [...all].sort(
-    (a, b) => (activity.get(b._id) ?? 0) - (activity.get(a._id) ?? 0),
+    (a, b) => (lastActivity.get(b._id) ?? 0) - (lastActivity.get(a._id) ?? 0),
   );
   const preferred = await preferredWebsiteId(tenantId, user);
   const selected =

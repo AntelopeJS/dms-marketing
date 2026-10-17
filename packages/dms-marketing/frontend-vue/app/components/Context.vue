@@ -233,6 +233,7 @@ type DisplayState = ContextWebsite['state'] | 'idle'
 const STATE_TONES: Record<DisplayState, string> = {
   live: 'bg-success',
   idle: 'bg-(--ui-text-muted)',
+  imported: 'bg-info',
   waiting: 'bg-warning',
   paused: 'bg-(--ui-text-dimmed)',
 }
@@ -250,7 +251,10 @@ function displayState(site: ContextWebsite): DisplayState {
 
 function stateLine(site: ContextWebsite): string {
   const state = displayState(site)
-  if ((state === 'live' || state === 'idle') && site.lastActivityAt) {
+  if (
+    (state === 'live' || state === 'idle' || state === 'imported') &&
+    site.lastActivityAt
+  ) {
     return t(`page.marketing.context.${state}`, {
       ago: formatRelativeTime(site.lastActivityAt, now.value, locale.value),
     })

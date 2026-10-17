@@ -1,6 +1,7 @@
 import { computed, inject, type ComputedRef, type InjectionKey } from 'vue'
 
-export type WebsiteState = 'live' | 'waiting' | 'paused'
+/** `imported`: data, but only from an import — nothing proves the tag collects. */
+export type WebsiteState = 'live' | 'imported' | 'waiting' | 'paused'
 
 export interface ContextWebsite {
   id: string

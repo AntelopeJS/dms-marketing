@@ -386,6 +386,7 @@
           "title": "Impossible de charger vos sites"
         },
         "idle": "Dernier événement {ago}",
+        "imported": "Historique importé · dernier événement {ago}",
         "label": "Site et période",
         "live": "En direct · dernier événement {ago}",
         "no_website": "Aucun site pour l'instant",
@@ -399,6 +400,7 @@
         "range_cut": "Seuls les {days} derniers jours de cette plage sont affichés.",
         "refresh": "Actualiser",
         "state": {
+          "imported": "Historique importé uniquement",
           "live": "En direct",
           "paused": "Suivi en pause pour ce site",
           "waiting": "En attente du premier événement"
