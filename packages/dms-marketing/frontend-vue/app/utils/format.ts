@@ -144,12 +144,15 @@ export function formatShortDate(
   }).format(at)
 }
 
-/** "AS" for "Acme shop": the avatar of a website. */
+/**
+ * "AS" for "Acme shop": the avatar of a website. Built from letters and
+ * digits only, so a dash or a dot in the name never becomes an initial.
+ */
 export function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean)
+  const words = name.split(/[^\p{L}\p{N}]+/u).filter(Boolean)
   const letters =
     words.length > 1
-      ? words.slice(0, INITIALS_LENGTH).map((word) => word[0])
+      ? words.slice(0, INITIALS_LENGTH).map((word) => [...word][0])
       : [...(words[0] ?? '?')].slice(0, INITIALS_LENGTH)
   return letters.join('').toUpperCase()
 }
