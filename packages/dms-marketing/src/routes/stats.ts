@@ -60,8 +60,9 @@ type OverviewTotals = Omit<MarketingDayCounters, "day">;
 interface OverviewSummary {
   totals: OverviewTotals;
   days: MarketingDayStatistics[];
-  /** Same role as `trackerEnabled` on /pages: lets the dashboard tell "no
-   * countries yet" from "no GeoIP database configured" and hide the card. */
+  /** Same role as `trackerEnabled` on /pages: tells "no countries yet" from
+   * "no GeoIP database configured". Imported sessions carry their own
+   * country, so `topCountries` can have entries while this is false. */
   geoipEnabled: boolean;
 }
 

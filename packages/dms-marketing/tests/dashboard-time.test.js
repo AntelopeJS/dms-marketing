@@ -1,6 +1,10 @@
 const assert = require("node:assert/strict");
 const test = it;
-const { kpiPayload, qualityItems } = require("../dist/services/dashboard");
+const {
+  kpiPayload,
+  qualityItems,
+  topGroupPayload,
+} = require("../dist/services/dashboard");
 const { deltaText } = require("../dist/services/composed");
 
 const DAY = 86_400_000;
@@ -87,5 +91,30 @@ test("a change names the period it is measured against", () => {
   assert.equal(
     bounce.detail.key,
     "$page.marketing.compose.delta_previous_year",
+  );
+});
+
+test("countries are listed whenever the period has some, GeoIP or not", () => {
+  const read = (rows) => ({
+    window: window(2),
+    rows,
+    compare: null,
+    compareRows: [],
+    compareDays: [],
+  });
+  const tabs = (rows) =>
+    topGroupPayload(read(rows), "audience").map((tab) => tab.id);
+  // The suite configures no GeoIP database: no lookup stamps a country.
+  assert.deepEqual(tabs([row(0, 3), row(1, 2)]), ["languages", "browsers"]);
+  const imported = { ...row(1, 2), tops: { topCountries: { BE: 2 } } };
+  assert.deepEqual(tabs([row(0, 3), imported]), [
+    "countries",
+    "languages",
+    "browsers",
+  ]);
+  const countries = topGroupPayload(read([imported]), "audience")[0];
+  assert.deepEqual(
+    countries.items.map((item) => [item.id, item.value]),
+    [["BE", 2]],
   );
 });
