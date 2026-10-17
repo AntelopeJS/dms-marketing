@@ -281,10 +281,10 @@ describe("an analytics import's guards", () => {
       importAnalytics(batch),
       importAnalytics(batch),
     ]);
-    assert.deepEqual([first.status, second.status].sort(), [
-      "imported",
-      "skipped",
-    ]);
+    assert.deepEqual(
+      [first.status, second.status].sort((x, y) => x.localeCompare(y)),
+      ["imported", "skipped"],
+    );
     const again = await importAnalytics({ ...batch, sessions: HISTORY });
     assert.equal(again.status, "skipped");
     assert.equal(again.events, 3);
