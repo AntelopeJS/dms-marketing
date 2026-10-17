@@ -11,6 +11,7 @@ import type { MarketingSession } from "@/db/tables/marketing_sessions.table";
 import type { Website } from "@/db/tables/websites.table";
 import {
   byDimension,
+  type DeviceInfo,
   type MarketingStatsDelta,
   type TopDimension,
   type TrackedEventInput,
@@ -49,14 +50,39 @@ export interface CollectOutcome {
 const EXPOSURE_KIND = "exposure";
 const PAGEVIEW_KIND = "pageview";
 
-interface PreparedEvent {
+export interface PreparedEvent {
   input: TrackedEventInput;
   url: ParsedTrackedUrl;
 }
 
+/**
+ * Who sent a batch and when, as ingestion sees it. Live collection derives
+ * it from the request; an import (services/analytics-import) states it.
+ */
+export interface IngestIdentity {
+  visitorId: string;
+  /** The server clock of the batch: what sessions are timed against. */
+  now: Date;
+  device: DeviceInfo;
+  country?: string;
+  /**
+   * The events' own timestamps are the truth, however far from `now`: an
+   * imported history. Live beacons only keep a client clock within
+   * MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS of the server's.
+   */
+  trustTimestamps?: boolean;
+}
+
+/** What one ingested batch did; `rollup` settles once the day row is written. */
+export interface IngestOutcome {
+  accepted: number;
+  isNewSession: boolean;
+  rollup: Promise<void>;
+}
+
 interface BatchContext {
   website: Website;
-  visitorId: string;
+  identity: IngestIdentity;
   now: Date;
   ownHostnames: ReadonlySet<string>;
 }
@@ -81,9 +107,7 @@ export async function processCollectBatch(
   if (prepared.length === 0) {
     return refused;
   }
-
-  const context: BatchContext = {
-    website,
+  const outcome = await ingestPreparedBatch(website, prepared, {
     visitorId: computeVisitorId(
       getVisitorHashSecret(),
       website._id,
@@ -92,12 +116,42 @@ export async function processCollectBatch(
       now,
     ),
     now,
+    device: parseDevice(meta.userAgent),
+    country: lookupCountry(meta.ip),
+  });
+  if (!outcome) {
+    return refused;
+  }
+  void outcome.rollup.catch((err) => {
+    Logging.Error("[dms-marketing] daily rollup write failed:", err);
+  });
+  return {
+    accepted: outcome.accepted,
+    dropped: events.length - outcome.accepted,
+  };
+}
+
+/**
+ * The part of collection after the request: session, raw events, session
+ * counters, daily rollup — shared by live beacons and imported history, so
+ * both produce the same rows. Undefined when the batch may not open a
+ * session and finds none to join.
+ */
+export async function ingestPreparedBatch(
+  website: Website,
+  prepared: PreparedEvent[],
+  identity: IngestIdentity,
+): Promise<IngestOutcome | undefined> {
+  const context: BatchContext = {
+    website,
+    identity,
+    now: identity.now,
     ownHostnames: collectOwnHostnames(website, prepared),
   };
 
-  const resolution = await openSession(context, prepared, meta);
+  const resolution = await openSession(context, prepared);
   if (!resolution) {
-    return refused;
+    return undefined;
   }
   const docs = prepared.map((event) =>
     buildEventDoc(context, resolution.session, event),
@@ -107,8 +161,11 @@ export async function processCollectBatch(
   const previous = snapshotSession(resolution.session);
   await touchSession(context, resolution, docs);
 
-  recordRollup(context, resolution, docs, previous);
-  return { accepted: docs.length, dropped: events.length - docs.length };
+  return {
+    accepted: docs.length,
+    isNewSession: resolution.isNewSession,
+    rollup: recordRollup(context, resolution, docs, previous),
+  };
 }
 
 /** One warning per website per minute: enough to notice a page sending a
@@ -119,7 +176,10 @@ const invalidEventLogGate = new BoundedCache<true>(MS_PER_MINUTE);
  * Each event stands or falls alone: an over-long name or a malformed click
  * drops that event (counted in `dropped`), never the pageview batched with it.
  */
-function prepareEvents(websiteId: string, events: unknown[]): PreparedEvent[] {
+export function prepareEvents(
+  websiteId: string,
+  events: unknown[],
+): PreparedEvent[] {
   const prepared: PreparedEvent[] = [];
   for (const event of events) {
     const parsed = trackedEventSchema.safeParse(event);
@@ -195,7 +255,6 @@ function collectOwnHostnames(
 async function openSession(
   context: BatchContext,
   prepared: PreparedEvent[],
-  meta: CollectRequestMeta,
 ): Promise<SessionResolution | undefined> {
   const pageview = prepared.find((event) => event.input.kind === PAGEVIEW_KIND);
   const first = pageview ?? prepared[0];
@@ -203,9 +262,9 @@ async function openSession(
     GetModel(MarketingSessionsModel, context.website.tenantId),
     {
       websiteId: context.website._id,
-      visitorId: context.visitorId,
+      visitorId: context.identity.visitorId,
       now: context.now,
-      startedAt: eventTimestamp(first.input, context.now),
+      startedAt: eventTimestamp(context, first.input),
       opensSession: pageview !== undefined,
       sessionIdleTimeoutMs: getConfig().sessionIdleTimeout,
       entryUrl: first.url.path,
@@ -215,17 +274,21 @@ async function openSession(
       ),
       utm: first.url.utm,
       clickIdParam: first.url.clickIdParam,
-      device: parseDevice(meta.userAgent),
+      device: context.identity.device,
       screen: first.input.screen,
       language: first.input.language,
-      country: lookupCountry(meta.ip),
+      country: context.identity.country,
     },
   );
 }
 
-function eventTimestamp(event: TrackedEventInput, now: Date): Date {
+function eventTimestamp(context: BatchContext, event: TrackedEventInput): Date {
+  const { now } = context;
   if (event.at === undefined) {
     return now;
+  }
+  if (context.identity.trustTimestamps) {
+    return new Date(event.at);
   }
   const skew = Math.abs(now.getTime() - event.at);
   return skew <= MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS ? new Date(event.at) : now;
@@ -236,14 +299,14 @@ function buildEventDoc(
   session: MarketingSession,
   event: PreparedEvent,
 ): MarketingEvent {
-  const timestamp = eventTimestamp(event.input, context.now);
+  const timestamp = eventTimestamp(context, event.input);
   return {
     timestamp,
     day: getUtcMidnight(timestamp),
     websiteId: context.website._id,
     kind: event.input.kind,
     sessionId: session._id,
-    visitorId: context.visitorId,
+    visitorId: context.identity.visitorId,
     url: event.url.path,
     referrerDomain: extractReferrerDomain(
       event.input.referrer,
@@ -423,7 +486,7 @@ function recordRollup(
   resolution: SessionResolution,
   docs: MarketingEvent[],
   previous: SessionSnapshot,
-): void {
+): Promise<void> {
   const batch: RollupBatch = {
     pageviews: docs.filter((doc) => doc.kind === "pageview"),
     customEvents: docs.filter((doc) => doc.kind === "custom"),
@@ -445,12 +508,10 @@ function recordRollup(
   // The events' own clock, as their `day`: the batch's first event dates it,
   // the one a new session starts at. Across midnight, an event of 23:59 kept
   // by its timestamp would otherwise be counted in the next day's row.
-  void addDailyMarketingStats(
+  return addDailyMarketingStats(
     GetModel(WebsiteStatisticsModel, context.website.tenantId),
     context.website._id,
     getUtcMidnight(docs[0]?.timestamp ?? context.now),
     delta,
-  ).catch((err) => {
-    Logging.Error("[dms-marketing] daily rollup write failed:", err);
-  });
+  );
 }
