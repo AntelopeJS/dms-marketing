@@ -68,7 +68,7 @@ export async function start() {
 
 ## Compatibility
 
-The implementation is `@antelopejs/dms-marketing`: `>=0.5.0` for `GetClickHeatmap`, and the first release after 0.5.1 for `EnsureWebsite`, `EnsureFunnel`, `EnsurePageSnapshot` and `ImportAnalytics` — against an older one, those calls wait for an implementation that never comes. The interface declares this peer dependency:
+Interface 0.5.x targets `@antelopejs/dms-marketing` 0.6.0 or later, which implements `GetClickHeatmap`, `EnsureWebsite`, `EnsureFunnel`, `EnsurePageSnapshot` and `ImportAnalytics`. Module 0.6.0 accepts interface versions `>=0.5.0 <0.6.0`. Older modules do not implement the new content calls; calling them waits for an implementation that never comes. Keep module 0.5.x paired with interface 0.4.x for the older heatmap-only contract. The interface declares this peer dependency:
 
 <!-- docs-compat: ./package.json#peerDependencies -->
 
