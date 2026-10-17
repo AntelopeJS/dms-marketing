@@ -26,8 +26,11 @@ export type MarketingDeclarationStatus =
   /**
    * Someone changed the record since it was last declared (or it was never
    * declared from code): its content is left as it is, declaration ignored.
-   * Observed divergence clears the hash so restoring old values does not
-   * return ownership to code. Edits reverted before observation are invisible.
+   * Also returned when a concurrent change prevents the conditional write.
+   * Observed divergence conditionally clears the hash so restoring old values
+   * does not return ownership to code. Contention alone does not clear it.
+   * Edits reverted before comparison are invisible. Conditional-write safety
+   * requires an adapter retaining the predicate in the write (verified on MongoDB).
    */
   | "kept";
 
