@@ -127,6 +127,8 @@ export interface MarketingPageSnapshot {
   document: { width: number; height: number }
   colorScheme?: 'light' | 'dark'
   bytes: number
+  /** The upload cap in force; absent from an older backend. */
+  maxBytes?: number
   html: string | null
 }
 

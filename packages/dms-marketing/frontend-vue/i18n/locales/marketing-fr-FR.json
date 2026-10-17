@@ -948,7 +948,7 @@
           "snapshots_off_hint": "Les clics et défilements sont toujours comptés, mais la heatmap ne se dessine que par-dessus un instantané de la page telle que les visiteurs la voient : son texte et ses images sont alors stockés, tous les champs de formulaire masqués, pendant la rétention des instantanés fixée dans les réglages du module. Activez-le si c'est compatible avec les engagements de confidentialité de ce site.",
           "status_line": "Instantané du {date} · {layout} {width} px",
           "too_heavy": "Page trop lourde pour un instantané",
-          "too_heavy_hint": "La dernière page vue échantillonnée a sérialisé {size} Mio de HTML et de CSS, au-delà du plafond d'envoi de {limit} Mio : cette page n'a donc pas d'instantané. Les chiffres de clics et de défilement ci-dessus n'en sont pas affectés. Un nouvel essai a lieu chaque jour : un balisage plus léger — ou une section lourde marquée data-dms-marketing-block — la ramène sous le plafond."
+          "too_heavy_hint": "L'instantané de la dernière page vue échantillonnée pesait {size} Mio à l'envoi (compressé quand le navigateur le permet), au-delà du plafond de {limit} Mio : cette page n'a donc pas d'instantané. Les chiffres de clics et de défilement ci-dessus n'en sont pas affectés. Un nouvel essai a lieu chaque jour : un balisage plus léger — ou une section lourde marquée data-dms-marketing-block — la ramène sous le plafond, et l'option snapshotMaxBytes du module relève le plafond."
         },
         "reset": {
           "and": "{first} et {second}",

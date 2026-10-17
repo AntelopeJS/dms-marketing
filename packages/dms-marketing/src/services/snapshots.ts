@@ -15,6 +15,7 @@ import {
 } from "@/types";
 import {
   MAX_SNAPSHOTS_PER_WEBSITE,
+  MAX_STORED_SNAPSHOT_CHARS,
   SNAPSHOT_CACHE_MAX_ENTRIES,
   SNAPSHOT_PROMISE_TTL_MS,
   SNAPSHOT_REFRESH_AGE_MS,
@@ -263,6 +264,32 @@ async function claimPromise(
   return true;
 }
 
+/**
+ * The row's document: gzipped and base64 (the size a row reaches is about
+ * 4/3 of the compressed upload), or an oversize report — the upload's own,
+ * or a document that would not fit a row once stored (`bytes` is then the
+ * serialized size).
+ */
+export function storedDocument(input: SnapshotRequestInput): {
+  document: { width: number; height: number };
+  bytes: number;
+  html: string;
+} {
+  if ("html" in input) {
+    const html = gzipSync(sanitizeSnapshotHtml(input.html)).toString("base64");
+    const bytes = Buffer.byteLength(input.html);
+    if (html.length <= MAX_STORED_SNAPSHOT_CHARS) {
+      return { document: input.document, bytes, html };
+    }
+    return { document: { width: 0, height: 0 }, bytes, html: "" };
+  }
+  return {
+    document: { width: 0, height: 0 },
+    bytes: input.oversizeBytes,
+    html: "",
+  };
+}
+
 /** False when the capture is refused: no matching negotiation, an origin
  * the site does not declare, or a site already holding its cap of
  * snapshots and this key being a new one. */
@@ -289,18 +316,7 @@ export async function storeSnapshot(
   ) {
     return false;
   }
-  const stored =
-    "html" in input
-      ? {
-          document: input.document,
-          bytes: Buffer.byteLength(input.html),
-          html: gzipSync(sanitizeSnapshotHtml(input.html)).toString("base64"),
-        }
-      : {
-          document: { width: 0, height: 0 },
-          bytes: input.oversizeBytes,
-          html: "",
-        };
+  const stored = storedDocument(input);
   const now = new Date();
   await model.upsert({
     _id: id,
@@ -332,6 +348,8 @@ export interface PageSnapshotPayload {
   document: { width: number; height: number };
   colorScheme?: SnapshotColorScheme;
   bytes: number;
+  /** The upload cap in force (`snapshotMaxBytes`), for an oversize notice. */
+  maxBytes: number;
   html: string | null;
 }
 
@@ -373,6 +391,7 @@ export async function readPageSnapshot(
     document: { width: row.documentWidth, height: row.documentHeight },
     colorScheme: row.colorScheme,
     bytes: row.bytes,
+    maxBytes: getConfig().snapshotMaxBytes,
     html: row.html
       ? gunzipSync(Buffer.from(row.html, "base64")).toString("utf8")
       : null,
