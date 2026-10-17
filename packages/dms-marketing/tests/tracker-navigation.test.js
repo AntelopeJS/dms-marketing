@@ -83,7 +83,8 @@ function loadTracker(attributes, pathname) {
       } else {
         attrs.set("data-website-id", id);
       }
-      observer();
+      // Browsers deliver MutationObserver notifications after synchronous code.
+      queueMicrotask(observer);
     },
     /** Everything sent so far, flushed as on leaving the page. */
     sent() {
@@ -150,7 +151,7 @@ test("excluded paths send nothing, custom events included", () => {
   );
 });
 
-test("the tag's website id is followed: paused, then retargeted", () => {
+test("the tag's website id is followed: paused, then retargeted", async () => {
   const tracker = loadTracker({ "data-website-id": "site-a" }, "/a");
   tracker.track("before-sign-out");
   tracker.setWebsite(null); // signed out
@@ -158,6 +159,7 @@ test("the tag's website id is followed: paused, then retargeted", () => {
   tracker.navigate("/b");
   tracker.track("while-paused");
   tracker.setWebsite("site-b"); // signed into another workspace
+  await Promise.resolve();
   tracker.navigate("/c");
   const sent = tracker.sent();
   assert.deepEqual(pageviews(sent), ["site-a /a", "site-b /b", "site-b /c"]);
@@ -167,4 +169,17 @@ test("the tag's website id is followed: paused, then retargeted", () => {
       .map((event) => `${event.website} ${event.path}`),
     ["site-a /a"],
   );
+});
+
+test("a pause takes effect before mutation delivery and a tag can start paused", async () => {
+  const tracker = loadTracker({ "data-website-id": "site-a" }, "/a");
+  tracker.setWebsite(null);
+  tracker.navigate("/workspace-b/private");
+  tracker.track("while-paused");
+  await Promise.resolve();
+  assert.deepEqual(pageviews(tracker.sent()), ["site-a /a"]);
+  const paused = loadTracker({}, "/start");
+  paused.setWebsite("site-b");
+  await Promise.resolve();
+  assert.deepEqual(pageviews(paused.sent()), ["site-b /start"]);
 });

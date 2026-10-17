@@ -128,10 +128,6 @@
 
   /** Null while the page removed it: nothing is collected meanwhile. */
   let websiteId = script.getAttribute("data-website-id");
-  if (!websiteId) {
-    publishApi();
-    return;
-  }
 
   // A tag included twice (theme and tag manager) would count everything twice.
   if (window[INSTALLED_GLOBAL]) {
@@ -208,7 +204,9 @@
   }
 
   function enqueue(event) {
-    if (!websiteId || pageExcluded) {
+    // Attribute writes are synchronous; MutationObserver delivery is not.
+    // Until retargeting completes, never put new events in the old queue.
+    if (!websiteId || script.getAttribute("data-website-id") !== websiteId || pageExcluded) {
       return;
     }
     queue.push(event);
@@ -492,6 +490,7 @@
     if (
       !heatmapSampled ||
       !websiteId ||
+      script.getAttribute("data-website-id") !== websiteId ||
       pageExcluded ||
       snapshotsRequested >= MAX_SNAPSHOTS_PER_LOAD ||
       window.top !== window ||
@@ -615,7 +614,14 @@
     /** Assigned variation of a running experiment, or null. Reports the
      * exposure, so only call it where the variation is actually applied. */
     variation(experiment) {
+      const requestedWebsite = websiteId;
+      if (!requestedWebsite || script.getAttribute("data-website-id") !== requestedWebsite) {
+        return Promise.resolve(null);
+      }
       return loadAssignments().then((assignments) => {
+        if (websiteId !== requestedWebsite || script.getAttribute("data-website-id") !== requestedWebsite) {
+          return null;
+        }
         const assigned = assignments[experiment];
         if (typeof assigned !== "string") {
           return null;
