@@ -1,6 +1,27 @@
 # Changelog
 
 
+## v0.5.0
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.4.1...v0.5.0)
+
+### 🚀 Enhancements
+
+- Track the dashboard itself and ship marketing content from code ([#46](https://github.com/AntelopeJS/dms-marketing/pull/46))
+
+### 📦 Build
+
+- Install frontend development dependencies from the root ([#44](https://github.com/AntelopeJS/dms-marketing/pull/44))
+
+### 🏡 Chore
+
+- **release:** @antelopejs/dms-marketing v0.5.1 ([28d05fe](https://github.com/AntelopeJS/dms-marketing/commit/28d05fe))
+
+### ❤️ Contributors
+
+- Maxime Westhoven ([@mwesto](http://github.com/mwesto))
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.4.1
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.4.0...v0.4.1)
