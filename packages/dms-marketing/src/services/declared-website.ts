@@ -115,6 +115,11 @@ async function refreshWebsite(
   if (
     !isUntouchedSinceDeclared(existing.declaredHash, storedContent(existing))
   ) {
+    // Once divergence is observed, restoring the old values must not give
+    // ownership back to code. Change only metadata, never the owner's fields.
+    if (existing.declaredHash) {
+      await GetModel(WebsitesModel).update(id, { declaredHash: "" });
+    }
     return { id, status: "kept" };
   }
   const declaredHash = contentHash(content);

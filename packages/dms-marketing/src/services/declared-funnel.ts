@@ -287,6 +287,9 @@ async function refreshFunnel(
   if (
     !isUntouchedSinceDeclared(existing.declaredHash, storedContent(existing))
   ) {
+    if (existing.declaredHash) {
+      await model.update(id, { declaredHash: "" });
+    }
     return { id, status: "kept" };
   }
   const declaredHash = contentHash(content);

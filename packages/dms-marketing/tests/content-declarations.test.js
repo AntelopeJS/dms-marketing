@@ -29,8 +29,12 @@ function table() {
       }
       rows.set(row._id, structuredClone(row));
     },
-    async update(row) {
-      rows.set(row._id, structuredClone(row));
+    async update(row, patch) {
+      if (typeof row === "string") {
+        rows.set(row, { ...rows.get(row), ...structuredClone(patch) });
+      } else {
+        rows.set(row._id, structuredClone(row));
+      }
     },
   };
 }
@@ -144,6 +148,12 @@ describe("EnsureWebsite", () => {
     const row = websites.rows.get("shop-site");
     assert.equal(row.name, "Shop");
     assert.equal(row.trackingEnabled, false);
+    userEdits(websites, "shop-site", { trackingEnabled: true });
+    assert.equal(
+      (await ensureWebsite({ ...SITE, name: "New default" })).status,
+      "kept",
+    );
+    assert.equal(websites.rows.get("shop-site").name, "Shop");
   });
 
   test("a site never declared from code is never taken over", async () => {
@@ -320,6 +330,15 @@ describe("EnsureFunnel on an existing funnel", () => {
     const result = await ensureFunnel({ ...FUNNEL, name: "Declared again" });
     assert.equal(result.status, "kept");
     assert.equal(funnelsOf("default").rows.get("quote-request").name, "Edited");
+    userEdits(funnelsOf("default"), "quote-request", { name: FUNNEL.name });
+    assert.equal(
+      (await ensureFunnel({ ...FUNNEL, name: "New default" })).status,
+      "kept",
+    );
+    assert.equal(
+      funnelsOf("default").rows.get("quote-request").name,
+      FUNNEL.name,
+    );
   });
 
   test("a changed declaration of an untouched funnel is applied", async () => {
