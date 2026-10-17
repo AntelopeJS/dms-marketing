@@ -182,9 +182,15 @@ function withoutUnsafeAttributes(
  * inline styles, `hidden`, data-* — except what the denylists above name;
  * URL attributes (href, src, srcset, xlink:href…) are scheme-checked after
  * entity decoding. A `<style>` is re-emitted verbatim, so one holding a `<`
- * (no stylesheet the capture serializes does) is dropped rather than risk
- * a parser disagreement reopening markup.
+ * that could open markup — followed by a letter, `!`, `/` or `?`: a tag, a
+ * comment or `</style` itself, which inside `<svg>` or `<math>` the browser
+ * parses as markup — is dropped rather than risk a parser disagreement. A
+ * `<` before anything else is text everywhere and stays: Tailwind's
+ * `@media (width < 48rem)`. The capture escapes the character after a `<`
+ * in the CSS it serializes, so no sheet of a real page is dropped.
  */
+const MARKUP_OPENING = /<[a-z!/?]/i;
+
 const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   allowedTags: false,
   allowedAttributes: false,
@@ -195,7 +201,7 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
   selfClosing: VOID_TAGS,
   exclusiveFilter: (frame) =>
     DROPPED_TAGS.has(frame.tag) ||
-    (frame.tag === "style" && frame.text.includes("<")),
+    (frame.tag === "style" && MARKUP_OPENING.test(frame.text)),
   transformTags: {
     textarea: (tagName, attribs) => ({ tagName, attribs, text: "" }),
     "*": withoutUnsafeAttributes,

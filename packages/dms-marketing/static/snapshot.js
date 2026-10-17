@@ -497,6 +497,17 @@
     };
   }
 
+  /** CSS as the text of a `<style>`: the character after a `<` that could
+   * open markup (a letter, `!`, `/`, `?`) is written as a CSS escape, the
+   * same token to CSS (`</style` in a string becomes `<\2f style`), so
+   * nothing in it closes the element and the server keeps the sheet. */
+  function styleText(css) {
+    return css.replace(
+      /<([a-z!/?])/gi,
+      (_match, next) => `<\\${next.charCodeAt(0).toString(16)} `,
+    );
+  }
+
   function mediaAttribute(element) {
     const media = element.getAttribute("media");
     return media ? ` media="${escapeAttribute(media)}"` : "";
@@ -526,7 +537,7 @@
     if (segments === null) {
       const text = element.textContent;
       styles.noteVariables(text);
-      return `<style${mediaAttribute(element)}>${text}</style>`;
+      return `<style${mediaAttribute(element)}>${styleText(text)}</style>`;
     }
     return sheetPlaceholder(segments, mediaAttribute(element));
   }
@@ -733,7 +744,9 @@
       "g",
     );
     const out = html.replace(marker, (_match, index) =>
-      css[index] ? `<style${pendingSheets[index].media}>${css[index]}</style>` : "",
+      css[index]
+        ? `<style${pendingSheets[index].media}>${styleText(css[index])}</style>`
+        : "",
     );
     styles = null;
     pendingSheets = [];
@@ -852,7 +865,12 @@
   }
 
   if (isModule) {
-    module.exports = { createStyleCollector, splitSelectorList, testedSelector };
+    module.exports = {
+      createStyleCollector,
+      splitSelectorList,
+      styleText,
+      testedSelector,
+    };
   } else if (asked) {
     whenSettled(() => whenIdle(() => void capture().catch(() => {})));
   }
