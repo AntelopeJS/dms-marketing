@@ -1,5 +1,6 @@
 export * from "./funnels.model";
 export * from "./marketing_events.model";
+export * from "./marketing_imports.model";
 export * from "./marketing_preferences.model";
 export * from "./marketing_sessions.model";
 export * from "./marketing_settings.model";

@@ -56,6 +56,11 @@ export const MAX_TITLE_LENGTH = 200;
 export const MAX_EVENT_NAME_LENGTH = 50;
 export const MAX_EVENT_DATA_BYTES = 4096;
 export const MAX_WEBSITE_ID_LENGTH = 64;
+/**
+ * Ids a project chooses for the content it declares from code (websites,
+ * funnels, imports): slugs that fit a website id and read well in a tag.
+ */
+export const DECLARED_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 export const MAX_NAME_LENGTH = 100;
 export const MAX_DOMAIN_LENGTH = 253;
 export const MAX_EXTRA_DOMAINS = 20;

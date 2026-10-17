@@ -7,6 +7,7 @@ import { Hook, RegisterHook } from "@antelopejs/interface-dms/hooks";
 import {
   FunnelsModel,
   MarketingEventsModel,
+  MarketingImportsModel,
   MarketingPreferencesModel,
   MarketingSessionsModel,
   PageSnapshotsModel,
@@ -17,9 +18,10 @@ import { MARKETING_MODULE_ID } from "@/types/constants";
 
 /**
  * Every marketing model living in the per-tenant schema — the set both hooks
- * walk. Events, sessions, page snapshots and member preferences are deleted
- * with the rest but excluded from the export: retention-bounded captures and
- * per-member choices, not the durable data a workspace owns.
+ * walk. Events, sessions, page snapshots, member preferences and the record
+ * of applied analytics imports are deleted with the rest but excluded from
+ * the export: retention-bounded captures, per-member choices and bookkeeping,
+ * not the durable data a workspace owns.
  */
 const TENANT_MODELS: ReadonlyArray<Parameters<typeof GetModel>[0]> = [
   MarketingEventsModel,
@@ -28,6 +30,7 @@ const TENANT_MODELS: ReadonlyArray<Parameters<typeof GetModel>[0]> = [
   WebsiteStatisticsModel,
   FunnelsModel,
   MarketingPreferencesModel,
+  MarketingImportsModel,
 ];
 
 async function purgeTenantMarketingData(tenantId: string): Promise<void> {

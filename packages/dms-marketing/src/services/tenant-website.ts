@@ -4,6 +4,7 @@ import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import {
   FunnelsModel,
   MarketingEventsModel,
+  MarketingImportsModel,
   MarketingSessionsModel,
   WebsiteStatisticsModel,
   WebsitesModel,
@@ -47,6 +48,8 @@ export async function purgeWebsiteTrackingData(
   await GetModel(WebsiteStatisticsModel, tenantId).deleteByWebsite(websiteId);
   await deleteSnapshots(tenantId, websiteId);
   await GetModel(FunnelsModel, tenantId).deleteByWebsite(websiteId);
+  // A site created again under the same id may import its history again.
+  await GetModel(MarketingImportsModel, tenantId).deleteByWebsite(websiteId);
 }
 
 /**

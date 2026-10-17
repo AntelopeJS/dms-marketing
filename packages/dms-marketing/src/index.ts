@@ -14,6 +14,7 @@ import { type DmsMarketingConfigInput, getConfig, setConfig } from "./config";
 import { registerMarketingHookListeners } from "./hooks";
 import { TRACKER_PUBLIC_ENDPOINTS } from "./routes/public-endpoints";
 import { dashboardFrontendOptions } from "./services/dashboard-tracking";
+import { markMarketingReady } from "./services/readiness";
 import {
   loadGeoipDatabase,
   loadSettings,
@@ -63,6 +64,9 @@ export async function construct(
 async function onDatabaseInitialized(): Promise<void> {
   const settings = GetModel(MarketingSettingsModel);
   await loadSettings(settings);
+  // The interface's content calls (EnsureWebsite, ImportAnalytics…) were
+  // waiting for exactly this: schemas registered, visitor secret loaded.
+  markMarketingReady();
 
   // The settings row is shared by every instance: each reads it again on a
   // short timer, and right before pruning with the retentions it holds.

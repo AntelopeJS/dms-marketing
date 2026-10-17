@@ -88,6 +88,10 @@ export class Funnel extends Table {
   @Field("any")
   declare experiment: FunnelExperiment | null;
 
+  /** Set on a funnel declared from code (`EnsureFunnel`), as on websites. */
+  @Field("string")
+  declare declaredHash?: string;
+
   @CreationTime()
   @Field("date")
   declare createdAt: Date;
