@@ -13,6 +13,12 @@ export const MS_PER_DAY = 86_400_000
 export const MAX_WEBSITE_NAME_LENGTH = 100
 export const MAX_WEBSITE_DOMAIN_LENGTH = 253
 
+/**
+ * Where the backend puts this module's public options (FRONTEND_CONFIG_KEY
+ * on the server): `sdk.options.public[MODULE_CONFIG_KEY]`.
+ */
+export const MODULE_CONFIG_KEY = 'dmsMarketing'
+
 /** Longest period the routes read (MAX_QUERY_PERIOD_DAYS on the server). */
 export const MAX_PERIOD_DAYS = 90
 

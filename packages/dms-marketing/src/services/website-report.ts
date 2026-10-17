@@ -10,8 +10,10 @@ import type { Website } from "@/db/tables/websites.table";
 import { getConfig } from "@/config";
 import {
   type ContextWebsite,
+  loadImportedThrough,
   loadWebsiteActivity,
   toContextWebsite,
+  type WebsiteActivity,
 } from "./context";
 import { listRejectedSources, type RejectedSource } from "./origin-guard";
 import { periodStart, trailingWindow } from "./period";
@@ -39,7 +41,7 @@ export interface WebsiteCard extends ContextWebsite {
 
 async function cardOf(
   website: Website,
-  activity: ReadonlyMap<string, number>,
+  activity: WebsiteActivity,
 ): Promise<WebsiteCard> {
   const rows = await readRollups(website, trailingWindow(CARD_WINDOW_DAYS));
   const [funnels, snapshots] = await Promise.all([
@@ -139,19 +141,20 @@ export async function connectionStatus(
     since ?? createdAt,
     periodStart(RECENT_VISIT_DAYS).getTime(),
   );
-  const [pageview, latest] = await Promise.all([
+  const [pageview, latest, importedThrough] = await Promise.all([
     GetModel(MarketingEventsModel, website.tenantId).getLatestPageview(
       website._id,
       new Date(from),
     ),
     GetModel(MarketingSessionsModel, website.tenantId).getLatest(website._id),
+    loadImportedThrough(website.tenantId, [website]),
   ]);
   const lastActivityAt = latest ? new Date(latest.lastSeenAt).getTime() : null;
-  const activity = new Map<string, number>(
+  const lastActivity = new Map<string, number>(
     lastActivityAt === null ? [] : [[website._id, lastActivityAt]],
   );
   return {
-    website: toContextWebsite(website, activity),
+    website: toContextWebsite(website, { lastActivity, importedThrough }),
     createdAt,
     checkedAt,
     visit: pageview ? await visitOf(website, pageview, from) : null,

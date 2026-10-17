@@ -5,7 +5,25 @@ import {
   DEFAULT_SESSION_IDLE_TIMEOUT_MS,
   DEFAULT_SNAPSHOT_RETENTION_MS,
   DEFAULT_STATISTICS_RETENTION_MS,
+  MAX_NAME_LENGTH,
 } from "./types/constants";
+
+/**
+ * Tracking of the dashboard's own pages, for demos, playgrounds and back
+ * offices that want usage analytics of their admin without writing a tag.
+ */
+export interface DashboardTrackingConfig {
+  /** Off by default: nothing is provisioned, injected or collected. */
+  enabled: boolean;
+  /** Name the provisioned website gets; an existing one keeps its own. */
+  websiteName: string;
+  /**
+   * Dashboard pages left uncounted, beside the sign-in pages (`/auth/**`),
+   * which never are: `/x` (that page), `/x/*` (one segment below) or
+   * `/x/**` (the page and everything below).
+   */
+  excludePaths: string[];
+}
 
 export interface DmsMarketingConfig {
   trackerEnabled: boolean;
@@ -32,7 +50,18 @@ export interface DmsMarketingConfig {
    * Empty: sessions carry no country and the overview hides the card.
    */
   geoipDatabasePath: string;
+  dashboardTracking: DashboardTrackingConfig;
 }
+
+/** What the module configuration may set: any subset, the dashboard
+ * tracking block included. */
+export type DmsMarketingConfigInput = Partial<
+  Omit<DmsMarketingConfig, "dashboardTracking">
+> & { dashboardTracking?: Partial<DashboardTrackingConfig> };
+
+const DEFAULT_DASHBOARD_WEBSITE_NAME = "Dashboard";
+/** One dashboard route pattern: `/x`, `/x/*` or `/x/**`, no other wildcard. */
+const DASHBOARD_PATH_PATTERN = /^\/[^*,\s]*(?:\/\*\*?)?$/;
 
 const DEFAULT_CONFIG: DmsMarketingConfig = {
   trackerEnabled: true,
@@ -43,7 +72,41 @@ const DEFAULT_CONFIG: DmsMarketingConfig = {
   heatmapSampleRate: DEFAULT_HEATMAP_SAMPLE_RATIO,
   visitorHashSecret: "",
   geoipDatabasePath: "",
+  dashboardTracking: {
+    enabled: false,
+    websiteName: DEFAULT_DASHBOARD_WEBSITE_NAME,
+    excludePaths: [],
+  },
 };
+
+function isDashboardPathPattern(value: unknown): value is string {
+  return typeof value === "string" && DASHBOARD_PATH_PATTERN.test(value);
+}
+
+/**
+ * Read field by field rather than merged: defu would append the excluded
+ * paths to the defaults, and a malformed value must fall back to the default
+ * instead of reaching the tag or the website record. Only `enabled: true`
+ * turns it on.
+ */
+function parseDashboardTracking(input: unknown): DashboardTrackingConfig {
+  const value =
+    input && typeof input === "object"
+      ? (input as Partial<Record<keyof DashboardTrackingConfig, unknown>>)
+      : {};
+  const name =
+    typeof value.websiteName === "string" ? value.websiteName.trim() : "";
+  return {
+    enabled: value.enabled === true,
+    websiteName:
+      name.length > 0 && name.length <= MAX_NAME_LENGTH
+        ? name
+        : DEFAULT_DASHBOARD_WEBSITE_NAME,
+    excludePaths: Array.isArray(value.excludePaths)
+      ? [...new Set(value.excludePaths.filter(isDashboardPathPattern))]
+      : [],
+  };
+}
 
 let baseConfig: DmsMarketingConfig = DEFAULT_CONFIG;
 let globalConfig: DmsMarketingConfig = DEFAULT_CONFIG;
@@ -53,8 +116,11 @@ function mergeEffective(): void {
   globalConfig = defu(runtimeOverrides, baseConfig);
 }
 
-export function setConfig(input?: Partial<DmsMarketingConfig>): void {
-  baseConfig = defu(input ?? {}, DEFAULT_CONFIG);
+export function setConfig(input?: DmsMarketingConfigInput): void {
+  baseConfig = {
+    ...defu(input ?? {}, DEFAULT_CONFIG),
+    dashboardTracking: parseDashboardTracking(input?.dashboardTracking),
+  };
   mergeEffective();
 }
 

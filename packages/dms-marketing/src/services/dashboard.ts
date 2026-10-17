@@ -432,7 +432,17 @@ function topTab(read: RollupRead, tab: TopTabDefinition): TopTabPayload {
 
 const GROUP_PREFIX = "$page.marketing.overview.groups.";
 
-const TOP_GROUPS: Record<string, () => TopTabDefinition[]> = {
+/**
+ * Whether the read has countries to list: sessions carry one when the GeoIP
+ * lookup stamped them, but also when an import declared it, so a deployment
+ * without a GeoIP database still lists what it has.
+ */
+function hasCountries(read: RollupRead): boolean {
+  const rows = [...read.rows, ...read.compareRows];
+  return Object.keys(mergeDimension(rows, "topCountries")).length > 0;
+}
+
+const TOP_GROUPS: Record<string, (read: RollupRead) => TopTabDefinition[]> = {
   content: () => [
     {
       id: "pages",
@@ -475,8 +485,8 @@ const TOP_GROUPS: Record<string, () => TopTabDefinition[]> = {
       link: () => acquisitionLink(),
     },
   ],
-  audience: () => [
-    ...(isGeoipActive()
+  audience: (read) => [
+    ...(isGeoipActive() || hasCountries(read)
       ? [
           {
             id: "countries",
@@ -516,7 +526,7 @@ export function topGroupPayload(
   read: RollupRead,
   group: string,
 ): TopTabPayload[] {
-  return TOP_GROUPS[group]().map((tab) => topTab(read, tab));
+  return TOP_GROUPS[group](read).map((tab) => topTab(read, tab));
 }
 
 /** Custom events a funnel of the site ends on: the overview tags them "Goal". */

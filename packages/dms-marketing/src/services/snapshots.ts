@@ -47,7 +47,7 @@ const promised = new BoundedCache<SnapshotPromise>(
 
 const TOKEN_BYTES = 16;
 
-function snapshotId(
+export function snapshotId(
   websiteId: string,
   layout: SnapshotLayout,
   url: string,
@@ -66,6 +66,11 @@ async function captureTimeOf(website: Website, id: string): Promise<number> {
   const time = row?.capturedAt.getTime() ?? 0;
   captureTimes.set(id, time);
   return time;
+}
+
+/** What the negotiation reads for a snapshot written outside a capture. */
+export function rememberCaptureTime(id: string, capturedAt: number): void {
+  captureTimes.set(id, capturedAt);
 }
 
 /**
@@ -211,7 +216,10 @@ export function sanitizeSnapshotHtml(html: string): string {
 
 /** The page's origin, only on a host the website declares: it is what the
  * console's "Open" links to. */
-function pageOrigin(website: Website, rawUrl: string): string | undefined {
+export function pageOrigin(
+  website: Website,
+  rawUrl: string,
+): string | undefined {
   try {
     const url = new URL(rawUrl);
     return PAGE_PROTOCOLS.includes(url.protocol) &&

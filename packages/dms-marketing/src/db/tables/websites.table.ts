@@ -46,6 +46,14 @@ export class Website extends Table {
   @Field("boolean")
   declare snapshotMaskText?: boolean;
 
+  /**
+   * Set on a site declared from code (`EnsureWebsite`): the hash of what was
+   * last declared. A site whose fields no longer hash to it was changed by
+   * someone since, and later declarations leave it alone.
+   */
+  @Field("string")
+  declare declaredHash?: string;
+
   @Field("date")
   declare createdAt: Date;
 

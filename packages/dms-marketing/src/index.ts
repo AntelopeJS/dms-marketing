@@ -10,9 +10,11 @@ import { GetModel } from "@antelopejs/interface-database-decorators";
 import { Hook, RegisterHook } from "@antelopejs/interface-dms/hooks";
 import { AddFrontendModule } from "@antelopejs/interface-dms/page";
 import cron, { type ScheduledTask } from "node-cron";
-import { type DmsMarketingConfig, setConfig } from "./config";
+import { type DmsMarketingConfigInput, getConfig, setConfig } from "./config";
 import { registerMarketingHookListeners } from "./hooks";
 import { TRACKER_PUBLIC_ENDPOINTS } from "./routes/public-endpoints";
+import { dashboardFrontendOptions } from "./services/dashboard-tracking";
+import { markMarketingReady } from "./services/readiness";
 import {
   loadGeoipDatabase,
   loadSettings,
@@ -29,7 +31,7 @@ let pruneTask: ScheduledTask | null = null;
 let settingsReload: NodeJS.Timeout | null = null;
 
 export async function construct(
-  config?: Partial<DmsMarketingConfig>,
+  config?: DmsMarketingConfigInput,
 ): Promise<void> {
   setConfig(config);
   await loadGeoipDatabase();
@@ -49,6 +51,7 @@ export async function construct(
     renderer: { name: "vue", version: "3" },
     priority: 0,
     publicEndpoints: TRACKER_PUBLIC_ENDPOINTS,
+    ...dashboardFrontendOptions(getConfig().dashboardTracking),
   });
 }
 
@@ -61,6 +64,9 @@ export async function construct(
 async function onDatabaseInitialized(): Promise<void> {
   const settings = GetModel(MarketingSettingsModel);
   await loadSettings(settings);
+  // The interface's content calls (EnsureWebsite, ImportAnalytics…) were
+  // waiting for exactly this: schemas registered, visitor secret loaded.
+  markMarketingReady();
 
   // The settings row is shared by every instance: each reads it again on a
   // short timer, and right before pruning with the retentions it holds.

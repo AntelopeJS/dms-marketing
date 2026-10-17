@@ -386,6 +386,7 @@
           "title": "Couldn't load your websites"
         },
         "idle": "Last event {ago}",
+        "imported": "Imported history · last event {ago}",
         "label": "Website and period",
         "live": "Live · last event {ago}",
         "no_website": "No website yet",
@@ -399,6 +400,7 @@
         "range_cut": "Only the last {days} days of this range are shown.",
         "refresh": "Refresh",
         "state": {
+          "imported": "Imported history only",
           "live": "Live",
           "paused": "Tracking paused for this website",
           "waiting": "Waiting for the first event"

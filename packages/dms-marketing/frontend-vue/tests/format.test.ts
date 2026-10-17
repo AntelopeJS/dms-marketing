@@ -46,6 +46,15 @@ describe('formatting', () => {
     expect(initials('docs')).toBe('DO')
   })
 
+  it('builds initials from letters and digits only', () => {
+    expect(initials('Acme — public site')).toBe('AP')
+    expect(initials('shop.acme.test')).toBe('SA')
+    expect(initials('— Acme')).toBe('AC')
+    expect(initials('42 · store')).toBe('4S')
+    expect(initials('Été à Liège')).toBe('ÉÀ')
+    expect(initials('—')).toBe('?')
+  })
+
   it('falls back to the raw code on a malformed region', () => {
     expect(displayName('FR', 'region', 'en')).toBe('France')
     expect(displayName('not a code!', 'region', 'en')).toBe('not a code!')

@@ -75,8 +75,11 @@ const now = useMarketingNow(CLOCK_TICK_MS)
 const readerZone = readerTimeZone()
 
 function stateLine(card: MarketingWebsiteCard): string {
-  if (card.state === 'live' && card.lastActivityAt) {
-    return t('page.marketing.context.live', {
+  if (
+    (card.state === 'live' || card.state === 'imported') &&
+    card.lastActivityAt
+  ) {
+    return t(`page.marketing.context.${card.state}`, {
       ago: formatRelativeTime(card.lastActivityAt, now.value, locale.value),
     })
   }
@@ -85,6 +88,7 @@ function stateLine(card: MarketingWebsiteCard): string {
 
 const STATE_DOTS = {
   live: 'bg-success',
+  imported: 'bg-info',
   waiting: 'bg-warning',
   paused: 'bg-(--ui-text-dimmed)',
 } as const

@@ -11,6 +11,9 @@ export const MARKETING_MODULE_PATH = `/modules/${MARKETING_MODULE_ID}`;
 /** Package name of the Vue frontend module this package ships beside. */
 export const FRONTEND_MODULE_NAME = "@antelopejs/dms-marketing-frontend-vue";
 
+/** Where its public options land in the frontend runtime config. */
+export const FRONTEND_CONFIG_KEY = "dmsMarketing";
+
 // =============================================================================
 // Time
 // =============================================================================
@@ -53,6 +56,11 @@ export const MAX_TITLE_LENGTH = 200;
 export const MAX_EVENT_NAME_LENGTH = 50;
 export const MAX_EVENT_DATA_BYTES = 4096;
 export const MAX_WEBSITE_ID_LENGTH = 64;
+/**
+ * Ids a project chooses for the content it declares from code (websites,
+ * funnels, imports): slugs that fit a website id and read well in a tag.
+ */
+export const DECLARED_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
 export const MAX_NAME_LENGTH = 100;
 export const MAX_DOMAIN_LENGTH = 253;
 export const MAX_EXTRA_DOMAINS = 20;
@@ -174,6 +182,17 @@ export const SESSION_CACHE_MAX_ENTRIES = 10_000;
 export const MAX_CACHE_ENTRIES = 1_000;
 export const WEBSITE_CACHE_TTL_MS = 30_000;
 export const EXPERIMENT_DEFINITIONS_CACHE_TTL_MS = 30_000;
+
+// =============================================================================
+// Dashboard tracking
+// =============================================================================
+
+/**
+ * The sign-in, sign-up, recovery and account-switcher pages: never counted,
+ * whatever the configuration. Collection pauses while signed out as well;
+ * this covers the account switcher a signed-in user can open.
+ */
+export const DASHBOARD_AUTH_PATHS = ["/auth/**"];
 
 // =============================================================================
 // Ingestion guards

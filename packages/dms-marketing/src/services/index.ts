@@ -1,6 +1,7 @@
 export * from "./acquisition";
 export * from "./bounded-cache";
 export * from "./collect";
+export * from "./dashboard-tracking";
 export * from "./experiment-definitions";
 export * from "./experiments";
 export * from "./funnels";

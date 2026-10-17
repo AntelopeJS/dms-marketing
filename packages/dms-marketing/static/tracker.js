@@ -9,6 +9,14 @@
  *   data-host-url        override the collect origin (defaults to the script origin)
  *   data-heatmap-sample  0-1 click/scroll sampling rate; overrides the module setting
  *   data-do-not-track    "false" to ignore the browser DNT and GPC signals
+ *   data-exclude-paths   comma-separated pages left uncounted: `/x` (that
+ *                        page), `/x/*` (one segment below) or `/x/**` (the
+ *                        page and everything below)
+ *
+ * The tag stays live: changing its `data-website-id` sends what follows to
+ * that website, and removing it pauses collection until one is set again.
+ * The dashboard's own tag relies on it to follow sign-out and workspace
+ * switches without a reload.
  *
  * Cookieless by design: no identifier is generated or stored client-side —
  * the backend derives an anonymous visitor hash per request. Payload shape
@@ -118,11 +126,8 @@
     return Math.min(Math.max(rate, 0), 1);
   }
 
-  const websiteId = script.getAttribute("data-website-id");
-  if (!websiteId) {
-    publishApi();
-    return;
-  }
+  /** Null while the page removed it: nothing is collected meanwhile. */
+  let websiteId = script.getAttribute("data-website-id");
 
   // A tag included twice (theme and tag manager) would count everything twice.
   if (window[INSTALLED_GLOBAL]) {
@@ -150,6 +155,12 @@
     script.getAttribute("data-heatmap-sample"),
     config,
   );
+
+  /** Patterns of `data-exclude-paths`, each a path starting with "/". */
+  const excludedPaths = (script.getAttribute("data-exclude-paths") || "")
+    .split(",")
+    .map((pattern) => pattern.trim())
+    .filter((pattern) => pattern.charAt(0) === "/");
 
   const heatmapSampled = Math.random() < sampleRate;
   const queue = [];
@@ -193,6 +204,11 @@
   }
 
   function enqueue(event) {
+    // Attribute writes are synchronous; MutationObserver delivery is not.
+    // Until retargeting completes, never put new events in the old queue.
+    if (!websiteId || script.getAttribute("data-website-id") !== websiteId || pageExcluded) {
+      return;
+    }
     queue.push(event);
     if (queue.length >= MAX_BATCH) {
       flush();
@@ -203,9 +219,38 @@
     }
   }
 
+  // --- Excluded pages -------------------------------------------------------
+
+  function withoutTrailingSlash(path) {
+    return path.length > 1 && path.endsWith("/") ? path.slice(0, -1) : path;
+  }
+
+  function pathMatches(pattern, path) {
+    if (pattern.endsWith("/**")) {
+      const base = pattern.slice(0, -3);
+      return path === base || path.startsWith(`${base}/`);
+    }
+    if (pattern.endsWith("/*")) {
+      const base = pattern.slice(0, -2);
+      const rest = path.startsWith(`${base}/`)
+        ? path.slice(base.length + 1)
+        : "";
+      return rest !== "" && rest.indexOf("/") < 0;
+    }
+    return path === withoutTrailingSlash(pattern);
+  }
+
+  function isExcludedPath(pathname) {
+    const path = withoutTrailingSlash(pathname);
+    return excludedPaths.some((pattern) => pathMatches(pattern, path));
+  }
+
   // --- Pageviews (initial + SPA navigations) --------------------------------
 
   let lastPath = null;
+  /** The page on screen matches `data-exclude-paths`: nothing it does is
+   * sent, its clicks and scroll depth included. */
+  let pageExcluded = false;
   /** URL the scroll depth is being measured against — kept because a SPA
    * navigation rewrites `location` before the depth of the page being left
    * is flushed. */
@@ -219,8 +264,12 @@
     }
     flushScrollDepth();
     lastPath = location.pathname;
+    pageExcluded = isExcludedPath(lastPath);
     scrolledUrl = currentUrl();
     maxScrollDepth = -1;
+    if (!websiteId || pageExcluded) {
+      return;
+    }
     // The rate it applies, for the server's "recorded on N % of page loads":
     // counting scroll events against pageviews undercounts the views left
     // before their depth is sent.
@@ -440,6 +489,9 @@
   function requestSnapshot() {
     if (
       !heatmapSampled ||
+      !websiteId ||
+      script.getAttribute("data-website-id") !== websiteId ||
+      pageExcluded ||
       snapshotsRequested >= MAX_SNAPSHOTS_PER_LOAD ||
       window.top !== window ||
       document.visibilityState !== "visible" ||
@@ -562,7 +614,14 @@
     /** Assigned variation of a running experiment, or null. Reports the
      * exposure, so only call it where the variation is actually applied. */
     variation(experiment) {
+      const requestedWebsite = websiteId;
+      if (!requestedWebsite || script.getAttribute("data-website-id") !== requestedWebsite) {
+        return Promise.resolve(null);
+      }
       return loadAssignments().then((assignments) => {
+        if (websiteId !== requestedWebsite || script.getAttribute("data-website-id") !== requestedWebsite) {
+          return null;
+        }
         const assigned = assignments[experiment];
         if (typeof assigned !== "string") {
           return null;
@@ -589,6 +648,32 @@
     flushScrollDepth();
     flush();
   });
+
+  /**
+   * The tag's website changed: what was collected so far leaves under the
+   * previous one, and the page on screen counts for the new one. The
+   * assignments were the previous website's experiments.
+   */
+  function followWebsiteId() {
+    const next = script.getAttribute("data-website-id") || null;
+    if (next === websiteId) {
+      return;
+    }
+    flushScrollDepth();
+    flush();
+    websiteId = next;
+    assignmentsPromise = null;
+    exposedExperiments.clear();
+    lastPath = null;
+    trackPageview();
+  }
+
+  if (typeof MutationObserver === "function") {
+    new MutationObserver(followWebsiteId).observe(script, {
+      attributes: true,
+      attributeFilter: ["data-website-id"],
+    });
+  }
 
   trackPageview();
 })();

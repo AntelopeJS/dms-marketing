@@ -26,8 +26,9 @@ export async function loadGeoipDatabase(): Promise<void> {
 }
 
 /** Whether sessions are being stamped — lets the overview hide the countries
- * card on deployments that never configured a database, instead of showing a
- * map that stays empty forever. */
+ * tab on deployments that never configured a database, instead of showing a
+ * list that stays empty forever. Imported sessions carry their own country,
+ * so the overview also shows the tab when the period has some. */
 export function isGeoipActive(): boolean {
   return reader !== undefined;
 }

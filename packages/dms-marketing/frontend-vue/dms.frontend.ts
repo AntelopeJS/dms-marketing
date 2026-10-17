@@ -1,6 +1,8 @@
 import { defineAsyncComponent, type Component } from 'vue'
 import type { DmsFrontendModule } from '#dms/frontend-module'
+import { dashboardTrackingPlugin } from './app/plugins/dashboard-tracking.client'
 import funnelStepsDataType from './app/plugins/funnel-steps-data-type.client'
+import { dashboardTrackingOptions } from './app/utils/dashboard-tracker'
 
 interface VueModule {
   default: Component
@@ -30,6 +32,14 @@ const frontendModule: DmsFrontendModule = {
     // Client-only: the display it registers carries callables, which the SSR
     // payload strips.
     sdk.registerPlugin(funnelStepsDataType, { clientOnly: true })
+    // Only when the backend enables `dashboardTracking`: off, the dashboard
+    // loads no tracker and calls nothing.
+    const tracking = dashboardTrackingOptions(sdk.options.public)
+    if (tracking) {
+      sdk.registerPlugin(dashboardTrackingPlugin(tracking), {
+        clientOnly: true,
+      })
+    }
   },
 }
 
