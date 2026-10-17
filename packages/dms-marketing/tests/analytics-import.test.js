@@ -256,6 +256,7 @@ describe("an analytics import", () => {
     await collectLive(live);
     const imported = website("imported");
     const result = await importAnalytics({
+      tenantId: "default",
       importId: "history-2026",
       websiteId: imported._id,
       sessions: HISTORY.map((session) => ({
@@ -290,6 +291,7 @@ describe("an analytics import's chronology", () => {
   test("rejects older windows before writing, even for another visitor", async () => {
     const site = website("ordered");
     const batch = (importId, hour, visitor = "same") => ({
+      tenantId: "default",
       importId,
       websiteId: site._id,
       sessions: [
@@ -329,6 +331,7 @@ describe("an analytics import's chronology", () => {
   test("reads another instance's session changes instead of its cached counters", async () => {
     const site = website("durable-session");
     const batch = (importId, minute) => ({
+      tenantId: "default",
       importId,
       websiteId: site._id,
       sessions: [
@@ -364,6 +367,7 @@ describe("an analytics import's claims", () => {
   test("a failed replay blocks later imports", async () => {
     const site = website("failed");
     const batch = (importId) => ({
+      tenantId: "default",
       importId,
       websiteId: site._id,
       sessions: HISTORY,
@@ -389,6 +393,7 @@ describe("an analytics import's claims", () => {
     });
     await assert.rejects(
       importAnalytics({
+        tenantId: "default",
         importId: "new",
         websiteId: site._id,
         sessions: HISTORY,
@@ -402,6 +407,7 @@ describe("an analytics import's claims", () => {
   test("different import ids cannot replay the same website concurrently", async () => {
     const site = website("exclusive");
     const batch = (importId) => ({
+      tenantId: "default",
       importId,
       websiteId: site._id,
       sessions: HISTORY,
@@ -421,6 +427,7 @@ describe("an analytics import's claims", () => {
   test("an import id is applied once, even when two calls race", async () => {
     const site = website("once");
     const batch = {
+      tenantId: "default",
       importId: "seed",
       websiteId: site._id,
       sessions: [{ ...HISTORY[1], visitor: `b-${runCount}` }],
@@ -467,6 +474,7 @@ describe("an analytics import's guards", () => {
       data: { experiment: key, variation: "b" },
     });
     const result = await importAnalytics({
+      tenantId: "default",
       importId: "with-drops",
       websiteId: site._id,
       sessions: [
@@ -507,30 +515,26 @@ describe("an analytics import's guards", () => {
   });
 
   test("an unknown website, another tenant's or a bad id is refused", async () => {
-    const site = website("refusals");
+    const batch = {
+      tenantId: "default",
+      importId: "x",
+      websiteId: website("refusals")._id,
+      sessions: [],
+    };
     await assert.rejects(
-      importAnalytics({ importId: "x", websiteId: "nowhere", sessions: [] }),
+      importAnalytics({ ...batch, websiteId: "nowhere" }),
       /ImportAnalytics\("x"\): no website "nowhere" in the tenant "default"/,
     );
     await assert.rejects(
-      importAnalytics({
-        importId: "x",
-        tenantId: "tenant-b",
-        websiteId: site._id,
-        sessions: [],
-      }),
+      importAnalytics({ ...batch, tenantId: "tenant-b" }),
       /in the tenant "tenant-b"/,
     );
     await assert.rejects(
-      importAnalytics({ importId: "a b", websiteId: site._id, sessions: [] }),
+      importAnalytics({ ...batch, importId: "a b" }),
       /the id must be 1-64 letters/,
     );
     await assert.rejects(
-      importAnalytics({
-        importId: "x",
-        websiteId: site._id,
-        sessions: [{ events: [] }],
-      }),
+      importAnalytics({ ...batch, sessions: [{ events: [] }] }),
       /sessions\.0\.visitor/,
     );
   });

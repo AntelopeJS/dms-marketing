@@ -13,6 +13,11 @@ import { InterfaceFunction } from "@antelopejs/interface-core";
  * These are trusted backend calls, not tenant provisioning or authorization.
  * `start()` runs per process, not per tenant. SaaS callers supply an authorized
  * tenantId and ensure its storage exists through their own tenant lifecycle.
+ * All three calls require an explicit nonempty tenantId, without surrounding
+ * whitespace; "default" is valid only when explicitly chosen. This neither
+ * authorizes the caller nor proves provisioning has completed. SaaS applications
+ * should register a durable "created" workspace lifecycle consumer before
+ * startup reconciliation; marketing does not register one or depend on SaaS.
  */
 
 /** How a declaration call left the stored record. */
@@ -49,8 +54,8 @@ export interface MarketingWebsiteDeclaration {
    * multi-tenant project puts the tenant in it.
    */
   id: string;
-  /** Owning tenant; defaults to the DMS default tenant (`"default"`). */
-  tenantId?: string;
+  /** Explicit authorized tenant, nonempty without surrounding whitespace. No default. */
+  tenantId: string;
   /** Display name, 1-100 characters. */
   name: string;
   /**
@@ -110,8 +115,8 @@ export interface MarketingExperimentDeclaration {
 export interface MarketingFunnelDeclaration {
   /** Stable id chosen by the caller, unique within the tenant; same shape as a website id. */
   id: string;
-  /** Owning tenant; defaults to the DMS default tenant (`"default"`). */
-  tenantId?: string;
+  /** Explicit authorized tenant, nonempty without surrounding whitespace. No default. */
+  tenantId: string;
   /** A website of the same tenant. */
   websiteId: string;
   /** Display name, 1-100 characters. */
@@ -186,8 +191,8 @@ export interface MarketingAnalyticsImport {
    * payload. History cannot be imported twice or replaced.
    */
   importId: string;
-  /** Owning tenant of the website; defaults to the DMS default tenant. */
-  tenantId?: string;
+  /** Explicit authorized tenant of the website, nonempty without surrounding whitespace. */
+  tenantId: string;
   websiteId: string;
   sessions: MarketingImportSession[];
 }

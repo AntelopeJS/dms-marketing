@@ -1,12 +1,11 @@
 import { createHash } from "node:crypto";
-import { DEFAULT_TENANT_ID } from "@antelopejs/interface-dms/constants";
 import { z } from "zod";
 import { DECLARED_ID_PATTERN } from "@/types/constants";
 
 /**
  * What the content declarations of the interface (EnsureWebsite,
  * EnsureFunnel, ImportAnalytics) share: the caller's ids, the tenant
- * default, the error shape and the "declared and untouched since" hash.
+ * validation, the error shape and the "declared and untouched since" hash.
  */
 
 /** Thrown on a declaration or import the module refuses. */
@@ -32,10 +31,23 @@ export function requireDeclaredId(operation: string, value: unknown): string {
   return parsed.data;
 }
 
-export function declaredTenant(tenantId: string | undefined): string {
-  return tenantId === undefined || tenantId === ""
-    ? DEFAULT_TENANT_ID
-    : tenantId;
+export function declaredTenant(
+  operation: string,
+  id: string,
+  tenantId: unknown,
+): string {
+  if (
+    typeof tenantId !== "string" ||
+    tenantId.trim() === "" ||
+    tenantId !== tenantId.trim()
+  ) {
+    throw new MarketingDeclarationError(
+      operation,
+      id,
+      "tenantId: an explicit nonempty tenant id without surrounding whitespace is required",
+    );
+  }
+  return tenantId;
 }
 
 /**

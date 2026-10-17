@@ -23,13 +23,19 @@ describe("declaration races through the public interface", () => {
         const { WebsitesModel, FunnelsModel } = require("../dist/db");
         const clearing = change === "hash";
         const id = `race-${kind}-${change}`;
-        const site = { id, name: "Original", domain: `${id}.example.com` };
+        const site = {
+          id,
+          tenantId: "default",
+          name: "Original",
+          domain: `${id}.example.com`,
+        };
         await EnsureWebsite(site);
         const declaration =
           kind === "website"
             ? site
             : {
                 id,
+                tenantId: "default",
                 websiteId: id,
                 name: "Original",
                 steps: [{ kind: "url", value: "/" }],
@@ -97,14 +103,88 @@ describe("declaration races through the public interface", () => {
  * Through the interface proxy, against the running module and its
  * database: what another module's backend does to ship content.
  */
-describe("the content interface", () => {
+describe("the content interface tenant contract", () => {
   // Other files mock GetModel and the harness never gets the original back:
   // this test puts the real one, captured at load, in front of theirs.
   beforeEach(() => mock.method(models, "GetModel", realGetModel));
   afterEach(() => mock.restoreAll());
 
+  test("requires an explicit tenant before creating rows or claiming imports", async () => {
+    const {
+      WebsitesModel,
+      FunnelsModel,
+      MarketingImportsModel,
+    } = require("../dist/db");
+    const site = {
+      id: "tenant-required",
+      tenantId: "default",
+      name: "Explicit",
+      domain: "tenant-required.example.com",
+    };
+    await EnsureWebsite(site);
+    const { tenantId: _tenant, ...withoutTenant } = site;
+    const inputs = [
+      {},
+      ...[undefined, null, "", " \t\n", " default", "default ", 123].map(
+        (tenantId) => ({ tenantId }),
+      ),
+    ];
+    const funnel = {
+      id: "tenant-required",
+      websiteId: site.id,
+      name: "Signup",
+      steps: [{ kind: "url", value: "/" }],
+    };
+    const batch = {
+      importId: "tenant-required",
+      websiteId: site.id,
+      sessions: [],
+    };
+    const sites = realGetModel(WebsitesModel);
+    const before = await sites.get(site.id);
+    for (const input of inputs) {
+      await assert.rejects(
+        EnsureWebsite({ ...withoutTenant, name: "Must not replace", ...input }),
+        /tenantId: an explicit/,
+      );
+      await assert.rejects(
+        EnsureFunnel({ ...funnel, ...input }),
+        /tenantId: an explicit/,
+      );
+      await assert.rejects(
+        ImportAnalytics({ ...batch, ...input }),
+        /tenantId: an explicit/,
+      );
+    }
+    assert.deepEqual(await sites.get(site.id), before);
+    assert.equal(
+      await realGetModel(FunnelsModel, "default").get(funnel.id),
+      undefined,
+    );
+    assert.deepEqual(
+      await realGetModel(MarketingImportsModel, "default").listByWebsite(
+        site.id,
+      ),
+      [],
+    );
+    assert.equal(
+      (await EnsureFunnel({ ...funnel, tenantId: "default" })).status,
+      "created",
+    );
+    assert.equal(
+      (await ImportAnalytics({ ...batch, tenantId: "default" })).status,
+      "imported",
+    );
+  });
+});
+
+describe("the content interface", () => {
+  beforeEach(() => mock.method(models, "GetModel", realGetModel));
+  afterEach(() => mock.restoreAll());
+
   test("declares a website and a funnel once, and imports history once", async () => {
     const site = {
+      tenantId: "default",
       id: "interface-test-site",
       name: "Interface test",
       domain: ORIGIN,
@@ -113,6 +193,7 @@ describe("the content interface", () => {
     assert.equal((await EnsureWebsite(site)).status, "unchanged");
 
     const funnel = {
+      tenantId: "default",
       id: "interface-test-funnel",
       websiteId: site.id,
       name: "Signup",
@@ -135,6 +216,7 @@ describe("the content interface", () => {
 
     const start = Date.now() - 30 * MINUTE;
     const batch = {
+      tenantId: "default",
       importId: "interface-test-history",
       websiteId: site.id,
       sessions: [

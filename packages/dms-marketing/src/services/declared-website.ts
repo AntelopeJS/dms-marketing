@@ -155,7 +155,7 @@ export async function ensureWebsite(
   declaration: MarketingWebsiteDeclaration,
 ): Promise<MarketingDeclarationResult> {
   const id = requireDeclaredId(OPERATION, declaration?.id);
-  const tenantId = declaredTenant(declaration.tenantId);
+  const tenantId = declaredTenant(OPERATION, id, declaration.tenantId);
   const content = declaredContent(id, declaration);
   const model = GetModel(WebsitesModel);
   const existing = await model.get(id);

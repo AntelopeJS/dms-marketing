@@ -98,6 +98,7 @@ function useFakeModels() {
 }
 
 const SITE = {
+  tenantId: "default",
   id: "shop-site",
   name: "Shop",
   domain: "https://Shop.Example.com/home",
@@ -214,6 +215,7 @@ describe("EnsureWebsite", () => {
 });
 
 const FUNNEL = {
+  tenantId: "default",
   id: "quote-request",
   websiteId: "shop-site",
   name: "Quote request",

@@ -322,7 +322,7 @@ export async function ensureFunnel(
   declaration: MarketingFunnelDeclaration,
 ): Promise<MarketingDeclarationResult> {
   const id = requireDeclaredId(OPERATION, declaration?.id);
-  const tenantId = declaredTenant(declaration.tenantId);
+  const tenantId = declaredTenant(OPERATION, id, declaration.tenantId);
   const content = declaredContent(id, declaration);
   await assertWebsiteOfTenant(id, content.websiteId, tenantId);
   const model = GetModel(FunnelsModel, tenantId);

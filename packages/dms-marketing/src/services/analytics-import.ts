@@ -326,7 +326,7 @@ export async function importAnalytics(
     throw refuse(importId, describeIssue(parsed.error));
   }
   const { websiteId, sessions } = parsed.data;
-  const tenantId = declaredTenant(batch.tenantId);
+  const tenantId = declaredTenant(OPERATION, importId, batch.tenantId);
   const website = await requireWebsite(importId, websiteId, tenantId);
   const imports = GetModel(MarketingImportsModel, tenantId);
   const rowId = importRowId(websiteId, importId);
