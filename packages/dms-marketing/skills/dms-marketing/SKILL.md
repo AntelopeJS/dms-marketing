@@ -92,7 +92,7 @@ await ImportAnalytics({ tenantId, importId: "shop-history", websiteId: "shop-sit
   draft splits. `startedAt` on a running split makes imported exposures count.
 - EnsurePageSnapshot: the heatmap backdrop of a page the tracker cannot capture (not online, imported
   history); keyed by path + layout of `viewport` (desktop ≥ 1024, tablet ≥ 600, phone); sanitized like a
-  capture; needs `snapshotsEnabled`; a live capture replaces it and is never overwritten (`kept`).
+  capture (a `<style>` with `<` before a letter, `!`, `/` or `?` is dropped: CSS-escape that character); needs `snapshotsEnabled`; a live capture replaces it and is never overwritten (`kept`).
 - `tenantId` is required on every content call: no default. Full contract: the interface package's
   `docs/1.index.md`.
 

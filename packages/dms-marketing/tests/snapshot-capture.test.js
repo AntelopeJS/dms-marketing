@@ -4,6 +4,7 @@ const test = it;
 const {
   createStyleCollector,
   splitSelectorList,
+  styleText,
   testedSelector,
 } = require("../static/snapshot.js");
 const { getConfig, setConfig } = require("../dist/config");
@@ -264,6 +265,31 @@ test("a sheet the browser refuses to read is reported, not guessed", () => {
 });
 
 // --- Upload ------------------------------------------------------------------
+
+test("a serialized stylesheet opens no markup and is stored whole", () => {
+  const css =
+    '@media (width < 48rem){.a{display:none}}.b::after{content:"</style><b>"}' +
+    "@media (400px<width){.c{top:0}}";
+  const text = styleText(css);
+  assert.equal(
+    text,
+    "@media (width < 48rem){.a{display:none}}" +
+      '.b::after{content:"<\\2f style><\\62 >"}' +
+      "@media (400px<\\77 idth){.c{top:0}}",
+  );
+  const { html } = storedDocument({
+    website: "w",
+    url: BASE,
+    viewport: { width: 1280, height: 800 },
+    token: "t",
+    document: { width: 1280, height: 800 },
+    html: `<html><head><style>${text}</style></head><body><p class="a">x</p></body></html>`,
+  });
+  const stored = require("node:zlib")
+    .gunzipSync(Buffer.from(html, "base64"))
+    .toString();
+  assert.ok(stored.includes(`<style>${text}</style>`));
+});
 
 test("a gzipped upload is inflated, a plain one passes through", () => {
   const json = Buffer.from(JSON.stringify({ html: "<p>x</p>" }));
