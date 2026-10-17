@@ -23,7 +23,6 @@ import { z } from "zod";
 import { WebsitesModel } from "@/db";
 import type { Website } from "@/db/tables/websites.table";
 import { invalidateExperimentDefinitions } from "@/services/experiment-definitions";
-import { isDashboardWebsite } from "@/services/dashboard-tracking";
 import { deleteSnapshots } from "@/services/snapshots";
 import {
   listTenantWebsites,
@@ -33,10 +32,12 @@ import {
 import { invalidateWebsiteCache } from "@/services/website-cache";
 import { forgetAcceptedSources } from "@/services/origin-guard";
 import {
-  findHostConflict,
-  isValidHostname,
-  normalizeHostname,
-} from "@/services/website-hosts";
+  distinctExtraHosts,
+  extraDomainsSchema,
+  hostnameSchema,
+  nameSchema,
+  tenantHostConflict,
+} from "@/services/website-rules";
 import {
   connectionStatus,
   websiteDeletionImpact,
@@ -46,27 +47,11 @@ import {
   API_BASE_PATH,
   HTTP_BAD_REQUEST,
   HTTP_CONFLICT,
-  MAX_DOMAIN_LENGTH,
   MAX_EXTRA_DOMAINS,
-  MAX_NAME_LENGTH,
 } from "@/types/constants";
 
 const INVALID_WEBSITE_MESSAGE = "$page.marketing.errors.invalid_website";
-const INVALID_HOSTNAME_MESSAGE = "$page.marketing.errors.invalid_hostname";
 const DUPLICATE_HOST_MESSAGE = "$page.marketing.errors.duplicate_host";
-
-/** What the owner types, stored as the bare lowercase hostname. */
-const hostnameSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .max(MAX_DOMAIN_LENGTH)
-  .transform(normalizeHostname)
-  .refine(isValidHostname, { message: INVALID_HOSTNAME_MESSAGE });
-
-const nameSchema = z.string().trim().min(1).max(MAX_NAME_LENGTH);
-
-const extraDomainsSchema = z.array(hostnameSchema).max(MAX_EXTRA_DOMAINS);
 
 const websiteCreateSchema = z.object({
   name: nameSchema,
@@ -92,27 +77,13 @@ function validationIssues(error: unknown) {
   return error instanceof z.ZodError ? error.issues : INVALID_WEBSITE_MESSAGE;
 }
 
-/** Duplicates and the domain itself add nothing to the extra hosts. */
-function distinctExtraHosts(domain: string, hosts: string[]): string[] {
-  return [...new Set(hosts)].filter((host) => host !== domain);
-}
-
 /**
  * 409 when another site of the tenant declares one of these hosts, tied to
  * the field that names it (`{ field, message }`, which the DMS forms show
- * under that field). The dashboard's own site is left out both ways: it
- * shares its host with whatever else answers there (a site in development
- * on localhost), and its tag is the module's, so no traffic is split.
+ * under that field).
  */
 async function assertHostsFree(website: Website): Promise<void> {
-  if (isDashboardWebsite(website)) {
-    return;
-  }
-  const websites = await GetModel(WebsitesModel).getByTenant(website.tenantId);
-  const conflict = findHostConflict(
-    website,
-    websites.filter((site) => !isDashboardWebsite(site)),
-  );
+  const conflict = await tenantHostConflict(website);
   if (conflict) {
     throw new HTTPResult(HTTP_CONFLICT, {
       field: conflict.field,
