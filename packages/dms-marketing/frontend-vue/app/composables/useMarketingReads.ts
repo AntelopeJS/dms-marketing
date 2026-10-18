@@ -256,14 +256,15 @@ export function usePageSnapshot(
 /**
  * The workspaces a platform owner can read the dashboard's heatmaps of, from
  * the dashboard's own website; an empty list for anyone else, on any other
- * website, and on a single-workspace install.
+ * website, and on a single-workspace install. Read with the page: the pages
+ * panel shows its selector from the first paint.
  */
 export function useDashboardWorkspaces(
   websiteId: MaybeRefOrGetter<string>,
 ): ApiDataResult<MarketingWorkspaces> {
   return useApiData<MarketingWorkspaces>(
     () => (toValue(websiteId) ? '/api/marketing/stats/workspaces' : null),
-    { query: () => ({ website: toValue(websiteId) }), server: false },
+    { query: () => ({ website: toValue(websiteId) }) },
   )
 }
 
