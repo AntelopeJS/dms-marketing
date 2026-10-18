@@ -18,6 +18,10 @@
  * node and text attribute of the page; data-* and link paths stay, since
  * styles select on them.
  *
+ * Transient overlays open at capture time — a prompt, a toast, an open
+ * menu or popover floating over the page — are left out (see
+ * isTransientOverlay): they belong to that one visit, not to the page.
+ *
  * A page whose document does not scroll, an inner container doing it
  * instead (see the scroll root in static/tracker.js), is captured with that
  * container marked `data-marketing-scroll-root` and the height of its whole
@@ -91,6 +95,21 @@
     "background",
   ]);
   const LINK_TAGS = new Set(["a", "area"]);
+  /** Roles of the overlays a visit opens over the page, dropped when they
+   * float over it (see isTransientOverlay). */
+  const OVERLAY_ROLES = new Set([
+    "dialog",
+    "alertdialog",
+    "tooltip",
+    "menu",
+    "listbox",
+  ]);
+  const LIVE_ROLES = new Set(["status", "alert", "log"]);
+  const LIVE_POLITENESS = new Set(["polite", "assertive"]);
+  /** Lists a toast viewport stacks its toasts in. */
+  const LIST_TAGS = new Set(["ol", "ul"]);
+  /** In the top layer: a modal `<dialog>`, an open popover. */
+  const TOP_LAYER_SELECTOR = ":modal, :popover-open";
   /** Attributes that carry text a visitor could read, masked with it. */
   const TEXT_ATTRIBUTES = new Set([
     "title",
@@ -590,6 +609,85 @@
     );
   }
 
+  function isOutOfFlow(position) {
+    return position === "fixed" || position === "absolute";
+  }
+
+  function inTopLayer(element) {
+    try {
+      return element.matches(TOP_LAYER_SELECTOR);
+    } catch {
+      // A browser without one of the pseudo-classes has no such layer.
+      return false;
+    }
+  }
+
+  /** A portal: the nearest positioned ancestor is fixed and hangs off
+   * `body` — where floating menus and popovers are mounted, unlike a fixed
+   * header, which lives in the app's own tree. */
+  function inFloatingPortal(element, positionOf, body) {
+    for (
+      let node = element.parentElement;
+      node && node !== body;
+      node = node.parentElement
+    ) {
+      const position = positionOf(node);
+      if (position !== "static") {
+        return position === "fixed" && node.parentElement === body;
+      }
+    }
+    return false;
+  }
+
+  function isLive(element) {
+    return (
+      LIVE_ROLES.has(element.getAttribute("role")) ||
+      LIVE_POLITENESS.has(element.getAttribute("aria-live"))
+    );
+  }
+
+  /**
+   * An overlay the visit opened over the page, not part of it:
+   * - anything in the top layer (a modal `<dialog>`, an open popover);
+   * - a dialog, alert dialog, tooltip, menu or listbox positioned out of
+   *   the flow, or mounted in a fixed portal under `body`;
+   * - a live region (role status, alert or log, `aria-live`) fixed to the
+   *   viewport: a toast, a notification;
+   * - a toast viewport: an element whose list child is fixed and holds the
+   *   toasts (Reka / Nuxt UI, Radix, Sonner).
+   * In-flow content stays whatever its role: an inline `role="status"`
+   * badge, a listbox in a form, a menu in the page's own navigation.
+   * `positionOf` is the computed `position` of an element.
+   */
+  function isTransientOverlay(element, positionOf, body) {
+    if (inTopLayer(element)) {
+      return true;
+    }
+    if (OVERLAY_ROLES.has(element.getAttribute("role"))) {
+      return (
+        isOutOfFlow(positionOf(element)) ||
+        inFloatingPortal(element, positionOf, body)
+      );
+    }
+    const live = isLive(element);
+    if (live && positionOf(element) === "fixed") {
+      return true;
+    }
+    if (!live && element.getAttribute("role") !== "region") {
+      return false;
+    }
+    for (const child of element.children) {
+      if (LIST_TAGS.has(child.localName) && positionOf(child) === "fixed") {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function computedPosition(element) {
+    return getComputedStyle(element).position;
+  }
+
   function imageSource(element, value) {
     const current = element.currentSrc;
     if (current && !current.startsWith("data:")) {
@@ -723,6 +821,9 @@
     }
     if (isMarked(element, BLOCK_MARKER)) {
       return serializeBlocked(element);
+    }
+    if (isTransientOverlay(element, computedPosition, document.body)) {
+      return "";
     }
     const mask =
       masked || isMarked(element, MASK_MARKER) || element.isContentEditable;
@@ -906,6 +1007,7 @@
     module.exports = {
       contentSize,
       createStyleCollector,
+      isTransientOverlay,
       splitSelectorList,
       styleText,
       testedSelector,
