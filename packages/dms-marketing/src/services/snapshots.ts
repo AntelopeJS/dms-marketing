@@ -438,6 +438,9 @@ export interface PageSnapshotPayload {
   exact: boolean;
   capturedAt: number;
   origin: string;
+  /** The page captured, origin and path: query string and fragment are
+   * never kept (see storeSnapshot), so this is all of it there is. */
+  url: string;
   viewport: { width: number; height: number };
   document: { width: number; height: number };
   colorScheme?: SnapshotColorScheme;
@@ -481,6 +484,7 @@ export async function readPageSnapshot(
     exact: row.layout === layout,
     capturedAt: row.capturedAt.getTime(),
     origin: row.origin,
+    url: `${row.origin}${row.url}`,
     viewport: { width: row.viewportWidth, height: row.viewportHeight },
     document: { width: row.documentWidth, height: row.documentHeight },
     colorScheme: row.colorScheme,

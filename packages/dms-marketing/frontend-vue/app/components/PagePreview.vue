@@ -839,6 +839,13 @@ const statusLine = computed(() => {
   })
 })
 
+/** Where the snapshot was taken: origin and path, as stored. */
+const capturedUrl = computed(() =>
+  snapshot.value
+    ? (snapshot.value.url ?? `${snapshot.value.origin}${props.path}`)
+    : '',
+)
+
 const maskLine = computed(() =>
   t(
     props.website?.snapshotMaskText
@@ -1190,6 +1197,14 @@ const surfaceEmpty = computed(() => {
       <span class="flex items-center gap-1.5">
         <UIcon name="i-ph-camera" class="size-3.5 text-success" />
         {{ statusLine }}
+      </span>
+      <span
+        class="min-w-0 truncate font-mono text-dimmed"
+        :title="t('page.marketing.pages.preview.captured_from_hint')"
+      >
+        {{
+          t('page.marketing.pages.preview.captured_from', { url: capturedUrl })
+        }}
       </span>
       <span class="text-dimmed">· {{ maskLine }}</span>
       <UButton

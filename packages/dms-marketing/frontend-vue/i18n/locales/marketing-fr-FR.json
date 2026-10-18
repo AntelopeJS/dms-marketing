@@ -923,6 +923,8 @@
           "all_masked": "Tout le texte est masqué",
           "approximate_layout": "Instantané {layout} affiché à {width} px",
           "approximate_layout_hint": "Aucun instantané n'a encore été pris à cette largeur : la mise en page est recalculée. Les clics restent sur leur élément.",
+          "captured_from": "depuis {url}",
+          "captured_from_hint": "La page sur laquelle l'instantané a été pris. Sa chaîne de requête et son fragment ne sont jamais conservés : ils peuvent contenir des jetons ou des adresses.",
           "enable_snapshots": "Activer les instantanés de page",
           "fields_masked": "Texte visible, champs de formulaire masqués",
           "layout": "Format",

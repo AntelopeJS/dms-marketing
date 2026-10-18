@@ -123,6 +123,9 @@ export interface MarketingPageSnapshot {
   exact: boolean
   capturedAt: number
   origin: string
+  /** Origin and path captured — never a query string or fragment; absent
+   * from an older backend. */
+  url?: string
   viewport: { width: number; height: number }
   document: { width: number; height: number }
   colorScheme?: 'light' | 'dark'
