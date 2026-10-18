@@ -69,7 +69,8 @@ config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludeP
 
 - Off by default. On, the module's frontend loads the tracker on every signed-in dashboard page and
   `POST /api/marketing/dashboard-tracking` creates one website per tenant on first use (domain = the
-  dashboard's host; later hosts join `extraDomains`). Rename, pause or delete it like any site.
+  dashboard's host; later hosts join `extraDomains`). Rename or pause it like any site; it is never
+  deleted (`DELETE` answers 409).
 - `snapshots: true` provisions it with page snapshots on (text masked) for heatmap backdrops. Config owns the
   switch until a person changes it on the Websites page (`snapshotsSetBy: "owner"`): never re-enabled after.
 - `/auth/**` is never counted; signing out pauses the tag, a workspace switch retargets it. SPA navigations

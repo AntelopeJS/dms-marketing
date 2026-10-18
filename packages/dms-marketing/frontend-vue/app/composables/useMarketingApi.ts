@@ -40,6 +40,8 @@ export interface MarketingWebsiteCard extends ContextWebsite {
   snapshots: number
   sampleRate: number
   rejected: MarketingRejectedSource[]
+  /** The site `dashboardTracking` provisions: it cannot be deleted. */
+  dashboard: boolean
 }
 
 /** What deleting a website discards (GET /websites/:id/deletion). */

@@ -427,6 +427,7 @@
         "xr": "Casque XR"
       },
       "errors": {
+        "dashboard_website_kept": "C'est le site du tableau de bord lui-même : il ne peut pas être supprimé. Mettez son suivi en pause ou purgez ses données à la place.",
         "duplicate_host": "Un autre site de cet espace déclare déjà cet hôte.",
         "duplicate_host_named": "{site} déclare déjà {host} : un hôte n'appartient qu'à un site de l'espace.",
         "duplicate_experiment_key": "Un autre test A/B de ce site utilise déjà cette clé.",
@@ -1093,6 +1094,7 @@
           "action": "Supprimer le site…",
           "confirm": "Supprimer le site",
           "description": "Tout ce qui a été suivi sur ce site disparaît, pour toutes les périodes. Saisissez le domaine pour confirmer.",
+          "dashboard_kept": "C'est le site du tableau de bord lui-même, que le module suit tout seul : il ne peut pas être supprimé. Mettez son suivi en pause ou purgez ses données à la place.",
           "done": "{name} supprimé",
           "funnels": "Funnels et leurs tests A/B",
           "impact_error": "Impossible de lister ce que la suppression de ce site effacerait.",

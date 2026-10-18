@@ -427,6 +427,7 @@
         "xr": "XR headset"
       },
       "errors": {
+        "dashboard_website_kept": "This is the dashboard's own website: it cannot be deleted. Pause its tracking or purge its data instead.",
         "duplicate_host": "Another website of this workspace already declares this host.",
         "duplicate_host_named": "{site} already declares {host}: a host belongs to one website of the workspace.",
         "duplicate_experiment_key": "Another A/B test on this website already uses this key.",
@@ -1093,6 +1094,7 @@
           "action": "Delete website…",
           "confirm": "Delete website",
           "description": "Everything tracked on this website goes, for every period. Type the domain to confirm.",
+          "dashboard_kept": "This is the dashboard's own website, which the module tracks itself: it cannot be deleted. Pause its tracking or purge its data instead.",
           "done": "{name} deleted",
           "funnels": "Funnels and their A/B tests",
           "impact_error": "Couldn't list what deleting this website would remove.",

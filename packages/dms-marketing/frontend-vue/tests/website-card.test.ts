@@ -47,6 +47,7 @@ describe('websiteCardOf', () => {
       snapshots: 5,
       sampleRate: 0.25,
       rejected: [{ hostname: 'evil.test', count: 3, lastAt: 1 }],
+      dashboard: false,
     })
   })
 
@@ -75,8 +76,14 @@ describe('websiteCardOf', () => {
       sessions: 0,
       snapshots: 0,
       rejected: [],
+      dashboard: false,
     })
     expect(websiteCardOf({ _id: 'site-3' }).state).toBe('waiting')
+  })
+
+  it("flags the dashboard's own site only when the backend says so", () => {
+    expect(websiteCardOf(listedRow({ dashboard: true })).dashboard).toBe(true)
+    expect(websiteCardOf(listedRow({ dashboard: 'yes' })).dashboard).toBe(false)
   })
 
   it('drops what is not a host or a refused source', () => {

@@ -15,6 +15,7 @@ import {
   toContextWebsite,
   type WebsiteActivity,
 } from "./context";
+import { isDashboardWebsite } from "./dashboard-tracking";
 import { listRejectedSources, type RejectedSource } from "./origin-guard";
 import { periodStart, trailingWindow } from "./period";
 import { mergeDimension, readRollups, sumRollups } from "./rollups";
@@ -37,6 +38,8 @@ export interface WebsiteCard extends ContextWebsite {
   /** Share of page loads that record clicks and scrolls, 0–1. */
   sampleRate: number;
   rejected: RejectedSource[];
+  /** The site `dashboardTracking` provisions: it cannot be deleted. */
+  dashboard: boolean;
 }
 
 async function cardOf(
@@ -60,6 +63,7 @@ async function cardOf(
     snapshots,
     sampleRate: getConfig().heatmapSampleRate,
     rejected: listRejectedSources(website._id),
+    dashboard: isDashboardWebsite(website),
   };
 }
 

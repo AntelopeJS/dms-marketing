@@ -10,10 +10,13 @@ import {
   WebsitesModel,
 } from "@/db";
 import type { Website } from "@/db/tables/websites.table";
-import { HTTP_NOT_FOUND } from "@/types/constants";
+import { HTTP_CONFLICT, HTTP_NOT_FOUND } from "@/types/constants";
+import { isDashboardWebsite } from "./dashboard-tracking";
 import { deleteSnapshots } from "./snapshots";
 
 const WEBSITE_NOT_FOUND_MESSAGE = "$page.marketing.errors.website_not_found";
+const DASHBOARD_WEBSITE_KEPT_MESSAGE =
+  "$page.marketing.errors.dashboard_website_kept";
 
 /**
  * Website of the caller's tenant, or 404 — the ownership gate every
@@ -30,6 +33,17 @@ export async function requireTenantWebsite(
     throw new HTTPResult(HTTP_NOT_FOUND, WEBSITE_NOT_FOUND_MESSAGE);
   }
   return website;
+}
+
+/**
+ * 409 for the site `dashboardTracking` provisions for its tenant: the
+ * module's own tag reports to it, and provisioning would only create it
+ * again. Its tracking can still be paused, and its data purged.
+ */
+export function assertWebsiteDeletable(website: Website): void {
+  if (isDashboardWebsite(website)) {
+    throw new HTTPResult(HTTP_CONFLICT, DASHBOARD_WEBSITE_KEPT_MESSAGE);
+  }
 }
 
 /**

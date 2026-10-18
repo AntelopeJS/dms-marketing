@@ -88,6 +88,7 @@ export function websiteCardOf(row: WebsiteRow): MarketingWebsiteCard {
     snapshots: count(row.snapshots),
     sampleRate: count(row.sampleRate),
     rejected: refused(row.rejected),
+    dashboard: row.dashboard === true,
   }
 }
 

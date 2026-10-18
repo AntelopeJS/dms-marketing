@@ -29,8 +29,9 @@ import {
 /**
  * The settings of one website, in the modal the Websites table opens on a
  * row (a click on its card, its pencil, `?record=<id>`): General (name,
- * hosts, tracking and page snapshots) and Danger zone tabs. Opened on a
- * setting (the snapshot pill, `&setting=snapshots`), it scrolls to it.
+ * hosts, tracking and page snapshots) and Danger zone tabs: delete the
+ * site (never the dashboard's own, which the backend refuses too). Opened
+ * on a setting (the snapshot pill, `&setting=snapshots`), it scrolls to it.
  * Saving or deleting closes it and reads the table again.
  */
 const props = withDefaults(
@@ -197,6 +198,10 @@ const readDeletionImpact = useWebsiteDeletionImpactRead(deletionTarget)
 
 async function remove(): Promise<void> {
   const website = card.value
+  // The backend refuses it too (409): the button is disabled.
+  if (website.dashboard) {
+    return
+  }
   let impact
   try {
     impact = await readDeletionImpact()
@@ -407,13 +412,18 @@ async function remove(): Promise<void> {
         {{ t('page.marketing.websites.delete.section') }}
       </span>
       <span class="text-sm text-muted">
-        {{ t('page.marketing.websites.delete.section_description') }}
+        {{
+          card.dashboard
+            ? t('page.marketing.websites.delete.dashboard_kept')
+            : t('page.marketing.websites.delete.section_description')
+        }}
       </span>
       <UButton
         class="self-start"
         color="error"
         variant="outline"
         icon="i-ph-trash"
+        :disabled="card.dashboard"
         :label="t('page.marketing.websites.delete.action')"
         @click="remove"
       />

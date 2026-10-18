@@ -30,6 +30,7 @@ function card(
     snapshots: 4,
     sampleRate: 0.1,
     rejected: [],
+    dashboard: false,
     ...overrides,
   }
 }

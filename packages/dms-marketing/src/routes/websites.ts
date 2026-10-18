@@ -27,6 +27,7 @@ import { setSnapshotsByOwner } from "@/services/dashboard-tracking";
 import { invalidateExperimentDefinitions } from "@/services/experiment-definitions";
 import { deleteSnapshots } from "@/services/snapshots";
 import {
+  assertWebsiteDeletable,
   listTenantWebsites,
   purgeWebsiteTrackingData,
   requireTenantWebsite,
@@ -284,6 +285,8 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
+    // The dashboard's own site is kept (409): purge its data instead.
+    assertWebsiteDeletable(website);
     await purgeWebsiteTrackingData(website.tenantId, id);
     await GetModel(WebsitesModel).delete(id);
     invalidateWebsiteCache(id);
