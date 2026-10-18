@@ -19,6 +19,7 @@ import {
   MAX_HEATMAP_EVENTS,
   SCROLL_DEPTH_SCALE,
 } from "@/types/constants";
+import { hidesDashboardPath } from "./dashboard-tracking";
 import { type QueryWindow, resolveQueryWindow } from "./period";
 import { deleteSnapshots } from "./snapshots";
 
@@ -213,6 +214,18 @@ function bucketClicks(
  */
 type ClickPayload = Pick<MarketingEvent, "data">;
 
+/** The websites of the set that show `path`: the dashboard's own never
+ * shows its module area, whatever an older tag stored there. */
+function showingPath(
+  tenantId: string,
+  websiteIds: string[],
+  path: string,
+): string[] {
+  return websiteIds.filter(
+    (_id) => !hidesDashboardPath({ _id, tenantId }, path),
+  );
+}
+
 /** Click heatmap of one path over an explicit, already-authorized website set. */
 export async function computeClickHeatmap(
   tenantId: string,
@@ -220,11 +233,12 @@ export async function computeClickHeatmap(
   path: string,
   window: QueryWindow,
 ): Promise<MarketingHeatmapPayload> {
-  if (websiteIds.length === 0) {
+  const shown = showingPath(tenantId, websiteIds, path);
+  if (shown.length === 0) {
     return EMPTY_HEATMAP;
   }
   const events = await GetModel(MarketingEventsModel, tenantId).queryRange({
-    websiteIds,
+    websiteIds: shown,
     since: window.since,
     until: window.until,
     kinds: ["click"],
@@ -274,14 +288,15 @@ export async function computeScrollDepth(
   path: string,
   window: QueryWindow,
 ): Promise<MarketingScrollDepthPayload> {
-  if (websiteIds.length === 0) {
+  const shown = showingPath(tenantId, websiteIds, path);
+  if (shown.length === 0) {
     return EMPTY_SCROLL_DEPTH;
   }
   const buckets = await GetModel(
     MarketingEventsModel,
     tenantId,
   ).countScrollDepths({
-    websiteIds,
+    websiteIds: shown,
     since: window.since,
     until: window.until,
     url: path,

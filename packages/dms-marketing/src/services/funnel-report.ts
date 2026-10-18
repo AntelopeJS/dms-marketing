@@ -11,6 +11,7 @@ import {
   RAW_COVERAGE_CACHE_TTL_MS,
 } from "@/types/constants";
 import { BoundedCache } from "./bounded-cache";
+import { hidesDashboardPath } from "./dashboard-tracking";
 import {
   computeFunnelResults,
   type FunnelEvent,
@@ -237,6 +238,7 @@ export async function funnelResultsIn(
     funnel,
     window.since,
     window.until,
+    (path) => hidesDashboardPath({ _id: funnel.websiteId, tenantId }, path),
   );
 }
 

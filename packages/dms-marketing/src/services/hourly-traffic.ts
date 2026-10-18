@@ -5,6 +5,7 @@ import type { Website } from "@/db/tables/websites.table";
 import type { EventKind } from "@/types";
 import { MS_PER_DAY, MS_PER_HOUR } from "@/types/constants";
 import type { KpiMetric } from "./dashboard";
+import { hiddenDashboardUrlPattern } from "./dashboard-tracking";
 
 /**
  * Hour-by-hour counts of a single day, read from the raw events: the daily
@@ -46,6 +47,7 @@ export async function hourlyValues(
     until: new Date(since + hours * MS_PER_HOUR - 1),
     kind: reading.kind,
     perSession: reading.perSession,
+    hiddenUrlPattern: hiddenDashboardUrlPattern(website),
   });
   const values = Array.from({ length: hours }, () => 0);
   for (const { hour, count } of buckets) {

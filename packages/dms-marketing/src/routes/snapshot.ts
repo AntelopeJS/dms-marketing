@@ -14,6 +14,7 @@ import {
 import { assertValidation } from "@antelopejs/interface-api-util";
 import { getConfig } from "@/config";
 import type { Website } from "@/db/tables/websites.table";
+import { hidesDashboardPath } from "@/services/dashboard-tracking";
 import {
   isAutomatedClient,
   snapshotRateLimiter,
@@ -166,7 +167,12 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
       return "";
     }
     const site = await resolveWebsite(websiteId);
-    if (!site || !site.trackingEnabled || !site.snapshotsEnabled) {
+    if (
+      !site ||
+      !site.trackingEnabled ||
+      !site.snapshotsEnabled ||
+      hidesDashboardPath(site, url)
+    ) {
       return "";
     }
     const source = requestSourceHostname(context.rawRequest.headers);
@@ -228,6 +234,7 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
     if (
       source === undefined ||
       !website.snapshotsEnabled ||
+      hidesDashboardPath(website, parseTrackedUrl(data.url).path) ||
       isAutomatedClient(userAgentOf(context)) ||
       !snapshotRateLimiter.consume(`${website._id}\n${ip}`, 1)
     ) {

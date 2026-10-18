@@ -64,6 +64,8 @@ export interface HourlyCountQuery {
   kind: EventKind;
   /** Count each session once, in the hour of its first event of the window. */
   perSession: boolean;
+  /** Leave out the events whose `url` matches this regex. */
+  hiddenUrlPattern?: string;
 }
 
 export interface HourlyCountBucket {
@@ -194,25 +196,29 @@ export class MarketingEventsModel extends BasicDataModel(
       return [];
     }
     const sinceSeconds = query.since.getTime() / MS_PER_SECOND;
-    const hours = this.table
+    let events = this.table
       .getAll(query.websiteIds, "websiteId")
       .filter((doc) => doc.key("timestamp").ge(query.since))
       .filter((doc) => doc.key("timestamp").le(query.until))
-      .filter((doc) => doc.key("kind").eq(query.kind))
-      .map((doc) => ({
-        sessionId: doc.key("sessionId"),
-        // Back to whole milliseconds before dividing: epochs in seconds
-        // carry float noise that would floor an event on the hour into the
-        // previous one.
-        hour: doc
-          .key("timestamp")
-          .epoch()
-          .sub(sinceSeconds)
-          .mul(MS_PER_SECOND)
-          .round()
-          .div(MS_PER_HOUR)
-          .floor(),
-      }));
+      .filter((doc) => doc.key("kind").eq(query.kind));
+    const hidden = query.hiddenUrlPattern;
+    if (hidden) {
+      events = events.filter((doc) => doc.key("url").match(hidden).not());
+    }
+    const hours = events.map((doc) => ({
+      sessionId: doc.key("sessionId"),
+      // Back to whole milliseconds before dividing: epochs in seconds
+      // carry float noise that would floor an event on the hour into the
+      // previous one.
+      hour: doc
+        .key("timestamp")
+        .epoch()
+        .sub(sinceSeconds)
+        .mul(MS_PER_SECOND)
+        .round()
+        .div(MS_PER_HOUR)
+        .floor(),
+    }));
     const counted = query.perSession
       ? hours.group("sessionId", (stream) => ({ hour: stream.min("hour") }))
       : hours;

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { MODULE_URL_PREFIX } from "@antelopejs/interface-dms/page";
 import type { Website } from "@/db/tables/websites.table";
 import {
   DASHBOARD_AUTH_PATHS,
@@ -39,12 +40,64 @@ export function isDashboardWebsite(
   return website._id === dashboardWebsiteId(website.tenantId);
 }
 
-/** The patterns the tag leaves uncounted: the sign-in pages, then the
- * configured ones. */
+/**
+ * The module area of the DMS — the modules page, the store and every page a
+ * module registers under `MODULE_URL_PREFIX`: never counted, whatever the
+ * configuration, like the sign-in pages. Dashboard tracking analyses the
+ * product the owner builds, not the modules AntelopeJS or the community
+ * ship; a project wanting figures on a module of its own tracks its own
+ * pages instead. `/x/**` covers `/x` itself.
+ */
+export const DASHBOARD_MODULE_AREA_PATHS = [`${MODULE_URL_PREFIX}/**`];
+const MODULE_AREA_PATH = MODULE_URL_PREFIX.toLowerCase();
+
+/** The patterns the tag leaves uncounted: the sign-in pages and the module
+ * area, then the configured ones. */
 export function dashboardExcludedPaths(
   config: DashboardTrackingConfig,
 ): string[] {
-  return [...new Set([...DASHBOARD_AUTH_PATHS, ...config.excludePaths])];
+  return [
+    ...new Set([
+      ...DASHBOARD_AUTH_PATHS,
+      ...DASHBOARD_MODULE_AREA_PATHS,
+      ...config.excludePaths,
+    ]),
+  ];
+}
+
+/**
+ * `path` (as stored: pathname only) lies in the DMS module area, which the
+ * dashboard's website never counts (`DASHBOARD_MODULE_AREA_PATHS`). Case
+ * blind: the dashboard's router is, so `/Modules/x` shows the same page.
+ */
+export function isModuleAreaPath(path: string): boolean {
+  const lower = path.toLowerCase();
+  return lower === MODULE_AREA_PATH || lower.startsWith(`${MODULE_AREA_PATH}/`);
+}
+
+/**
+ * The dashboard's website never shows `path`: the tag leaves the module area
+ * out and collection refuses it, and rows an older tag stored there are
+ * hidden on read until retention prunes them. Any other website keeps every
+ * path — a site of its own may well have a `/modules` page.
+ */
+export function hidesDashboardPath(
+  website: Pick<Website, "_id" | "tenantId">,
+  path: string,
+): boolean {
+  return isModuleAreaPath(path) && isDashboardWebsite(website);
+}
+
+/**
+ * The same rule for a database read: a regex matching the module area, for
+ * the dashboard's website only; undefined (no filter) for any other.
+ */
+export function hiddenDashboardUrlPattern(
+  website: Pick<Website, "_id" | "tenantId">,
+): string | undefined {
+  return isDashboardWebsite(website)
+    ? `(?i)^${MODULE_AREA_PATH}(/|$)`
+    : undefined;
 }
 
 /**
