@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, useId } from 'vue'
 import { useI18n } from '#dms/frontend-module'
 import type { MarketingWorkspace } from '../composables/useMarketingApi'
 import { ALL_WORKSPACES } from '../utils/workspace-scope'
@@ -8,8 +8,12 @@ import { ALL_WORKSPACES } from '../utils/workspace-scope'
  * Whose dashboard the heatmaps read: the viewer's workspace, another one,
  * or all of them combined (see utils/workspace-scope). Self-contained — the
  * options in, the scope out through `v-model` — so it can sit wherever the
- * view's website context sits. The parent renders it only when the backend
- * offers two workspaces or more: never to a workspace owner.
+ * view's website context sits: the top of the pages panel, above its search.
+ * Outside the viewer's workspace its note (combined, read-only, masked) sits
+ * in the tooltip of an info icon beside it, keyboard focusable and
+ * describing the selector, so the row stays compact. The parent renders it
+ * only when the backend offers two workspaces or more: never to a workspace
+ * owner.
  */
 const props = defineProps<{
   workspaces: MarketingWorkspace[]
@@ -22,6 +26,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const noteId = useId()
 
 const own = computed(() => props.workspaces.find((option) => option.current))
 
@@ -80,7 +85,7 @@ const note = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+  <div class="flex min-w-0 items-center gap-1.5">
     <UDropdownMenu :items="items" :content="{ align: 'start' }">
       <UButton
         color="neutral"
@@ -88,17 +93,27 @@ const note = computed(() => {
         size="sm"
         icon="i-ph-buildings"
         trailing-icon="i-ph-caret-up-down"
+        class="min-w-0 max-w-full"
         :aria-label="t('page.marketing.pages.workspace.switch')"
+        :aria-describedby="note ? noteId : undefined"
       >
-        <span class="text-muted">
+        <span class="shrink-0 text-muted">
           {{ t('page.marketing.pages.workspace.label') }}
         </span>
-        <span class="font-semibold">{{ label }}</span>
+        <span class="truncate font-semibold">{{ label }}</span>
       </UButton>
     </UDropdownMenu>
-    <span v-if="note" class="flex items-center gap-1.5 text-xs text-muted">
-      <UIcon name="i-ph-eye-slash" class="size-3.5 shrink-0" />
-      {{ note }}
-    </span>
+    <UTooltip v-if="note" :text="note">
+      <span
+        class="grid size-6 shrink-0 place-items-center rounded text-muted hover:text-default focus-visible:outline-2 focus-visible:outline-primary"
+        tabindex="0"
+        role="img"
+        :aria-label="t('page.marketing.pages.workspace.note_label')"
+        :aria-describedby="noteId"
+      >
+        <UIcon name="i-ph-info" class="size-4" aria-hidden="true" />
+      </span>
+    </UTooltip>
+    <span v-if="note" :id="noteId" class="sr-only">{{ note }}</span>
   </div>
 </template>

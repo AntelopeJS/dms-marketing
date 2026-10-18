@@ -1028,6 +1028,7 @@
           "all_hint": "{count} workspace combined | {count} workspaces combined",
           "combined_note": "Combined across {count} workspace, read-only. Snapshots show with their text masked. | Combined across {count} workspaces, read-only. Snapshots show with their text masked.",
           "label": "Workspace:",
+          "note_label": "About this view",
           "other_note": "Another workspace's dashboard, read-only. Snapshots show with their text masked.",
           "switch": "Change the workspace the heatmaps read",
           "yours": "Your workspace"

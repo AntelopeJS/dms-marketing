@@ -1028,6 +1028,7 @@
           "all_hint": "{count} espace combiné | {count} espaces combinés",
           "combined_note": "Combiné sur {count} espace, en lecture seule. Les instantanés s'affichent avec leur texte masqué. | Combiné sur {count} espaces, en lecture seule. Les instantanés s'affichent avec leur texte masqué.",
           "label": "Espace :",
+          "note_label": "À propos de cette vue",
           "other_note": "Tableau de bord d'un autre espace, en lecture seule. Les instantanés s'affichent avec leur texte masqué.",
           "switch": "Changer l'espace dont les heatmaps sont lues",
           "yours": "Votre espace"

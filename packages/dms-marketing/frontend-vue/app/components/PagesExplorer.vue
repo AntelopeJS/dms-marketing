@@ -186,6 +186,12 @@ const inventoryRead = usePageInventory({
 const inventory = computed(() =>
   inventoryRead.error.value ? null : inventoryRead.data.value,
 )
+
+// The pages panel holds the workspace selector from the first paint: a
+// server render, or a navigation, reads the workspaces before it draws, so
+// the panel never grows under the reader (the inventory reads alongside).
+await workspacesRead
+
 const loading = computed(() => inventoryRead.status.value === 'pending')
 /** A list is on screen (the previous one while another loads), or failed. */
 const settled = computed(
@@ -468,13 +474,6 @@ const moreItems = computed(() => [
     </DmsEmptyState>
 
     <template v-else>
-      <!-- Self-contained: it moves with the website context it qualifies. -->
-      <DmsMarketingWorkspaceScope
-        v-if="workspaceOptions.length > 1"
-        :workspaces="workspaceOptions"
-        :model-value="workspace"
-        @update:model-value="selectWorkspace"
-      />
       <!-- The preview's own strip says it when a page is shown. -->
       <DmsBanner
         v-if="!trackerEnabled && !(selectedPath && website)"
@@ -494,6 +493,18 @@ const moreItems = computed(() => [
           :class="paneHeight === null ? 'xl:sticky xl:top-4' : ''"
           :style="paneStyle"
         >
+          <!-- Whose dashboard the list reads, above its search: read with
+               the page, so the row is there from the first paint. -->
+          <div
+            v-if="workspaceOptions.length > 1"
+            class="border-b border-default p-3"
+          >
+            <DmsMarketingWorkspaceScope
+              :workspaces="workspaceOptions"
+              :model-value="workspace"
+              @update:model-value="selectWorkspace"
+            />
+          </div>
           <div class="flex items-center gap-2 border-b border-default p-3">
             <UInput
               v-model="search"
