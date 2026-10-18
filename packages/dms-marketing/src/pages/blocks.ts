@@ -90,17 +90,22 @@ export interface MarketingContextOptions extends ScopedBlockOptions {
 }
 
 /**
- * The `live` option of a page under the context bar: while its period
- * reaches today, the bar asks the blocks to read again every minute
+ * The `live` option of a page under the context bar: in Direct, while its
+ * period reaches today, the bar asks the blocks to read again every minute
  * (`refreshLivePageBlocks()`), and the page's gate reads each block at most
- * that often.
+ * that often. The bar's Direct / Pause toggle stops it, and the choice
+ * follows the reader from one analytics page to the next.
  */
-export const CONTEXT_PAGE_LIVE: PageLiveOptions = { maxRate: 60 };
+export const CONTEXT_PAGE_LIVE: PageLiveOptions = {
+  maxRate: 60,
+  rememberKey: MARKETING_PERIOD_SCOPE,
+};
 
 /**
  * The context bar and first-run gate wrapping an analytics page: its children
  * render once the tenant has a website, under the bar that picks the website
- * and the period they read.
+ * and the period they read. The bar is the DMS `PageToolbar` (website, live
+ * toggle, period), so the page needs no toolbar of its own.
  */
 export function MarketingContext(
   options: Omit<MarketingContextOptions, "periodScope"> = {},
