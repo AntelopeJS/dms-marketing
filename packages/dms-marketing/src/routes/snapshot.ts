@@ -48,6 +48,7 @@ const SCRIPT_CONTENT_TYPE = "application/javascript; charset=utf-8";
 /** Global the served capture script reads its settings from. */
 const SNAPSHOT_CONFIG_GLOBAL = "__dmsMarketingSnapshotConfig";
 /** Per page and per visit, never shared: the answer is a decision, not a file. */
+const SCROLL_ROOT_FLAG = "1";
 const NO_STORE = "private, no-store";
 
 const UNKNOWN_WEBSITE_MESSAGE = "unknown website";
@@ -62,6 +63,15 @@ interface ServedSnapshotConfig {
   maskText: boolean;
   maxBytes: number;
   token: string;
+}
+
+/** The negotiation's query, as received. `root=1`: the tracker sees the page
+ * scroll an inner container (see wantsSnapshot). */
+interface NegotiationQuery {
+  website: unknown;
+  pathname: unknown;
+  width: unknown;
+  scrollRoot: boolean;
 }
 
 let cachedScript: string | null = null;
@@ -128,21 +138,25 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
     @Parameter("website", "query") website?: string,
     @Parameter("path", "query") pathname?: string,
     @Parameter("width", "query") width?: string,
+    @Parameter("root", "query") root?: string,
   ) {
-    const body = await this.negotiatedScript(context, website, pathname, width);
+    const body = await this.negotiatedScript(context, {
+      website,
+      pathname,
+      width,
+      scrollRoot: queryString(root) === SCROLL_ROOT_FLAG,
+    });
     context.response.addHeader("Cache-Control", NO_STORE);
     context.response.getWriteStream(SCRIPT_CONTENT_TYPE).end(body);
   }
 
   private async negotiatedScript(
     context: RequestContext,
-    website: unknown,
-    pathname: unknown,
-    width: unknown,
+    query: NegotiationQuery,
   ): Promise<string> {
-    const websiteId = queryString(website);
-    const url = trackedPath(pathname);
-    const viewportWidth = Number.parseInt(queryString(width) ?? "", 10);
+    const websiteId = queryString(query.website);
+    const url = trackedPath(query.pathname);
+    const viewportWidth = Number.parseInt(queryString(query.width) ?? "", 10);
     if (
       !getConfig().trackerEnabled ||
       !websiteId ||
@@ -167,6 +181,7 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
       url,
       viewportWidth,
       visitorOf(context, site, await getClientIp(context)),
+      query.scrollRoot,
     );
     return token ? servedScript(site, token) : "";
   }

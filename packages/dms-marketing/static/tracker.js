@@ -659,7 +659,10 @@
     loader.async = true;
     loader.src =
       `${hostUrl}/api/marketing/snapshot.js?website=${encodeURIComponent(websiteId)}` +
-      `&path=${encodeURIComponent(path)}&width=${innerWidth}`;
+      `&path=${encodeURIComponent(path)}&width=${innerWidth}` +
+      // Lets the backend replace a capture taken before captures marked the
+      // scroll root, instead of waiting for it to age.
+      (scrollRoot() ? "&root=1" : "");
     const settle = () => loader.remove();
     loader.addEventListener("load", settle);
     loader.addEventListener("error", settle);

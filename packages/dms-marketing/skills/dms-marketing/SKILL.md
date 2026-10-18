@@ -42,7 +42,9 @@ const arm = await window.dmsMarketing?.variation("hero-cta");      // null = ren
 - Never `type="module"` (breaks `document.currentScript`). Always guard with `?.`.
 - Snapshots (heatmap backdrops) are opt-in per site (Websites page, General tab, next to Collect data); mask with
   `data-dms-marketing-mask` / `data-dms-marketing-block`. Captures inline only the CSS rules matching the page
-  and upload gzipped; cap `snapshotMaxBytes` (default 1 MiB compressed, 64 KiB–8 MiB).
+  and upload gzipped; cap `snapshotMaxBytes` (default 1 MiB compressed, 64 KiB–8 MiB). One capture per
+  (path, layout) a day; a page without a snapshot (reset, option change, retention) is captured at its next
+  sampled visit (within 5 min across instances); a refused upload does not count as a capture.
 - App shells whose document does not scroll (an inner panel does): the tracker and the capture detect the
   largest visible vertical scroller covering half the window; put `data-marketing-scroll-root` on the
   container to name it explicitly. Scroll depth, click `dy` and the backdrop then cover the whole content.

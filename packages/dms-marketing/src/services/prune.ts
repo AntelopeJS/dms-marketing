@@ -8,6 +8,7 @@ import {
   WebsitesModel,
 } from "@/db";
 import { MS_PER_DAY, TOP_MAPS_RETENTION_DAYS } from "@/types/constants";
+import { forgetCaptureTimes } from "./snapshots";
 
 export async function pruneRawEvents(
   model: MarketingEventsModel,
@@ -50,7 +51,8 @@ export async function pruneStatisticsTops(
 }
 
 /** Never past the raw events: a backdrop outliving every click it could
- * back is page content kept for nothing. */
+ * back is page content kept for nothing. A pruned page is captured again at
+ * its next sampled visit: the negotiation forgets what it remembered. */
 export async function pruneSnapshots(
   model: PageSnapshotsModel,
 ): Promise<number> {
@@ -58,7 +60,11 @@ export async function pruneSnapshots(
   const cutoff = new Date(
     Date.now() - Math.min(config.snapshotRetention, config.rawEventsRetention),
   );
-  return model.deleteOlderThan(cutoff);
+  const deleted = await model.deleteOlderThan(cutoff);
+  if (deleted > 0) {
+    forgetCaptureTimes();
+  }
+  return deleted;
 }
 
 const EPOCH_LOWER_BOUND = new Date(0);
