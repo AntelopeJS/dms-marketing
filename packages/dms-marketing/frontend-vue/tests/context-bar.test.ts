@@ -162,7 +162,7 @@ describe('the context bar', () => {
     expect(html).not.toContain('i-ph-arrow-clockwise')
   })
 
-  it('keeps the module presets and comparisons, at the toolbar size', async () => {
+  it("keeps the module presets and comparisons, drawn as the toolbar's", async () => {
     const options = periodOptions(await renderBar())
     expect(options).toMatchObject({
       id: 'marketing',
@@ -170,11 +170,29 @@ describe('the context bar', () => {
       variant: 'segmented',
       'default-preset': 'last-30-days',
       'default-comparison': 'previous-period',
-      'comparison-control': 'menu',
+      // On, chosen in the popover: no menu widening the bar.
+      'comparison-control': 'hidden',
       'range-label': 'relative',
+      presets: [
+        'today',
+        'last-7-days',
+        'last-30-days',
+        'last-90-days',
+        'custom',
+      ],
+      comparisons: ['previous-period', 'previous-year', 'none'],
     })
+    // The DMS short codes (1D / 7D…) and its calendar segment for custom.
+    expect(options).not.toHaveProperty('preset-labels')
     expect(options).not.toHaveProperty('size')
     expect(options).not.toHaveProperty('align')
+  })
+
+  it("shows the website's state as a dot and the age of its last event", async () => {
+    const html = await renderBar()
+    // The full line is the tooltip and the accessible name.
+    expect(html).toContain('aria-label="page.marketing.context.live"')
+    expect(html).toMatch(/>1 min\.? ago</)
   })
 
   it('names no website, and offers no refresh, before there is one', async () => {

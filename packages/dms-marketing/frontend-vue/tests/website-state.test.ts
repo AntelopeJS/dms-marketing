@@ -3,6 +3,7 @@ import {
   WEBSITE_LIVE_WINDOW_MS,
   websiteDisplayState,
   websiteStateLine,
+  websiteStateShort,
 } from '../app/utils/website-state'
 
 const NOW = Date.UTC(2026, 9, 18, 12)
@@ -48,5 +49,35 @@ describe('a website reads live', () => {
         'en-GB',
       ),
     ).toBe('page.marketing.context.state.paused')
+  })
+})
+
+describe('the short state of a website', () => {
+  it('is the age of its last event', () => {
+    const recent = { state: 'live' as const, lastActivityAt: NOW - 3_000 }
+    expect(websiteStateShort(recent, NOW, t, 'en-GB')).toBe('3 sec ago')
+    // Intl spaces it with a no-break space.
+    expect(websiteStateShort(recent, NOW, t, 'fr-FR')).toMatch(/^il y a 3\ss$/)
+    const quiet = { state: 'live' as const, lastActivityAt: NOW - 7 * HOUR }
+    expect(websiteStateShort(quiet, NOW, t, 'en-GB')).toBe('7 hr ago')
+  })
+
+  it('is the state in a word without a last event', () => {
+    expect(
+      websiteStateShort(
+        { state: 'waiting', lastActivityAt: null },
+        NOW,
+        t,
+        'en-GB',
+      ),
+    ).toBe('page.marketing.context.state_short.waiting')
+    expect(
+      websiteStateShort(
+        { state: 'paused', lastActivityAt: NOW },
+        NOW,
+        t,
+        'en-GB',
+      ),
+    ).toBe('page.marketing.context.state_short.paused')
   })
 })

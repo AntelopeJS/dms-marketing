@@ -35,21 +35,43 @@ export function websiteDisplayState(
   return site.state
 }
 
+type Translate = (key: string, named?: Record<string, unknown>) => string
+
+/** A state that tells the age of its last event, when there is one. */
+function showsActivity(state: WebsiteDisplayState): boolean {
+  return state === 'live' || state === 'idle' || state === 'imported'
+}
+
 /** "Live · last event 2 minutes ago", "Last event 7 hours ago", "Paused"… */
 export function websiteStateLine(
   site: WebsiteActivity,
   now: number,
-  t: (key: string, named?: Record<string, unknown>) => string,
+  t: Translate,
   locale: string,
 ): string {
   const state = websiteDisplayState(site, now)
-  if (
-    (state === 'live' || state === 'idle' || state === 'imported') &&
-    site.lastActivityAt
-  ) {
+  if (showsActivity(state) && site.lastActivityAt) {
     return t(`page.marketing.context.${state}`, {
       ago: formatRelativeTime(site.lastActivityAt, now, locale),
     })
   }
   return t(`page.marketing.context.state.${site.state}`)
+}
+
+/**
+ * The state line in a toolbar, beside its dot: the age of the last event
+ * ("2 min ago"), else the state in a word ("Waiting", "Paused"). The full
+ * line goes in its tooltip.
+ */
+export function websiteStateShort(
+  site: WebsiteActivity,
+  now: number,
+  t: Translate,
+  locale: string,
+): string {
+  const state = websiteDisplayState(site, now)
+  if (showsActivity(state) && site.lastActivityAt) {
+    return formatRelativeTime(site.lastActivityAt, now, locale, 'short')
+  }
+  return t(`page.marketing.context.state_short.${site.state}`)
 }

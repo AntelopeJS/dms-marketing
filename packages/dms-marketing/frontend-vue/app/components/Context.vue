@@ -14,6 +14,7 @@ import {
   WEBSITE_STATE_DOTS,
   websiteDisplayState,
   websiteStateLine,
+  websiteStateShort,
 } from '../utils/website-state'
 import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
 
@@ -21,9 +22,13 @@ import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
  * The context bar of every analytics page and the gate in front of its blocks.
  *
  * The bar is the DMS `PageToolbar`, as on every page with a period or live
- * data: the website picker, its state and the period's hints lead, then the
- * `LiveToggle` (Direct / Pause, with the time of the last read) and the
- * period on the right, at the toolbar's size.
+ * data, on one line like theirs: the website picker, its state (a dot and
+ * the age of its last event, the full line in a tooltip) and the period's
+ * hints lead, then the `LiveToggle` (Direct / Pause, with the time of the
+ * last read) and the period on the right, at the toolbar's size. The period
+ * is the toolbar's: segmented short codes (1D / 7D / 30D / 90D) and the
+ * calendar for a custom range, the comparison kept on and chosen in its
+ * popover.
  *
  * The page URL is the context: a reload, a copied link or Back opens on what
  * it names, and each tab keeps its own. The period is the DMS
@@ -84,15 +89,6 @@ const toast = useToast()
 const route = useDmsRoute()
 const router = useDmsRouter()
 const live = usePageLive()
-
-const presetLabels = computed(() =>
-  Object.fromEntries(
-    PRESETS.map((preset) => [
-      preset,
-      t(`page.marketing.context.presets.${preset}`),
-    ]),
-  ),
-)
 
 const comparisonLabels = computed(() =>
   Object.fromEntries(
@@ -249,6 +245,9 @@ const displayState = (site: ContextWebsite) =>
 const stateLine = (site: ContextWebsite) =>
   websiteStateLine(site, now.value, t, locale.value)
 
+const stateShort = (site: ContextWebsite) =>
+  websiteStateShort(site, now.value, t, locale.value)
+
 const websiteItems = computed(() => [
   websites.value.map((site) => ({
     label: site.name,
@@ -338,14 +337,21 @@ const utcHint = computed(() => {
           </template>
         </UDropdownMenu>
 
-        <span class="flex items-center gap-2 font-mono text-xs text-muted">
+        <UTooltip :text="stateLine(selected)">
           <span
-            class="size-2 rounded-full"
-            :class="WEBSITE_STATE_DOTS[displayState(selected)]"
-            aria-hidden="true"
-          />
-          {{ stateLine(selected) }}
-        </span>
+            class="flex items-center gap-1.5 font-mono text-xs whitespace-nowrap text-muted"
+            role="status"
+            tabindex="0"
+            :aria-label="stateLine(selected)"
+          >
+            <span
+              class="size-2 rounded-full"
+              :class="WEBSITE_STATE_DOTS[displayState(selected)]"
+              aria-hidden="true"
+            />
+            <span aria-hidden="true">{{ stateShort(selected) }}</span>
+          </span>
+        </UTooltip>
 
         <span
           v-if="cutHint"
@@ -357,11 +363,12 @@ const utcHint = computed(() => {
         </span>
         <UTooltip v-if="utcHint" :text="utcHint">
           <span
-            class="cursor-help rounded border border-default px-1 font-mono text-[10px] text-dimmed"
+            class="grid cursor-help place-items-center text-dimmed"
+            role="img"
             tabindex="0"
             :aria-label="utcHint"
           >
-            UTC
+            <UIcon name="i-ph-globe-simple" class="size-3.5" />
           </span>
         </UTooltip>
 
@@ -373,11 +380,10 @@ const utcHint = computed(() => {
           variant="segmented"
           default-preset="last-30-days"
           default-comparison="previous-period"
-          comparison-control="menu"
+          comparison-control="hidden"
           range-label="relative"
           :presets="PRESETS"
           :comparisons="COMPARISONS"
-          :preset-labels="presetLabels"
           :comparison-labels="comparisonLabels"
         />
       </template>
