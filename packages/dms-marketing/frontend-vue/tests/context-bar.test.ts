@@ -10,10 +10,7 @@ import {
 import { renderToString } from 'vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Context from '../app/components/Context.vue'
-import {
-  useMarketingContext,
-  type MarketingContextPayload,
-} from '../app/composables/useMarketingContext'
+import type { MarketingContextPayload } from '../app/composables/useMarketingContext'
 
 const route = vi.hoisted(() => ({ query: {} as Record<string, string> }))
 const replaced = vi.hoisted(() => [] as unknown[])
@@ -170,15 +167,6 @@ const DMS_STUBS = {
 
 const TOPIC = 'marketing.events'
 
-/** A block of the page: says whether the bar draws the website picker. */
-const PageBlock = defineComponent({
-  setup() {
-    const context = useMarketingContext()
-    return () =>
-      h('main', { 'data-bar-picker': String(context.websitePicker.value) })
-  },
-})
-
 async function renderBar(props: Record<string, unknown> = {}): Promise<string> {
   const app = createSSRApp(
     defineComponent({
@@ -186,7 +174,7 @@ async function renderBar(props: Record<string, unknown> = {}): Promise<string> {
         h(
           Context,
           { realtimeTopic: TOPIC, ...props },
-          { default: () => h(PageBlock) },
+          { default: () => h('main') },
         ),
     }),
   )
@@ -272,9 +260,8 @@ describe('the context bar', () => {
   })
 
   it('leaves the website to a block of the page with websitePicker off', async () => {
-    route.query = { website: 'acme-shop' }
     const html = await renderBar({ websitePicker: false })
-    expect(html).not.toContain('Acme Shop')
+    expect(html).not.toContain('page.marketing.context.switch_website')
     expect(html).not.toContain('aria-label="page.marketing.context.live"')
     expect(html).not.toMatch(/>1 min\.? ago</)
     // The rest of the bar stays: Direct / Pause, the period, the refresh.
@@ -286,36 +273,15 @@ describe('the context bar', () => {
   it('still keeps the remembered website in the URL with websitePicker off', async () => {
     const html = await renderBar({ websitePicker: false })
     expect(replaced).toEqual([{ query: { website: 'acme-shop' } }])
-    // The URL names none yet: the page waits for it, under the bar's picker.
+    // The URL names none yet: the page waits for it.
     expect(html).not.toContain('<main')
-    expect(html).toContain('Acme Shop')
   })
 
   it('renders the page on the website the URL names with websitePicker off', async () => {
     route.query = { website: 'acme-shop' }
     const html = await renderBar({ websitePicker: false })
     expect(replaced).toEqual([])
-    // The page's block draws the picker: the bar does not.
-    expect(html).toContain('data-bar-picker="false"')
-  })
-
-  it('tells the page the bar draws the picker by default', async () => {
-    route.query = { website: 'acme-shop' }
-    const html = await renderBar()
-    expect(html).toContain('Acme Shop')
-    expect(html).toContain('data-bar-picker="true"')
-  })
-
-  it('takes the picker back while the install guide hides the page', async () => {
-    route.query = { website: 'acme-shop' }
-    contextData.value = {
-      ...CONTEXT,
-      websites: [{ ...CONTEXT.websites[0]!, state: 'waiting' }],
-    }
-    const html = await renderBar({ websitePicker: false, waitingGuide: true })
-    // The guide in place of the page, the picker in the bar.
-    expect(html).not.toContain('<main')
-    expect(html).toContain('Acme Shop')
+    expect(html).toContain('<main')
   })
 
   it('names no website, and offers no refresh, before there is one', async () => {

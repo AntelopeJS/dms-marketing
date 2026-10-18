@@ -28,10 +28,9 @@ import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
  * hints lead, then the `LiveToggle` (Direct / Pause, with the time of the
  * last read) and the period on the right, at the toolbar's size. A page
  * placing the picker in a block of its own (`websitePicker: false`) has the
- * bar lead with the period's hints only while its children show: it still
- * keeps the website in the URL and fills in the remembered one, and the
- * block picks through the context the bar provides, whose `websitePicker`
- * says whether the bar draws it. The period
+ * bar lead with the period's hints only: it still keeps the website in the
+ * URL and fills in the remembered one, and the block picks through the
+ * context the bar provides. The period
  * is the toolbar's: segmented short codes (1D / 7D / 30D / 90D) and the
  * calendar for a custom range, then the comparison's dropdown (vs previous
  * period, vs previous year, no comparison).
@@ -205,29 +204,11 @@ const cutHint = computed(() => {
     : ''
 })
 
-// --- Gate ----------------------------------------------------------------------
-
-/** The page's blocks render: the URL names a website ready to be read. */
-const showsChildren = computed(
-  () =>
-    !failed.value &&
-    websites.value.length > 0 &&
-    !!linkedId.value &&
-    !(props.waitingGuide && selected.value?.state === 'waiting'),
-)
-
-/**
- * The bar draws the website picker: always, unless the page places its own
- * in its blocks, which the bar stands in for while it hides them.
- */
-const barPicker = computed(() => props.websitePicker || !showsChildren.value)
-
 provide(MARKETING_CONTEXT_KEY, {
   websites,
   selected,
   select,
   reload,
-  websitePicker: barPicker,
 })
 
 // --- Live ----------------------------------------------------------------------
@@ -316,11 +297,11 @@ const stateHint = computed(() =>
         <!-- One group, tighter than the toolbar's gaps: with the live toggle
              and the period, the bar stays on one line at desktop width. -->
         <div
-          v-if="barPicker || cutHint"
+          v-if="websitePicker || cutHint"
           class="flex min-w-0 flex-wrap items-center gap-2"
         >
           <UDropdownMenu
-            v-if="barPicker"
+            v-if="websitePicker"
             :items="websiteItems"
             :content="{ align: 'start' }"
           >
@@ -371,7 +352,7 @@ const stateHint = computed(() =>
             </template>
           </UDropdownMenu>
 
-          <UTooltip v-if="barPicker">
+          <UTooltip v-if="websitePicker">
             <span
               class="flex items-center gap-1.5 text-xs whitespace-nowrap text-muted tabular-nums"
               role="status"
@@ -463,7 +444,7 @@ const stateHint = computed(() =>
       </template>
     </DmsEmptyState>
 
-    <slot v-else-if="showsChildren" />
+    <slot v-else-if="linkedId" />
 
     <div v-else class="grid gap-4 md:grid-cols-4">
       <USkeleton v-for="index in 4" :key="index" class="h-28 rounded-xl" />

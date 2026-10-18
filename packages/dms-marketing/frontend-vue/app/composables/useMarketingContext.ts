@@ -22,14 +22,6 @@ export interface MarketingContextState {
   selected: ComputedRef<ContextWebsite | null>
   select: (id: string) => Promise<void>
   reload: () => Promise<void>
-  /**
-   * The bar draws the website picker: a block placing a picker of its own
-   * (a page declaring `websitePicker: false`) draws it only while this is
-   * false. The bar takes it back while it hides its children (the install
-   * guide of a website still waiting). True outside a context container:
-   * there is nothing to pick from.
-   */
-  websitePicker: ComputedRef<boolean>
 }
 
 export const MARKETING_CONTEXT_KEY: InjectionKey<MarketingContextState> =
@@ -51,6 +43,5 @@ function detachedContext(): MarketingContextState {
     selected: computed(() => null),
     select: async () => {},
     reload: async () => {},
-    websitePicker: computed(() => true),
   }
 }
