@@ -925,6 +925,8 @@
           "approximate_layout_hint": "No visitor has been captured at this width yet, so the layout is reflowed. Clicks still land on their element.",
           "captured_from": "from {url}",
           "captured_from_hint": "The page the snapshot was taken on. Its query string and fragment are never kept: they can carry tokens or addresses.",
+          "drift": "{share} of clicks aim at elements missing from this snapshot",
+          "drift_hint": "The page may have changed since {date}. Those clicks are drawn where they fell on the page, not on their element. Resetting the page clears its clicks and snapshot and starts again from the current version.",
           "enable_snapshots": "Enable page snapshots",
           "fields_masked": "Text visible, form fields masked",
           "layout": "Layout",

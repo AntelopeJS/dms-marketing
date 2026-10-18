@@ -190,6 +190,26 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     return boxes
   }
 
+  /**
+   * The anchors whose element the snapshot does not have at all — no
+   * `nth` match, or a selector this document cannot parse. An element that
+   * is there but not drawn at this width (a phone-only menu in a desktop
+   * layout) is not missing: measureAnchors gives it no box, this keeps it.
+   */
+  function missingAnchors(anchors: AnchorRequest[]): AnchorRequest[] {
+    const doc = frameDocument()
+    if (!doc) {
+      return []
+    }
+    return anchors.filter((anchor) => {
+      try {
+        return !doc.querySelectorAll(anchor.selector)[anchor.nth]
+      } catch {
+        return true
+      }
+    })
+  }
+
   onBeforeUnmount(() => {
     watchedFrame?.removeEventListener('load', onFrameLoad)
     watchedFrame = null
@@ -207,5 +227,13 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     return measuredHeight.value !== null ? 'measured' : 'pending'
   })
 
-  return { measuredWidth, measuredHeight, tier, reset, close, measureAnchors }
+  return {
+    measuredWidth,
+    measuredHeight,
+    tier,
+    reset,
+    close,
+    measureAnchors,
+    missingAnchors,
+  }
 }

@@ -38,6 +38,7 @@ import {
   snapshotDiscardConfirmation,
 } from '../utils/snapshot-options'
 import { rewriteViewportUnits } from '../utils/snapshotViewportUnits'
+import { anchorDrift } from '../utils/anchor-drift'
 
 /**
  * Click and scroll-depth overlays of one tracked page, over a snapshot of
@@ -375,7 +376,7 @@ async function updateSnapshotOptions(
 // --- Frame geometry ---------------------------------------------------------
 
 const frame = ref<HTMLIFrameElement | null>(null)
-const { measuredWidth, measuredHeight, tier, measureAnchors } =
+const { measuredWidth, measuredHeight, tier, measureAnchors, missingAnchors } =
   useSnapshotFrame(frame)
 
 const frameKey = computed(() =>
@@ -447,6 +448,9 @@ const overlayWidth = computed(() =>
  * fraction, never a blank one.
  */
 const anchorBoxes = ref(new Map<string, AnchorBox>())
+/** Keys of the anchors the snapshot has no element for; null until the
+ *  frame has been measured. */
+const missingAnchorKeys = ref<Set<string> | null>(null)
 
 function anchorKey(anchor: AnchorRequest): string {
   return `${anchor.selector}\0${anchor.nth}`
@@ -497,6 +501,7 @@ async function refreshAnchorBoxes(): Promise<void> {
     if (anchorBoxes.value.size > 0) {
       anchorBoxes.value = new Map()
     }
+    missingAnchorKeys.value = null
     return
   }
   await nextTick()
@@ -509,7 +514,22 @@ async function refreshAnchorBoxes(): Promise<void> {
     resolved.set(anchorKey(box), box)
   }
   anchorBoxes.value = resolved
+  missingAnchorKeys.value = new Set(
+    missingAnchors(requestedAnchors.value).map(anchorKey),
+  )
 }
+
+/**
+ * Clicks aiming at elements this snapshot does not have: drawn at their
+ * document fraction, and past a threshold a sign the page changed since it
+ * was captured (see anchorDrift).
+ */
+const drift = computed(() => {
+  const missing = missingAnchorKeys.value
+  return missing
+    ? anchorDrift(points.value, (anchor) => missing.has(anchorKey(anchor)))
+    : null
+})
 
 watch(
   [requestedAnchors, tier, renderHeight, overlayWidth],
@@ -775,6 +795,29 @@ const statusStrip = computed<StatusStrip | null>(() => {
               snapshot.value.maxBytes ?? DEFAULT_SNAPSHOT_BYTE_CAP,
             ),
           }),
+          secondary: snapshotSettingsAction(),
+        }
+      : null,
+    overlayMode.value === 'clicks' && drift.value?.significant
+      ? {
+          tone: 'warning',
+          icon: 'i-ph-git-diff',
+          title: t('page.marketing.pages.preview.drift', {
+            share: String(
+              formatPercentage(drift.value.share, locale.value, {
+                maximumFractionDigits: 0,
+              }),
+            ),
+          }),
+          description: t('page.marketing.pages.preview.drift_hint', {
+            date: snapshot.value
+              ? formatShortDate(snapshot.value.capturedAt, locale.value)
+              : '',
+          }),
+          action: {
+            label: t('page.marketing.pages.reset.page_button'),
+            run: () => void resetPageHeatmap(),
+          },
           secondary: snapshotSettingsAction(),
         }
       : null,
