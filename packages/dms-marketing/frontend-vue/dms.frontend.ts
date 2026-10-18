@@ -2,6 +2,7 @@ import { defineAsyncComponent, type Component } from 'vue'
 import type { DmsFrontendModule } from '#dms/frontend-module'
 import { dashboardTrackingPlugin } from './app/plugins/dashboard-tracking.client'
 import funnelStepsDataType from './app/plugins/funnel-steps-data-type.client'
+import { legacyWebsiteEditLink } from './app/composables/useMarketingRoutes'
 import { dashboardTrackingOptions } from './app/utils/dashboard-tracker'
 
 interface VueModule {
@@ -29,6 +30,14 @@ const frontendModule: DmsFrontendModule = {
         defineAsyncComponent(async () => (await loader()).default),
       )
     }
+    // The Websites page's settings drawer became a modal, `?edit=<id>`
+    // the table's `?record=<id>`: an old link still opens them.
+    sdk.registerMiddleware(
+      'marketing-legacy-website-edit',
+      (to: { path: string; query: Record<string, unknown> }) =>
+        legacyWebsiteEditLink(to) ?? undefined,
+      { global: true },
+    )
     // Client-only: the display it registers carries callables, which the SSR
     // payload strips.
     sdk.registerPlugin(funnelStepsDataType, { clientOnly: true })

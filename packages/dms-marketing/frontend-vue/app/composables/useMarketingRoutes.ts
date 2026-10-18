@@ -71,33 +71,61 @@ export function funnelBuilderLink(
   })
 }
 
-/** A setting of the Websites page's edit drawer a link can open on. */
+/** A setting of the Websites page's settings modal a link can open on. */
 export type WebsiteSetting = 'snapshots'
 
+const WEBSITES_PATH = `${MODULE_BASE}/websites`
+
 /**
- * The Websites page; with `edit`, its settings drawer opened on that site,
- * scrolled to `setting` when given — where a setting shown elsewhere (the
- * heatmap preview's snapshot state) links to.
+ * The Websites page; with `record`, the settings modal of that site open
+ * (the table's deep link), scrolled to `setting` when given — where a
+ * setting shown elsewhere (the heatmap preview's snapshot state) links to.
  */
 export function websitesLink(
-  edit?: string | null,
+  record?: string | null,
   setting?: WebsiteSetting,
 ): string {
-  return withQuery(`${MODULE_BASE}/websites`, {
-    edit,
-    setting: edit ? setting : null,
+  return withQuery(WEBSITES_PATH, {
+    record,
+    setting: record ? setting : null,
   })
 }
 
-/** The drawer target of a Websites page URL, null when it names none. */
-export function websiteSettingTarget(
+/** The setting a Websites page URL scrolls the open modal to, if any. */
+export function websiteSettingOf(
   query: Record<string, unknown>,
-): { id: string; setting?: WebsiteSetting } | null {
-  const id = query.edit
-  if (typeof id !== 'string' || !id) {
+): WebsiteSetting | undefined {
+  return query.setting === 'snapshots' ? 'snapshots' : undefined
+}
+
+interface RouteLike {
+  path: string
+  query: Record<string, unknown>
+}
+
+/**
+ * The settings used to open in a drawer named by `?edit=<id>`; the modal
+ * that replaced it is the table's `?record=<id>`. An old link (a bookmark,
+ * a project's own) lands on its new form, `setting` kept; null for every
+ * other URL.
+ */
+export function legacyWebsiteEditLink(route: RouteLike): string | null {
+  const { edit, setting, ...rest } = route.query
+  if (route.path !== WEBSITES_PATH || typeof edit !== 'string' || !edit) {
     return null
   }
-  return query.setting === 'snapshots' ? { id, setting: 'snapshots' } : { id }
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(rest)) {
+    if (typeof value === 'string') {
+      params.set(key, value)
+    }
+  }
+  params.set('record', edit)
+  const kept = websiteSettingOf({ setting })
+  if (kept) {
+    params.set('setting', kept)
+  }
+  return `${WEBSITES_PATH}?${params.toString()}`
 }
 
 /** The install guide: a new website, or the one `website` names. */

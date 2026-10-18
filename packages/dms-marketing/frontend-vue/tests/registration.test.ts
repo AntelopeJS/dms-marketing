@@ -16,7 +16,10 @@ const BACKEND_ADDRESSED = [
   'FunnelTemplates',
   'FunnelReport',
   'FunnelBuilder',
-  'WebsitesGrid',
+  'WebsiteCard',
+  'WebsiteSettings',
+  'WebsiteCreate',
+  'FirstRun',
   'InstallGuide',
   'FunnelStepsInput',
   'ExperimentInput',
@@ -66,4 +69,33 @@ it('registers the funnel-steps DataType plugin client-side only', async () => {
 
   expect(registerPlugin).toHaveBeenCalledTimes(1)
   expect(registerPlugin.mock.calls[0]![1]).toEqual({ clientOnly: true })
+})
+
+it('sends an old Websites drawer link to the settings modal, on every route', async () => {
+  const registerMiddleware = vi.fn()
+  await frontendModule.setup({
+    options: { public: {} },
+    registerComponent: vi.fn(),
+    registerPage: vi.fn(),
+    registerDynamicPage: vi.fn(),
+    registerLayout: vi.fn(),
+    registerErrorPage: vi.fn(),
+    registerPlugin: vi.fn(),
+    registerMiddleware,
+    provide: vi.fn(),
+    use: vi.fn(),
+  })
+
+  expect(registerMiddleware).toHaveBeenCalledTimes(1)
+  const [, handler, options] = registerMiddleware.mock.calls[0]!
+  expect(options).toEqual({ global: true })
+  expect(
+    handler({
+      path: '/modules/marketing/websites',
+      query: { edit: 'site-1', setting: 'snapshots' },
+    }),
+  ).toBe('/modules/marketing/websites?record=site-1&setting=snapshots')
+  expect(
+    handler({ path: '/modules/marketing/websites', query: {} }),
+  ).toBeUndefined()
 })

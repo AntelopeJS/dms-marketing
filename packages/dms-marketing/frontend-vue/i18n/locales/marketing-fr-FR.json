@@ -236,9 +236,9 @@
           "description": "Affichée tant que le site n'a envoyé aucune page vue, avec un lien vers le guide d'installation.",
           "name": "Alerte première page vue"
         },
-        "websites_grid": {
-          "description": "Les sites suivis et leurs paramètres.",
-          "name": "Sites"
+        "websites_table": {
+          "name": "Sites",
+          "description": "Les sites suivis en cartes, chacune ouvrant ses paramètres."
         }
       },
       "builder": {
@@ -1083,7 +1083,10 @@
         },
         "column": {
           "domain": "Domaine",
-          "name": "Nom"
+          "name": "Nom",
+          "tracking": "Suivi",
+          "snapshots": "Instantanés de page",
+          "created": "Ajouté"
         },
         "create": "Ajouter un site",
         "delete": {
@@ -1113,13 +1116,6 @@
           "confirm_none": "Modifier",
           "description_none": "Le site ne détient encore aucun instantané. Les prochaines visites échantillonnées prendront ses pages avec le nouveau réglage.",
           "title_none": "Modifier les réglages d'instantané du site ?"
-        },
-        "drawer": {
-          "added": "ajouté le {date}",
-          "close": "Fermer",
-          "danger": "Zone de danger",
-          "eyebrow": "Site",
-          "general": "Général"
         },
         "error": "Impossible de charger les sites",
         "fields": {
@@ -1169,7 +1165,22 @@
         "edit_named": "Paramètres du site {name}",
         "snippet_named": "Balise du traceur du site {name}",
         "open_overview_named": "Ouvrir la vue d'ensemble du site {name}",
-        "finish_install_named": "Terminer l'installation du site {name}"
+        "finish_install_named": "Terminer l'installation du site {name}",
+        "search": "Rechercher un site",
+        "menu_named": "Actions pour {name}",
+        "edit": "Paramètres",
+        "no_match": "Aucun site ne correspond à ces filtres.",
+        "count": "{count} site | {count} sites",
+        "modal": {
+          "title": "Paramètres du site",
+          "general": "Général",
+          "danger": "Zone de danger",
+          "added": "ajouté le {date}"
+        },
+        "create_modal": {
+          "title": "Ajouter un site",
+          "description": "Nommez le site et son domaine ; le guide d'installation vous donne ensuite la balise à coller."
+        }
       }
     }
   }

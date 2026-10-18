@@ -24,7 +24,10 @@ export interface MarketingRejectedSource {
   lastAt: number
 }
 
-/** One card of the Websites page (GET /api/marketing/websites/summary). */
+/**
+ * One card of the Websites page: the computed fields a row of the websites
+ * table (GET /api/marketing/tables/websites/list) carries.
+ */
 export interface MarketingWebsiteCard extends ContextWebsite {
   extraDomains: string[]
   snapshotsEnabled: boolean

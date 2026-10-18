@@ -1,16 +1,18 @@
+import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
+import { TableView } from "@antelopejs/interface-dms/base/table-view";
 import { ButtonVariant } from "@antelopejs/interface-dms/base/types/button";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { DefaultLayout } from "@antelopejs/interface-dms/base/layouts";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { PageController, RegisterPage } from "@antelopejs/interface-dms/page";
+import { websitesDataAPI } from "@/data-api/websites";
 import { MarketingSessionsModel } from "@/db";
 import { listTenantWebsites } from "@/services/tenant-website";
 import {
-  API_BASE_PATH,
   MARKETING_MODULE_ID,
-  MARKETING_MODULE_PATH,
+  WEBSITES_REALTIME_TOPIC,
 } from "@/types/constants";
-import { collectionPausedBanner, MarketingBlock } from "../blocks";
+import { blockMeta, collectionPausedBanner } from "../blocks";
 import { setupCategory } from "../module";
 
 /** Websites still waiting for their first pageview: the sidebar badge. A
@@ -29,10 +31,67 @@ async function countWaitingWebsites(tenantId: string): Promise<number> {
   return websites.filter((website) => !activity.has(website._id)).length;
 }
 
+const WEBSITES_PREFIX = "$page.marketing.websites.";
+
 /**
- * Websites — one card per site with its state, volumes, accepted hosts and
- * capture options, and a settings drawer to edit, configure or delete it.
- * "Add a website" opens the install guide, which creates the site.
+ * One card per site, drawn by the module's own card component (state,
+ * volumes, accepted hosts, capture options), over the websites data
+ * controller: the stock toolbar searches, filters, sorts and counts them. A
+ * click on a card, or its pencil, opens the site's settings in a modal;
+ * `?record=<id>` opens it from a link.
+ */
+const websitesTable = TableView(websitesDataAPI, {
+  labelKey: "name",
+  displays: [{ id: "cards" }, { id: "table" }],
+  defaultDisplay: "cards",
+  card: { component: CustomComponent("DmsMarketingWebsiteCard") },
+  defaultSort: { field: "name", desc: false },
+  rowClick: "single",
+  searchPlaceholder: `${WEBSITES_PREFIX}search`,
+  // Writes go through /api/marketing/websites, which publish here.
+  realtimeTopic: WEBSITES_REALTIME_TOPIC,
+  rowActions: {
+    add: false,
+    edit: false,
+    delete: false,
+    details: false,
+    duplicate: false,
+    copyLink: false,
+    menuLabel: `${WEBSITES_PREFIX}menu_named`,
+    custom: [
+      {
+        id: "settings",
+        label: `${WEBSITES_PREFIX}edit`,
+        icon: "i-ph-pencil-simple",
+        isDefault: true,
+        deepLink: true,
+        target: {
+          type: "modal",
+          size: "3xl",
+          title: `${WEBSITES_PREFIX}modal.title`,
+          component: CustomComponent("DmsMarketingWebsiteSettings"),
+        },
+      },
+    ],
+  },
+  emptyStates: {
+    firstRun: {
+      title: "$page.marketing.first_run.title",
+      component: CustomComponent("DmsMarketingFirstRun"),
+    },
+    filtered: { icon: "i-ph-globe", title: `${WEBSITES_PREFIX}no_match` },
+    error: { title: `${WEBSITES_PREFIX}error` },
+  },
+  footer: {
+    countLabel: `${WEBSITES_PREFIX}count`,
+    hint: `${WEBSITES_PREFIX}privacy`,
+  },
+});
+
+/**
+ * Websites — the sites of the workspace as cards (or a grid), each opening
+ * its settings in a modal to edit, configure or delete it. "Add a website"
+ * opens a modal that creates the site, then the install guide on it.
  */
 @RegisterPage()
 export class MarketingWebsitesPage extends PageController(
@@ -53,20 +112,21 @@ export class MarketingWebsitesPage extends PageController(
         icon: "i-ph-plus",
         variant: ButtonVariant.solid,
         color: "primary",
-        target: { type: "page", url: `${MARKETING_MODULE_PATH}/install` },
+        target: {
+          type: "modal",
+          title: "$page.marketing.websites.create_modal.title",
+          description: "$page.marketing.websites.create_modal.description",
+          component: CustomComponent("DmsMarketingWebsiteCreate"),
+        },
       },
     ],
   }),
 ) {
-  static content = MarketingBlock(
-    "WebsitesGrid",
-    "websites_grid",
-    "i-ph-globe",
-    {
-      fetchUrl: `${API_BASE_PATH}/websites/summary`,
-    },
-  )
-    .child("collection", collectionPausedBanner())
+  // The module-wide "collection paused" notice, above the cards.
+  static collection = collectionPausedBanner();
+
+  static websites = websitesTable
+    .meta(blockMeta("websites_table", "i-ph-globe"))
     .navBadge({
       // In warning: a grey "Websites 1" reads as one website, not one to check.
       count: async (ctx) => ({

@@ -14,7 +14,6 @@ import type {
   MarketingScrollDepth,
   MarketingSnapshotLayout,
   MarketingWebsite,
-  MarketingWebsiteCard,
   MarketingWebsiteDeletionImpact,
 } from './useMarketingApi'
 
@@ -68,11 +67,6 @@ export function useMarketingContextRead(
     refreshOnPageRefresh: false,
     refreshInterval: options.refreshInterval,
   })
-}
-
-/** The Websites page's cards. */
-export function useWebsiteCards(): ApiDataResult<MarketingWebsiteCard[]> {
-  return useApiData<MarketingWebsiteCard[]>('/api/marketing/websites/summary')
 }
 
 /** The tenant's websites, with their capture options. */

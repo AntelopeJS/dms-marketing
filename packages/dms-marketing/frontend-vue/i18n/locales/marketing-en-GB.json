@@ -236,9 +236,9 @@
           "description": "Shown while the website has sent no pageview, with a link to the install guide.",
           "name": "First pageview notice"
         },
-        "websites_grid": {
-          "description": "The tracked websites and their settings.",
-          "name": "Websites"
+        "websites_table": {
+          "name": "Websites",
+          "description": "The tracked websites as cards, each opening its settings."
         }
       },
       "builder": {
@@ -1083,7 +1083,10 @@
         },
         "column": {
           "domain": "Domain",
-          "name": "Name"
+          "name": "Name",
+          "tracking": "Tracking",
+          "snapshots": "Page snapshots",
+          "created": "Added"
         },
         "create": "Add a website",
         "delete": {
@@ -1113,13 +1116,6 @@
           "confirm_none": "Change",
           "description_none": "The site holds no snapshot yet. The next sampled visits capture its pages under the new setting.",
           "title_none": "Change the site's snapshot settings?"
-        },
-        "drawer": {
-          "added": "added {date}",
-          "close": "Close",
-          "danger": "Danger zone",
-          "eyebrow": "Website",
-          "general": "General"
         },
         "error": "Couldn't load the websites",
         "fields": {
@@ -1169,7 +1165,22 @@
         "edit_named": "Settings of {name}",
         "snippet_named": "Tracker snippet for {name}",
         "open_overview_named": "Open the {name} overview",
-        "finish_install_named": "Finish installing {name}"
+        "finish_install_named": "Finish installing {name}",
+        "search": "Search websites",
+        "menu_named": "Actions for {name}",
+        "edit": "Settings",
+        "no_match": "No website matches these filters.",
+        "count": "{count} website | {count} websites",
+        "modal": {
+          "title": "Website settings",
+          "general": "General",
+          "danger": "Danger zone",
+          "added": "added {date}"
+        },
+        "create_modal": {
+          "title": "Add a website",
+          "description": "Name the site and its domain; the install guide then gives you the tag to paste."
+        }
       }
     }
   }
