@@ -1,4 +1,5 @@
 import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { unrollSnapshotScrollRoot } from '../utils/snapshotScrollRoot'
 
 /**
  * Geometry of a page snapshot rendered in a same-origin, script-less frame.
@@ -10,6 +11,10 @@ import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
  * from a reading taken through it runs away, every `100vh` section growing
  * one tick at a time, exactly as it would with a live page. Once published,
  * later growth is ignored until `reset()`.
+ *
+ * A capture of an app shell scrolling an inner panel is unrolled first (see
+ * snapshotScrollRoot): the reading is then the whole content, not the
+ * visitor's window.
  */
 
 /** Fallback document height when nothing measured it. */
@@ -112,6 +117,7 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     if (!doc || closed) {
       return
     }
+    unrollSnapshotScrollRoot(doc)
     void (doc.fonts?.ready ?? Promise.resolve()).then(() => {
       if (closed) {
         return
