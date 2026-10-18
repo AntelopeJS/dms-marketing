@@ -17,12 +17,19 @@
  * an element with an empty box of its size. `maskText` masks every text
  * node and text attribute of the page; data-* and link paths stay, since
  * styles select on them.
+ *
+ * A page whose document does not scroll, an inner container doing it
+ * instead (see the scroll root in static/tracker.js), is captured with that
+ * container marked `data-marketing-scroll-root` and the height of its whole
+ * content recorded: the preview unrolls it, as tall as the page really is.
  */
 (() => {
   const CONFIG_GLOBAL = "__dmsMarketingSnapshotConfig";
   const CONTEXT_GLOBAL = "__dmsMarketingSnapshotContext";
   const MASK_MARKER = "dms-marketing-mask";
   const BLOCK_MARKER = "dms-marketing-block";
+  /** Marks the page's inner scroll container in the capture (see above). */
+  const SCROLL_ROOT_ATTRIBUTE = "data-marketing-scroll-root";
   const MASK_CHAR = "x";
   /** Mirrors the backend MAX_URL_LENGTH. */
   const MAX_URL_LENGTH = 500;
@@ -518,6 +525,9 @@
   let styles = null;
   let pendingSheets = [];
   let placeholderNonce = "";
+  /** The page's inner scroll container during a capture, null when the
+   * document scrolls. */
+  let scrollRootElement = null;
 
   /** Comments are never serialized, and markup in text or attributes is
    * escaped: the marker cannot occur otherwise. */
@@ -642,6 +652,12 @@
         styles.noteVariables(value);
       }
       out += ` ${name}="${escapeAttribute(value)}"`;
+    }
+    if (
+      element === scrollRootElement &&
+      !element.hasAttribute(SCROLL_ROOT_ATTRIBUTE)
+    ) {
+      out += ` ${SCROLL_ROOT_ATTRIBUTE}=""`;
     }
     return out;
   }
@@ -822,12 +838,33 @@
     }).catch(() => {});
   }
 
+  /** The tracker's detection; a tracker older than this script has none,
+   * and the document is taken as scrolling. */
+  function findScrollRoot() {
+    try {
+      return typeof context.scrollRoot === "function"
+        ? context.scrollRoot() || null
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** The whole content: the document, plus what the scroll root hides. */
+  function contentSize(root, scrollRoot) {
+    const hidden = scrollRoot
+      ? Math.max(scrollRoot.scrollHeight - scrollRoot.clientHeight, 0)
+      : 0;
+    return { width: root.scrollWidth, height: root.scrollHeight + hidden };
+  }
+
   async function capture() {
     // The visitor navigated on since the negotiation: this is another page.
     if (location.pathname !== context.path) {
       return;
     }
     const root = document.documentElement;
+    scrollRootElement = findScrollRoot();
     const page = {
       website: context.website,
       token: config.token,
@@ -843,9 +880,10 @@
     const html = serializeDocument();
     const body = JSON.stringify({
       ...page,
-      document: { width: root.scrollWidth, height: root.scrollHeight },
+      document: contentSize(root, scrollRootElement),
       html,
     });
+    scrollRootElement = null;
     // The cap applies to what travels: the compressed upload when there is
     // one.
     const compressed = await gzip(body);
@@ -866,6 +904,7 @@
 
   if (isModule) {
     module.exports = {
+      contentSize,
       createStyleCollector,
       splitSelectorList,
       styleText,

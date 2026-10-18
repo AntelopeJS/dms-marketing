@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const { gzipSync } = require("node:zlib");
 const test = it;
 const {
+  contentSize,
   createStyleCollector,
   splitSelectorList,
   styleText,
@@ -348,4 +349,17 @@ test("a stored document stays within a MongoDB row", function () {
   assert.ok(huge.bytes > MAX_STORED_SNAPSHOT_CHARS);
   // The bound leaves room under 16 MiB for the row's other fields.
   assert.ok(MAX_STORED_SNAPSHOT_CHARS < 16 * 1024 * 1024 - 64 * 1024);
+});
+
+// --- Inner scroll root --------------------------------------------------------
+
+test("a capture records the whole content of an inner scroll root", () => {
+  const root = { scrollWidth: 1440, scrollHeight: 899 };
+  // The document alone: what it measures.
+  assert.deepEqual(contentSize(root, null), { width: 1440, height: 899 });
+  // A panel showing 809 px of 2580: the 1771 it hides are added.
+  assert.deepEqual(
+    contentSize(root, { scrollHeight: 2580, clientHeight: 809 }),
+    { width: 1440, height: 2670 },
+  );
 });
