@@ -34,6 +34,7 @@ const props = withDefaults(
   { periodScope: undefined, componentId: undefined, pageId: undefined },
 )
 
+/** The channels the route always lists, each in its row: the skeleton's. */
 const SKELETON_ROWS = 6
 /** The key the campaigns table is mounted under on the page: its tab reads `?campaigns.tab=`. */
 const CAMPAIGNS_TAB_QUERY = 'campaigns.tab'
@@ -182,8 +183,15 @@ function showCampaigns(channel: string): void {
           :key="index"
           class="border-t border-default"
         >
-          <td class="px-4 py-3" colspan="5">
+          <!-- A channel row's size: its icon well sets the height. -->
+          <td class="w-10 py-2.5 ps-4">
+            <USkeleton class="size-8 rounded-[9px]" />
+          </td>
+          <td class="px-2 py-2.5" colspan="3">
             <USkeleton class="h-4 w-full" />
+          </td>
+          <td class="px-4 py-2.5">
+            <USkeleton class="ms-auto h-4 w-12" />
           </td>
         </tr>
       </tbody>
