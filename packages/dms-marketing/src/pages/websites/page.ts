@@ -34,6 +34,18 @@ async function countWaitingWebsites(tenantId: string): Promise<number> {
 const WEBSITES_PREFIX = "$page.marketing.websites.";
 
 /**
+ * The card drawn for each site, about twice the grid's default width: the
+ * row stretches as many as fit to fill it, two or three side by side on a
+ * desktop. `minWidth` needs a dms whose TableView takes it (dms #344); an
+ * older one ignores it and keeps its default width. Held in a constant so
+ * the option passes the interface types of either.
+ */
+const websiteCard = {
+  component: CustomComponent("DmsMarketingWebsiteCard"),
+  minWidth: "500px",
+};
+
+/**
  * One card per site, drawn by the module's own card component (state,
  * volumes, accepted hosts, capture options), over the websites data
  * controller: the stock toolbar searches, filters, sorts and counts them. A
@@ -44,7 +56,7 @@ const websitesTable = TableView(websitesDataAPI, {
   labelKey: "name",
   displays: [{ id: "cards" }, { id: "table" }],
   defaultDisplay: "cards",
-  card: { component: CustomComponent("DmsMarketingWebsiteCard") },
+  card: websiteCard,
   defaultSort: { field: "name", desc: false },
   rowClick: "single",
   searchPlaceholder: `${WEBSITES_PREFIX}search`,

@@ -127,6 +127,10 @@ describe("the Websites table", () => {
       cards.options.card.component.componentName,
       "DmsMarketingWebsiteCard",
     );
+    // About twice the default width; a dms without the option drops it.
+    if ("minWidth" in cards.options.card) {
+      assert.equal(cards.options.card.minWidth, "500px");
+    }
     assert.equal(options.rowClick, "single");
     assert.equal(options.realtimeTopic, WEBSITES_REALTIME_TOPIC);
   });
