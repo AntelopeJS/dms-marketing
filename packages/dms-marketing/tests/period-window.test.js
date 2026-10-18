@@ -76,6 +76,35 @@ test("no comparison bounds means no comparison window", () => {
   );
 });
 
+test("a previous-year comparison reads the same days a year before", () => {
+  const query = {
+    from: "2026-09-08T00:00:00.000Z",
+    to: "2026-09-14T23:59:59.999Z",
+    compareFrom: "2025-09-08T00:00:00.000Z",
+    compareTo: "2025-09-14T23:59:59.999Z",
+    comparison: "previous-year",
+  };
+  const compare = resolveCompareWindow(query);
+  assert.deepEqual(
+    [compare.firstDay, compare.lastDay, compare.days],
+    [utcMidnight("2025-09-08"), utcMidnight("2025-09-14"), 7],
+  );
+  assert.notEqual(
+    compare.lastDay,
+    previousWindow(resolveQueryWindow(query)).lastDay,
+  );
+  assert.equal(comparisonKindOf(query), "previous-year");
+  // "No comparison": the scope sends no comparison bounds.
+  assert.equal(
+    resolveCompareWindow({
+      from: query.from,
+      to: query.to,
+      comparison: "none",
+    }),
+    null,
+  );
+});
+
 test("the previous window has the same length and ends the day before", () => {
   const window = resolveQueryWindow({
     from: "2026-09-08T00:00:00.000Z",

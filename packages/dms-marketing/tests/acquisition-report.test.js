@@ -117,8 +117,10 @@ test("every channel is listed, sorted by sessions, with its share", () => {
     compare: null,
     compareRows: [],
   };
-  const { items, total } = channelsPayload(read);
+  const { items, total, compared } = channelsPayload(read);
   assert.equal(total, 10);
+  // No comparison window: the card leaves the change column out.
+  assert.equal(compared, false);
   assert.equal(items.length, 6);
   assert.deepEqual(
     items.slice(0, 2).map((item) => [item.id, item.share]),
@@ -265,6 +267,7 @@ test("comparison days whose top maps were emptied give no channel delta", () => 
   };
   const payload = channelsPayload(read);
   assert.equal(payload.compareUnavailable, true);
+  assert.equal(payload.compared, true);
   assert.ok(payload.items.every((item) => item.delta === null));
 });
 

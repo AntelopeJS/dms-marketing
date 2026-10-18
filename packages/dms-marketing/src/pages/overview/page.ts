@@ -26,7 +26,6 @@ import {
 import { analyticsCategory } from "../module";
 
 const KPI_PREFIX = "$page.marketing.overview.kpis.";
-const COMPARE_LABEL = "$page.marketing.context.vs_previous";
 
 function volumeKpi(metric: string, icon: string) {
   return KpiCard({
@@ -38,7 +37,6 @@ function volumeKpi(metric: string, icon: string) {
     // The trend badge carries the change: the line only draws the days, and
     // never reads as a fall nobody compared.
     sparklineAccent: "primary",
-    compareLabel: COMPARE_LABEL,
     fetchUrl: websiteUrl(`${BLOCKS_API}/kpi?metric=${metric}`),
     periodScope: MARKETING_PERIOD_SCOPE,
   }).meta(blockMeta(`kpi_${metric.replaceAll("-", "_")}`, icon));

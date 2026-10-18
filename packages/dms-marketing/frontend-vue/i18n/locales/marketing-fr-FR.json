@@ -406,8 +406,8 @@
         "switch_error": "Impossible de passer sur ce site",
         "switch_website": "Changer de site",
         "utc_days": "Les statistiques sont comptées par jour UTC : chaque jour affiché ici commence à {time}, heure locale.",
-        "vs_previous": "vs période précédente",
         "vs_previous_short": "vs précédente",
+        "vs_previous_year_short": "vs année précédente",
         "waiting_guide": {
           "action": "Ouvrir le guide d'installation",
           "description": "Ajoutez le traceur au site, puis ouvrez une de ses pages : les premiers chiffres apparaissent ici en moins d'une minute.",
@@ -722,6 +722,7 @@
         "coverage": {
           "period_title": "Les funnels ne couvrent cette période qu'à partir du {date}",
           "previous_title": "Pas de comparaison avec la période précédente",
+          "previous_year_title": "Pas de comparaison avec l'année précédente",
           "description": "Les funnels sont calculés sur les événements bruts, conservés à partir du {date} : les jours antérieurs ne comptent rien, et une période de comparaison qu'ils ne couvrent pas est écartée plutôt qu'affichée comme une énorme variation."
         }
       },

@@ -8,6 +8,7 @@ import type { ConfirmDialog } from "@antelopejs/interface-dms/base/types/confirm
 import type { Funnel } from "@/db/tables/funnels.table";
 import { MARKETING_MODULE_PATH } from "@/types/constants";
 import { deltaTone, percentText } from "./composed";
+import type { ComparisonKind } from "./period";
 import type { FunnelSummaryRow } from "./funnel-report";
 
 const ROW_PREFIX = "$page.marketing.funnels.row.";
@@ -131,7 +132,10 @@ const day = (value: number) => ({
   format: "day" as const,
 });
 
-function comparisonOf(row: FunnelSummaryRow): CellSubline | null {
+function comparisonOf(
+  row: FunnelSummaryRow,
+  comparison: ComparisonKind,
+): CellSubline | null {
   const experiment = row.experiment;
   if (experiment?.status === "running" && experiment.since) {
     return {
@@ -165,7 +169,7 @@ function comparisonOf(row: FunnelSummaryRow): CellSubline | null {
   const tone = deltaTone(row.deltaPoints);
   return {
     text: {
-      key: `${COMPOSE_PREFIX}delta`,
+      key: `${COMPOSE_PREFIX}${comparison === "previous-year" ? "delta_previous_year" : "delta"}`,
       params: {
         sign,
         value: {
@@ -178,10 +182,14 @@ function comparisonOf(row: FunnelSummaryRow): CellSubline | null {
   };
 }
 
-/** `{ results, total }` for the funnels table, narrowed to one kind. */
+/**
+ * `{ results, total }` for the funnels table, narrowed to one kind; each
+ * change is named after the `comparison` it is measured against.
+ */
 export function funnelTablePayload(
   rows: FunnelSummaryRow[],
   kind: string | undefined,
+  comparison: ComparisonKind = "previous-period",
 ): { results: FunnelTableRow[]; total: number } {
   const results = rows
     .filter((row) => !kind || row.kind === kind)
@@ -196,7 +204,7 @@ export function funnelTablePayload(
       completed: row.completed,
       conversion: row.conversion,
       conversionText: percentText(row.conversion),
-      comparison: comparisonOf(row),
+      comparison: comparisonOf(row, comparison),
       status: row.experiment?.status ?? null,
     }));
   return { results, total: results.length };
@@ -257,7 +265,10 @@ export interface FunnelCoverage {
 }
 
 /** Why the numbers miss days or their comparison, when they do. */
-function coverageBanner(coverage: FunnelCoverage): BannerContent | null {
+function coverageBanner(
+  coverage: FunnelCoverage,
+  comparison: ComparisonKind,
+): BannerContent | null {
   if (coverage.since === null || (!coverage.period && !coverage.previous)) {
     return null;
   }
@@ -268,7 +279,7 @@ function coverageBanner(coverage: FunnelCoverage): BannerContent | null {
     icon: "i-ph-clock-counter-clockwise",
     title: coverage.period
       ? { key: `${COVERAGE_PREFIX}period_title`, params }
-      : `${COVERAGE_PREFIX}previous_title`,
+      : `${COVERAGE_PREFIX}${comparison === "previous-year" ? "previous_year_title" : "previous_title"}`,
     description: { key: `${COVERAGE_PREFIX}description`, params },
   };
 }
@@ -276,16 +287,20 @@ function coverageBanner(coverage: FunnelCoverage): BannerContent | null {
 /**
  * The banner above the funnels table, for a stock `Banner` that shows one:
  * days of the period raw events do not cover first (every row reads short),
- * then the running test ready to decide, then a comparison left out.
+ * then the running test ready to decide, then a comparison left out (named
+ * after the `comparison` it is).
  */
 export function winnerBanner(
   rows: FunnelSummaryRow[],
   coverage?: FunnelCoverage,
+  comparison: ComparisonKind = "previous-period",
 ): BannerContent | null {
   if (coverage?.period) {
-    return coverageBanner(coverage);
+    return coverageBanner(coverage, comparison);
   }
-  return winnerOf(rows) ?? (coverage ? coverageBanner(coverage) : null);
+  return (
+    winnerOf(rows) ?? (coverage ? coverageBanner(coverage, comparison) : null)
+  );
 }
 
 /**

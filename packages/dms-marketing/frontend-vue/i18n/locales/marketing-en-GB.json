@@ -406,8 +406,8 @@
         "switch_error": "Couldn't switch to this website",
         "switch_website": "Switch website",
         "utc_days": "Statistics are counted per UTC day: each day shown here starts at {time} your time.",
-        "vs_previous": "vs previous period",
         "vs_previous_short": "vs previous",
+        "vs_previous_year_short": "vs previous year",
         "waiting_guide": {
           "action": "Open the install guide",
           "description": "Add the tracker to the site, then open one of its pages: the first figures show up here within a minute.",
@@ -722,6 +722,7 @@
         "coverage": {
           "period_title": "Funnels cover this period from {date} only",
           "previous_title": "No comparison with the previous period",
+          "previous_year_title": "No comparison with the previous year",
           "description": "Funnels are computed from raw events, kept from {date} on: earlier days count nothing, and a comparison window they don't cover is left out rather than shown as a huge change."
         }
       },
