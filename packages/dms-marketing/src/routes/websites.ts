@@ -18,6 +18,7 @@ import {
   AuthTenantMember,
   AuthTenantOwner,
 } from "@antelopejs/interface-dms/guards";
+import { PublishMessage } from "@antelopejs/interface-dms/realtime";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { z } from "zod";
 import { WebsitesModel } from "@/db";
@@ -42,13 +43,13 @@ import {
 import {
   connectionStatus,
   websiteDeletionImpact,
-  websitesSummary,
 } from "@/services/website-report";
 import {
   API_BASE_PATH,
   HTTP_BAD_REQUEST,
   HTTP_CONFLICT,
   MAX_EXTRA_DOMAINS,
+  WEBSITES_REALTIME_TOPIC,
 } from "@/types/constants";
 
 const INVALID_WEBSITE_MESSAGE = "$page.marketing.errors.invalid_website";
@@ -94,6 +95,16 @@ async function assertHostsFree(website: Website): Promise<void> {
   }
 }
 
+/**
+ * Tells the Websites pages a site changed: they read their cards again. Only
+ * the id travels, and the reads stay tenant-scoped.
+ */
+function publishWebsiteChange(type: string, id: string): void {
+  void PublishMessage(WEBSITES_REALTIME_TOPIC, type, {
+    payload: { ids: [id] },
+  }).catch(() => undefined);
+}
+
 /** Minimal website CRUD, tenant-scoped through the JWT claim. */
 export class WebsitesController extends Controller(
   `${API_BASE_PATH}/websites`,
@@ -104,16 +115,6 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     return listTenantWebsites(getRequestTenantId(context));
-  }
-
-  /** The Websites page: one card per site. */
-  @Get("summary")
-  async summary(
-    @AuthTenantMember() _user: User,
-    @Context() context: RequestContext,
-  ) {
-    const tenantId = getRequestTenantId(context);
-    return websitesSummary(tenantId, await listTenantWebsites(tenantId));
   }
 
   /**
@@ -171,6 +172,7 @@ export class WebsitesController extends Controller(
     await GetModel(WebsitesModel).update(website);
     invalidateWebsiteCache(id);
     forgetAcceptedSources(website);
+    publishWebsiteChange("updated", id);
     return website;
   }
 
@@ -202,6 +204,7 @@ export class WebsitesController extends Controller(
     } as Website;
     await assertHostsFree(website);
     await GetModel(WebsitesModel).insert(website);
+    publishWebsiteChange("created", website._id);
     return website;
   }
 
@@ -264,6 +267,7 @@ export class WebsitesController extends Controller(
     invalidateWebsiteCache(id);
     invalidateExperimentDefinitions(id);
     forgetAcceptedSources(website);
+    publishWebsiteChange("updated", id);
     return website;
   }
 
@@ -284,6 +288,7 @@ export class WebsitesController extends Controller(
     await GetModel(WebsitesModel).delete(id);
     invalidateWebsiteCache(id);
     invalidateExperimentDefinitions(id);
+    publishWebsiteChange("deleted", id);
     return { deleted: id };
   }
 }

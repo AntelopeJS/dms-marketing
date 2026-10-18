@@ -71,6 +71,21 @@ export async function websitesSummary(
   return Promise.all(websites.map((website) => cardOf(website, activity)));
 }
 
+/**
+ * Each listed row with its card, in the list's order; a row whose card is
+ * missing (the site went between the two reads) is listed as it came.
+ */
+export function mergeWebsiteCards<Row extends { _id: string }>(
+  rows: Row[],
+  cards: WebsiteCard[],
+): Row[] {
+  const byId = new Map(cards.map((card) => [card.id, card]));
+  return rows.map((row) => {
+    const card = byId.get(row._id);
+    return card ? { ...row, ...card } : row;
+  });
+}
+
 /** What deleting a website discards, for its confirmation. */
 export interface WebsiteDeletionImpact {
   /** Every stored day, not a window: the rollups all go. */
