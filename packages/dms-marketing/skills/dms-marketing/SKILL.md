@@ -25,6 +25,10 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
 - Behind a proxy set the DMS `auth.trustedProxies`; the old `trustedProxyHops` option is gone.
 - One website row per tracked site (Websites page or `POST /api/marketing/websites {name, domain, extraDomains?}`).
   Its `domain` gates ingestion: the beacon's Origin must be that apex, a subdomain or an extra host.
+- The Websites page is a DMS TableView (cards display, plain grid on offer) over
+  `/api/marketing/tables/websites`, whose list answers each row with its card; "Add a website" and a site's
+  settings open in modals. Link a site's settings with `/modules/marketing/websites?record=<id>`
+  (`&setting=snapshots` scrolls to the snapshot switch); the old `?edit=<id>` still redirects there.
 
 ## Visitor site
 
@@ -40,7 +44,7 @@ const arm = await window.dmsMarketing?.variation("hero-cta");      // null = ren
 - The dashboard origin forwards the scripts and beacons because the module declares them `publicEndpoints`
   (renderer 0.6 refuses other cross-origin writes); the backend origin works too.
 - Never `type="module"` (breaks `document.currentScript`). Always guard with `?.`.
-- Snapshots (heatmap backdrops) are opt-in per site (Websites page, General tab, next to Collect data); mask with
+- Snapshots (heatmap backdrops) are opt-in per site (Websites page, a site's settings modal, General tab, next to Collect data); mask with
   `data-dms-marketing-mask` / `data-dms-marketing-block`. Captures drop transient overlays on their own (top
   layer, fixed/floating role=dialog/menu/listbox/tooltip, fixed toasts and toast viewports); block anything else
   per element. Captures inline only the CSS rules matching the page
