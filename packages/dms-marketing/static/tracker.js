@@ -45,6 +45,8 @@
  * `data-marketing-scroll-root` if there is one, else the largest visible
  * element scrolling vertically (overflow-y auto or scroll, content taller
  * than its box) that covers most of the window; the document otherwise.
+ * Scroll depth is measured on it, and click positions are taken in its
+ * content, as if the page were unrolled — which is how a capture draws it.
  */
 (() => {
   /** Global the tracker route injects the module settings through. */
@@ -288,6 +290,7 @@
     pageExcluded = isExcludedPath(lastPath);
     scrolledUrl = currentUrl();
     maxScrollDepth = -1;
+    scrollRootElement = null;
     if (!websiteId || pageExcluded) {
       return;
     }
@@ -383,15 +386,33 @@
     return best;
   }
 
+  /** Kept while it stays in the page and the document still does not
+   * scroll; looked for again otherwise — and on every new view. */
+  let scrollRootElement = null;
+
+  function scrollRoot() {
+    if (
+      !scrollRootElement ||
+      !scrollRootElement.isConnected ||
+      documentScrolls()
+    ) {
+      scrollRootElement = findScrollRoot();
+    }
+    return scrollRootElement;
+  }
+
   // --- Scroll depth (max reached per page, flushed on leave) ----------------
 
   function currentScrollDepth() {
-    const root = document.documentElement;
+    const inner = scrollRoot();
+    const root = inner || document.documentElement;
     const scrollable = root.scrollHeight - root.clientHeight;
     if (scrollable <= 0) {
       return PERCENT_SCALE;
     }
-    const scrolled = root.scrollTop || document.body.scrollTop || 0;
+    const scrolled = inner
+      ? inner.scrollTop
+      : root.scrollTop || document.body.scrollTop || 0;
     return Math.min(
       PERCENT_SCALE,
       Math.round((scrolled / scrollable) * PERCENT_SCALE),
@@ -405,7 +426,12 @@
     }
   }
 
-  window.addEventListener("scroll", measureScrollDepth, { passive: true });
+  // Captured on the document: an element's scroll does not bubble, and the
+  // window never hears it.
+  document.addEventListener("scroll", measureScrollDepth, {
+    capture: true,
+    passive: true,
+  });
 
   /**
    * Every sampled view reports a depth, scrolled or not: what shows without
@@ -527,6 +553,30 @@
     };
   }
 
+  /**
+   * Vertical position of a point in the page's content, and the content's
+   * height: with an inner scroll root, the range it hides is unrolled — a
+   * point inside it moves down by its scroll offset, one below it by the
+   * whole hidden range — so `dy` reads the same however far the visitor had
+   * scrolled it, and lines up with a capture of the whole page.
+   */
+  function contentPosition(point) {
+    const height = document.documentElement.scrollHeight;
+    const root = scrollRoot();
+    if (!root) {
+      return { y: point.pageY, height: height };
+    }
+    const hidden = root.scrollHeight - root.clientHeight;
+    const box = root.getBoundingClientRect();
+    let y = point.pageY;
+    if (point.clientY >= box.bottom) {
+      y += hidden;
+    } else if (point.clientY >= box.top) {
+      y += root.scrollTop;
+    }
+    return { y: y, height: height + hidden };
+  }
+
   document.addEventListener(
     "click",
     (event) => {
@@ -540,6 +590,7 @@
       }
       const doc = document.documentElement;
       const point = clickPoint(target, event);
+      const content = contentPosition(point);
       enqueue(
         Object.assign(base(), {
           kind: "click",
@@ -548,7 +599,7 @@
               x: normalized(point.clientX, innerWidth),
               y: normalized(point.clientY, innerHeight),
               dx: normalized(point.pageX, doc.scrollWidth),
-              dy: normalized(point.pageY, doc.scrollHeight),
+              dy: normalized(content.y, content.height),
               selector: shortSelector(target),
             },
             elementAnchor(target, point),
