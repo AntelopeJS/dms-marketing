@@ -28,11 +28,7 @@ export class MarketingPagesPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  // The pages panel leads with the website picker: the bar leaves it out.
-  static content = MarketingContext({
-    waitingGuide: true,
-    websitePicker: false,
-  }).child(
+  static content = MarketingContext({ waitingGuide: true }).child(
     "explorer",
     MarketingBlock("PagesExplorer", "pages_explorer", "i-ph-cursor-click", {
       periodScope: MARKETING_PERIOD_SCOPE,

@@ -1,11 +1,4 @@
-import {
-  computed,
-  inject,
-  ref,
-  type ComputedRef,
-  type InjectionKey,
-  type Ref,
-} from 'vue'
+import { computed, inject, type ComputedRef, type InjectionKey } from 'vue'
 
 /** `imported`: data, but only from an import — nothing proves the tag collects. */
 export type WebsiteState = 'live' | 'imported' | 'waiting' | 'paused'
@@ -29,22 +22,6 @@ export interface MarketingContextState {
   selected: ComputedRef<ContextWebsite | null>
   select: (id: string) => Promise<void>
   reload: () => Promise<void>
-  /** A switch is being saved: the picker shows it loading. */
-  switching: Ref<boolean>
-  /**
-   * Whether the bar shows the website picker. Off (`websitePicker: false`),
-   * a block of the page carries it (see utils/website-picker).
-   */
-  websitePicker: ComputedRef<boolean>
-  /** A website's state as the bar shows it, on the bar's clock. */
-  describe: (site: ContextWebsite) => ContextWebsiteState
-}
-
-/** A website's state in words: its dot, the full line, the compact one. */
-export interface ContextWebsiteState {
-  dot: string
-  line: string
-  short: string
 }
 
 export const MARKETING_CONTEXT_KEY: InjectionKey<MarketingContextState> =
@@ -66,8 +43,5 @@ function detachedContext(): MarketingContextState {
     selected: computed(() => null),
     select: async () => {},
     reload: async () => {},
-    switching: ref(false),
-    websitePicker: computed(() => true),
-    describe: () => ({ dot: '', line: '', short: '' }),
   }
 }

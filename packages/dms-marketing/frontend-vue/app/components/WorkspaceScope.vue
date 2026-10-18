@@ -8,10 +8,8 @@ import { ALL_WORKSPACES } from '../utils/workspace-scope'
  * Whose dashboard the heatmaps read: the viewer's workspace, another one,
  * or all of them combined (see utils/workspace-scope). Self-contained — the
  * options in, the scope out through `v-model` — so it can sit wherever the
- * view's website context sits: the pages panel's header, under the website
- * picker. Its note goes on a line of its own below, so it fits a narrow
- * panel. The parent renders it only when the backend offers two workspaces
- * or more: never to a workspace owner.
+ * view's website context sits. The parent renders it only when the backend
+ * offers two workspaces or more: never to a workspace owner.
  */
 const props = defineProps<{
   workspaces: MarketingWorkspace[]
@@ -82,7 +80,7 @@ const note = computed(() => {
 </script>
 
 <template>
-  <div class="flex min-w-0 flex-col items-start gap-1">
+  <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
     <UDropdownMenu :items="items" :content="{ align: 'start' }">
       <UButton
         color="neutral"
@@ -90,18 +88,17 @@ const note = computed(() => {
         size="sm"
         icon="i-ph-buildings"
         trailing-icon="i-ph-caret-up-down"
-        class="max-w-full"
         :aria-label="t('page.marketing.pages.workspace.switch')"
       >
-        <span class="shrink-0 text-muted">
+        <span class="text-muted">
           {{ t('page.marketing.pages.workspace.label') }}
         </span>
-        <span class="truncate font-semibold">{{ label }}</span>
+        <span class="font-semibold">{{ label }}</span>
       </UButton>
     </UDropdownMenu>
-    <p v-if="note" class="flex items-start gap-1.5 text-xs text-muted">
-      <UIcon name="i-ph-eye-slash" class="mt-px size-3.5 shrink-0" />
+    <span v-if="note" class="flex items-center gap-1.5 text-xs text-muted">
+      <UIcon name="i-ph-eye-slash" class="size-3.5 shrink-0" />
       {{ note }}
-    </p>
+    </span>
   </div>
 </template>

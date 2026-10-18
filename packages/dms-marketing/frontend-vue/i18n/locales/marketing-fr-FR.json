@@ -920,7 +920,6 @@
           "label": "Affichage",
           "scroll": "Défilement"
         },
-        "panel_header": "Site web et espace",
         "preview": {
           "all_masked": "Tout le texte est masqué",
           "approximate_layout": "Instantané {layout} affiché à {width} px",

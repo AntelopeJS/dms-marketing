@@ -4,14 +4,12 @@ import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import {
   MARKETING_CONTEXT_KEY,
   type ContextWebsite,
-  type ContextWebsiteState,
 } from '../composables/useMarketingContext'
 import { useMarketingApi } from '../composables/useMarketingApi'
 import { useMarketingContextRead } from '../composables/useMarketingReads'
 import { useMarketingNow } from '../composables/useMarketingNow'
 import { installLink } from '../composables/useMarketingRoutes'
 import { formatRelativeTime, initials, utcDayStart } from '../utils/format'
-import { barShowsWebsitePicker } from '../utils/website-picker'
 import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
 
 /**
@@ -33,9 +31,7 @@ import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
  * Its children render once the URL names one of the tenant's websites; with
  * no website at all the first-run hero takes their place, and with
  * `waitingGuide` a website still waiting for its first event shows the way
- * to its install guide instead. With `websitePicker: false` the bar leaves
- * the website picker to a block of the page (Pages & heatmaps carries it in
- * its pages panel), except while it renders none. A server render reads the context first: a
+ * to its install guide instead. A server render reads the context first: a
  * URL naming no website (or one the tenant does not have) is redirected to
  * the one saved, and the page renders on it.
  */
@@ -43,14 +39,12 @@ const props = withDefaults(
   defineProps<{
     periodScope?: string
     waitingGuide?: boolean
-    websitePicker?: boolean
     componentId?: string
     pageId?: string
   }>(),
   {
     periodScope: PERIOD_SCOPE,
     waitingGuide: false,
-    websitePicker: true,
     componentId: undefined,
     pageId: undefined,
   },
@@ -189,25 +183,11 @@ const cutHint = computed(() => {
     : ''
 })
 
-/** The blocks render, under the bar (the template's last branches). */
-const blocksShown = computed(
-  () =>
-    !failed.value &&
-    !!linkedId.value &&
-    !(props.waitingGuide && selected.value?.state === 'waiting'),
-)
-const websitePicker = computed(() =>
-  barShowsWebsitePicker(props.websitePicker, blocksShown.value),
-)
-
 provide(MARKETING_CONTEXT_KEY, {
   websites,
   selected,
   select,
   reload,
-  switching,
-  websitePicker,
-  describe,
 })
 
 // --- Clock -------------------------------------------------------------------
@@ -282,20 +262,6 @@ function stateLine(site: ContextWebsite): string {
   return t(`page.marketing.context.state.${site.state}`)
 }
 
-function describe(site: ContextWebsite): ContextWebsiteState {
-  const state = displayState(site)
-  const ages =
-    (state === 'live' || state === 'idle' || state === 'imported') &&
-    !!site.lastActivityAt
-  return {
-    dot: STATE_TONES[state],
-    line: stateLine(site),
-    short: ages
-      ? formatRelativeTime(site.lastActivityAt!, now.value, locale.value)
-      : t(`page.marketing.context.state.${site.state}`),
-  }
-}
-
 const websiteItems = computed(() => [
   websites.value.map((site) => ({
     label: site.name,
@@ -336,11 +302,7 @@ const utcHint = computed(() => {
     >
       <USkeleton v-if="!context && !failed" class="h-7 w-72" />
       <template v-else-if="selected">
-        <UDropdownMenu
-          v-if="websitePicker"
-          :items="websiteItems"
-          :content="{ align: 'start' }"
-        >
+        <UDropdownMenu :items="websiteItems" :content="{ align: 'start' }">
           <UButton
             color="neutral"
             variant="outline"
@@ -386,10 +348,7 @@ const utcHint = computed(() => {
           </template>
         </UDropdownMenu>
 
-        <span
-          v-if="websitePicker"
-          class="flex items-center gap-2 font-mono text-xs text-muted"
-        >
+        <span class="flex items-center gap-2 font-mono text-xs text-muted">
           <span
             class="size-2 rounded-full"
             :class="STATE_TONES[displayState(selected)]"
@@ -398,10 +357,7 @@ const utcHint = computed(() => {
           {{ stateLine(selected) }}
         </span>
 
-        <span
-          v-if="websitePicker"
-          class="hidden h-5 w-px bg-(--ui-border) md:block"
-        />
+        <span class="hidden h-5 w-px bg-(--ui-border) md:block" />
 
         <div class="flex flex-wrap items-center gap-2">
           <DmsPeriodSelector

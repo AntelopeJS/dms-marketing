@@ -920,7 +920,6 @@
           "label": "Overlay",
           "scroll": "Scroll"
         },
-        "panel_header": "Website and workspace",
         "preview": {
           "all_masked": "All text masked",
           "approximate_layout": "Showing the {layout} snapshot at {width}px",
