@@ -20,6 +20,11 @@ import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
 /**
  * The context bar of every analytics page and the gate in front of its blocks.
  *
+ * The bar is the DMS `PageToolbar`, as on every page with a period or live
+ * data: the website picker, its state and the period's hints lead, then the
+ * `LiveToggle` (Direct / Pause, with the time of the last read) and the
+ * period on the right, at the toolbar's size.
+ *
  * The page URL is the context: a reload, a copied link or Back opens on what
  * it names, and each tab keeps its own. The period is the DMS
  * `PeriodSelector` in the bar, publishing under `periodScope`, the scope every
@@ -65,8 +70,11 @@ const PRESETS = [
 const COMPARISONS = ['previous-period', 'previous-year', 'none']
 const CLOCK_TICK_MS = 15_000
 /**
- * How often the blocks of a period reaching today and the websites' last
- * events are read again (the pages' `live` option caps the blocks alike).
+ * How often, in Direct, the blocks of a period reaching today and the
+ * websites' last events are read again (the pages' `live` option caps the
+ * blocks alike). The page's live controller reads by itself only while the
+ * realtime stream is down, and these blocks have no topic: the bar keeps
+ * the clock.
  */
 const LIVE_REFRESH_MS = 60_000
 
@@ -75,6 +83,7 @@ const api = useMarketingApi()
 const toast = useToast()
 const route = useDmsRoute()
 const router = useDmsRouter()
+const live = usePageLive()
 
 const presetLabels = computed(() =>
   Object.fromEntries(
@@ -94,9 +103,10 @@ const comparisonLabels = computed(() =>
   ),
 )
 
-// The minute's activity of every website: read on the bar's own clock.
+// The minute's activity of every website: read on the bar's own clock,
+// which stops while the page is paused.
 const contextRead = useMarketingContextRead({
-  refreshInterval: LIVE_REFRESH_MS,
+  refreshInterval: () => (live.isPaused.value ? null : LIVE_REFRESH_MS),
 })
 const context = contextRead.data
 /**
@@ -194,9 +204,10 @@ provide(MARKETING_CONTEXT_KEY, {
 })
 
 // --- Clock -------------------------------------------------------------------
-// A period reaching today follows the clock: its blocks read again every
-// minute, through the page's live gate. The selector itself moves a day
-// preset on at midnight.
+// A period reaching today follows the clock: in Direct its blocks read again
+// every minute, through the page's live gate. Paused, nothing reads (nor
+// counts as missed), and Resume reads at once. The selector itself moves a
+// day preset on at midnight, and holds it while paused.
 
 const now = useMarketingNow(CLOCK_TICK_MS)
 
@@ -205,26 +216,28 @@ const reachesToday = computed(
   () => !!range.value && range.value.to.getTime() >= now.value,
 )
 
-/** Refresh: every block reads again, and the bar. */
-function refresh(): void {
-  refreshPageBlocks()
-  void reload()
-}
-
 /** A period reaching today: its blocks read again, through the live gate. */
 function liveRefresh(): void {
-  if (reachesToday.value && linkedId.value) {
+  if (!live.isPaused.value && reachesToday.value && linkedId.value) {
     refreshLivePageBlocks()
   }
 }
 
-let live: ReturnType<typeof setInterval> | null = null
+// Back in Direct: what moved while paused, and the websites' last events.
+watch(live.isPaused, (paused) => {
+  if (!paused) {
+    liveRefresh()
+    void reload()
+  }
+})
+
+let liveClock: ReturnType<typeof setInterval> | null = null
 onMounted(() => {
-  live = setInterval(liveRefresh, LIVE_REFRESH_MS)
+  liveClock = setInterval(liveRefresh, LIVE_REFRESH_MS)
 })
 onBeforeUnmount(() => {
-  if (live) {
-    clearInterval(live)
+  if (liveClock) {
+    clearInterval(liveClock)
   }
 })
 
@@ -269,10 +282,13 @@ const utcHint = computed(() => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <div
-      class="dms-card flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2"
+    <!-- Without a website, the bar names none, and neither says when the
+         page was read nor offers to read it again. -->
+    <DmsPageToolbarBlock
       role="toolbar"
       :aria-label="t('page.marketing.context.label')"
+      :show-updated-at="!!selected"
+      :refresh="!!selected"
     >
       <USkeleton v-if="!context && !failed" class="h-7 w-72" />
       <template v-else-if="selected">
@@ -331,57 +347,44 @@ const utcHint = computed(() => {
           {{ stateLine(selected) }}
         </span>
 
-        <span class="hidden h-5 w-px bg-(--ui-border) md:block" />
-
-        <div class="flex flex-wrap items-center gap-2">
-          <DmsPeriodSelector
-            :id="periodScope"
-            :component-id="`${componentId ?? 'marketing-context'}-period`"
-            :page-id="pageId"
-            variant="segmented"
-            size="xs"
-            align="left"
-            default-preset="last-30-days"
-            default-comparison="previous-period"
-            :presets="PRESETS"
-            :comparisons="COMPARISONS"
-            :preset-labels="presetLabels"
-            :comparison-labels="comparisonLabels"
-            show-range-label
-          />
+        <span
+          v-if="cutHint"
+          class="flex items-center gap-1 text-xs text-warning"
+          role="status"
+        >
+          <UIcon name="i-ph-warning" class="size-3.5 shrink-0" />
+          {{ cutHint }}
+        </span>
+        <UTooltip v-if="utcHint" :text="utcHint">
           <span
-            v-if="cutHint"
-            class="flex items-center gap-1 text-xs text-warning"
-            role="status"
+            class="cursor-help rounded border border-default px-1 font-mono text-[10px] text-dimmed"
+            tabindex="0"
+            :aria-label="utcHint"
           >
-            <UIcon name="i-ph-warning" class="size-3.5 shrink-0" />
-            {{ cutHint }}
+            UTC
           </span>
-          <UTooltip v-if="utcHint" :text="utcHint">
-            <span
-              class="cursor-help rounded border border-default px-1 font-mono text-[10px] text-dimmed"
-              tabindex="0"
-              :aria-label="utcHint"
-            >
-              UTC
-            </span>
-          </UTooltip>
-        </div>
+        </UTooltip>
 
-        <UButton
-          class="ms-auto"
-          icon="i-ph-arrow-clockwise"
-          color="neutral"
-          variant="ghost"
-          size="xs"
-          :aria-label="t('page.marketing.context.refresh')"
-          @click="refresh"
+        <DmsLiveToggleBlock variant="pill" />
+        <DmsPeriodSelector
+          :id="periodScope"
+          :component-id="`${componentId ?? 'marketing-context'}-period`"
+          :page-id="pageId"
+          variant="segmented"
+          default-preset="last-30-days"
+          default-comparison="previous-period"
+          comparison-control="menu"
+          range-label="relative"
+          :presets="PRESETS"
+          :comparisons="COMPARISONS"
+          :preset-labels="presetLabels"
+          :comparison-labels="comparisonLabels"
         />
       </template>
       <span v-else-if="!failed" class="text-sm text-muted">
         {{ t('page.marketing.context.no_website') }}
       </span>
-    </div>
+    </DmsPageToolbarBlock>
 
     <DmsEmptyState
       v-if="failed"

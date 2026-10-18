@@ -398,7 +398,6 @@
           "today": "Today"
         },
         "range_cut": "Only the last {days} days of this range are shown.",
-        "refresh": "Refresh",
         "state": {
           "imported": "Imported history only",
           "live": "Live",
