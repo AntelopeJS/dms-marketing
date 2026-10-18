@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from '#dms/frontend-module'
 import { useContextLink } from '../composables/useContextLink'
 import { displayName, formatNumber, percentChangeTrend } from '../utils/format'
@@ -60,7 +60,10 @@ const props = withDefaults(
 )
 
 const HIGHLIGHTED_RANKS = 3
-const SKELETON_ROWS = 6
+/** The rows a tab lists at most (the tops route's limit): the skeleton's. */
+const SKELETON_ROWS = 8
+/** The tabs the overview groups hold at most: the skeleton's. */
+const SKELETON_TABS = 3
 const RANK_DIGITS = 2
 
 const { t, te, locale } = useI18n()
@@ -73,21 +76,27 @@ const { data, isLoading, error, refresh } = useChartFetch<TopTabsResponse>({
 })
 
 const tabs = computed(() => data.value?.tabs ?? [])
-const activeId = ref<string>('')
-
-watch(
-  tabs,
-  (list) => {
-    if (!list.some((tab) => tab.id === activeId.value)) {
-      activeId.value = list[0]?.id ?? ''
-    }
+/** The picked tab; the first one until a pick names one the data has. */
+const pickedId = ref<string>('')
+/**
+ * Derived rather than set by a watcher: a server render runs no watcher once
+ * its data lands, and would draw the empty state the browser then replaces.
+ */
+const activeId = computed({
+  get: () =>
+    tabs.value.some((tab) => tab.id === pickedId.value)
+      ? pickedId.value
+      : (tabs.value[0]?.id ?? ''),
+  set: (id: string) => {
+    pickedId.value = id
   },
-  { immediate: true },
-)
+})
 
 const active = computed(
   () => tabs.value.find((tab) => tab.id === activeId.value) ?? null,
 )
+/** Nothing to draw yet: the skeleton, the size of a full card. */
+const pending = computed(() => !data.value && !error.value && isLoading.value)
 const maxShare = computed(() =>
   Math.max(1, ...(active.value?.items.map((item) => item.share) ?? [])),
 )
@@ -174,6 +183,16 @@ const TABS_UI = {
           class="w-full"
         />
       </div>
+      <!-- The tab strip's place while the tabs load, at its height. -->
+      <div
+        v-else-if="pending"
+        class="order-last -mx-1 flex min-w-0 basis-full gap-1 overflow-hidden sm:order-none sm:mx-0 sm:flex-1 sm:basis-0"
+        aria-hidden="true"
+      >
+        <span v-for="index in SKELETON_TABS" :key="index" class="px-2 py-3">
+          <USkeleton class="h-3.5 w-24" />
+        </span>
+      </div>
       <DmsEyebrow
         :label="processI18n(valueLabel)"
         class="ms-auto shrink-0 py-3"
@@ -204,19 +223,27 @@ const TABS_UI = {
           />
         </template>
       </DmsEmptyState>
+      <!-- Each row at a list row's size: rank, label over its share bar, count
+           and share. -->
       <ul
-        v-else-if="isLoading && !data"
+        v-else-if="pending"
         class="divide-y divide-default"
         aria-hidden="true"
       >
         <li
           v-for="index in SKELETON_ROWS"
           :key="index"
-          class="flex items-center gap-3 px-4 py-3"
+          class="grid grid-cols-[1.5rem_minmax(0,1fr)_auto_3rem] items-center gap-x-3 px-4 py-2"
         >
-          <USkeleton class="h-3 w-5" />
-          <USkeleton class="h-3 flex-1" />
-          <USkeleton class="h-3 w-12" />
+          <USkeleton class="h-3 w-4" />
+          <span class="min-w-0">
+            <span class="flex h-[19.5px] items-center">
+              <USkeleton class="h-3 w-3/5" />
+            </span>
+            <USkeleton class="mt-1 h-0.5 w-2/5" />
+          </span>
+          <USkeleton class="h-3 w-8" />
+          <USkeleton class="ms-auto h-3 w-9" />
         </li>
       </ul>
       <p
@@ -230,7 +257,13 @@ const TABS_UI = {
         class="divide-y divide-default transition-opacity"
         :class="isLoading ? 'opacity-60' : ''"
       >
-        <li v-for="(item, index) in active.items" :key="item.id">
+        <!-- A row's height, kept while its link component loads on a first
+             navigation (the divider adds a pixel to every row but the first). -->
+        <li
+          v-for="(item, index) in active.items"
+          :key="item.id"
+          class="min-h-[42.5px] first:min-h-[41.5px]"
+        >
           <component
             :is="item.to ? 'DmsAutoLink' : 'div'"
             :to="item.to ? inContext(item.to) : undefined"
