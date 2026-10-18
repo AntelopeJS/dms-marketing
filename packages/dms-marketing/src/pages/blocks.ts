@@ -119,6 +119,13 @@ export interface MarketingContextOptions extends ScopedBlockOptions {
    * again (`refreshLivePageBlocks()`), through the live gate.
    */
   refreshBlocksOnEvents?: boolean;
+  /**
+   * Lead the bar with the website picker and the site's state (default
+   * `true`). `false` leaves them to a block of the page that places its own
+   * (it reads and switches the website through the bar's context): the bar
+   * still keeps the website in the URL and fills in the remembered one.
+   */
+  websitePicker?: boolean;
 }
 
 /**

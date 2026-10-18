@@ -115,6 +115,17 @@ test("the KPI cards, which take no topic, are read by the bar on arrivals", () =
   }
 });
 
+test("only Pages & heatmaps leaves the website picker out of the bar", () => {
+  for (const [id, Page] of Object.entries(LIVE_PAGES)) {
+    const bar = blocksOf(Page)[0];
+    if (id === "pages") {
+      assert.equal(bar.options.websitePicker, false, id);
+    } else {
+      assert.notEqual(bar.options.websitePicker, false, id);
+    }
+  }
+});
+
 test("arrivals are published batched, with their count and nothing else", async () => {
   // What another suite's beacons left waiting is not this batch.
   stopCollectedNotices();
