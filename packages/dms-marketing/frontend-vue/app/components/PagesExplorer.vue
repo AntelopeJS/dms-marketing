@@ -176,6 +176,37 @@ watch(workspace, (value) => {
   }
 })
 
+// --- Panel header ---------------------------------------------------------------
+
+// The list's head says what it reads: the website (when the bar leaves its
+// picker to this block) and the workspace scope.
+const headerWebsite = computed(() => {
+  const selected = context.selected.value
+  if (context.websitePicker.value || !selected) {
+    return null
+  }
+  return {
+    items: context.websites.value.map((site) => {
+      const { dot, line } = context.describe(site)
+      return { id: site.id, name: site.name, domain: site.domain, dot, line }
+    }),
+    selectedId: selected.id,
+    switching: context.switching.value,
+  }
+})
+const headerState = computed(() => {
+  const selected = context.selected.value
+  if (!headerWebsite.value || !selected) {
+    return null
+  }
+  const { dot, line, short } = context.describe(selected)
+  return { dot, label: short, hint: line }
+})
+const headerWorkspace = computed(() => ({
+  options: workspaceOptions.value,
+  value: workspace.value,
+}))
+
 const inventoryRead = usePageInventory({
   websiteId: scopedWebsiteId,
   period: pagesPeriod,
@@ -444,6 +475,19 @@ const moreItems = computed(() => [
 
 <template>
   <div class="flex flex-col gap-4">
+    <!-- A website waiting for its first event, under a bar that left the
+         picker to this block: the picker stays reachable above the guide. -->
+    <section
+      v-if="waiting && headerWebsite"
+      class="dms-card overflow-hidden p-0"
+    >
+      <DmsMarketingPagesPanelHeader
+        :website="headerWebsite"
+        :state="headerState"
+        :workspace="null"
+        @select-website="context.select"
+      />
+    </section>
     <!-- The Pages page's context bar shows its own guide first; this one
          serves the block placed under a bar without it. -->
     <DmsEmptyState
@@ -468,13 +512,6 @@ const moreItems = computed(() => [
     </DmsEmptyState>
 
     <template v-else>
-      <!-- Self-contained: it moves with the website context it qualifies. -->
-      <DmsMarketingWorkspaceScope
-        v-if="workspaceOptions.length > 1"
-        :workspaces="workspaceOptions"
-        :model-value="workspace"
-        @update:model-value="selectWorkspace"
-      />
       <!-- The preview's own strip says it when a page is shown. -->
       <DmsBanner
         v-if="!trackerEnabled && !(selectedPath && website)"
@@ -494,6 +531,13 @@ const moreItems = computed(() => [
           :class="paneHeight === null ? 'xl:sticky xl:top-4' : ''"
           :style="paneStyle"
         >
+          <DmsMarketingPagesPanelHeader
+            :website="headerWebsite"
+            :state="headerState"
+            :workspace="headerWorkspace"
+            @select-website="context.select"
+            @select-workspace="selectWorkspace"
+          />
           <div class="flex items-center gap-2 border-b border-default p-3">
             <UInput
               v-model="search"

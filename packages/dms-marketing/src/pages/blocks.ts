@@ -87,6 +87,13 @@ export interface MarketingContextOptions extends ScopedBlockOptions {
    * install guide in place of the children: a page of zeros reads nothing.
    */
   waitingGuide?: boolean;
+  /**
+   * Whether the bar leads with the website picker (default). `false` leaves
+   * it to a block of the page that carries its own (Pages & heatmaps, at the
+   * top of its pages panel); the bar still shows it while it renders no
+   * block, the waiting guide among them.
+   */
+  websitePicker?: boolean;
 }
 
 /**
