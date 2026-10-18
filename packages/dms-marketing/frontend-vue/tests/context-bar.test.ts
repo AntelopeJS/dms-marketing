@@ -170,8 +170,8 @@ describe('the context bar', () => {
       variant: 'segmented',
       'default-preset': 'last-30-days',
       'default-comparison': 'previous-period',
-      // On, chosen in the popover: no menu widening the bar.
-      'comparison-control': 'hidden',
+      // Its own dropdown: vs previous period, vs previous year, or none.
+      'comparison-control': 'menu',
       'range-label': 'relative',
       presets: [
         'today',

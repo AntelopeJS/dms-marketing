@@ -27,8 +27,8 @@ import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
  * hints lead, then the `LiveToggle` (Direct / Pause, with the time of the
  * last read) and the period on the right, at the toolbar's size. The period
  * is the toolbar's: segmented short codes (1D / 7D / 30D / 90D) and the
- * calendar for a custom range, the comparison kept on and chosen in its
- * popover.
+ * calendar for a custom range, then the comparison's dropdown (vs previous
+ * period, vs previous year, no comparison).
  *
  * The page URL is the context: a reload, a copied link or Back opens on what
  * it names, and each tab keeps its own. The period is the DMS
@@ -389,7 +389,7 @@ const stateHint = computed(() =>
           variant="segmented"
           default-preset="last-30-days"
           default-comparison="previous-period"
-          comparison-control="hidden"
+          comparison-control="menu"
           range-label="relative"
           :presets="PRESETS"
           :comparisons="COMPARISONS"
