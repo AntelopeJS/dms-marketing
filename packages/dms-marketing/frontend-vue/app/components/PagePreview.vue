@@ -39,6 +39,7 @@ import {
 } from '../utils/snapshot-options'
 import { rewriteViewportUnits } from '../utils/snapshotViewportUnits'
 import { anchorDrift } from '../utils/anchor-drift'
+import { dismissDrift, driftDismissed } from '../utils/drift-dismissals'
 
 /**
  * Click and scroll-depth overlays of one tracked page, over a snapshot of
@@ -732,10 +733,15 @@ interface StatusStrip {
   neutral?: boolean
   icon: string
   title: string
-  description: string
+  description?: string
+  /** The explanation, behind an info button instead of under the title: a
+   * strip that must stay one line above the snapshot. */
+  details?: string
   action?: StripAction
   /** A second, quieter action: the setting behind the strip, where it lives. */
   secondary?: StripAction
+  /** Closes the strip; the next one that applies, if any, takes its place. */
+  dismiss?: () => void
 }
 
 /** Where the site's snapshot switch lives: the Websites page's settings,
@@ -752,6 +758,12 @@ function snapshotSettingsAction(): StripAction | undefined {
       }
     : undefined
 }
+
+/** The drift strip was closed on this page this session (see
+ * drift-dismissals). */
+const driftDismissedHere = computed(
+  () => !!props.website && driftDismissed(props.website._id, props.path),
+)
 
 /**
  * Highest priority first: one strip says what needs attention, instead of
@@ -813,7 +825,9 @@ const statusStrip = computed<StatusStrip | null>(() => {
           secondary: snapshotSettingsAction(),
         }
       : null,
-    overlayMode.value === 'clicks' && drift.value?.significant
+    overlayMode.value === 'clicks' &&
+    drift.value?.significant &&
+    !driftDismissedHere.value
       ? {
           tone: 'warning',
           icon: 'i-ph-git-diff',
@@ -824,7 +838,9 @@ const statusStrip = computed<StatusStrip | null>(() => {
               }),
             ),
           }),
-          description: t('page.marketing.pages.preview.drift_hint', {
+          // One line: the share and the way out. Why, and what the reset
+          // does, wait behind the info button.
+          details: t('page.marketing.pages.preview.drift_hint', {
             date: snapshot.value
               ? formatShortDate(snapshot.value.capturedAt, locale.value)
               : '',
@@ -833,7 +849,11 @@ const statusStrip = computed<StatusStrip | null>(() => {
             label: t('page.marketing.pages.reset.page_button'),
             run: () => void resetPageHeatmap(),
           },
-          secondary: snapshotSettingsAction(),
+          dismiss: () => {
+            if (props.website) {
+              dismissDrift(props.website._id, props.path)
+            }
+          },
         }
       : null,
     truncatedState.value
@@ -1217,7 +1237,26 @@ const surfaceEmpty = computed(() => {
         :icon="statusStrip.icon"
         :title="statusStrip.title"
         :description="statusStrip.description"
+        :dismissible="!!statusStrip.dismiss"
+        @dismiss="statusStrip.dismiss?.()"
       >
+        <template v-if="statusStrip.details" #description>
+          <UPopover :content="{ align: 'start' }">
+            <UButton
+              icon="i-ph-info"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              class="-my-1 align-middle"
+              :aria-label="t('page.marketing.pages.preview.strip_details')"
+            />
+            <template #content>
+              <p class="max-w-sm p-3 text-xs leading-relaxed text-muted">
+                {{ statusStrip.details }}
+              </p>
+            </template>
+          </UPopover>
+        </template>
         <template v-if="statusStrip.action || statusStrip.secondary" #actions>
           <UButton
             v-if="statusStrip.action"

@@ -952,6 +952,7 @@
           "snapshots_off": "Page snapshots are off for this site",
           "snapshots_off_hint": "Clicks and scrolls are still counted, but the heatmap is only drawn over a snapshot of the page as visitors see it: its text and images are then stored, every form field masked, for the snapshot retention set in the module settings. Enable it if that fits this site's privacy commitments.",
           "status_line": "Snapshot captured {date} · {layout} {width}px",
+          "strip_details": "Why this warning",
           "too_heavy": "Page too heavy to capture",
           "too_heavy_hint": "The last sampled visit's capture came to {size} MiB to upload (compressed where the browser can), past the {limit} MiB cap, so this page has no backdrop. The click and scroll figures above are unaffected. A visit retries daily: lighter markup — or a heavy section marked data-dms-marketing-block — brings it under the cap, and the snapshotMaxBytes module option raises the cap."
         },
