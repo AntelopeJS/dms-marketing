@@ -12,6 +12,7 @@ import {
   funnelsLink,
 } from '../composables/useMarketingRoutes'
 import { useContextLink } from '../composables/useContextLink'
+import { useRecordCrumb } from '../composables/useRecordCrumb'
 import { formatShortDate } from '../utils/format'
 import { MS_PER_DAY, fractionDigits } from '../constants'
 
@@ -75,6 +76,8 @@ const status = computed<MarketingExperimentStatus | null>(
   () => experiment.value?.status ?? null,
 )
 const isSplit = computed(() => experiment.value !== null)
+// The breadcrumb names the funnel, not only the page ("Funnel").
+useRecordCrumb(() => funnel.value?.name)
 const notFound = computed(
   () => !current.value && apiErrorStatus(error.value) === HTTP_NOT_FOUND,
 )

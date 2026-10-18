@@ -25,3 +25,18 @@ Three earlier entries are fixed or no longer reachable, kept here only as one-li
   submission's `try`). The funnel builder no longer goes through the stock
   form: it writes to the funnels data API itself, so this module no longer
   reaches it.
+
+Open, outside this module:
+
+- The breadcrumb of a funnel report reads *Modules › Marketing › <funnel
+  name>*, without *Funnels & A/B tests* between them. The DMS builds the
+  breadcrumb from the URL path, and the report lives at
+  `/modules/marketing/funnel`, a sibling of the list: nesting it under the
+  list would change every funnel link already shared. It needs the DMS to
+  let a hidden page name its parent page for the breadcrumb (a `parent`
+  page option, or a crumb a component can insert as it sets the record
+  label).
+- Reloading or closing the tab while the funnel builder holds edits shows
+  the browser's own *Leave site?* prompt: the DMS's unsaved-changes guard
+  owns `beforeunload` and a page cannot replace it with its own dialog. An
+  untouched copy no longer holds anything, so it never shows.
