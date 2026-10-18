@@ -30,6 +30,15 @@ class Element {
     Object.assign(this, geometry);
   }
 
+  contains(node) {
+    for (let current = node; current; current = current.parentElement) {
+      if (current === this) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   hasAttribute(name) {
     return this.attributes.has(name);
   }
@@ -75,7 +84,10 @@ function shell() {
   const button = new Element("button", panel, {
     box: { top: 480, left: 300, right: 400, bottom: 520 },
   });
-  return { html, body, app, panel, list, under: list, button };
+  const sidebar = new Element("nav", app, {
+    box: { top: 0, left: 0, right: 240, bottom: HEIGHT },
+  });
+  return { html, body, app, panel, list, under: list, button, sidebar };
 }
 
 function loadTracker(page) {
@@ -194,6 +206,14 @@ test("a header click above the panel is not shifted by its scroll", () => {
   page.panel.scrollTop = 1000;
   tracker.click(page.app, 350, 40);
   assert.equal(tracker.sent("click")[0].dy, Number((40 / 2670).toFixed(4)));
+});
+
+test("a sidebar click beside the panel is not shifted by its scroll", () => {
+  const page = shell();
+  const tracker = loadTracker(page);
+  page.panel.scrollTop = 1000;
+  tracker.click(page.sidebar, 100, 200);
+  assert.equal(tracker.sent("click")[0].dy, Number((200 / 2670).toFixed(4)));
 });
 
 test("the marked element wins over the largest one", () => {

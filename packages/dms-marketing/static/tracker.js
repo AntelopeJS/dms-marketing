@@ -556,23 +556,31 @@
   /**
    * Vertical position of a point in the page's content, and the content's
    * height: with an inner scroll root, the range it hides is unrolled — a
-   * point inside it moves down by its scroll offset, one below it by the
-   * whole hidden range — so `dy` reads the same however far the visitor had
-   * scrolled it, and lines up with a capture of the whole page.
+   * click on something inside it moves down by its scroll offset, one on
+   * something under it (a footer below the panel) by the whole hidden range
+   * — so `dy` reads the same however far the visitor had scrolled it, and
+   * lines up with a capture of the whole page. Beside it (a sidebar) or
+   * above it (a header), nothing moves.
    */
-  function contentPosition(point) {
+  function contentPosition(target, point) {
     const height = document.documentElement.scrollHeight;
     const root = scrollRoot();
     if (!root) {
       return { y: point.pageY, height: height };
     }
     const hidden = root.scrollHeight - root.clientHeight;
-    const box = root.getBoundingClientRect();
     let y = point.pageY;
-    if (point.clientY >= box.bottom) {
-      y += hidden;
-    } else if (point.clientY >= box.top) {
+    if (root.contains(target)) {
       y += root.scrollTop;
+    } else {
+      const box = root.getBoundingClientRect();
+      if (
+        point.clientY >= box.bottom &&
+        point.clientX >= box.left &&
+        point.clientX < box.right
+      ) {
+        y += hidden;
+      }
     }
     return { y: y, height: height + hidden };
   }
@@ -590,7 +598,7 @@
       }
       const doc = document.documentElement;
       const point = clickPoint(target, event);
-      const content = contentPosition(point);
+      const content = contentPosition(target, point);
       enqueue(
         Object.assign(base(), {
           kind: "click",
