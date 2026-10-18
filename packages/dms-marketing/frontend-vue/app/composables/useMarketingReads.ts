@@ -16,6 +16,7 @@ import type {
   MarketingWebsite,
   MarketingWebsiteCard,
   MarketingWebsiteDeletionImpact,
+  MarketingWorkspaces,
 } from './useMarketingApi'
 
 /**
@@ -104,6 +105,9 @@ export interface PageInventoryRequest {
   period: MaybeRefOrGetter<MarketingPeriod>
   search: MaybeRefOrGetter<string>
   sort: MaybeRefOrGetter<MarketingPagesSort>
+  /** Another workspace's dashboard, or `all` (see useDashboardWorkspaces);
+   * empty for the website's own data. */
+  workspace?: MaybeRefOrGetter<string>
 }
 
 /** The paths a website's visitors loaded over the period. */
@@ -120,6 +124,7 @@ export function usePageInventory(
         website: toValue(request.websiteId),
         search: toValue(request.search),
         sort: toValue(request.sort),
+        workspace: toValue(request.workspace) || undefined,
       }),
     },
   )
@@ -171,6 +176,8 @@ export interface PagePreviewRequest {
   websiteId: MaybeRefOrGetter<string | undefined>
   path: MaybeRefOrGetter<string>
   period: MaybeRefOrGetter<MarketingPeriod>
+  /** As PageInventoryRequest's. */
+  workspace?: MaybeRefOrGetter<string | undefined>
 }
 
 function previewRead<T>(
@@ -186,6 +193,7 @@ function previewRead<T>(
       query: () => ({
         website: toValue(request.websiteId),
         path: toValue(request.path),
+        workspace: toValue(request.workspace) || undefined,
       }),
       server: false,
     },
@@ -217,6 +225,8 @@ export interface PageSnapshotRequest {
    * backend while the request stays the same, so the capture is read again.
    */
   maskText: MaybeRefOrGetter<boolean>
+  /** As PageInventoryRequest's: the backend masks such a capture. */
+  workspace?: MaybeRefOrGetter<string | undefined>
 }
 
 /** A page's capture in a layout, drawn in the browser. */
@@ -235,10 +245,25 @@ export function usePageSnapshot(
         website: toValue(request.websiteId),
         path: toValue(request.path),
         layout: toValue(request.layout),
+        workspace: toValue(request.workspace) || undefined,
       }),
       watch: [() => toValue(request.maskText)],
       server: false,
     },
+  )
+}
+
+/**
+ * The workspaces a platform owner can read the dashboard's heatmaps of, from
+ * the dashboard's own website; an empty list for anyone else, on any other
+ * website, and on a single-workspace install.
+ */
+export function useDashboardWorkspaces(
+  websiteId: MaybeRefOrGetter<string>,
+): ApiDataResult<MarketingWorkspaces> {
+  return useApiData<MarketingWorkspaces>(
+    () => (toValue(websiteId) ? '/api/marketing/stats/workspaces' : null),
+    { query: () => ({ website: toValue(websiteId) }), server: false },
   )
 }
 

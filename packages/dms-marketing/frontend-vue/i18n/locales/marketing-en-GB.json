@@ -451,7 +451,8 @@
         },
         "snapshot_retention_above_raw": "Snapshots can't be kept longer than raw events: they would outlive every click they back.",
         "statistics_retention_below_raw": "Statistics can't be kept shorter than raw events: funnels and A/B results would lose the sessions of their events.",
-        "website_not_found": "This website does not exist, or belongs to another workspace."
+        "website_not_found": "This website does not exist, or belongs to another workspace.",
+        "workspace_not_found": "This workspace does not exist, has no dashboard tracking, or is not yours to read."
       },
       "experiment": {
         "colours_note": "Arms keep their colour everywhere: A is neutral, B is the primary colour. Green and red only mean a verdict.",
@@ -954,7 +955,8 @@
           "status_line": "Snapshot captured {date} · {layout} {width}px",
           "strip_details": "Why this warning",
           "too_heavy": "Page too heavy to capture",
-          "too_heavy_hint": "The last sampled visit's capture came to {size} MiB to upload (compressed where the browser can), past the {limit} MiB cap, so this page has no backdrop. The click and scroll figures above are unaffected. A visit retries daily: lighter markup — or a heavy section marked data-dms-marketing-block — brings it under the cap, and the snapshotMaxBytes module option raises the cap."
+          "too_heavy_hint": "The last sampled visit's capture came to {size} MiB to upload (compressed where the browser can), past the {limit} MiB cap, so this page has no backdrop. The click and scroll figures above are unaffected. A visit retries daily: lighter markup — or a heavy section marked data-dms-marketing-block — brings it under the cap, and the snapshotMaxBytes module option raises the cap.",
+          "workspace_masked": "Another workspace's page: all text masked"
         },
         "reset": {
           "and": "{first} and {second}",
@@ -1020,6 +1022,15 @@
           "action": "Check the installation",
           "description": "Pages and heatmaps appear once the tracker is on the site and a first page is loaded.",
           "title": "{website} hasn't received a visit yet"
+        },
+        "workspace": {
+          "all": "All workspaces",
+          "all_hint": "{count} workspace combined | {count} workspaces combined",
+          "combined_note": "Combined across {count} workspace, read-only. Snapshots show with their text masked. | Combined across {count} workspaces, read-only. Snapshots show with their text masked.",
+          "label": "Workspace:",
+          "other_note": "Another workspace's dashboard, read-only. Snapshots show with their text masked.",
+          "switch": "Change the workspace the heatmaps read",
+          "yours": "Your workspace"
         },
         "quoted": "“{text}”"
       },

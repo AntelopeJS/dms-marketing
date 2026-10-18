@@ -9,6 +9,7 @@ import {
   type MarketingWebsite,
 } from '../composables/useMarketingApi'
 import {
+  useDashboardWorkspaces,
   useHeatmapCountRead,
   usePageInventory,
   useWebsiteFunnels,
@@ -27,6 +28,12 @@ import {
   heatmapResetImpact,
   normalizePagePath,
 } from '../utils/heatmap'
+import {
+  effectiveWorkspace,
+  rememberedWorkspace,
+  rememberWorkspace,
+  WORKSPACE_QUERY,
+} from '../utils/workspace-scope'
 
 /**
  * Pages & heatmaps: the paths visitors loaded on the selected website, with
@@ -112,11 +119,69 @@ function putWebsite(saved: MarketingWebsite): void {
   }
 }
 
+// --- Workspace scope ----------------------------------------------------------
+
+// A platform owner on the dashboard's own website reads it for another
+// workspace, or all of them (see utils/workspace-scope). Everyone else gets
+// an empty list from the backend, which also refuses the scope itself.
+const workspacesRead = useDashboardWorkspaces(websiteId)
+const workspaceOptions = computed(() =>
+  workspacesRead.error.value
+    ? []
+    : (workspacesRead.data.value?.workspaces ?? []),
+)
+const queryWorkspace = () => {
+  const value = route.query[WORKSPACE_QUERY]
+  return typeof value === 'string' ? value : ''
+}
+/** What the link asks for, else this browser's last pick (once mounted:
+ * the storage is the browser's). */
+const wantedWorkspace = ref(queryWorkspace())
+/** The scope the reads use: the own workspace until the selector offers
+ * the wanted one. */
+const workspace = computed(() =>
+  effectiveWorkspace(wantedWorkspace.value, workspaceOptions.value),
+)
+/** Another workspace's data: read-only, backdrops masked by the backend. */
+const foreign = computed(() => workspace.value !== '')
+/** A wanted scope waits for the selector's answer, so a link to one never
+ * reads the own workspace first, nor fails for a viewer it is not for. */
+const scopeReady = computed(
+  () =>
+    !wantedWorkspace.value ||
+    workspacesRead.status.value === 'success' ||
+    workspacesRead.status.value === 'error',
+)
+const scopedWebsiteId = computed(() =>
+  scopeReady.value ? websiteId.value : '',
+)
+
+function selectWorkspace(value: string): void {
+  wantedWorkspace.value = value
+  rememberWorkspace(value)
+  void router.replace({
+    query: { ...route.query, [WORKSPACE_QUERY]: value || undefined },
+  })
+}
+
+// Back and Forward move the scope with the URL.
+watch(queryWorkspace, (value) => {
+  wantedWorkspace.value = value || rememberedWorkspace()
+})
+
+// A remembered scope lands in the URL too: a copied link carries it.
+watch(workspace, (value) => {
+  if (value && queryWorkspace() !== value) {
+    void router.replace({ query: { ...route.query, [WORKSPACE_QUERY]: value } })
+  }
+})
+
 const inventoryRead = usePageInventory({
-  websiteId,
+  websiteId: scopedWebsiteId,
   period: pagesPeriod,
   search: searchedTerm,
   sort,
+  workspace,
 })
 const inventory = computed(() =>
   inventoryRead.error.value ? null : inventoryRead.data.value,
@@ -313,6 +378,7 @@ const mounted = ref(false)
 onMounted(() => {
   mounted.value = true
   selectFirst(inventory.value)
+  wantedWorkspace.value ||= rememberedWorkspace()
 })
 
 const countLabel = computed(() => {
@@ -402,6 +468,13 @@ const moreItems = computed(() => [
     </DmsEmptyState>
 
     <template v-else>
+      <!-- Self-contained: it moves with the website context it qualifies. -->
+      <DmsMarketingWorkspaceScope
+        v-if="workspaceOptions.length > 1"
+        :workspaces="workspaceOptions"
+        :model-value="workspace"
+        @update:model-value="selectWorkspace"
+      />
       <!-- The preview's own strip says it when a page is shown. -->
       <DmsBanner
         v-if="!trackerEnabled && !(selectedPath && website)"
@@ -430,7 +503,11 @@ const moreItems = computed(() => [
               :placeholder="t('page.marketing.pages.search_placeholder')"
               @keyup.enter="inspectTyped"
             />
-            <UDropdownMenu :items="moreItems" :content="{ align: 'end' }">
+            <UDropdownMenu
+              v-if="!foreign"
+              :items="moreItems"
+              :content="{ align: 'end' }"
+            >
               <UButton
                 icon="i-ph-dots-three"
                 size="sm"
@@ -638,6 +715,8 @@ const moreItems = computed(() => [
             :pageviews="selectedPage?.pageviews"
             :used-in="usedIn"
             :height="paneHeight"
+            :workspace="workspace"
+            :workspace-snapshots="inventory?.snapshotsEnabled ?? false"
             @website-updated="putWebsite"
           />
         </div>

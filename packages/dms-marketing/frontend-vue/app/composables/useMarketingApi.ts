@@ -133,11 +133,27 @@ export interface MarketingPageSnapshot {
   /** The upload cap in force; absent from an older backend. */
   maxBytes?: number
   html: string | null
+  /** Text masked by the backend: a capture of another workspace. */
+  masked?: boolean
 }
 
 export interface MarketingPageSnapshotResponse {
   /** Null while no visit has captured the page yet. */
   snapshot: MarketingPageSnapshot | null
+}
+
+/** A workspace the dashboard's heatmaps can be read for (platform owners). */
+export interface MarketingWorkspace {
+  id: string
+  name: string
+  /** The viewer's own workspace. */
+  current: boolean
+}
+
+export interface MarketingWorkspaces {
+  /** Empty: no selector (not a platform owner, a customer website, or a
+   * single workspace). */
+  workspaces: MarketingWorkspace[]
 }
 
 /** What was captured of one path, every layout together. */
