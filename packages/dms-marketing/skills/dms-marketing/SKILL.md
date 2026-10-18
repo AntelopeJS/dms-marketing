@@ -21,6 +21,11 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
   (1D / 7D / 30D / 90D); the custom range's calendar segment is icon-only, with its accessible name, from the DMS.
   The comparison is the selector's dropdown (`comparisonControl: "menu"`: vs previous period, vs previous year,
   none); the routes read the `compareFrom`/`compareTo` it sends, and "none" sends none, so no change is shown.
+- Live: the analytics pages declare `live` (`CONTEXT_PAGE_LIVE`, 15 s, 60 s past 8 days). Ingestion publishes
+  `marketing.events` (`{ count }`, batched 1/s) once a batch is in the rollup; every stock block carries it as
+  `realtimeTopic`, tables add `liveHold`, the Overview's KPI cards (no topic) are read by the bar on arrivals.
+  No module clock: Pause freezes every block. DMS page topics are not tenant-scoped yet: other tenants'
+  arrivals wake the pages and count in the paused "N new".
 - `ajs project modules add @antelopejs/dms-marketing`. Options: `trackerEnabled`, `rawEventsRetention`,
   `statisticsRetention`, `snapshotRetention`, `sessionIdleTimeout` (all ms), `heatmapSampleRate` (0-1),
   `visitorHashSecret` (set it when running several instances), `geoipDatabasePath` (.mmdb, opt-in),
