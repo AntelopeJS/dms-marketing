@@ -34,8 +34,8 @@ import {
   type AnchorRequest,
 } from '../composables/useSnapshotFrame'
 import {
-  changesSnapshotOptions,
-  snapshotDiscardConfirmation,
+  confirmSnapshotChange,
+  snapshotOptionItems,
 } from '../utils/snapshot-options'
 import { rewriteViewportUnits } from '../utils/snapshotViewportUnits'
 import { anchorDrift } from '../utils/anchor-drift'
@@ -332,25 +332,27 @@ const savingOptions = ref(false)
 const countSiteHeatmap = useHeatmapCountRead(() => props.website?._id ?? '')
 
 /**
- * Whether the change may go ahead: it deletes the site's snapshots, so a
- * site that has some is asked first. Declining leaves the website as it
- * is, and the menu's checkbox with it.
+ * Whether the change may go ahead: it deletes the site's snapshots and
+ * changes what later captures keep, so it is asked first — with the count
+ * when there are some (see asksBeforeSnapshotChange). Declining leaves the
+ * website as it is, and the menu's checkbox with it.
  */
-async function confirmSnapshotDiscard(
+function confirmSnapshotDiscard(
   website: MarketingWebsite,
   patch: MarketingWebsitePatch,
 ): Promise<boolean> {
-  if (!changesSnapshotOptions(website, patch)) {
-    return true
-  }
-  savingOptions.value = true
-  const counts = await countSiteHeatmap()
-    .catch(() => null)
-    .finally(() => (savingOptions.value = false))
-  if (counts?.snapshots === 0) {
-    return true
-  }
-  return confirm(snapshotDiscardConfirmation(t, counts?.snapshots ?? null))
+  return confirmSnapshotChange(website, patch, {
+    count: async () => {
+      savingOptions.value = true
+      try {
+        return (await countSiteHeatmap()).snapshots
+      } finally {
+        savingOptions.value = false
+      }
+    },
+    confirm,
+    t,
+  })
 }
 
 async function updateSnapshotOptions(
@@ -1029,21 +1031,11 @@ watch(
 
 const moreItems = computed(() => [
   [
-    {
-      type: 'checkbox' as const,
-      label: t('page.marketing.pages.preview.snapshots_enabled'),
-      checked: snapshotsEnabled.value,
-      onUpdateChecked: (value: boolean): void =>
-        void updateSnapshotOptions({ snapshotsEnabled: value }),
-    },
-    {
-      type: 'checkbox' as const,
-      label: t('page.marketing.pages.preview.mask_text'),
-      checked: props.website?.snapshotMaskText === true,
-      disabled: !snapshotsEnabled.value,
-      onUpdateChecked: (value: boolean): void =>
-        void updateSnapshotOptions({ snapshotMaskText: value }),
-    },
+    ...snapshotOptionItems(
+      props.website,
+      (patch) => void updateSnapshotOptions(patch),
+      t,
+    ),
     ...(snapshotSettingsLink.value
       ? [
           {

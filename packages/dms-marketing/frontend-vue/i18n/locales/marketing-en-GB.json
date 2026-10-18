@@ -1106,7 +1106,11 @@
           "description": "Changing this option deletes the site's snapshot. Clicks and scroll depth are kept; the next sampled visits capture the pages again. | Changing this option deletes the site's {count} snapshots. Clicks and scroll depth are kept; the next sampled visits capture the pages again.",
           "description_unknown": "Changing this option deletes the site's existing snapshots. Clicks and scroll depth are kept; the next sampled visits capture the pages again.",
           "confirm": "Change and delete",
-          "cancel": "Keep the snapshots"
+          "cancel": "Keep the snapshots",
+          "cancel_none": "Cancel",
+          "confirm_none": "Change",
+          "description_none": "The site holds no snapshot yet. The next sampled visits capture its pages under the new setting.",
+          "title_none": "Change the site's snapshot settings?"
         },
         "drawer": {
           "added": "added {date}",

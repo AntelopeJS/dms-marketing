@@ -23,7 +23,10 @@ import {
   initials,
 } from '../utils/format'
 import { allowHostConfirmation, hostConflictOf } from '../utils/host-conflict'
-import { snapshotDiscardConfirmation } from '../utils/snapshot-options'
+import {
+  asksBeforeSnapshotChange,
+  snapshotDiscardConfirmation,
+} from '../utils/snapshot-options'
 import {
   MAX_WEBSITE_DOMAIN_LENGTH,
   MAX_WEBSITE_NAME_LENGTH,
@@ -265,7 +268,11 @@ async function requireFields(): Promise<boolean> {
 async function confirmSnapshotDiscard(
   card: MarketingWebsiteCard,
 ): Promise<boolean> {
-  if (!discardsSnapshots.value) {
+  const patch = {
+    snapshotsEnabled: draftSnapshots.value,
+    snapshotMaskText: draftMask.value,
+  }
+  if (!asksBeforeSnapshotChange(card, patch, card.snapshots)) {
     return true
   }
   if (await confirm(snapshotDiscardConfirmation(t, card.snapshots))) {

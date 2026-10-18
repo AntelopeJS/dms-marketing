@@ -1106,7 +1106,11 @@
           "description": "Modifier cette option supprime l'instantané de page du site. Les clics et la profondeur de défilement sont conservés ; les prochaines visites échantillonnées recaptureront les pages. | Modifier cette option supprime les {count} instantanés de page du site. Les clics et la profondeur de défilement sont conservés ; les prochaines visites échantillonnées recaptureront les pages.",
           "description_unknown": "Modifier cette option supprime les instantanés de page existants du site. Les clics et la profondeur de défilement sont conservés ; les prochaines visites échantillonnées recaptureront les pages.",
           "confirm": "Modifier et supprimer",
-          "cancel": "Garder les instantanés"
+          "cancel": "Garder les instantanés",
+          "cancel_none": "Annuler",
+          "confirm_none": "Modifier",
+          "description_none": "Le site ne détient encore aucun instantané. Les prochaines visites échantillonnées prendront ses pages avec le nouveau réglage.",
+          "title_none": "Modifier les réglages d'instantané du site ?"
         },
         "drawer": {
           "added": "ajouté le {date}",
