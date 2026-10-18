@@ -387,6 +387,7 @@
         },
         "idle": "Dernier événement {ago}",
         "imported": "Historique importé · dernier événement {ago}",
+        "just_now": "à l'instant",
         "label": "Site et période",
         "live": "En direct · dernier événement {ago}",
         "no_website": "Aucun site pour l'instant",

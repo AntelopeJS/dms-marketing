@@ -54,12 +54,25 @@ describe('a website reads live', () => {
 
 describe('the short state of a website', () => {
   it('is the age of its last event', () => {
-    const recent = { state: 'live' as const, lastActivityAt: NOW - 3_000 }
-    expect(websiteStateShort(recent, NOW, t, 'en-GB')).toBe('3 sec ago')
+    const recent = { state: 'live' as const, lastActivityAt: NOW - 12_000 }
+    expect(websiteStateShort(recent, NOW, t, 'en-GB')).toBe('12 sec ago')
     // Intl spaces it with a no-break space.
-    expect(websiteStateShort(recent, NOW, t, 'fr-FR')).toMatch(/^il y a 3\ss$/)
+    expect(websiteStateShort(recent, NOW, t, 'fr-FR')).toMatch(/^il y a 12\ss$/)
     const quiet = { state: 'live' as const, lastActivityAt: NOW - 7 * HOUR }
     expect(websiteStateShort(quiet, NOW, t, 'en-GB')).toBe('7 hr ago')
+  })
+
+  // QA: "● dans 3 s" right after events arrived, the server's clock ahead.
+  it('reads just now under 5 seconds, never a time ahead', () => {
+    for (const lastActivityAt of [NOW + 3_000, NOW, NOW - 4_000]) {
+      const site = { state: 'live' as const, lastActivityAt }
+      expect(websiteStateShort(site, NOW, t, 'fr-FR')).toBe(
+        'page.marketing.context.just_now',
+      )
+      expect(websiteStateLine(site, NOW, t, 'fr-FR')).toBe(
+        'page.marketing.context.live page.marketing.context.just_now',
+      )
+    }
   })
 
   it('is the state in a word without a last event', () => {

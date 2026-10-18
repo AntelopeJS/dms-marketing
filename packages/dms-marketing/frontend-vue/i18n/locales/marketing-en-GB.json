@@ -387,6 +387,7 @@
         },
         "idle": "Last event {ago}",
         "imported": "Imported history · last event {ago}",
+        "just_now": "just now",
         "label": "Website and period",
         "live": "Live · last event {ago}",
         "no_website": "No website yet",

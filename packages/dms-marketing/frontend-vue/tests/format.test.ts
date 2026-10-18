@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   displayName,
   formatDuration,
+  formatRelativeTime,
   formatShortDate,
   formatSignedDelta,
   initials,
@@ -17,6 +18,19 @@ describe('formatting', () => {
     expect(formatDuration(8)).toBe('8s')
     expect(formatDuration(168)).toBe('2m 48s')
     expect(formatDuration(3720)).toBe('1h 2m')
+  })
+
+  it('never writes an event age in the future', () => {
+    const now = Date.UTC(2026, 9, 18, 12)
+    // The server's clock a few seconds ahead of the reader's.
+    expect(formatRelativeTime(now + 3_000, now, 'en-GB', 'short')).toBe('now')
+    expect(formatRelativeTime(now + 3_000, now, 'fr-FR', 'short')).toBe(
+      'maintenant',
+    )
+    expect(formatRelativeTime(now - 4_000, now, 'en-GB')).toBe('now')
+    expect(formatRelativeTime(now - 12_000, now, 'en-GB')).toBe(
+      '12 seconds ago',
+    )
   })
 
   it('signs deltas after rounding, so a tiny change reads as flat', () => {

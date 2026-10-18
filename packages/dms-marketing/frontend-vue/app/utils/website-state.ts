@@ -1,5 +1,5 @@
 import type { ContextWebsite } from '../composables/useMarketingContext'
-import { formatRelativeTime } from './format'
+import { formatRelativeTime, isJustNow } from './format'
 
 /**
  * A website reads "live" while its last event is this recent: the backend's
@@ -42,6 +42,22 @@ function showsActivity(state: WebsiteDisplayState): boolean {
   return state === 'live' || state === 'idle' || state === 'imported'
 }
 
+/**
+ * The age of the last event: "2 minutes ago", "just now" under 5 seconds or
+ * when the server's clock runs ahead of the reader's.
+ */
+function eventAge(
+  at: number,
+  now: number,
+  t: Translate,
+  locale: string,
+  style?: Intl.RelativeTimeFormatStyle,
+): string {
+  return isJustNow(at, now)
+    ? t('page.marketing.context.just_now')
+    : formatRelativeTime(at, now, locale, style)
+}
+
 /** "Live · last event 2 minutes ago", "Last event 7 hours ago", "Paused"… */
 export function websiteStateLine(
   site: WebsiteActivity,
@@ -52,7 +68,7 @@ export function websiteStateLine(
   const state = websiteDisplayState(site, now)
   if (showsActivity(state) && site.lastActivityAt) {
     return t(`page.marketing.context.${state}`, {
-      ago: formatRelativeTime(site.lastActivityAt, now, locale),
+      ago: eventAge(site.lastActivityAt, now, t, locale),
     })
   }
   return t(`page.marketing.context.state.${site.state}`)
@@ -71,7 +87,7 @@ export function websiteStateShort(
 ): string {
   const state = websiteDisplayState(site, now)
   if (showsActivity(state) && site.lastActivityAt) {
-    return formatRelativeTime(site.lastActivityAt, now, locale, 'short')
+    return eventAge(site.lastActivityAt, now, t, locale, 'short')
   }
   return t(`page.marketing.context.state_short.${site.state}`)
 }

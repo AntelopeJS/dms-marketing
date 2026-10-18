@@ -76,8 +76,20 @@ const RELATIVE_STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
 ]
 
 /**
+ * Under this age an event reads "now": the server stamps events on its clock,
+ * which may run a few seconds ahead of the reader's.
+ */
+export const JUST_NOW_MS = 5 * MS_PER_SECOND
+
+/** Whether an event at `at` reads "just now", including one stamped ahead. */
+export function isJustNow(at: number, now: number): boolean {
+  return now - at < JUST_NOW_MS
+}
+
+/**
  * "12 seconds ago", "4 minutes ago" — the age of the last event; "12 sec ago"
- * with the `short` style.
+ * with the `short` style. Never in the future: an age under `JUST_NOW_MS`, or
+ * a timestamp ahead of `now`, reads "now".
  */
 export function formatRelativeTime(
   at: number,
@@ -85,8 +97,11 @@ export function formatRelativeTime(
   locale: string,
   style: Intl.RelativeTimeFormatStyle = 'long',
 ): string {
-  let value = Math.round((at - now) / MS_PER_SECOND)
   const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style })
+  if (isJustNow(at, now)) {
+    return format.format(0, 'second')
+  }
+  let value = Math.round((at - now) / MS_PER_SECOND)
   for (const [unit, size] of RELATIVE_STEPS) {
     if (Math.abs(value) < size) {
       return format.format(value, unit)
