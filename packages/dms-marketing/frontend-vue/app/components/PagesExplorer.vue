@@ -19,6 +19,8 @@ import { installLink } from '../composables/useMarketingRoutes'
 import { PERIOD_SCOPE } from '../constants'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
 import { formatNumber } from '../utils/format'
+import { pageSnapshotBadge } from '../utils/page-snapshot'
+import { useMarketingNow } from '../composables/useMarketingNow'
 import {
   heatmapDataLabel,
   heatmapResetImpact,
@@ -44,6 +46,8 @@ const props = withDefaults(
 )
 
 const SEARCH_DEBOUNCE_MS = 300
+/** The snapshot ages of the rows move on by the minute. */
+const NOW_TICK_MS = 60_000
 const SKELETON_ROWS = 8
 /** Where the list and the preview sit side by side (Tailwind `xl`). */
 const SIDE_BY_SIDE_QUERY = '(min-width: 1280px)'
@@ -85,13 +89,25 @@ const website = computed(
     null,
 )
 
-/** A site as its update answered it, in place: the list is not read again. */
+/**
+ * A site as its update answered it, in place: the sites are not read again.
+ * The pages are, when its snapshot options changed — saving them deleted the
+ * site's snapshots, which the rows show.
+ */
 function putWebsite(saved: MarketingWebsite): void {
   const sites = websitesRead.data.value
+  const previous = sites?.find((site) => site._id === saved._id)
   if (sites) {
     websitesRead.data.value = sites.map((site) =>
       site._id === saved._id ? saved : site,
     )
+  }
+  if (
+    previous &&
+    (previous.snapshotsEnabled !== saved.snapshotsEnabled ||
+      previous.snapshotMaskText !== saved.snapshotMaskText)
+  ) {
+    void loadPages()
   }
 }
 
@@ -154,6 +170,16 @@ const sampleRateLabel = computed(() => {
 })
 const trackerEnabled = computed(() => inventory.value?.trackerEnabled ?? true)
 const waiting = computed(() => context.selected.value?.state === 'waiting')
+
+const now = useMarketingNow(NOW_TICK_MS)
+
+/** The listed pages, each with what its row says of its snapshot. */
+const rows = computed(() =>
+  pages.value.map((page) => ({
+    ...page,
+    badge: pageSnapshotBadge(page.snapshot, now.value, t, locale.value),
+  })),
+)
 
 function metricOf(page: { pageviews: number; clicks: number }): number {
   return sort.value === 'clicks' ? page.clicks : page.pageviews
@@ -432,7 +458,7 @@ const moreItems = computed(() => [
             class="flex max-h-[45vh] flex-col gap-1 overflow-y-auto p-2 xl:max-h-[70vh]"
             :class="loading ? 'opacity-60' : ''"
           >
-            <li v-for="page in pages" :key="page.path">
+            <li v-for="page in rows" :key="page.path">
               <button
                 type="button"
                 class="flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left transition-colors"
@@ -487,6 +513,20 @@ const moreItems = computed(() => [
                         )
                       }}
                     </template>
+                  </span>
+                  <span
+                    v-if="page.badge"
+                    class="flex shrink-0 items-center gap-1 text-[11px]"
+                    :class="page.badge.muted ? 'text-dimmed' : 'text-muted'"
+                    :title="page.badge.title"
+                  >
+                    <UIcon
+                      :name="page.badge.icon"
+                      class="size-3"
+                      :class="page.badge.muted ? '' : 'text-success'"
+                    />
+                    <span class="sr-only">{{ page.badge.title }}</span>
+                    <span aria-hidden="true">{{ page.badge.label }}</span>
                   </span>
                   <span
                     class="h-1 w-14 overflow-hidden rounded-full bg-elevated"

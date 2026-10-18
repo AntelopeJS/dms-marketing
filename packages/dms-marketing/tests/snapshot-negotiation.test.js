@@ -12,6 +12,7 @@ const {
   deleteSnapshots,
   snapshotId,
   storeSnapshot,
+  summarizeSnapshots,
   wantsSnapshot,
 } = require("../dist/services/snapshots");
 const {
@@ -182,5 +183,50 @@ describe("the snapshot negotiation", () => {
       await wantsSnapshot(site, "/checked", DESKTOP, "next", true),
       undefined,
     );
+  });
+});
+
+describe("the pages list's snapshot summary", () => {
+  beforeEach(() => mock.method(models, "GetModel", realGetModel));
+  afterEach(() => mock.restoreAll());
+
+  test("tells each path's newest capture and layouts from one read", async () => {
+    const site = "snapshot-summary";
+    const row = (url, layout, at, documentWidth = DESKTOP) => ({
+      _id: snapshotId(site, layout, url),
+      websiteId: site,
+      url,
+      layout,
+      origin: `https://${HOST}`,
+      viewportWidth: DESKTOP,
+      viewportHeight: 800,
+      documentWidth,
+      documentHeight: documentWidth ? 800 : 0,
+      capturedAt: new Date(at),
+      bytes: 10,
+      html: documentWidth ? "x" : "",
+    });
+    for (const capture of [
+      row("/a", "desktop", 1_000),
+      row("/a", "phone", 3_000),
+      // An oversize report is no backdrop, and no age either beside one.
+      row("/a", "tablet", 9_000, 0),
+      row("/heavy", "desktop", 5_000, 0),
+    ]) {
+      await snapshots().upsert(capture);
+    }
+    const reads = mock.method(PageSnapshotsModel.prototype, "listCaptures");
+    const summary = await summarizeSnapshots(TENANT, site);
+    assert.equal(reads.mock.callCount(), 1);
+    assert.deepEqual(Object.fromEntries(summary), {
+      "/a": {
+        capturedAt: 3_000,
+        layouts: ["desktop", "phone"],
+        tooHeavy: false,
+      },
+      "/heavy": { capturedAt: 5_000, layouts: [], tooHeavy: true },
+    });
+    const [stored] = await snapshots().listCaptures(site);
+    assert.equal(stored.html, undefined);
   });
 });

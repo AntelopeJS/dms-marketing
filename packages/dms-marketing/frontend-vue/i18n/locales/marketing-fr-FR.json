@@ -970,6 +970,13 @@
           "snapshots": "{count} instantané | {count} instantanés"
         },
         "row_clicks": "{count} clic | {count} clics",
+        "row_snapshot": {
+          "none": "Pas d'instantané",
+          "none_title": "Pas encore d'instantané : la prochaine visite échantillonnée en prendra un",
+          "title": "Instantané du {date} · {layouts} | Instantanés jusqu'au {date} · {layouts}",
+          "too_heavy": "Trop lourde",
+          "too_heavy_title": "Page trop lourde pour un instantané (essai du {date})"
+        },
         "row_views": "{count} vue | {count} vues",
         "sampled_unit": "vue échantillonnée | vues échantillonnées",
         "sampling_note": "Clics et défilements ont été enregistrés sur {rate} des pages vues sur cette période.",

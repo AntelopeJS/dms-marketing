@@ -4,6 +4,7 @@ import { GetModel } from "@antelopejs/interface-database-decorators";
 import sanitizeHtml from "sanitize-html";
 import { getConfig } from "@/config";
 import { MarketingSessionsModel, PageSnapshotsModel } from "@/db";
+import type { PageSnapshotCapture } from "@/db/models/page_snapshots.model";
 import type { PageSnapshot } from "@/db/tables/page_snapshots.table";
 import type { Website } from "@/db/tables/websites.table";
 import {
@@ -386,6 +387,48 @@ export async function storeSnapshot(
   } as PageSnapshot);
   captureStates.set(id, { capturedAt: now.getTime(), unmarked: false });
   return true;
+}
+
+/** What the pages list says of one path's captures. */
+export interface PageSnapshotSummary {
+  /** The newest capture with a document, else the newest oversize report. */
+  capturedAt: number;
+  /** Layouts holding a document, widest first. */
+  layouts: SnapshotLayout[];
+  /** Only oversize reports: the page is too heavy to capture. */
+  tooHeavy: boolean;
+}
+
+/**
+ * The captures of a whole site, summarized per path, from one read that
+ * leaves the documents in the database.
+ */
+export async function summarizeSnapshots(
+  tenantId: string,
+  websiteId: string,
+): Promise<Map<string, PageSnapshotSummary>> {
+  const rows = await GetModel(PageSnapshotsModel, tenantId).listCaptures(
+    websiteId,
+  );
+  const byPath = new Map<string, PageSnapshotCapture[]>();
+  for (const row of rows) {
+    byPath.set(row.url, [...(byPath.get(row.url) ?? []), row]);
+  }
+  const summaries = new Map<string, PageSnapshotSummary>();
+  for (const [url, captures] of byPath) {
+    const rendered = captures.filter((row) => row.documentWidth > 0);
+    const shown = rendered.length > 0 ? rendered : captures;
+    summaries.set(url, {
+      capturedAt: Math.max(
+        ...shown.map((row) => new Date(row.capturedAt).getTime()),
+      ),
+      layouts: SNAPSHOT_LAYOUTS.filter((layout) =>
+        rendered.some((row) => row.layout === layout),
+      ),
+      tooHeavy: rendered.length === 0,
+    });
+  }
+  return summaries;
 }
 
 export interface PageSnapshotPayload {

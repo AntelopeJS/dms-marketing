@@ -75,14 +75,19 @@ const RELATIVE_STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', Number.POSITIVE_INFINITY],
 ]
 
-/** "12 seconds ago", "4 minutes ago" — the age of the last event. */
+/** "12 seconds ago", "4 minutes ago" — the age of the last event; "3 hr.
+ * ago" in the `short` style, where a list row has little room. */
 export function formatRelativeTime(
   at: number,
   now: number,
   locale: string,
+  style: Intl.RelativeTimeFormatStyle = 'long',
 ): string {
   let value = Math.round((at - now) / MS_PER_SECOND)
-  const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  const format = new Intl.RelativeTimeFormat(locale, {
+    numeric: 'auto',
+    style,
+  })
   for (const [unit, size] of RELATIVE_STEPS) {
     if (Math.abs(value) < size) {
       return format.format(value, unit)

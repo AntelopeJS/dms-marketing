@@ -970,6 +970,13 @@
           "snapshots": "{count} snapshot | {count} snapshots"
         },
         "row_clicks": "{count} click | {count} clicks",
+        "row_snapshot": {
+          "none": "No snapshot",
+          "none_title": "No snapshot yet: the next sampled visit captures one",
+          "title": "Snapshot captured {date} · {layouts} | Snapshots captured up to {date} · {layouts}",
+          "too_heavy": "Too heavy",
+          "too_heavy_title": "Page too heavy to capture (tried {date})"
+        },
         "row_views": "{count} view | {count} views",
         "sampled_unit": "sampled view | sampled views",
         "sampling_note": "Clicks and scrolls were recorded on {rate} of page loads over this period.",
