@@ -12,8 +12,7 @@ import { analyticsCategory } from "../module";
 /**
  * Pages & heatmaps — the paths visitors actually loaded, with the clicks and
  * scroll depth of the selected one over its snapshot. One block renders both
- * panes: they share a selection, a period and a URL state. The website
- * picker leaves the bar for the pages pane.
+ * panes: they share a selection, a period and a URL state.
  */
 @RegisterPage()
 export class MarketingPagesPage extends PageController(
@@ -29,10 +28,7 @@ export class MarketingPagesPage extends PageController(
   },
   DefaultLayout(),
 ) {
-  static content = MarketingContext({
-    waitingGuide: true,
-    websitePicker: false,
-  }).child(
+  static content = MarketingContext({ waitingGuide: true }).child(
     "explorer",
     MarketingBlock("PagesExplorer", "pages_explorer", "i-ph-cursor-click", {
       periodScope: MARKETING_PERIOD_SCOPE,

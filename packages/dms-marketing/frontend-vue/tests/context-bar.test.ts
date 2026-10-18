@@ -13,17 +13,10 @@ import Context from '../app/components/Context.vue'
 import type { MarketingContextPayload } from '../app/composables/useMarketingContext'
 
 const route = vi.hoisted(() => ({ query: {} as Record<string, string> }))
-const replaced = vi.hoisted(() => [] as unknown[])
 
 vi.mock('#dms/frontend-module', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useDmsRoute: () => ({ query: route.query, path: '/' }),
-  useDmsRouter: () => ({
-    replace: async (location: unknown) => {
-      replaced.push(location)
-    },
-    push: async () => {},
-  }),
 }))
 
 const NOW = Date.UTC(2026, 9, 16, 12)
@@ -62,7 +55,6 @@ beforeEach(() => {
   blockRefreshes = 0
   contextReads = 0
   route.query = {}
-  replaced.length = 0
   vi.stubGlobal(
     'useApiData',
     (_url: unknown, options: Record<string, unknown> = {}) => {
@@ -257,31 +249,6 @@ describe('the context bar', () => {
       'aria-label="page.marketing.context.live. page.marketing.context.utc_days"',
     )
     expect(html).not.toMatch(/>\s*UTC\s*</)
-  })
-
-  it('leaves the website to a block of the page with websitePicker off', async () => {
-    const html = await renderBar({ websitePicker: false })
-    expect(html).not.toContain('page.marketing.context.switch_website')
-    expect(html).not.toContain('aria-label="page.marketing.context.live"')
-    expect(html).not.toMatch(/>1 min\.? ago</)
-    // The rest of the bar stays: Direct / Pause, the period, the refresh.
-    expect(html).toContain('data-block="live"')
-    expect(html).toContain('data-block="period"')
-    expect(html).toContain('data-refresh="true"')
-  })
-
-  it('still keeps the remembered website in the URL with websitePicker off', async () => {
-    const html = await renderBar({ websitePicker: false })
-    expect(replaced).toEqual([{ query: { website: 'acme-shop' } }])
-    // The URL names none yet: the page waits for it.
-    expect(html).not.toContain('<main')
-  })
-
-  it('renders the page on the website the URL names with websitePicker off', async () => {
-    route.query = { website: 'acme-shop' }
-    const html = await renderBar({ websitePicker: false })
-    expect(replaced).toEqual([])
-    expect(html).toContain('<main')
   })
 
   it('names no website, and offers no refresh, before there is one', async () => {

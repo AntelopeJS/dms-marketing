@@ -26,11 +26,7 @@ import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
  * data, on one line like theirs: the website picker, its state (a dot and
  * the age of its last event, the full line in a tooltip) and the period's
  * hints lead, then the `LiveToggle` (Direct / Pause, with the time of the
- * last read) and the period on the right, at the toolbar's size. A page
- * placing the picker in a block of its own (`websitePicker: false`) has the
- * bar lead with the period's hints only: it still keeps the website in the
- * URL and fills in the remembered one, and the block picks through the
- * context the bar provides. The period
+ * last read) and the period on the right, at the toolbar's size. The period
  * is the toolbar's: segmented short codes (1D / 7D / 30D / 90D) and the
  * calendar for a custom range, then the comparison's dropdown (vs previous
  * period, vs previous year, no comparison).
@@ -68,7 +64,6 @@ const props = withDefaults(
     realtimeTopic?: string
     refreshBlocksOnEvents?: boolean
     waitingGuide?: boolean
-    websitePicker?: boolean
     componentId?: string
     pageId?: string
   }>(),
@@ -77,7 +72,6 @@ const props = withDefaults(
     realtimeTopic: undefined,
     refreshBlocksOnEvents: false,
     waitingGuide: false,
-    websitePicker: true,
     componentId: undefined,
     pageId: undefined,
   },
@@ -296,15 +290,8 @@ const stateHint = computed(() =>
       <template v-else-if="selected">
         <!-- One group, tighter than the toolbar's gaps: with the live toggle
              and the period, the bar stays on one line at desktop width. -->
-        <div
-          v-if="websitePicker || cutHint"
-          class="flex min-w-0 flex-wrap items-center gap-2"
-        >
-          <UDropdownMenu
-            v-if="websitePicker"
-            :items="websiteItems"
-            :content="{ align: 'start' }"
-          >
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <UDropdownMenu :items="websiteItems" :content="{ align: 'start' }">
             <UButton
               color="neutral"
               variant="outline"
@@ -352,7 +339,7 @@ const stateHint = computed(() =>
             </template>
           </UDropdownMenu>
 
-          <UTooltip v-if="websitePicker">
+          <UTooltip>
             <span
               class="flex items-center gap-1.5 text-xs whitespace-nowrap text-muted tabular-nums"
               role="status"
