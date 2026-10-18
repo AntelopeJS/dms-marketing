@@ -11,13 +11,13 @@ import {
   useWebsiteDeletionImpactRead,
 } from '../composables/useMarketingReads'
 import { useMarketingNow } from '../composables/useMarketingNow'
-import {
-  formatNumber,
-  formatRelativeTime,
-  formatShortDate,
-  initials,
-} from '../utils/format'
+import { formatNumber, formatShortDate, initials } from '../utils/format'
 import { allowHostConfirmation, hostConflictOf } from '../utils/host-conflict'
+import {
+  WEBSITE_STATE_DOTS,
+  websiteDisplayState,
+  websiteStateLine,
+} from '../utils/website-state'
 import {
   MAX_WEBSITE_DOMAIN_LENGTH,
   MAX_WEBSITE_NAME_LENGTH,
@@ -74,24 +74,11 @@ const now = useMarketingNow(CLOCK_TICK_MS)
 /** The browser's zone, which a server render writes the dates in. */
 const readerZone = readerTimeZone()
 
-function stateLine(card: MarketingWebsiteCard): string {
-  if (
-    (card.state === 'live' || card.state === 'imported') &&
-    card.lastActivityAt
-  ) {
-    return t(`page.marketing.context.${card.state}`, {
-      ago: formatRelativeTime(card.lastActivityAt, now.value, locale.value),
-    })
-  }
-  return t(`page.marketing.context.state.${card.state}`)
-}
+const displayState = (card: MarketingWebsiteCard) =>
+  websiteDisplayState(card, now.value)
 
-const STATE_DOTS = {
-  live: 'bg-success',
-  imported: 'bg-info',
-  waiting: 'bg-warning',
-  paused: 'bg-(--ui-text-dimmed)',
-} as const
+const stateLine = (card: MarketingWebsiteCard) =>
+  websiteStateLine(card, now.value, t, locale.value)
 
 async function openOverview(card: MarketingWebsiteCard): Promise<void> {
   await api.selectContextWebsite(card.id)
@@ -391,7 +378,10 @@ async function remove(card: MarketingWebsiteCard): Promise<void> {
           <p
             class="flex items-center gap-2 px-4 pt-3 pb-3 font-mono text-xs text-muted"
           >
-            <span class="size-2 rounded-full" :class="STATE_DOTS[card.state]" />
+            <span
+              class="size-2 rounded-full"
+              :class="WEBSITE_STATE_DOTS[displayState(card)]"
+            />
             {{ stateLine(card) }}
           </p>
 

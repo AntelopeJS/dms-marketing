@@ -9,7 +9,12 @@ import { useMarketingApi } from '../composables/useMarketingApi'
 import { useMarketingContextRead } from '../composables/useMarketingReads'
 import { useMarketingNow } from '../composables/useMarketingNow'
 import { installLink } from '../composables/useMarketingRoutes'
-import { formatRelativeTime, initials, utcDayStart } from '../utils/format'
+import { initials, utcDayStart } from '../utils/format'
+import {
+  WEBSITE_STATE_DOTS,
+  websiteDisplayState,
+  websiteStateLine,
+} from '../utils/website-state'
 import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
 
 /**
@@ -64,8 +69,6 @@ const CLOCK_TICK_MS = 15_000
  * events are read again (the pages' `live` option caps the blocks alike).
  */
 const LIVE_REFRESH_MS = 60_000
-/** A website is live while its last event is this recent. */
-const LIVE_WINDOW_MS = 30 * 60 * 1000
 
 const { t, locale } = useI18n()
 const api = useMarketingApi()
@@ -227,40 +230,11 @@ onBeforeUnmount(() => {
 
 // --- Bar ---------------------------------------------------------------------
 
-/** `live` only while events are recent; a quiet site is `idle`. */
-type DisplayState = ContextWebsite['state'] | 'idle'
+const displayState = (site: ContextWebsite) =>
+  websiteDisplayState(site, now.value)
 
-const STATE_TONES: Record<DisplayState, string> = {
-  live: 'bg-success',
-  idle: 'bg-(--ui-text-muted)',
-  imported: 'bg-info',
-  waiting: 'bg-warning',
-  paused: 'bg-(--ui-text-dimmed)',
-}
-
-function displayState(site: ContextWebsite): DisplayState {
-  if (
-    site.state === 'live' &&
-    (site.lastActivityAt === null ||
-      now.value - site.lastActivityAt > LIVE_WINDOW_MS)
-  ) {
-    return 'idle'
-  }
-  return site.state
-}
-
-function stateLine(site: ContextWebsite): string {
-  const state = displayState(site)
-  if (
-    (state === 'live' || state === 'idle' || state === 'imported') &&
-    site.lastActivityAt
-  ) {
-    return t(`page.marketing.context.${state}`, {
-      ago: formatRelativeTime(site.lastActivityAt, now.value, locale.value),
-    })
-  }
-  return t(`page.marketing.context.state.${site.state}`)
-}
+const stateLine = (site: ContextWebsite) =>
+  websiteStateLine(site, now.value, t, locale.value)
 
 const websiteItems = computed(() => [
   websites.value.map((site) => ({
@@ -333,7 +307,7 @@ const utcHint = computed(() => {
               >
                 <span
                   class="size-1.5 shrink-0 rounded-full"
-                  :class="STATE_TONES[displayState(item.site)]"
+                  :class="WEBSITE_STATE_DOTS[displayState(item.site)]"
                   aria-hidden="true"
                 />
                 <span class="truncate font-mono">{{ item.site.domain }}</span>
@@ -351,7 +325,7 @@ const utcHint = computed(() => {
         <span class="flex items-center gap-2 font-mono text-xs text-muted">
           <span
             class="size-2 rounded-full"
-            :class="STATE_TONES[displayState(selected)]"
+            :class="WEBSITE_STATE_DOTS[displayState(selected)]"
             aria-hidden="true"
           />
           {{ stateLine(selected) }}
