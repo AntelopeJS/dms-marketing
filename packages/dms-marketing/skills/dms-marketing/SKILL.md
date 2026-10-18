@@ -19,6 +19,8 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
   0.4 is the DMS 0.8 line. The analytics pages' context bar is the DMS `PageToolbar` (website, Direct / Pause,
   period): it needs a DMS shipping `DmsPageToolbarBlock` (`base/page-toolbar`). Its period uses the DMS short codes
   (1D / 7D / 30D / 90D); the custom range's calendar segment is icon-only, with its accessible name, from the DMS.
+  The comparison is the selector's dropdown (`comparisonControl: "menu"`: vs previous period, vs previous year,
+  none); the routes read the `compareFrom`/`compareTo` it sends, and "none" sends none, so no change is shown.
 - `ajs project modules add @antelopejs/dms-marketing`. Options: `trackerEnabled`, `rawEventsRetention`,
   `statisticsRetention`, `snapshotRetention`, `sessionIdleTimeout` (all ms), `heatmapSampleRate` (0-1),
   `visitorHashSecret` (set it when running several instances), `geoipDatabasePath` (.mmdb, opt-in),
