@@ -38,6 +38,13 @@
  * (static/snapshot.js) or nothing — so a visit never serializes a page
  * nobody will keep, and a page is captured about once a day however busy
  * it is. Off unless the website opted in.
+ *
+ * Scroll root: an app shell often keeps its document still and scrolls an
+ * inner container instead (a dashboard panel, a sidebar layout). When the
+ * document does not scroll, the page's scroll root is the element marked
+ * `data-marketing-scroll-root` if there is one, else the largest visible
+ * element scrolling vertically (overflow-y auto or scroll, content taller
+ * than its box) that covers most of the window; the document otherwise.
  */
 (() => {
   /** Global the tracker route injects the module settings through. */
@@ -69,6 +76,20 @@
   const SCROLL_MEASURE_DELAY_MS = 1000;
   /** Where a keyboard-activated click is anchored inside its element. */
   const ELEMENT_CENTER = 0.5;
+  /** Names the element that scrolls the page, where the document does not. */
+  const SCROLL_ROOT_ATTRIBUTE = "data-marketing-scroll-root";
+  /** Share of the window an inner scroll container must cover to stand for
+   * the page: less is a list, a code block or a dropdown. */
+  const SCROLL_ROOT_COVERAGE = 0.5;
+  /** Points of the window (fractions of its width and height) probed for an
+   * inner scroll container: one covering most of the window holds several. */
+  const SCROLL_ROOT_PROBES = [
+    [0.5, 0.5],
+    [0.5, 0.25],
+    [0.5, 0.75],
+    [0.25, 0.5],
+    [0.75, 0.5],
+  ];
 
   // --- Public API -----------------------------------------------------------
 
@@ -298,6 +319,70 @@
     }
   });
 
+  // --- Scroll root (see the header) ----------------------------------------
+
+  function documentScrolls() {
+    const root = document.documentElement;
+    return root.scrollHeight - root.clientHeight > 1;
+  }
+
+  function scrollsVertically(element) {
+    if (element.scrollHeight - element.clientHeight <= 1) {
+      return false;
+    }
+    const overflow = getComputedStyle(element).overflowY;
+    return overflow === "auto" || overflow === "scroll";
+  }
+
+  /** Area of the element's box inside the window. */
+  function visibleArea(element) {
+    const box = element.getBoundingClientRect();
+    const width = Math.min(box.right, innerWidth) - Math.max(box.left, 0);
+    const height = Math.min(box.bottom, innerHeight) - Math.max(box.top, 0);
+    return width > 0 && height > 0 ? width * height : 0;
+  }
+
+  /**
+   * The element scrolling the page, or null when it is the document. Found
+   * from what lies under a few points of the window, never by walking the
+   * whole tree: a container covering most of the window holds them.
+   */
+  function findScrollRoot() {
+    if (documentScrolls()) {
+      return null;
+    }
+    const marked = document.querySelector(`[${SCROLL_ROOT_ATTRIBUTE}]`);
+    if (marked) {
+      return marked;
+    }
+    if (typeof document.elementFromPoint !== "function") {
+      return null;
+    }
+    const visited = new Set();
+    let best = null;
+    let bestArea = innerWidth * innerHeight * SCROLL_ROOT_COVERAGE;
+    for (const [fx, fy] of SCROLL_ROOT_PROBES) {
+      let node = document.elementFromPoint(innerWidth * fx, innerHeight * fy);
+      // An ancestor already visited was checked with all of its own.
+      for (; node && !visited.has(node); node = node.parentElement) {
+        visited.add(node);
+        if (
+          node === document.body ||
+          node === document.documentElement ||
+          !scrollsVertically(node)
+        ) {
+          continue;
+        }
+        const area = visibleArea(node);
+        if (area > bestArea) {
+          best = node;
+          bestArea = area;
+        }
+      }
+    }
+    return best;
+  }
+
   // --- Scroll depth (max reached per page, flushed on leave) ----------------
 
   function currentScrollDepth() {
@@ -508,6 +593,8 @@
       website: websiteId,
       endpoint: snapshotEndpoint,
       path: path,
+      // Looked for at capture time, the page as it is then.
+      scrollRoot: findScrollRoot,
     };
     const loader = document.createElement("script");
     loader.async = true;
