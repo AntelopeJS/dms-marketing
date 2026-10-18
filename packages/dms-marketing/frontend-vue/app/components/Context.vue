@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, provide, ref, watch } from 'vue'
+import { computed, provide, ref, watch } from 'vue'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import {
   MARKETING_CONTEXT_KEY,
   type ContextWebsite,
 } from '../composables/useMarketingContext'
 import { useMarketingApi } from '../composables/useMarketingApi'
+import { useMarketingArrivals } from '../composables/useMarketingArrivals'
 import { useMarketingContextRead } from '../composables/useMarketingReads'
 import { useMarketingNow } from '../composables/useMarketingNow'
 import { installLink } from '../composables/useMarketingRoutes'
@@ -43,6 +44,13 @@ import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
  * selector's remembered period and the website saved server-side. Only a pick
  * in the bar writes the website, so opening a link never moves another tab.
  *
+ * Live: every block of the page reads again on the module's arrivals topic
+ * (`realtimeTopic`), through the page's Direct / Pause gate, and so does the
+ * bar's own read of the websites' last events. A page holding stock blocks
+ * that take no topic (the KPI cards) has the bar ask every block to read again
+ * on each arrival (`refreshBlocksOnEvents`). Paused, nothing reads: the
+ * arrivals count in the toggle's "N new", and Resume reads what missed any.
+ *
  * Its children render once the URL names one of the tenant's websites; with
  * no website at all the first-run hero takes their place, and with
  * `waitingGuide` a website still waiting for its first event shows the way
@@ -53,12 +61,16 @@ import { MAX_PERIOD_DAYS, MS_PER_DAY, PERIOD_SCOPE } from '../constants'
 const props = withDefaults(
   defineProps<{
     periodScope?: string
+    realtimeTopic?: string
+    refreshBlocksOnEvents?: boolean
     waitingGuide?: boolean
     componentId?: string
     pageId?: string
   }>(),
   {
     periodScope: PERIOD_SCOPE,
+    realtimeTopic: undefined,
+    refreshBlocksOnEvents: false,
     waitingGuide: false,
     componentId: undefined,
     pageId: undefined,
@@ -73,15 +85,8 @@ const PRESETS = [
   'custom',
 ]
 const COMPARISONS = ['previous-period', 'previous-year', 'none']
+/** How often the ages the bar shows ("1 min ago") move: display only. */
 const CLOCK_TICK_MS = 15_000
-/**
- * How often, in Direct, the blocks of a period reaching today and the
- * websites' last events are read again (the pages' `live` option caps the
- * blocks alike). The page's live controller reads by itself only while the
- * realtime stream is down, and these blocks have no topic: the bar keeps
- * the clock.
- */
-const LIVE_REFRESH_MS = 60_000
 
 const { t, locale } = useI18n()
 const api = useMarketingApi()
@@ -99,15 +104,16 @@ const comparisonLabels = computed(() =>
   ),
 )
 
-// The minute's activity of every website: read on the bar's own clock,
-// which stops while the page is paused.
-const contextRead = useMarketingContextRead({
-  refreshInterval: () => (live.isPaused.value ? null : LIVE_REFRESH_MS),
+// The websites and their last events: read again on the arrivals and the
+// page's refreshes, through the page's live gate (nothing while paused).
+const contextRead = useMarketingContextRead()
+usePageLiveRefresh(() => void contextRead.refresh(), {
+  realtimeTopic: props.realtimeTopic,
 })
 const context = contextRead.data
 /**
- * The context could not be read, and none is shown: a failed re-read (the
- * minute's activity, a retry) keeps the bar as it is.
+ * The context could not be read, and none is shown: a failed re-read (an
+ * arrival, a retry) keeps the bar as it is.
  */
 const failed = computed(
   () =>
@@ -199,11 +205,13 @@ provide(MARKETING_CONTEXT_KEY, {
   reload,
 })
 
-// --- Clock -------------------------------------------------------------------
-// A period reaching today follows the clock: in Direct its blocks read again
-// every minute, through the page's live gate. Paused, nothing reads (nor
-// counts as missed), and Resume reads at once. The selector itself moves a
-// day preset on at midnight, and holds it while paused.
+// --- Live ----------------------------------------------------------------------
+// The blocks with a `realtimeTopic` read on the arrivals by themselves. The
+// stock blocks that take none (the KPI cards) read when the bar asks every
+// block to, through the page's live gate: in Direct on each arrival while the
+// period reaches today; paused, the arrivals are only noted, and Resume asks
+// once. The selector moves a day preset on at midnight, and holds it while
+// paused.
 
 const now = useMarketingNow(CLOCK_TICK_MS)
 
@@ -212,30 +220,12 @@ const reachesToday = computed(
   () => !!range.value && range.value.to.getTime() >= now.value,
 )
 
-/** A period reaching today: its blocks read again, through the live gate. */
-function liveRefresh(): void {
-  if (!live.isPaused.value && reachesToday.value && linkedId.value) {
-    refreshLivePageBlocks()
-  }
+if (props.refreshBlocksOnEvents && props.realtimeTopic) {
+  useMarketingArrivals(
+    props.realtimeTopic,
+    () => reachesToday.value && !!linkedId.value,
+  )
 }
-
-// Back in Direct: what moved while paused, and the websites' last events.
-watch(live.isPaused, (paused) => {
-  if (!paused) {
-    liveRefresh()
-    void reload()
-  }
-})
-
-let liveClock: ReturnType<typeof setInterval> | null = null
-onMounted(() => {
-  liveClock = setInterval(liveRefresh, LIVE_REFRESH_MS)
-})
-onBeforeUnmount(() => {
-  if (liveClock) {
-    clearInterval(liveClock)
-  }
-})
 
 // --- Bar ---------------------------------------------------------------------
 

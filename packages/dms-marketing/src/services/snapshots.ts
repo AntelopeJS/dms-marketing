@@ -21,6 +21,7 @@ import {
 } from "@/types/constants";
 import { BoundedCache } from "./bounded-cache";
 import { websiteAcceptsHostname } from "./origin-guard";
+import { noteCollected } from "./realtime";
 import { findOpenSession } from "./sessionize";
 import { parseTrackedUrl } from "./url";
 
@@ -318,6 +319,7 @@ export async function storeSnapshot(
     html: stored.html,
   } as PageSnapshot);
   captureTimes.set(id, now.getTime());
+  noteCollected(1);
   return true;
 }
 

@@ -18,8 +18,9 @@ import {
 import {
   blockMeta,
   CONTEXT_QUERY,
-  MARKETING_PERIOD_SCOPE,
   CONTEXT_PAGE_LIVE,
+  LIVE_SCOPE,
+  LIVE_TABLE_HOLD,
   MarketingContext,
   websiteUrl,
 } from "../blocks";
@@ -49,7 +50,8 @@ const BUILDER_URL = `${MARKETING_MODULE_PATH}/funnel-builder`;
 const funnelsTable = TableView.fromSource({
   caption: `${FUNNELS_PREFIX}list_title`,
   fetchUrl: websiteUrl(`${FUNNELS_API}/rows`),
-  periodScope: MARKETING_PERIOD_SCOPE,
+  ...LIVE_SCOPE,
+  liveHold: LIVE_TABLE_HOLD,
   capabilities: { filter: true },
   defaultSort: { field: "conversion", desc: true },
   rowClick: "single",
@@ -240,7 +242,7 @@ export class MarketingFunnelsPage extends PageController(
       "winner",
       Banner({
         fetchUrl: websiteUrl(`${FUNNELS_API}/winner`),
-        periodScope: MARKETING_PERIOD_SCOPE,
+        ...LIVE_SCOPE,
       }).meta(blockMeta("funnels_winner", "i-ph-flask")),
     )
     .child(

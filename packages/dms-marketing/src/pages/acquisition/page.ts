@@ -15,6 +15,8 @@ import {
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
   CONTEXT_PAGE_LIVE,
+  LIVE_SCOPE,
+  LIVE_TABLE_HOLD,
   MarketingContext,
   websiteUrl,
 } from "../blocks";
@@ -67,7 +69,8 @@ const utmText = () => ({
 const campaignsTable = TableView.fromSource({
   caption: `${CAMPAIGNS_PREFIX}title`,
   fetchUrl: websiteUrl(`${BLOCKS_API}/campaigns/rows`),
-  periodScope: MARKETING_PERIOD_SCOPE,
+  ...LIVE_SCOPE,
+  liveHold: LIVE_TABLE_HOLD,
   capabilities: { search: true, filter: true, sort: true, paginate: true },
   searchPlaceholder: `${CAMPAIGNS_PREFIX}filter`,
   pageSize: 25,
@@ -144,7 +147,7 @@ const campaignsTable = TableView.fromSource({
 function campaignNotice(kind: "tagged" | "missing") {
   return Banner({
     fetchUrl: websiteUrl(`${BLOCKS_API}/campaigns/notice?kind=${kind}`),
-    periodScope: MARKETING_PERIOD_SCOPE,
+    ...LIVE_SCOPE,
   });
 }
 
@@ -152,7 +155,7 @@ function topDimension(dimension: string, key: string, icon: string) {
   return TopListCard({
     title: `$page.marketing.acquisition.tops.${key}`,
     fetchUrl: websiteUrl(`${BLOCKS_API}/top?dimension=${dimension}&limit=5`),
-    periodScope: MARKETING_PERIOD_SCOPE,
+    ...LIVE_SCOPE,
     valueFormat: "number",
     showRank: true,
     highlightTopN: 3,
@@ -183,9 +186,10 @@ export class MarketingAcquisitionPage extends PageController(
   static content = MarketingContext()
     .child(
       "waiting",
-      Banner({ fetchUrl: websiteUrl(`${BLOCKS_API}/website-notice`) }).meta(
-        blockMeta("website_waiting", "i-ph-plugs"),
-      ),
+      Banner({
+        fetchUrl: websiteUrl(`${BLOCKS_API}/website-notice`),
+        realtimeTopic: LIVE_SCOPE.realtimeTopic,
+      }).meta(blockMeta("website_waiting", "i-ph-plugs")),
     )
     .child(
       "channels",

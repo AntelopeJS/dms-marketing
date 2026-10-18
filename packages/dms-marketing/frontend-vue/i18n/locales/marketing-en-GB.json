@@ -1144,6 +1144,9 @@
         "snippet_named": "Tracker snippet for {name}",
         "open_overview_named": "Open the {name} overview",
         "finish_install_named": "Finish installing {name}"
+      },
+      "live": {
+        "new_events": "{count} new event | {count} new events"
       }
     }
   }

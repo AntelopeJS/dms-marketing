@@ -25,6 +25,7 @@ import { campaignKey, resolveChannel } from "./acquisition";
 import { BoundedCache } from "./bounded-cache";
 import { runningExperimentKeys } from "./experiment-definitions";
 import { lookupCountry } from "./geoip";
+import { noteCollected } from "./realtime";
 import { addDailyMarketingStats, getUtcMidnight } from "./rollup-write";
 import { resolveSession, type SessionResolution } from "./sessionize";
 import { getVisitorHashSecret } from "./settings";
@@ -161,10 +162,15 @@ export async function ingestPreparedBatch(
   const previous = snapshotSession(resolution.session);
   await touchSession(context, resolution, docs);
 
+  const rollup = recordRollup(context, resolution, docs, previous);
+  // Once the day's counters hold the batch, or failed to: the raw events
+  // the heatmaps and funnels read are stored either way.
+  const notify = () => noteCollected(docs.length);
+  void rollup.then(notify, notify);
   return {
     accepted: docs.length,
     isNewSession: resolution.isNewSession,
-    rollup: recordRollup(context, resolution, docs, previous),
+    rollup,
   };
 }
 

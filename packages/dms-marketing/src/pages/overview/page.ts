@@ -20,6 +20,7 @@ import {
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
   CONTEXT_PAGE_LIVE,
+  LIVE_SCOPE,
   MarketingContext,
   websiteUrl,
 } from "../blocks";
@@ -50,7 +51,7 @@ function trafficChart(metric: "sessions" | "pageviews") {
     title: `${TRAFFIC_PREFIX}${metric}_title`,
     icon: "i-ph-chart-line",
     fetchUrl: websiteUrl(`${BLOCKS_API}/traffic?metric=${metric}`),
-    periodScope: MARKETING_PERIOD_SCOPE,
+    ...LIVE_SCOPE,
     valueFormat: "number",
     primaryLabel: `${TRAFFIC_PREFIX}this_period`,
     comparisonLabel: `${TRAFFIC_PREFIX}compared_period`,
@@ -109,7 +110,11 @@ export class MarketingOverviewPage extends PageController(
     ],
   }),
 ) {
-  static content = MarketingContext({ waitingGuide: true })
+  // The KPI cards take no `realtimeTopic`: the bar reads them on events.
+  static content = MarketingContext({
+    waitingGuide: true,
+    refreshBlocksOnEvents: true,
+  })
     .child(
       "kpis",
       Grid({ minColumnWidth: "200px" })
@@ -127,7 +132,7 @@ export class MarketingOverviewPage extends PageController(
       "quality",
       StatGroup({
         fetchUrl: websiteUrl(`${BLOCKS_API}/quality`),
-        periodScope: MARKETING_PERIOD_SCOPE,
+        ...LIVE_SCOPE,
         label: "$page.marketing.blocks.quality.name",
         skeletonCount: 3,
       }).meta(blockMeta("quality", "i-ph-gauge")),
@@ -167,7 +172,7 @@ export class MarketingOverviewPage extends PageController(
               TopListCard({
                 title: "$page.marketing.overview.devices.title",
                 fetchUrl: websiteUrl(`${BLOCKS_API}/devices`),
-                periodScope: MARKETING_PERIOD_SCOPE,
+                ...LIVE_SCOPE,
                 valueFormat: "number",
                 emptyLabel: "$page.marketing.overview.devices.empty",
                 skeletonCount: 3,

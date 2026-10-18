@@ -4,7 +4,10 @@ import type {
 } from "@antelopejs/interface-dms/component";
 import { Banner } from "@antelopejs/interface-dms/base/banner";
 import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
+import type { TableViewOptions } from "@antelopejs/interface-dms/base/table-view";
 import type { PageLiveOptions } from "@antelopejs/interface-dms/page";
+import { RegisterPageTopic } from "@antelopejs/interface-dms/realtime";
+import { MARKETING_EVENTS_TOPIC } from "@/services/realtime";
 import { API_BASE_PATH } from "@/types/constants";
 
 /**
@@ -55,11 +58,34 @@ export const CONTEXT_QUERY = [
   ),
 ].join("&");
 
-/** Options every module block reads its data with. */
+/**
+ * Options every module block reads its data with. `realtimeTopic` is the
+ * module's arrivals topic on every block of an analytics page: the page's
+ * live gate reads it again when events come in.
+ */
 export interface ScopedBlockOptions {
   fetchUrl?: string;
   periodScope?: string;
+  realtimeTopic?: string;
 }
+
+/**
+ * What a block of an analytics page reads with: the context bar's period and
+ * the module's arrivals topic. The topic makes a stock block read again on
+ * each batch of events, through the page's Direct / Pause gate.
+ */
+export const LIVE_SCOPE = {
+  periodScope: MARKETING_PERIOD_SCOPE,
+  realtimeTopic: MARKETING_EVENTS_TOPIC,
+} as const;
+
+/**
+ * The `liveHold` of an analytics table: paused, its rows stay as they are and
+ * a strip counts the events that came in since ("12 new events · Show").
+ */
+export const LIVE_TABLE_HOLD: NonNullable<TableViewOptions["liveHold"]> = {
+  missedLabel: "$page.marketing.live.new_events",
+};
 
 /**
  * A block this module renders itself, addressed by its registered name
@@ -87,17 +113,25 @@ export interface MarketingContextOptions extends ScopedBlockOptions {
    * install guide in place of the children: a page of zeros reads nothing.
    */
   waitingGuide?: boolean;
+  /**
+   * The page holds stock blocks that take no `realtimeTopic` (`KpiCard`):
+   * on each batch of events the bar asks every block of the page to read
+   * again (`refreshLivePageBlocks()`), through the live gate.
+   */
+  refreshBlocksOnEvents?: boolean;
 }
 
 /**
- * The `live` option of a page under the context bar: in Direct, while its
- * period reaches today, the bar asks the blocks to read again every minute
- * (`refreshLivePageBlocks()`), and the page's gate reads each block at most
- * that often. The bar's Direct / Pause toggle stops it, and the choice
- * follows the reader from one analytics page to the next.
+ * The `live` option of a page under the context bar. In Direct each block
+ * reads again on the module's arrivals (`MARKETING_EVENTS_TOPIC`), at most
+ * every 15 s while the period spans a week or less and every minute past
+ * that: a month of data barely moves in 15 s, and the funnels read raw
+ * events. The bar's Direct / Pause toggle stops it, and the choice follows
+ * the reader from one analytics page to the next.
  */
 export const CONTEXT_PAGE_LIVE: PageLiveOptions = {
-  maxRate: 60,
+  maxRate: 15,
+  slowRateAfter: { period: "8d", maxRate: 60 },
   rememberKey: MARKETING_PERIOD_SCOPE,
 };
 
@@ -105,14 +139,21 @@ export const CONTEXT_PAGE_LIVE: PageLiveOptions = {
  * The context bar and first-run gate wrapping an analytics page: its children
  * render once the tenant has a website, under the bar that picks the website
  * and the period they read. The bar is the DMS `PageToolbar` (website, live
- * toggle, period), so the page needs no toolbar of its own.
+ * toggle, period), so the page needs no toolbar of its own. It binds the
+ * arrivals topic to its page, so a page of custom blocks only (their
+ * `useApiData` reads follow the page's topics) hears it too.
  */
 export function MarketingContext(
-  options: Omit<MarketingContextOptions, "periodScope"> = {},
+  options: Omit<MarketingContextOptions, "periodScope" | "realtimeTopic"> = {},
 ): ComponentBuilder<MarketingContextOptions> {
   return MarketingBlock("Context", "context", "i-ph-sliders-horizontal", {
-    periodScope: MARKETING_PERIOD_SCOPE,
+    ...LIVE_SCOPE,
     ...options,
+  }).onCreated((page) => {
+    const pageId = page.pageInfo?.fullId;
+    if (pageId) {
+      RegisterPageTopic(pageId, MARKETING_EVENTS_TOPIC);
+    }
   });
 }
 

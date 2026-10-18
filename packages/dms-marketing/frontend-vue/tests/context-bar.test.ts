@@ -3,14 +3,21 @@ import {
   createSSRApp,
   defineComponent,
   h,
+  nextTick,
   ref,
-  toValue,
   type Ref,
 } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Context from '../app/components/Context.vue'
 import type { MarketingContextPayload } from '../app/composables/useMarketingContext'
+
+const route = vi.hoisted(() => ({ query: {} as Record<string, string> }))
+
+vi.mock('#dms/frontend-module', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  useDmsRoute: () => ({ query: route.query, path: '/' }),
+}))
 
 const NOW = Date.UTC(2026, 9, 16, 12)
 
@@ -30,12 +37,24 @@ const CONTEXT: MarketingContextPayload = {
 let contextData: Ref<MarketingContextPayload | null>
 let readOptions: Record<string, unknown>
 let paused: Ref<boolean>
+let liveRefreshes: Array<{
+  refresh: () => void
+  options: Record<string, unknown>
+}>
+let topicHandlers: Map<string, (event: object) => void>
+let blockRefreshes: number
+let contextReads: number
 
 beforeEach(() => {
   vi.useFakeTimers({ now: NOW })
   contextData = ref(CONTEXT)
   readOptions = {}
   paused = ref(false)
+  liveRefreshes = []
+  topicHandlers = new Map()
+  blockRefreshes = 0
+  contextReads = 0
+  route.query = {}
   vi.stubGlobal(
     'useApiData',
     (_url: unknown, options: Record<string, unknown> = {}) => {
@@ -44,7 +63,9 @@ beforeEach(() => {
         data: contextData,
         error: ref(null),
         status: ref('success'),
-        refresh: async () => {},
+        refresh: async () => {
+          contextReads += 1
+        },
         then: (resolve: (value: undefined) => void) => resolve(undefined),
       }
     },
@@ -65,7 +86,26 @@ beforeEach(() => {
   vi.stubGlobal('usePageLive', () => ({
     isPaused: computed(() => paused.value),
   }))
-  vi.stubGlobal('refreshLivePageBlocks', () => {})
+  vi.stubGlobal('refreshLivePageBlocks', () => {
+    blockRefreshes += 1
+  })
+  vi.stubGlobal(
+    'usePageLiveRefresh',
+    (refresh: () => void, options: Record<string, unknown> = {}) => {
+      liveRefreshes.push({ refresh, options })
+      return {
+        missed: computed(() => 0),
+        trigger: () => {},
+        refreshNow: refresh,
+      }
+    },
+  )
+  vi.stubGlobal(
+    'useRealtimeTopic',
+    (topic: string, handler: (event: object) => void) => {
+      topicHandlers.set(topic, handler)
+    },
+  )
   vi.stubGlobal('readerTimeZone', () => 'UTC')
   vi.stubGlobal('withQuery', (path: string) => path)
 })
@@ -117,10 +157,17 @@ const DMS_STUBS = {
   }),
 }
 
-async function renderBar(): Promise<string> {
+const TOPIC = 'marketing.events'
+
+async function renderBar(props: Record<string, unknown> = {}): Promise<string> {
   const app = createSSRApp(
     defineComponent({
-      setup: () => () => h(Context, null, { default: () => h('main') }),
+      setup: () => () =>
+        h(
+          Context,
+          { realtimeTopic: TOPIC, ...props },
+          { default: () => h('main') },
+        ),
     }),
   )
   for (const [name, component] of Object.entries(DMS_STUBS)) {
@@ -214,12 +261,34 @@ describe('the context bar', () => {
     expect(html).not.toContain('data-block="period"')
   })
 
-  it("stops reading the websites' last events while the page is paused", async () => {
+  it("reads the websites' last events through the page's live gate, on no clock", async () => {
     await renderBar()
-    const interval = () => toValue(readOptions.refreshInterval as () => number)
     expect(readOptions.refreshOnPageRefresh).toBe(false)
-    expect(interval()).toBe(60_000)
-    paused.value = true
-    expect(interval()).toBeNull()
+    expect(readOptions).not.toHaveProperty('refreshInterval')
+    const [contextLive] = liveRefreshes
+    expect(liveRefreshes).toHaveLength(1)
+    expect(contextLive?.options).toEqual({ realtimeTopic: TOPIC })
+    contextLive?.refresh()
+    expect(contextReads).toBe(1)
+    // Nothing of its own ticks the blocks.
+    await vi.advanceTimersByTimeAsync(5 * 60_000)
+    expect(blockRefreshes).toBe(0)
+  })
+
+  it('leaves the blocks with a topic to read on the arrivals by themselves', async () => {
+    await renderBar()
+    expect(topicHandlers.has(TOPIC)).toBe(false)
+  })
+
+  it('asks every block to read on each arrival for blocks without a topic', async () => {
+    route.query = { website: 'acme-shop' }
+    await renderBar({ refreshBlocksOnEvents: true })
+    const onEvent = topicHandlers.get(TOPIC)
+    expect(onEvent).toBeDefined()
+    onEvent?.({ type: 'collected', payload: { count: 3 } })
+    expect(blockRefreshes).toBe(1)
+    // A presence snapshot is no arrival.
+    onEvent?.({ topic: TOPIC, entries: [] })
+    expect(blockRefreshes).toBe(1)
   })
 })

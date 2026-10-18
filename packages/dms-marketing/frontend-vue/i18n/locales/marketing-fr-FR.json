@@ -1144,6 +1144,9 @@
         "snippet_named": "Balise du traceur du site {name}",
         "open_overview_named": "Ouvrir la vue d'ensemble du site {name}",
         "finish_install_named": "Terminer l'installation du site {name}"
+      },
+      "live": {
+        "new_events": "{count} nouvel événement | {count} nouveaux événements"
       }
     }
   }
