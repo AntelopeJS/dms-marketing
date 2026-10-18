@@ -75,8 +75,6 @@ config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludeP
   with a dashboard site (empty for anyone else or with fewer than 2), and `stats/pages|heatmap|scroll|snapshot`
   take `workspace=<tenantId>|all` (merged per tenant; 404 for non platform owners or a customer site).
   Snapshots outside the caller's workspace are text-masked server-side (`masked: true`). UI: `?workspace=`.
-- Pages & heatmaps puts the website picker and the workspace selector at the top of its pages panel
-  (`PagesPanelHeader.vue`); its context bar takes `websitePicker: false` and keeps only the period.
 - Tracker attributes behind it, usable on any site: `data-exclude-paths="/x,/x/*,/x/**"`, and a live
   `data-website-id` (changing it retargets, removing it pauses).
 
