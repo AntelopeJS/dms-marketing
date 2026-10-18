@@ -363,3 +363,110 @@ test("a capture records the whole content of an inner scroll root", () => {
     { width: 1440, height: 2670 },
   );
 });
+
+describe("transient overlays at capture", () => {
+  const { isTransientOverlay } = require("../static/snapshot.js");
+
+  /** A fake element: its role and attributes, computed position, children. */
+  function el(
+    localName,
+    { attrs = {}, position = "static", children = [], top = false } = {},
+  ) {
+    const node = {
+      localName,
+      position,
+      parentElement: null,
+      children,
+      getAttribute: (name) => attrs[name] ?? null,
+      matches: () => top,
+    };
+    for (const child of children) {
+      child.parentElement = node;
+    }
+    return node;
+  }
+  const positionOf = (node) => node.position;
+  /** `tree` mounted under a body, as the page has it. */
+  function mount(tree) {
+    const body = el("body", { children: [tree] });
+    return {
+      body,
+      dropped: (node) => isTransientOverlay(node, positionOf, body),
+    };
+  }
+
+  test("drops a non-modal prompt fixed over the page", () => {
+    const prompt = el("div", { attrs: { role: "dialog" }, position: "fixed" });
+    assert.equal(
+      mount(el("div", { children: [prompt] })).dropped(prompt),
+      true,
+    );
+  });
+
+  test("drops what sits in the top layer", () => {
+    const modal = el("dialog", { top: true });
+    assert.equal(mount(modal).dropped(modal), true);
+  });
+
+  test("drops a menu or listbox floating in a portal under body", () => {
+    const menu = el("div", { attrs: { role: "menu" } });
+    const wrapper = el("div", { position: "fixed", children: [menu] });
+    const { dropped } = mount(wrapper);
+    assert.equal(dropped(menu), true);
+    const listbox = el("ul", {
+      attrs: { role: "listbox" },
+      position: "absolute",
+    });
+    assert.equal(
+      mount(el("div", { children: [listbox] })).dropped(listbox),
+      true,
+    );
+  });
+
+  test("drops toasts and toast viewports", () => {
+    const toast = el("div", { attrs: { role: "status" }, position: "fixed" });
+    assert.equal(mount(toast).dropped(toast), true);
+    // Reka / Nuxt UI: a region holding the fixed list of toasts.
+    const list = el("ol", { position: "fixed", children: [el("li")] });
+    const region = el("div", { attrs: { role: "region" }, children: [list] });
+    assert.equal(mount(region).dropped(region), true);
+    // Sonner: a polite section around the fixed list.
+    const sonner = el("section", {
+      attrs: { "aria-live": "polite" },
+      children: [el("ol", { position: "fixed" })],
+    });
+    assert.equal(mount(sonner).dropped(sonner), true);
+  });
+
+  test("keeps in-flow content whatever its role", () => {
+    const badge = el("span", { attrs: { role: "status" } });
+    const pinned = el("span", {
+      attrs: { role: "status" },
+      position: "absolute",
+    });
+    // A menu of the page's own navigation, inside a fixed header of the app.
+    const nav = el("ul", { attrs: { role: "menu" } });
+    const header = el("header", {
+      position: "fixed",
+      children: [nav, badge, pinned],
+    });
+    const { dropped } = mount(
+      el("div", { attrs: { id: "app" }, children: [header] }),
+    );
+    assert.equal(dropped(badge), false);
+    assert.equal(dropped(pinned), false);
+    assert.equal(dropped(nav), false);
+    assert.equal(dropped(header), false);
+    const listbox = el("ul", { attrs: { role: "listbox" } });
+    assert.equal(
+      mount(el("form", { children: [listbox] })).dropped(listbox),
+      false,
+    );
+    // A region that is just a page section.
+    const section = el("section", {
+      attrs: { role: "region" },
+      children: [el("ul")],
+    });
+    assert.equal(mount(section).dropped(section), false);
+  });
+});
