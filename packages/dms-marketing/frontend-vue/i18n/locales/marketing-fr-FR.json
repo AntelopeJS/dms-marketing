@@ -903,7 +903,6 @@
         },
         "list_truncated": "Seules les {count} premières pages sont listées. Filtrez, ou saisissez un chemin, pour en trouver une autre.",
         "missing_hint": "Une page manque ? Saisissez son chemin exact ci-dessus.",
-        "more_list": "Autres actions de la liste",
         "most_clicked": "Les plus cliqués",
         "most_clicked_empty": "Aucun élément ancré pour l'instant : les clics s'affichent seulement sur la page.",
         "no_match": {
@@ -970,10 +969,6 @@
           "page_description": "Supprime les clics, profondeurs de défilement et instantanés de cette page, quelle que soit la période. Saisissez son chemin pour confirmer.",
           "page_done": "Heatmap de la page réinitialisée",
           "page_title": "Réinitialiser la heatmap de cette page ?",
-          "site_button": "Réinitialiser toutes les heatmaps…",
-          "site_description": "Supprime tous les clics, profondeurs de défilement et instantanés de page du site, quelle que soit la période. Saisissez le domaine pour confirmer.",
-          "site_done": "Heatmaps de {name} réinitialisées",
-          "site_title": "Réinitialiser les heatmaps de {name} ?",
           "snapshots": "{count} instantané | {count} instantanés"
         },
         "row_clicks": "{count} clic | {count} clics",
@@ -1106,6 +1101,27 @@
           "sessions_since": "Sessions depuis le {date}",
           "snapshots": "Instantanés de page",
           "title": "Supprimer {name} ?"
+        },
+        "purge": {
+          "all_action": "Purger toutes les données…",
+          "all_confirm": "Purger toutes les données",
+          "all_description": "Tout ce qui a été collecté sur ce site disparaît, pour toutes les périodes : pages vues, sessions, statistiques quotidiennes, clics, profondeurs de défilement, instantanés, expositions A/B et historique importé. Le site, ses réglages et ses funnels restent ; leurs résultats repartent de zéro. Saisissez le domaine pour confirmer.",
+          "all_done": "Données de {name} purgées",
+          "all_hint": "Tout ce qui a été collecté : trafic, sessions, heatmaps, expositions A/B et historique importé.",
+          "all_title": "Purger toutes les données de {name} ?",
+          "done_all_counts": "Supprimé : {events} événements, {sessions} sessions et {snapshots} instantanés.",
+          "done_heatmaps_counts": "Supprimé : {events} clics et profondeurs de défilement, et {snapshots} instantanés.",
+          "heatmap_events": "Clics et profondeurs de défilement, depuis le début",
+          "heatmaps_action": "Purger les heatmaps…",
+          "heatmaps_confirm": "Purger les heatmaps",
+          "heatmaps_description": "Les clics, profondeurs de défilement et instantanés de toutes les pages disparaissent, pour toutes les périodes : les nombres de clics retombent à zéro partout. Pages vues, sessions et funnels sont conservés. Saisissez le domaine pour confirmer.",
+          "heatmaps_done": "Heatmaps de {name} purgées",
+          "heatmaps_hint": "Clics, profondeurs de défilement et instantanés de toutes les pages. Le trafic est conservé.",
+          "heatmaps_title": "Purger les heatmaps de {name} ?",
+          "kept": "Le site, ses réglages, ses funnels et ses tests A/B sont conservés",
+          "kept_traffic": "Pages vues, sessions, funnels et tests A/B sont conservés",
+          "section": "Purger les données collectées",
+          "section_description": "Le site garde ses réglages, ses funnels et ses tests A/B ; leurs résultats repartent de zéro."
         },
         "description": "Les sites qui envoient des données à cet espace, leur traceur et ce qui est enregistré sur chacun.",
         "discard_confirm": {

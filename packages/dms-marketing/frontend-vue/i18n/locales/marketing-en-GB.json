@@ -903,7 +903,6 @@
         },
         "list_truncated": "Only the first {count} pages are listed. Filter, or type a path, to find another.",
         "missing_hint": "Missing a page? Type its exact path above.",
-        "more_list": "More list actions",
         "most_clicked": "Most clicked",
         "most_clicked_empty": "No element anchored yet: clicks show on the page only.",
         "no_match": {
@@ -970,10 +969,6 @@
           "page_description": "Deletes the clicks, scroll depths and snapshots of this page, whatever the period. Type its path to confirm.",
           "page_done": "Heatmap of the page reset",
           "page_title": "Reset the heatmap of this page?",
-          "site_button": "Reset every heatmap…",
-          "site_description": "Deletes every click, scroll depth and page snapshot of the website, whatever the period. Type the domain to confirm.",
-          "site_done": "Heatmaps of {name} reset",
-          "site_title": "Reset the heatmaps of {name}?",
           "snapshots": "{count} snapshot | {count} snapshots"
         },
         "row_clicks": "{count} click | {count} clicks",
@@ -1106,6 +1101,27 @@
           "sessions_since": "Sessions since {date}",
           "snapshots": "Snapshots",
           "title": "Delete {name}?"
+        },
+        "purge": {
+          "all_action": "Purge all data…",
+          "all_confirm": "Purge all data",
+          "all_description": "Everything collected on this website goes, for every period: pageviews, sessions, daily statistics, clicks, scroll depths, snapshots, A/B exposures and imported history. The website, its settings and its funnels stay; their results start again from zero. Type the domain to confirm.",
+          "all_done": "Data of {name} purged",
+          "all_hint": "Everything collected: traffic, sessions, heatmaps, A/B exposures and imported history.",
+          "all_title": "Purge all the data of {name}?",
+          "done_all_counts": "Deleted: {events} events, {sessions} sessions and {snapshots} snapshots.",
+          "done_heatmaps_counts": "Deleted: {events} clicks and scroll depths, and {snapshots} snapshots.",
+          "heatmap_events": "Clicks and scroll depths, all time",
+          "heatmaps_action": "Purge heatmaps…",
+          "heatmaps_confirm": "Purge heatmaps",
+          "heatmaps_description": "The clicks, scroll depths and snapshots of every page go, for every period: click counts drop to zero everywhere. Pageviews, sessions and funnels are kept. Type the domain to confirm.",
+          "heatmaps_done": "Heatmaps of {name} purged",
+          "heatmaps_hint": "Clicks, scroll depths and snapshots of every page. Traffic is kept.",
+          "heatmaps_title": "Purge the heatmaps of {name}?",
+          "kept": "The website, its settings, funnels and A/B tests are kept",
+          "kept_traffic": "Pageviews, sessions, funnels and A/B tests are kept",
+          "section": "Purge collected data",
+          "section_description": "The website keeps its settings, funnels and A/B tests; their results start again from zero."
         },
         "description": "The sites sending data to this workspace, their tracker, and what is captured on each.",
         "discard_confirm": {

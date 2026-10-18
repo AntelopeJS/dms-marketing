@@ -90,7 +90,10 @@ export function mergeWebsiteCards<Row extends { _id: string }>(
   });
 }
 
-/** What deleting a website discards, for its confirmation. */
+/**
+ * What deleting a website, or purging its data, discards: for their
+ * confirmations.
+ */
 export interface WebsiteDeletionImpact {
   /** Every stored day, not a window: the rollups all go. */
   sessions: number;
@@ -99,15 +102,20 @@ export interface WebsiteDeletionImpact {
   since: number | null;
   funnels: number;
   snapshots: number;
+  /** Clicks and scrolls, every period: what the heatmaps are drawn from. */
+  heatmapEvents: number;
 }
 
 export async function websiteDeletionImpact(
   website: Website,
 ): Promise<WebsiteDeletionImpact> {
-  const [days, funnels, snapshots] = await Promise.all([
+  const [days, funnels, snapshots, heatmapEvents] = await Promise.all([
     GetModel(WebsiteStatisticsModel, website.tenantId).getCounters(website._id),
     GetModel(FunnelsModel, website.tenantId).listByWebsite(website._id),
     GetModel(PageSnapshotsModel, website.tenantId).countByWebsite(website._id),
+    GetModel(MarketingEventsModel, website.tenantId).countHeatmapEvents(
+      website._id,
+    ),
   ]);
   return {
     sessions: days.reduce((sum, day) => sum + (day.sessions ?? 0), 0),
@@ -115,6 +123,7 @@ export async function websiteDeletionImpact(
     since: days.length > 0 ? Math.min(...days.map((day) => day.day)) : null,
     funnels: funnels.length,
     snapshots,
+    heatmapEvents,
   };
 }
 

@@ -29,8 +29,10 @@ import { deleteSnapshots } from "@/services/snapshots";
 import {
   assertWebsiteDeletable,
   listTenantWebsites,
+  purgeWebsiteCollectedData,
   purgeWebsiteTrackingData,
   requireTenantWebsite,
+  WEBSITE_PURGE_SCOPES,
 } from "@/services/tenant-website";
 import { invalidateWebsiteCache } from "@/services/website-cache";
 import { forgetAcceptedSources } from "@/services/origin-guard";
@@ -65,6 +67,8 @@ const websiteCreateSchema = z.object({
 });
 
 const allowHostSchema = z.object({ hostname: hostnameSchema });
+
+const purgeSchema = z.object({ scope: z.enum(WEBSITE_PURGE_SCOPES) });
 
 const websiteUpdateSchema = z.object({
   name: nameSchema.optional(),
@@ -136,7 +140,8 @@ export class WebsitesController extends Controller(
     );
   }
 
-  /** What deleting the site discards, for the confirmation to list. */
+  /** What deleting the site, or purging its data, discards: for the
+   * confirmations to list. */
   @Get("/:id/deletion")
   async deletion(
     @AuthTenantOwner() _user: User,
@@ -270,6 +275,37 @@ export class WebsitesController extends Controller(
     forgetAcceptedSources(website);
     publishWebsiteChange("updated", id);
     return website;
+  }
+
+  /**
+   * Deletes what the site collected — `{ scope: "all" }` — or its heatmaps
+   * alone — `{ scope: "heatmaps" }` — and keeps the site, its settings and
+   * its funnels, whose results start again from zero. The scope is never
+   * implied. Idempotent: a second call deletes nothing and answers zeros.
+   */
+  @Post("/:id/purge")
+  async purge(
+    @AuthTenantOwner() _user: User,
+    @Parameter("id") id: string,
+    @JSONBody() body: unknown,
+    @Context() context: RequestContext,
+  ) {
+    const website = await requireTenantWebsite(context, id);
+    const { scope } = assertValidation(
+      body,
+      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
+      // reference passed here is not actually unbound.
+      // oxlint-disable-next-line typescript/unbound-method
+      purgeSchema.parse,
+      validationIssues,
+    );
+    const deleted = await purgeWebsiteCollectedData(
+      website.tenantId,
+      id,
+      scope,
+    );
+    publishWebsiteChange("updated", id);
+    return { purged: id, scope, deleted };
   }
 
   /**

@@ -4,6 +4,7 @@ const test = it;
 const { ControllerMeta } = require("@antelopejs/interface-api");
 const { GetMetadata } = require("@antelopejs/interface-core");
 const models = require("@antelopejs/interface-database-decorators/model");
+const { EnsureWebsite } = require("@antelopejs/interface-dms-marketing");
 const {
   FunnelsModel,
   MarketingEventsModel,
@@ -15,6 +16,18 @@ const {
 } = require("../dist/db");
 const { WebsitesController } = require("../dist/routes/websites");
 const { dashboardWebsiteId } = require("../dist/services/dashboard-tracking");
+const {
+  computePageActivity,
+  resetHeatmap,
+} = require("../dist/services/heatmap");
+const { trailingWindow } = require("../dist/services/period");
+const {
+  purgeWebsiteCollectedData,
+} = require("../dist/services/tenant-website");
+const { websiteDeletionImpact } = require("../dist/services/website-report");
+
+/** Read while the files load, before any test has mocked it. */
+const realGetModel = models.GetModel;
 
 const TENANT = "default";
 /**
@@ -23,6 +36,8 @@ const TENANT = "default";
  */
 const tenantRequest = () => ({ rawRequest: { headers: {} } });
 const OWNER = { _id: "owner" };
+const ALL = { scope: "all" };
+const HEATMAPS = { scope: "heatmaps" };
 
 const controller = Object.create(WebsitesController.prototype);
 
@@ -105,14 +120,46 @@ describe("deleting a website", () => {
   });
 });
 
-describe("the delete route", () => {
+describe("the purge route", () => {
+  afterEach(() => mock.restoreAll());
+
+  test("purges the dashboard's own site too, and keeps it", async () => {
+    const { rows, websites } = fakeStore();
+    const id = dashboardWebsiteId(TENANT);
+    const answer = await controller.purge(OWNER, id, ALL, tenantRequest());
+    assert.equal(answer.purged, id);
+    assert.equal(answer.deleted.events, 5);
+    assert.ok(websites.has(id));
+    assert.equal(rows.funnels, 2);
+  });
+
+  test("another tenant's site answers 404 and keeps its data", async () => {
+    const { rows } = fakeStore();
+    await assert.rejects(
+      controller.purge(OWNER, "guard-foreign", ALL, tenantRequest()),
+      status(404),
+    );
+    assert.equal(rows.events, 5);
+  });
+
+  test("a scope is never implied", async () => {
+    const { rows } = fakeStore();
+    for (const body of [{}, { scope: "everything" }, null]) {
+      await assert.rejects(
+        controller.purge(OWNER, "guard-site", body, tenantRequest()),
+        status(400),
+      );
+    }
+    assert.equal(rows.events, 5);
+  });
+
   /** What the route resolves its first parameter (the caller) with. */
   function callerProvider(handler) {
     const meta = GetMetadata(WebsitesController, ControllerMeta);
     return meta.getParameterArray(handler)[0].provider;
   }
 
-  for (const handler of ["remove"]) {
+  for (const handler of ["purge", "remove"]) {
     test(`${handler} takes a tenant owner, and refuses an anonymous call`, async () => {
       const provider = callerProvider(handler);
       // The owner variant of the tenant guard, the one `update` takes.
@@ -123,4 +170,205 @@ describe("the delete route", () => {
       );
     });
   }
+});
+
+// --- Scope, over the database --------------------------------------------------
+
+const DAY_MS = 86_400_000;
+
+function event(websiteId, kind, url, at) {
+  const timestamp = new Date(at);
+  return {
+    websiteId,
+    timestamp,
+    day: Math.floor(at / DAY_MS) * DAY_MS,
+    kind,
+    sessionId: `${websiteId}-session`,
+    visitorId: `${websiteId}-visitor`,
+    url,
+  };
+}
+
+/**
+ * A site with traffic on two pages: pageviews, clicks, scrolls, an A/B
+ * exposure, a session, a day of statistics, a snapshot, an import claim and
+ * a funnel.
+ */
+async function seededSite(id) {
+  await EnsureWebsite({
+    id,
+    tenantId: TENANT,
+    name: id,
+    domain: `${id}.example.com`,
+  });
+  const now = Date.now() - 60_000;
+  const day = Math.floor(now / DAY_MS) * DAY_MS;
+  await realGetModel(MarketingEventsModel, TENANT).insertMany([
+    event(id, "pageview", "/", now),
+    event(id, "pageview", "/pricing", now),
+    event(id, "click", "/", now),
+    event(id, "click", "/", now),
+    event(id, "click", "/pricing", now),
+    event(id, "scroll", "/", now),
+    event(id, "scroll", "/pricing", now),
+    { ...event(id, "exposure", "/", now), name: "hero" },
+  ]);
+  await realGetModel(MarketingSessionsModel, TENANT).insert({
+    _id: `${id}-session`,
+    websiteId: id,
+    visitorId: `${id}-visitor`,
+    startedAt: new Date(now),
+    lastSeenAt: new Date(now),
+    isNewVisitor: true,
+    entryUrl: "/",
+    exitUrl: "/pricing",
+    pageviewsCount: 2,
+    eventsCount: 8,
+  });
+  await realGetModel(WebsiteStatisticsModel, TENANT).insert({
+    _id: `${id}:${day}`,
+    websiteId: id,
+    day,
+    sessions: 1,
+    pageviews: 2,
+  });
+  await realGetModel(PageSnapshotsModel, TENANT).insert({
+    _id: `${id}-snapshot`,
+    websiteId: id,
+    url: "/",
+    layout: "desktop",
+    capturedAt: new Date(now),
+  });
+  await realGetModel(MarketingImportsModel, TENANT).insert({
+    _id: `${id}:history`,
+    websiteId: id,
+    importId: "history",
+    status: "done",
+  });
+  await realGetModel(FunnelsModel, TENANT).insert({
+    _id: `${id}-funnel`,
+    websiteId: id,
+    name: "Checkout",
+    steps: [{ kind: "url", value: "/pricing" }],
+  });
+}
+
+const clicksOf = async (id) =>
+  (await computePageActivity(TENANT, id, trailingWindow(7))).clicks;
+
+async function eventKinds(id) {
+  const rows = await realGetModel(MarketingEventsModel, TENANT)
+    .table.getAll([id], "websiteId")
+    .run();
+  return rows.map((row) => row.kind).sort((a, b) => a.localeCompare(b));
+}
+
+describe("purging a website's data", () => {
+  beforeEach(() => mock.method(models, "GetModel", realGetModel));
+  afterEach(() => mock.restoreAll());
+
+  test("the confirmation counts what each scope deletes", async () => {
+    await seededSite("purge-impact");
+    const impact = await websiteDeletionImpact(
+      await realGetModel(WebsitesModel).get("purge-impact"),
+    );
+    assert.equal(impact.sessions, 1);
+    assert.equal(impact.pageviews, 2);
+    assert.equal(impact.heatmapEvents, 5);
+    assert.equal(impact.snapshots, 1);
+    assert.equal(impact.funnels, 1);
+  });
+
+  test("heatmaps only: every page's clicks drop to zero, the traffic stays", async () => {
+    await seededSite("purge-heatmaps");
+    assert.deepEqual(Object.fromEntries(await clicksOf("purge-heatmaps")), {
+      "/": 2,
+      "/pricing": 1,
+    });
+    const { deleted } = await controller.purge(
+      OWNER,
+      "purge-heatmaps",
+      HEATMAPS,
+      tenantRequest(),
+    );
+    // Three clicks and two scrolls.
+    assert.deepEqual(deleted, {
+      events: 5,
+      snapshots: 1,
+      sessions: 0,
+      days: 0,
+      imports: 0,
+    });
+    assert.equal((await clicksOf("purge-heatmaps")).size, 0);
+    assert.deepEqual(await eventKinds("purge-heatmaps"), [
+      "exposure",
+      "pageview",
+      "pageview",
+    ]);
+    const impact = await websiteDeletionImpact(
+      await realGetModel(WebsitesModel).get("purge-heatmaps"),
+    );
+    assert.equal(impact.sessions, 1);
+    assert.equal(impact.pageviews, 2);
+    assert.equal(impact.heatmapEvents, 0);
+    assert.equal(impact.snapshots, 0);
+  });
+
+  test("all: everything collected goes; the site and its funnels stay", async () => {
+    await seededSite("purge-all");
+    const answer = await controller.purge(
+      OWNER,
+      "purge-all",
+      ALL,
+      tenantRequest(),
+    );
+    assert.deepEqual(answer, {
+      purged: "purge-all",
+      scope: "all",
+      deleted: { events: 8, sessions: 1, days: 1, snapshots: 1, imports: 1 },
+    });
+    assert.deepEqual(await eventKinds("purge-all"), []);
+    assert.equal((await clicksOf("purge-all")).size, 0);
+    assert.ok(await realGetModel(WebsitesModel).get("purge-all"));
+    const funnels = await realGetModel(FunnelsModel, TENANT).listByWebsite(
+      "purge-all",
+    );
+    assert.equal(funnels.length, 1);
+    assert.deepEqual(
+      await realGetModel(MarketingImportsModel, TENANT).listByWebsite(
+        "purge-all",
+      ),
+      [],
+    );
+
+    // Idempotent: nothing more to delete.
+    const again = await controller.purge(
+      OWNER,
+      "purge-all",
+      ALL,
+      tenantRequest(),
+    );
+    assert.deepEqual(again.deleted, {
+      events: 0,
+      sessions: 0,
+      days: 0,
+      snapshots: 0,
+      imports: 0,
+    });
+  });
+
+  test("another site of the tenant keeps its data", async () => {
+    await seededSite("purge-neighbour");
+    await seededSite("purge-target");
+    await purgeWebsiteCollectedData(TENANT, "purge-target", "all");
+    assert.equal((await eventKinds("purge-neighbour")).length, 8);
+  });
+
+  test("a page reset drops that page's clicks to zero, and only its", async () => {
+    await seededSite("purge-page");
+    await resetHeatmap(TENANT, "purge-page", "/");
+    assert.deepEqual(Object.fromEntries(await clicksOf("purge-page")), {
+      "/pricing": 1,
+    });
+  });
 });

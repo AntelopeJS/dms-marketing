@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
-import { useMarketingApi } from '../composables/useMarketingApi'
+import {
+  useMarketingApi,
+  type MarketingPurgeScope,
+} from '../composables/useMarketingApi'
 import {
   websiteSettingOf,
   type WebsiteSetting,
@@ -11,6 +14,7 @@ import { formatNumber, formatShortDate, initials } from '../utils/format'
 import { hostConflictOf } from '../utils/host-conflict'
 import { snapshotDiscardConfirmation } from '../utils/snapshot-options'
 import { websiteCardOf, type WebsiteRow } from '../utils/website-card'
+import { websitePurgeImpact, websitePurgeResult } from '../utils/website-purge'
 import {
   blankRequiredFields,
   draftAsksBeforeSaving,
@@ -29,10 +33,11 @@ import {
 /**
  * The settings of one website, in the modal the Websites table opens on a
  * row (a click on its card, its pencil, `?record=<id>`): General (name,
- * hosts, tracking and page snapshots) and Danger zone tabs: delete the
- * site (never the dashboard's own, which the backend refuses too). Opened
- * on a setting (the snapshot pill, `&setting=snapshots`), it scrolls to it.
- * Saving or deleting closes it and reads the table again.
+ * hosts, tracking and page snapshots) and Danger zone tabs: purge the
+ * heatmaps or all the data, delete the site (never the dashboard's own,
+ * which the backend refuses too). Opened on a setting (the snapshot pill,
+ * `&setting=snapshots`), it scrolls to it. Saving, purging or deleting
+ * closes it and reads the table again.
  */
 const props = withDefaults(
   defineProps<{
@@ -192,9 +197,65 @@ async function save(): Promise<void> {
   }
 }
 
-/** The website a deletion is asked about. */
+/** The purges the danger zone offers, the narrower first. */
+const PURGE_SCOPES: readonly MarketingPurgeScope[] = ['heatmaps', 'all']
+
+/** The website a deletion or a purge is asked about. */
 const deletionTarget = computed(() => card.value.id)
 const readDeletionImpact = useWebsiteDeletionImpactRead(deletionTarget)
+
+/** The scope a purge is running for: its button spins. */
+const purging = ref<MarketingPurgeScope | null>(null)
+
+/**
+ * Purges the heatmaps or all the data of the site, which stays with its
+ * settings and funnels. The dialog counts what the scope deletes, and the
+ * domain typed confirms it.
+ */
+async function purge(scope: MarketingPurgeScope): Promise<void> {
+  const website = card.value
+  let impact
+  purging.value = scope
+  try {
+    impact = await readDeletionImpact()
+  } catch (error) {
+    fieldErrors.toastError(error, {
+      toastTitle: 'page.marketing.websites.delete.impact_error',
+    })
+    return
+  } finally {
+    purging.value = null
+  }
+  await confirm({
+    title: t(`page.marketing.websites.purge.${scope}_title`, {
+      name: website.name,
+    }),
+    description: t(`page.marketing.websites.purge.${scope}_description`),
+    color: 'error',
+    icon: 'i-ph-eraser',
+    confirmLabel: t(`page.marketing.websites.purge.${scope}_confirm`),
+    // A hostname is not case-sensitive: neither is the typed check.
+    confirmText: website.domain,
+    confirmTextCaseInsensitive: true,
+    impact: websitePurgeImpact(scope, impact, t, locale.value),
+    onConfirm: async () => {
+      purging.value = scope
+      try {
+        const answer = await api.purgeWebsite(website.id, scope)
+        toast.add({
+          color: 'success',
+          title: t(`page.marketing.websites.purge.${scope}_done`, {
+            name: website.name,
+          }),
+          description: websitePurgeResult(answer, t, locale.value),
+        })
+        done()
+      } finally {
+        purging.value = null
+      }
+    },
+  })
+}
 
 async function remove(): Promise<void> {
   const website = card.value
@@ -404,29 +465,58 @@ async function remove(): Promise<void> {
       />
       <DmsFormRequiredLegend />
     </template>
-    <div
-      v-else
-      class="flex flex-col gap-3 rounded-lg border border-error/40 p-4"
-    >
-      <span class="text-sm font-semibold text-highlighted">
-        {{ t('page.marketing.websites.delete.section') }}
-      </span>
-      <span class="text-sm text-muted">
-        {{
-          card.dashboard
-            ? t('page.marketing.websites.delete.dashboard_kept')
-            : t('page.marketing.websites.delete.section_description')
-        }}
-      </span>
-      <UButton
-        class="self-start"
-        color="error"
-        variant="outline"
-        icon="i-ph-trash"
-        :disabled="card.dashboard"
-        :label="t('page.marketing.websites.delete.action')"
-        @click="remove"
-      />
+    <div v-else class="flex flex-col gap-4">
+      <section
+        class="flex flex-col gap-3 rounded-lg border border-warning/40 p-4"
+      >
+        <span class="text-sm font-semibold text-highlighted">
+          {{ t('page.marketing.websites.purge.section') }}
+        </span>
+        <span class="text-sm text-muted">
+          {{ t('page.marketing.websites.purge.section_description') }}
+        </span>
+        <div
+          v-for="scope in PURGE_SCOPES"
+          :key="scope"
+          class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-default pt-3"
+        >
+          <span class="min-w-0 flex-1 basis-64 text-sm text-muted">
+            {{ t(`page.marketing.websites.purge.${scope}_hint`) }}
+          </span>
+          <UButton
+            color="error"
+            variant="outline"
+            icon="i-ph-eraser"
+            :loading="purging === scope"
+            :disabled="purging !== null && purging !== scope"
+            :label="t(`page.marketing.websites.purge.${scope}_action`)"
+            @click="purge(scope)"
+          />
+        </div>
+      </section>
+      <section
+        class="flex flex-col gap-3 rounded-lg border border-error/40 p-4"
+      >
+        <span class="text-sm font-semibold text-highlighted">
+          {{ t('page.marketing.websites.delete.section') }}
+        </span>
+        <span class="text-sm text-muted">
+          {{
+            card.dashboard
+              ? t('page.marketing.websites.delete.dashboard_kept')
+              : t('page.marketing.websites.delete.section_description')
+          }}
+        </span>
+        <UButton
+          class="self-start"
+          color="error"
+          variant="outline"
+          icon="i-ph-trash"
+          :disabled="card.dashboard"
+          :label="t('page.marketing.websites.delete.action')"
+          @click="remove"
+        />
+      </section>
     </div>
 
     <footer

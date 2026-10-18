@@ -44,7 +44,10 @@ export interface MarketingWebsiteCard extends ContextWebsite {
   dashboard: boolean
 }
 
-/** What deleting a website discards (GET /websites/:id/deletion). */
+/**
+ * What deleting a website, or purging its data, discards
+ * (GET /websites/:id/deletion).
+ */
 export interface MarketingWebsiteDeletionImpact {
   /** Every stored day, not a window. */
   sessions: number
@@ -53,6 +56,24 @@ export interface MarketingWebsiteDeletionImpact {
   since: number | null
   funnels: number
   snapshots: number
+  /** Clicks and scrolls, every period: what the heatmaps are drawn from. */
+  heatmapEvents: number
+}
+
+/** What a purge deletes: everything collected, or the heatmaps alone. */
+export type MarketingPurgeScope = 'all' | 'heatmaps'
+
+/** Rows a purge deleted (POST /websites/:id/purge), 0 for what it keeps. */
+export interface MarketingWebsitePurge {
+  purged: string
+  scope: MarketingPurgeScope
+  deleted: {
+    events: number
+    sessions: number
+    days: number
+    snapshots: number
+    imports: number
+  }
 }
 
 export interface MarketingConnectionStatus {
@@ -450,6 +471,12 @@ export function useMarketingApi() {
       $authFetch<{ deleted: string }>(
         `/api/marketing/websites/${encodeURIComponent(website)}`,
         { method: 'DELETE' },
+      ),
+
+    purgeWebsite: (website: string, scope: MarketingPurgeScope) =>
+      $authFetch<MarketingWebsitePurge>(
+        `/api/marketing/websites/${encodeURIComponent(website)}/purge`,
+        { method: 'POST', body: { scope } },
       ),
 
     previewFunnel: (

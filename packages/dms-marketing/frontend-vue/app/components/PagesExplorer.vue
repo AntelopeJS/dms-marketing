@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
-import {
-  useMarketingApi,
-  type MarketingPageEntry,
-  type MarketingPages,
-  type MarketingPagesSort,
-  type MarketingWebsite,
+import type {
+  MarketingPageEntry,
+  MarketingPages,
+  MarketingPagesSort,
+  MarketingWebsite,
 } from '../composables/useMarketingApi'
 import {
-  useHeatmapCountRead,
   usePageInventory,
   useWebsiteFunnels,
   useWebsites,
@@ -22,11 +20,7 @@ import { formatNumber } from '../utils/format'
 import { pageSnapshotBadge } from '../utils/page-snapshot'
 import { measureFillHeight } from '../utils/fill-height'
 import { useMarketingNow } from '../composables/useMarketingNow'
-import {
-  heatmapDataLabel,
-  heatmapResetImpact,
-  normalizePagePath,
-} from '../utils/heatmap'
+import { normalizePagePath } from '../utils/heatmap'
 
 /**
  * Pages & heatmaps: the paths visitors loaded on the selected website, with
@@ -56,10 +50,7 @@ const SIDE_BY_SIDE_QUERY = '(min-width: 1280px)'
 const { t, locale } = useI18n()
 const route = useDmsRoute()
 const router = useDmsRouter()
-const api = useMarketingApi()
 const context = useMarketingContext()
-const toast = useToast()
-const { confirm } = useConfirm()
 
 const websiteId = computed(() => context.selected.value?.id ?? '')
 const period = usePeriodScope(props.periodScope)
@@ -135,7 +126,6 @@ const failed = computed(
 const loadPages = (): Promise<void> => inventoryRead.refresh()
 
 const funnelsRead = useWebsiteFunnels(websiteId)
-const countSiteHeatmap = useHeatmapCountRead(websiteId)
 const funnels = computed(() =>
   funnelsRead.error.value ? [] : (funnelsRead.data.value ?? []),
 )
@@ -327,53 +317,6 @@ const sortItems = computed(() => [
   { value: 'views', label: t('page.marketing.pages.views') },
   { value: 'clicks', label: t('page.marketing.pages.overlay.clicks') },
 ])
-
-async function resetSite(): Promise<void> {
-  const site = website.value
-  if (!site) {
-    return
-  }
-  const counts = await countSiteHeatmap().catch(() => null)
-  await confirm({
-    title: t('page.marketing.pages.reset.site_title', { name: site.name }),
-    description: t('page.marketing.pages.reset.site_description'),
-    color: 'error',
-    icon: 'i-ph-eraser',
-    confirmLabel:
-      counts && counts.events + counts.snapshots > 0
-        ? t('page.marketing.pages.reset.confirm_count', {
-            what: heatmapDataLabel(counts, t, locale.value),
-          })
-        : t('page.marketing.pages.reset.confirm'),
-    confirmText: site.domain,
-    // A hostname is not case-sensitive: neither is the typed check.
-    confirmTextCaseInsensitive: true,
-    impact: heatmapResetImpact(counts, t, locale.value),
-    onConfirm: async () => {
-      const deleted = await api.resetHeatmap(site._id)
-      toast.add({
-        color: 'success',
-        title: t('page.marketing.pages.reset.site_done', { name: site.name }),
-        description: t('page.marketing.pages.reset.done', {
-          what: heatmapDataLabel(deleted, t, locale.value),
-        }),
-      })
-      // The dialog closes once the pages show the emptied counts.
-      await refreshPageBlocks()
-    },
-  })
-}
-
-const moreItems = computed(() => [
-  [
-    {
-      label: t('page.marketing.pages.reset.site_button'),
-      icon: 'i-ph-eraser',
-      color: 'error' as const,
-      onSelect: () => void resetSite(),
-    },
-  ],
-])
 </script>
 
 <template>
@@ -430,15 +373,6 @@ const moreItems = computed(() => [
               :placeholder="t('page.marketing.pages.search_placeholder')"
               @keyup.enter="inspectTyped"
             />
-            <UDropdownMenu :items="moreItems" :content="{ align: 'end' }">
-              <UButton
-                icon="i-ph-dots-three"
-                size="sm"
-                color="neutral"
-                variant="ghost"
-                :aria-label="t('page.marketing.pages.more_list')"
-              />
-            </UDropdownMenu>
           </div>
           <div class="flex items-center justify-between gap-2 px-4 py-2">
             <DmsEyebrow :label="countLabel" />
