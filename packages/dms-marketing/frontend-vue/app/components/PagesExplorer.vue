@@ -1,6 +1,18 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  computed,
+  getCurrentInstance,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+  watch,
+} from 'vue'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
+// Imported rather than resolved from the registry: a registered component is
+// a lazy chunk of its own, fetched only once a page is selected, so the
+// preview would land a beat after the list, its column empty meanwhile.
+import DmsMarketingPagePreview from './PagePreview.vue'
 import {
   useMarketingApi,
   type MarketingPageEntry,
@@ -232,12 +244,27 @@ const usedIn = computed(() =>
 )
 
 // The preview draws in the browser only (frames, canvases): a server render
-// holds its place.
-const mounted = ref(false)
+// holds its place, until the browser hydrating it is mounted. A client
+// navigation draws it with the list, from the first render: mounted later,
+// it would come in after the list, and its skeleton after none.
+const mounted = ref(!import.meta.env.SSR && !isHydrating())
+if (mounted.value) {
+  selectFirst(inventory.value)
+}
 onMounted(() => {
   mounted.value = true
   selectFirst(inventory.value)
 })
+
+/**
+ * Whether this setup hydrates the server's HTML: Vue binds a hydrating
+ * component's vnode to its server-rendered node before its setup runs, where
+ * a fresh mount has no node yet.
+ */
+function isHydrating(): boolean {
+  const instance = getCurrentInstance()
+  return !!instance && !instance.isMounted && !!instance.vnode.el
+}
 
 const countLabel = computed(() => {
   const listed = pages.value.length
