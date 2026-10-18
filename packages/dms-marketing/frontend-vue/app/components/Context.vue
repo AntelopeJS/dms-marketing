@@ -153,15 +153,19 @@ async function select(id: string): Promise<void> {
 // Watched with the query too, so a block rewriting the URL for its own state
 // (the heatmap path) keeps it. Set up once the context is read.
 await contextRead
-watch(
-  [selectedId, () => route.query],
-  ([id]) => {
-    if (id && route.query.website !== id) {
-      void router.replace({ query: { ...route.query, website: id } })
-    }
-  },
-  { immediate: true },
-)
+function linkSelected(id: string | null): Promise<unknown> | undefined {
+  if (id && route.query.website !== id) {
+    return router.replace({ query: { ...route.query, website: id } })
+  }
+}
+// A navigation in the browser waits for the URL to name the website: the
+// page then opens on its blocks, not on the gate's placeholder first.
+if (import.meta.client) {
+  await linkSelected(selectedId.value)
+}
+watch([selectedId, () => route.query], ([id]) => void linkSelected(id), {
+  immediate: true,
+})
 
 // --- Period --------------------------------------------------------------------
 
