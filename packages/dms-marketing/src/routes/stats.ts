@@ -13,6 +13,7 @@ import {
   AuthTenantMember,
   AuthTenantOwner,
 } from "@antelopejs/interface-dms/guards";
+import { TenantModel } from "@antelopejs/interface-dms/db";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { getConfig } from "@/config";
 import { type DayTops, WebsiteStatisticsModel, WebsitesModel } from "@/db";
@@ -21,9 +22,11 @@ import type { Website } from "@/db/tables/websites.table";
 import { isGeoipActive } from "@/services/geoip";
 import {
   computeClickHeatmap,
-  computePageActivity,
+  computeScopedPageActivity,
   computeScrollDepth,
   countHeatmapData,
+  mergeClickHeatmaps,
+  mergeScrollDepths,
   resetHeatmap as resetHeatmapEvents,
 } from "@/services/heatmap";
 import {
@@ -34,10 +37,18 @@ import {
 import { queryString } from "@/services/query-param";
 import {
   type PageSnapshotSummary,
-  readPageSnapshot,
-  summarizeSnapshots,
+  readScopedPageSnapshot,
+  summarizeScopedSnapshots,
 } from "@/services/snapshots";
 import { requireTenantWebsite } from "@/services/tenant-website";
+import {
+  listDashboardWorkspaces,
+  resolveWorkspaceScope,
+  type ScopedSite,
+  type WorkspaceScope,
+  type WorkspaceScopeStores,
+  type WorkspaceViewer,
+} from "@/services/workspace-scope";
 import { parseTrackedUrl } from "@/services/url";
 import {
   byDimension,
@@ -175,6 +186,40 @@ async function resolveHeatmapScope(
   return { tenantId, websiteIds };
 }
 
+function scopeStores(): WorkspaceScopeStores {
+  return { tenants: GetModel(TenantModel), websites: GetModel(WebsitesModel) };
+}
+
+function viewerOf(context: RequestContext, user: User): WorkspaceViewer {
+  return { owner: user.owner, tenantId: getRequestTenantId(context) };
+}
+
+/**
+ * The sites a read of `website` covers under `workspace` (see
+ * resolveWorkspaceScope): the website alone without it. `website` must be
+ * the caller's either way.
+ */
+async function requestScope(
+  context: RequestContext,
+  user: User,
+  website: unknown,
+  workspace: unknown,
+): Promise<WorkspaceScope> {
+  return resolveWorkspaceScope(
+    scopeStores(),
+    viewerOf(context, user),
+    await requireTenantWebsite(context, queryString(website)),
+    queryString(workspace),
+  );
+}
+
+function siteRefs(sites: ScopedSite[]) {
+  return sites.map((site) => ({
+    tenantId: site.tenantId,
+    websiteId: site.website._id,
+  }));
+}
+
 /** The days a heatmap-family read covers: the page's `from`/`to`. */
 function requestWindow(context: RequestContext): QueryWindow {
   return resolveQueryWindow(periodQueryOf(context.url));
@@ -252,35 +297,40 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
    * `sort=clicks` orders by clicks, anything else by views. While the site
    * has snapshots on, each path also says what was captured of it, from one
    * read of the site's captures (documents left out).
+   *
+   * `workspace` widens a platform owner's dashboard site to another
+   * workspace's, or to every workspace's (`all`): each site is read in its
+   * own tenant and the counts are added up (see resolveWorkspaceScope).
    */
   @Get("pages")
   // The parameter list of a decorated handler is its HTTP surface, not an
   // argument list to shorten.
   // oxlint-disable-next-line eslint/max-params
   async pages(
-    @AuthTenantMember() _user: User,
+    @AuthTenantMember() user: User,
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
     @Parameter("search", "query") search?: string,
     @Parameter("limit", "query") limit?: string,
     @Parameter("sort", "query") sort?: string,
+    @Parameter("workspace", "query") workspace?: string,
   ) {
-    const websiteDoc = await requireTenantWebsite(
-      context,
-      queryString(website),
-    );
+    const { sites } = await requestScope(context, user, website, workspace);
+    const captured = sites.filter((site) => site.website.snapshotsEnabled);
     const window = requestWindow(context);
     const [inRange, activity, snapshots] = await Promise.all([
-      GetModel(WebsiteStatisticsModel, websiteDoc.tenantId).getTopsSince(
-        websiteDoc._id,
-        window.firstDay,
-        PAGES_DIMENSIONS,
-        window.lastDay,
-      ),
-      computePageActivity(websiteDoc.tenantId, websiteDoc._id, window),
-      websiteDoc.snapshotsEnabled
-        ? summarizeSnapshots(websiteDoc.tenantId, websiteDoc._id)
-        : null,
+      Promise.all(
+        sites.map((site) =>
+          GetModel(WebsiteStatisticsModel, site.tenantId).getTopsSince(
+            site.website._id,
+            window.firstDay,
+            PAGES_DIMENSIONS,
+            window.lastDay,
+          ),
+        ),
+      ).then((perSite) => perSite.flat()),
+      computeScopedPageActivity(siteRefs(sites), window),
+      captured.length > 0 ? summarizeScopedSnapshots(siteRefs(captured)) : null,
     ]);
 
     const views = mergeDimension(inRange, "topPages");
@@ -315,18 +365,57 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
       truncated: matching.length > max,
       sampleRate: activity.sampleRate,
       trackerEnabled: getConfig().trackerEnabled,
-      snapshotsEnabled: websiteDoc.snapshotsEnabled,
+      snapshotsEnabled: captured.length > 0,
     };
   }
 
+  /**
+   * The workspaces the selector of `website` offers: the DMS core's
+   * tenants with a dashboard site, for a platform owner on their own
+   * dashboard site; an empty list — no selector — otherwise.
+   */
+  @Get("workspaces")
+  async workspaces(
+    @AuthTenantMember() user: User,
+    @Context() context: RequestContext,
+    @Parameter("website", "query") website?: string,
+  ) {
+    return {
+      workspaces: await listDashboardWorkspaces(
+        scopeStores(),
+        viewerOf(context, user),
+        await requireTenantWebsite(context, queryString(website)),
+      ),
+    };
+  }
+
+  /** Clicks of one path. With `workspace` (see pages), computed in each
+   * workspace and merged. */
   @Get("heatmap")
   async heatmap(
-    @AuthTenantMember() _user: User,
+    @AuthTenantMember() user: User,
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
     @Parameter("path", "query") path?: string,
+    @Parameter("workspace", "query") workspace?: string,
   ) {
     const wantedPath = requestedPath(path);
+    if (queryString(workspace)) {
+      const { sites } = await requestScope(context, user, website, workspace);
+      const window = requestWindow(context);
+      return mergeClickHeatmaps(
+        await Promise.all(
+          sites.map((site) =>
+            computeClickHeatmap(
+              site.tenantId,
+              [site.website._id],
+              wantedPath,
+              window,
+            ),
+          ),
+        ),
+      );
+    }
     const { tenantId, websiteIds } = await resolveHeatmapScope(
       context,
       website,
@@ -343,12 +432,29 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
    * same raw-events window, sampling and website merge rule as the clicks. */
   @Get("scroll")
   async scrollDepth(
-    @AuthTenantMember() _user: User,
+    @AuthTenantMember() user: User,
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
     @Parameter("path", "query") path?: string,
+    @Parameter("workspace", "query") workspace?: string,
   ) {
     const wantedPath = requestedPath(path);
+    if (queryString(workspace)) {
+      const { sites } = await requestScope(context, user, website, workspace);
+      const window = requestWindow(context);
+      return mergeScrollDepths(
+        await Promise.all(
+          sites.map((site) =>
+            computeScrollDepth(
+              site.tenantId,
+              [site.website._id],
+              wantedPath,
+              window,
+            ),
+          ),
+        ),
+      );
+    }
     const { tenantId, websiteIds } = await resolveHeatmapScope(
       context,
       website,
@@ -365,27 +471,34 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
    * Backdrop of one path: the capture at the asked layout, else the nearest
    * one, else null. Never an error — "not captured yet" is a state the
    * surface explains. `website` is required: a capture belongs to one site.
+   * Under another `workspace` (see pages) the newest capture of the scope's
+   * sites is sent, its text masked here whatever the site's own setting:
+   * another workspace's records never reach the browser readable.
    */
   @Get("snapshot")
+  // oxlint-disable-next-line eslint/max-params
   async snapshot(
-    @AuthTenantMember() _user: User,
+    @AuthTenantMember() user: User,
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
     @Parameter("path", "query") path?: string,
     @Parameter("layout", "query") layout?: string,
+    @Parameter("workspace", "query") workspace?: string,
   ) {
     const wantedPath = requestedPath(path);
-    const websiteDoc = await requireTenantWebsite(
+    const { sites, foreign } = await requestScope(
       context,
-      queryString(website),
+      user,
+      website,
+      workspace,
     );
     const wantedLayout = queryString(layout);
     return {
-      snapshot: await readPageSnapshot(
-        websiteDoc.tenantId,
-        websiteDoc._id,
+      snapshot: await readScopedPageSnapshot(
+        siteRefs(sites),
         wantedPath,
         isSnapshotLayout(wantedLayout) ? wantedLayout : DEFAULT_SNAPSHOT_LAYOUT,
+        foreign,
       ),
     };
   }
