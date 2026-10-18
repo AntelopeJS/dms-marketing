@@ -57,6 +57,15 @@ export class PageSnapshot extends Table {
   @Field("number")
   declare bytes: number;
 
+  /**
+   * Whether the capture marked a scroll root (`data-marketing-scroll-root`).
+   * Absent on captures stored before captures recorded it — replaced early
+   * on a page the tracker sees scrolling an inner container — and on
+   * declared snapshots.
+   */
+  @Field("boolean")
+  declare scrollRoot?: boolean;
+
   /** Gzipped document, base64. */
   @Field("string")
   declare html: string;

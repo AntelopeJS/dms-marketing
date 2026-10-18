@@ -17,6 +17,7 @@ import {
   MAX_SNAPSHOTS_PER_WEBSITE,
   MAX_STORED_SNAPSHOT_CHARS,
   SNAPSHOT_CACHE_MAX_ENTRIES,
+  SNAPSHOT_CAPTURE_CACHE_TTL_MS,
   SNAPSHOT_PROMISE_TTL_MS,
   SNAPSHOT_REFRESH_AGE_MS,
 } from "@/types/constants";
@@ -27,10 +28,27 @@ import { parseTrackedUrl } from "./url";
 
 const PAGE_PROTOCOLS = ["http:", "https:"];
 
-/** Capture time (ms, 0 for none) per snapshot id — what the negotiation
- * reads instead of the row. Values expire with the refresh age they gate. */
-const captureTimes = new BoundedCache<number>(
-  SNAPSHOT_REFRESH_AGE_MS,
+/** Marks the container a capture unrolled (static/snapshot.js). */
+const SCROLL_ROOT_ATTRIBUTE = "data-marketing-scroll-root";
+
+/** What the negotiation knows of one key's row. */
+interface CaptureState {
+  /** Capture time in ms, 0 for no row. */
+  capturedAt: number;
+  /** A capture stored before captures recorded their scroll root mark. */
+  unmarked: boolean;
+}
+
+const NO_CAPTURE: CaptureState = { capturedAt: 0, unmarked: false };
+
+/**
+ * Per snapshot id, what the negotiation reads instead of the row. Kept
+ * minutes, not the refresh age it gates: a row deleted where this instance
+ * cannot see it — another instance, a prune, a manual cleanup — must not
+ * hold a page without a snapshot off for a day.
+ */
+const captureStates = new BoundedCache<CaptureState>(
+  SNAPSHOT_CAPTURE_CACHE_TTL_MS,
   SNAPSHOT_CACHE_MAX_ENTRIES,
 );
 
@@ -58,20 +76,35 @@ export function snapshotId(
     .digest("hex");
 }
 
-async function captureTimeOf(website: Website, id: string): Promise<number> {
-  const cached = captureTimes.get(id);
+async function captureStateOf(
+  website: Website,
+  id: string,
+): Promise<CaptureState> {
+  const cached = captureStates.get(id);
   if (cached) {
     return cached.value;
   }
   const row = await GetModel(PageSnapshotsModel, website.tenantId).get(id);
-  const time = row?.capturedAt.getTime() ?? 0;
-  captureTimes.set(id, time);
-  return time;
+  const state = row
+    ? {
+        capturedAt: row.capturedAt.getTime(),
+        unmarked:
+          row.scrollRoot === undefined && row.declaredHash === undefined,
+      }
+    : NO_CAPTURE;
+  captureStates.set(id, state);
+  return state;
 }
 
 /** What the negotiation reads for a snapshot written outside a capture. */
 export function rememberCaptureTime(id: string, capturedAt: number): void {
-  captureTimes.set(id, capturedAt);
+  captureStates.set(id, { capturedAt, unmarked: false });
+}
+
+/** Every remembered capture forgotten: rows went in bulk (the retention
+ * prune), so the next negotiation of each key reads its row again. */
+export function forgetCaptureTimes(): void {
+  captureStates.clear();
 }
 
 /**
@@ -82,16 +115,26 @@ export function rememberCaptureTime(id: string, capturedAt: number): void {
  * instance, so a second instance may hand out one more — one redundant
  * upload per instance per key at worst — and an upload landing on another
  * instance than its negotiation is refused.
+ *
+ * `scrollRoot` is the tracker saying the page scrolls an inner container: a
+ * capture stored before captures recorded that mark is stale then, and is
+ * replaced at once rather than a refresh age later. A capture that recorded
+ * it — found or not — never is, so a page the two scripts disagree on is
+ * not captured again on every visit.
  */
 export async function wantsSnapshot(
   website: Website,
   url: string,
   viewportWidth: number,
   visitorId: string,
+  scrollRoot = false,
 ): Promise<string | undefined> {
   const id = snapshotId(website._id, layoutOfWidth(viewportWidth), url);
-  const capturedAt = await captureTimeOf(website, id);
-  if (Date.now() - capturedAt < SNAPSHOT_REFRESH_AGE_MS || promised.get(id)) {
+  const state = await captureStateOf(website, id);
+  const fresh =
+    Date.now() - state.capturedAt < SNAPSHOT_REFRESH_AGE_MS &&
+    !(scrollRoot && state.unmarked);
+  if (fresh || promised.get(id)) {
     return undefined;
   }
   const token = randomBytes(TOKEN_BYTES).toString("hex");
@@ -298,7 +341,8 @@ export function storedDocument(input: SnapshotRequestInput): {
 
 /** False when the capture is refused: no matching negotiation, an origin
  * the site does not declare, or a site already holding its cap of
- * snapshots and this key being a new one. */
+ * snapshots and this key being a new one. A refusal stamps no capture
+ * time: the key stays wanted, held off at most by its promise's TTL. */
 export async function storeSnapshot(
   website: Website,
   input: SnapshotRequestInput,
@@ -315,7 +359,7 @@ export async function storeSnapshot(
     return false;
   }
   const model = GetModel(PageSnapshotsModel, website.tenantId);
-  const replacing = (await captureTimeOf(website, id)) > 0;
+  const replacing = (await captureStateOf(website, id)).capturedAt > 0;
   if (
     !replacing &&
     (await model.countByWebsite(website._id)) >= MAX_SNAPSHOTS_PER_WEBSITE
@@ -338,8 +382,9 @@ export async function storeSnapshot(
     capturedAt: now,
     bytes: stored.bytes,
     html: stored.html,
+    scrollRoot: "html" in input && input.html.includes(SCROLL_ROOT_ATTRIBUTE),
   } as PageSnapshot);
-  captureTimes.set(id, now.getTime());
+  captureStates.set(id, { capturedAt: now.getTime(), unmarked: false });
   return true;
 }
 
@@ -405,8 +450,10 @@ export async function readPageSnapshot(
 }
 
 /**
- * One path when given, the whole site otherwise. The negotiation cache
- * forgets the keys too, so the next sampled visit recaptures at once.
+ * One path when given, the whole site otherwise. This instance's
+ * negotiation cache forgets the keys too, so its next sampled visit
+ * recaptures at once; another instance notices within its cache TTL
+ * (SNAPSHOT_CAPTURE_CACHE_TTL_MS).
  */
 export async function deleteSnapshots(
   tenantId: string,
@@ -419,10 +466,10 @@ export async function deleteSnapshots(
   );
   if (url) {
     for (const layout of SNAPSHOT_LAYOUTS) {
-      captureTimes.delete(snapshotId(websiteId, layout, url));
+      captureStates.delete(snapshotId(websiteId, layout, url));
     }
   } else {
-    captureTimes.clear();
+    captureStates.clear();
   }
   return deleted;
 }

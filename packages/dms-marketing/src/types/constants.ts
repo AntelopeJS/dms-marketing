@@ -176,6 +176,13 @@ export const MAX_SNAPSHOT_DOCUMENT_PX = 200_000;
 export const DEFAULT_SNAPSHOT_RETENTION_MS = 30 * MS_PER_DAY;
 /** A capture older than this is replaced by the next sampled visit. */
 export const SNAPSHOT_REFRESH_AGE_MS = MS_PER_DAY;
+/**
+ * How long an instance trusts what it read of one key's row. Short on
+ * purpose: a snapshot deleted elsewhere — another instance, the retention
+ * prune, a reset — is noticed within it, so a page left without one is
+ * captured again at the next sampled visit, not a refresh age later.
+ */
+export const SNAPSHOT_CAPTURE_CACHE_TTL_MS = 5 * MS_PER_MINUTE;
 /** How long one handed-out capture holds off the next for the same key. */
 export const SNAPSHOT_PROMISE_TTL_MS = MS_PER_MINUTE;
 export const SNAPSHOT_CACHE_MAX_ENTRIES = 10_000;
