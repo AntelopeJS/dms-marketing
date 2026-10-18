@@ -1090,6 +1090,13 @@
           "title": "Delete {name}?"
         },
         "description": "The sites sending data to this workspace, their tracker, and what is captured on each.",
+        "discard_confirm": {
+          "title": "Delete the site's snapshots?",
+          "description": "Changing this option deletes the site's snapshot. Clicks and scroll depth are kept; the next sampled visits capture the pages again. | Changing this option deletes the site's {count} snapshots. Clicks and scroll depth are kept; the next sampled visits capture the pages again.",
+          "description_unknown": "Changing this option deletes the site's existing snapshots. Clicks and scroll depth are kept; the next sampled visits capture the pages again.",
+          "confirm": "Change and delete",
+          "cancel": "Keep the snapshots"
+        },
         "drawer": {
           "added": "added {date}",
           "close": "Close",

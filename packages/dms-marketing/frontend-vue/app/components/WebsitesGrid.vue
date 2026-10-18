@@ -23,6 +23,7 @@ import {
   initials,
 } from '../utils/format'
 import { allowHostConfirmation, hostConflictOf } from '../utils/host-conflict'
+import { snapshotDiscardConfirmation } from '../utils/snapshot-options'
 import {
   MAX_WEBSITE_DOMAIN_LENGTH,
   MAX_WEBSITE_NAME_LENGTH,
@@ -257,9 +258,31 @@ async function requireFields(): Promise<boolean> {
   return blank.length === 0
 }
 
+/**
+ * The banner warns; saving asks. Declining puts the snapshot switches back
+ * and saves nothing, so the drawer stays open on the rest of the draft.
+ */
+async function confirmSnapshotDiscard(
+  card: MarketingWebsiteCard,
+): Promise<boolean> {
+  if (!discardsSnapshots.value) {
+    return true
+  }
+  if (await confirm(snapshotDiscardConfirmation(t, card.snapshots))) {
+    return true
+  }
+  draftSnapshots.value = card.snapshotsEnabled
+  draftMask.value = card.snapshotMaskText
+  return false
+}
+
 async function save(): Promise<void> {
   const card = editing.value
-  if (!card || !(await requireFields())) {
+  if (
+    !card ||
+    !(await requireFields()) ||
+    !(await confirmSnapshotDiscard(card))
+  ) {
     return
   }
   saving.value = true

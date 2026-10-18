@@ -1090,6 +1090,13 @@
           "title": "Supprimer {name} ?"
         },
         "description": "Les sites qui envoient des données à cet espace, leur traceur et ce qui est enregistré sur chacun.",
+        "discard_confirm": {
+          "title": "Supprimer les instantanés du site ?",
+          "description": "Modifier cette option supprime l'instantané de page du site. Les clics et la profondeur de défilement sont conservés ; les prochaines visites échantillonnées recaptureront les pages. | Modifier cette option supprime les {count} instantanés de page du site. Les clics et la profondeur de défilement sont conservés ; les prochaines visites échantillonnées recaptureront les pages.",
+          "description_unknown": "Modifier cette option supprime les instantanés de page existants du site. Les clics et la profondeur de défilement sont conservés ; les prochaines visites échantillonnées recaptureront les pages.",
+          "confirm": "Modifier et supprimer",
+          "cancel": "Garder les instantanés"
+        },
         "drawer": {
           "added": "ajouté le {date}",
           "close": "Fermer",

@@ -33,6 +33,10 @@ import {
   type AnchorBox,
   type AnchorRequest,
 } from '../composables/useSnapshotFrame'
+import {
+  changesSnapshotOptions,
+  snapshotDiscardConfirmation,
+} from '../utils/snapshot-options'
 import { rewriteViewportUnits } from '../utils/snapshotViewportUnits'
 
 /**
@@ -324,11 +328,35 @@ function mebibytes(bytes: number): string {
 
 const savingOptions = ref(false)
 
+const countSiteHeatmap = useHeatmapCountRead(() => props.website?._id ?? '')
+
+/**
+ * Whether the change may go ahead: it deletes the site's snapshots, so a
+ * site that has some is asked first. Declining leaves the website as it
+ * is, and the menu's checkbox with it.
+ */
+async function confirmSnapshotDiscard(
+  website: MarketingWebsite,
+  patch: MarketingWebsitePatch,
+): Promise<boolean> {
+  if (!changesSnapshotOptions(website, patch)) {
+    return true
+  }
+  savingOptions.value = true
+  const counts = await countSiteHeatmap()
+    .catch(() => null)
+    .finally(() => (savingOptions.value = false))
+  if (counts?.snapshots === 0) {
+    return true
+  }
+  return confirm(snapshotDiscardConfirmation(t, counts?.snapshots ?? null))
+}
+
 async function updateSnapshotOptions(
   patch: MarketingWebsitePatch,
 ): Promise<void> {
   const website = props.website
-  if (!website) {
+  if (!website || !(await confirmSnapshotDiscard(website, patch))) {
     return
   }
   savingOptions.value = true
