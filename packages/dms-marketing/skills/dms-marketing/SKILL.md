@@ -74,7 +74,9 @@ config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludeP
   heatmaps: `GET /api/marketing/stats/workspaces?website=<own dashboard id>` lists the DMS core tenants
   with a dashboard site (empty for anyone else or with fewer than 2), and `stats/pages|heatmap|scroll|snapshot`
   take `workspace=<tenantId>|all` (merged per tenant; 404 for non platform owners or a customer site).
-  Snapshots outside the caller's workspace are text-masked server-side (`masked: true`). UI: `?workspace=`.
+  Snapshots outside the caller's workspace are text-masked server-side (`masked: true`). UI: `?workspace=`; the
+  selector (`WorkspaceScope.vue`) sits at the top of the pages panel, above the search, its read-only note in an
+  info tooltip (`aria-describedby`); the workspaces are read with the page (SSR, awaited) so the panel never grows.
 - Tracker attributes behind it, usable on any site: `data-exclude-paths="/x,/x/*,/x/**"`, and a live
   `data-website-id` (changing it retargets, removing it pauses).
 
