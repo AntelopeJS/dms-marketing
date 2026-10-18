@@ -269,7 +269,7 @@ const websiteItems = computed(() => [
 
 /**
  * The statistics are kept per UTC day: where the reader's midnight is not
- * UTC's, the bar says when their days really start.
+ * UTC's, the state's tooltip says when their days really start.
  */
 const utcHint = computed(() => {
   // The reader's zone: the browser's, which a server render reads from its
@@ -277,6 +277,13 @@ const utcHint = computed(() => {
   const time = utcDayStart(now.value, locale.value, readerTimeZone())
   return time ? t('page.marketing.context.utc_days', { time }) : ''
 })
+
+/** The full state line and the UTC days: the compact state's name. */
+const stateHint = computed(() =>
+  selected.value
+    ? [stateLine(selected.value), utcHint.value].filter(Boolean).join('. ')
+    : '',
+)
 </script>
 
 <template>
@@ -291,86 +298,88 @@ const utcHint = computed(() => {
     >
       <USkeleton v-if="!context && !failed" class="h-7 w-72" />
       <template v-else-if="selected">
-        <UDropdownMenu :items="websiteItems" :content="{ align: 'start' }">
-          <UButton
-            color="neutral"
-            variant="outline"
-            size="sm"
-            trailing-icon="i-ph-caret-up-down"
-            :loading="switching"
-            :aria-label="t('page.marketing.context.switch_website')"
-          >
-            <span
-              class="grid size-5 place-items-center rounded bg-primary/15 font-mono text-[10px] font-semibold text-(--ui-color-primary-800) dark:text-primary"
+        <!-- One group, tighter than the toolbar's gaps: with the live toggle
+             and the period, the bar stays on one line at desktop width. -->
+        <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <UDropdownMenu :items="websiteItems" :content="{ align: 'start' }">
+            <UButton
+              color="neutral"
+              variant="outline"
+              size="sm"
+              trailing-icon="i-ph-caret-up-down"
+              :loading="switching"
+              :aria-label="t('page.marketing.context.switch_website')"
             >
-              {{ initials(selected.name) }}
-            </span>
-            <span class="font-semibold">{{ selected.name }}</span>
-          </UButton>
-          <template #website="{ item }">
-            <span
-              class="grid size-6 shrink-0 place-items-center rounded bg-primary/15 font-mono text-[10px] font-semibold text-(--ui-color-primary-800) dark:text-primary"
-            >
-              {{ initials(item.site.name) }}
-            </span>
-            <span class="min-w-0 flex-1 text-left">
-              <span class="block truncate text-sm font-medium text-highlighted">
-                {{ item.site.name }}
-              </span>
               <span
-                class="flex min-w-0 items-center gap-1.5 text-xs text-dimmed"
+                class="grid size-5 place-items-center rounded bg-primary/15 font-mono text-[10px] font-semibold text-(--ui-color-primary-800) dark:text-primary"
               >
-                <span
-                  class="size-1.5 shrink-0 rounded-full"
-                  :class="WEBSITE_STATE_DOTS[displayState(item.site)]"
-                  aria-hidden="true"
-                />
-                <span class="truncate font-mono">{{ item.site.domain }}</span>
-                <span class="shrink-0">· {{ stateLine(item.site) }}</span>
+                {{ initials(selected.name) }}
               </span>
-            </span>
-            <UIcon
-              v-if="item.checked"
-              name="i-ph-check"
-              class="size-4 shrink-0 text-primary"
-            />
-          </template>
-        </UDropdownMenu>
+              <span class="font-semibold">{{ selected.name }}</span>
+            </UButton>
+            <template #website="{ item }">
+              <span
+                class="grid size-6 shrink-0 place-items-center rounded bg-primary/15 font-mono text-[10px] font-semibold text-(--ui-color-primary-800) dark:text-primary"
+              >
+                {{ initials(item.site.name) }}
+              </span>
+              <span class="min-w-0 flex-1 text-left">
+                <span
+                  class="block truncate text-sm font-medium text-highlighted"
+                >
+                  {{ item.site.name }}
+                </span>
+                <span
+                  class="flex min-w-0 items-center gap-1.5 text-xs text-dimmed"
+                >
+                  <span
+                    class="size-1.5 shrink-0 rounded-full"
+                    :class="WEBSITE_STATE_DOTS[displayState(item.site)]"
+                    aria-hidden="true"
+                  />
+                  <span class="truncate font-mono">{{ item.site.domain }}</span>
+                  <span class="shrink-0">· {{ stateLine(item.site) }}</span>
+                </span>
+              </span>
+              <UIcon
+                v-if="item.checked"
+                name="i-ph-check"
+                class="size-4 shrink-0 text-primary"
+              />
+            </template>
+          </UDropdownMenu>
 
-        <UTooltip :text="stateLine(selected)">
-          <span
-            class="flex items-center gap-1.5 font-mono text-xs whitespace-nowrap text-muted"
-            role="status"
-            tabindex="0"
-            :aria-label="stateLine(selected)"
-          >
+          <UTooltip>
             <span
-              class="size-2 rounded-full"
-              :class="WEBSITE_STATE_DOTS[displayState(selected)]"
-              aria-hidden="true"
-            />
-            <span aria-hidden="true">{{ stateShort(selected) }}</span>
-          </span>
-        </UTooltip>
+              class="flex items-center gap-1.5 text-xs whitespace-nowrap text-muted tabular-nums"
+              role="status"
+              tabindex="0"
+              :aria-label="stateHint"
+            >
+              <span
+                class="size-2 rounded-full"
+                :class="WEBSITE_STATE_DOTS[displayState(selected)]"
+                aria-hidden="true"
+              />
+              <span aria-hidden="true">{{ stateShort(selected) }}</span>
+            </span>
+            <template #content>
+              <span class="grid max-w-72 gap-1">
+                <span>{{ stateLine(selected) }}</span>
+                <span v-if="utcHint" class="text-dimmed">{{ utcHint }}</span>
+              </span>
+            </template>
+          </UTooltip>
 
-        <span
-          v-if="cutHint"
-          class="flex items-center gap-1 text-xs text-warning"
-          role="status"
-        >
-          <UIcon name="i-ph-warning" class="size-3.5 shrink-0" />
-          {{ cutHint }}
-        </span>
-        <UTooltip v-if="utcHint" :text="utcHint">
           <span
-            class="grid cursor-help place-items-center text-dimmed"
-            role="img"
-            tabindex="0"
-            :aria-label="utcHint"
+            v-if="cutHint"
+            class="flex items-center gap-1 text-xs text-warning"
+            role="status"
           >
-            <UIcon name="i-ph-globe-simple" class="size-3.5" />
+            <UIcon name="i-ph-warning" class="size-3.5 shrink-0" />
+            {{ cutHint }}
           </span>
-        </UTooltip>
+        </div>
 
         <DmsLiveToggleBlock variant="pill" />
         <DmsPeriodSelector

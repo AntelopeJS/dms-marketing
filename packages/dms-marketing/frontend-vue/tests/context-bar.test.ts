@@ -195,6 +195,15 @@ describe('the context bar', () => {
     expect(html).toMatch(/>1 min\.? ago</)
   })
 
+  it("says when the reader's days start in the state's name, not in a chip", async () => {
+    vi.stubGlobal('readerTimeZone', () => 'Europe/Brussels')
+    const html = await renderBar()
+    expect(html).toContain(
+      'aria-label="page.marketing.context.live. page.marketing.context.utc_days"',
+    )
+    expect(html).not.toMatch(/>\s*UTC\s*</)
+  })
+
   it('names no website, and offers no refresh, before there is one', async () => {
     contextData.value = { websites: [], selectedId: null }
     const html = await renderBar()
