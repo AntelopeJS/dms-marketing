@@ -16,7 +16,8 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
 ## Setup
 
 - Marketing 0.5 requires `@antelopejs/dms` >=0.9 (interface-dms 0.7, renderer `@antelopejs/dms-frontend` 0.6);
-  0.4 is the DMS 0.8 line.
+  0.4 is the DMS 0.8 line. The analytics pages' context bar is the DMS `PageToolbar` (website, Direct / Pause,
+  period): it needs a DMS shipping `DmsPageToolbarBlock` (`base/page-toolbar`).
 - `ajs project modules add @antelopejs/dms-marketing`. Options: `trackerEnabled`, `rawEventsRetention`,
   `statisticsRetention`, `snapshotRetention`, `sessionIdleTimeout` (all ms), `heatmapSampleRate` (0-1),
   `visitorHashSecret` (set it when running several instances), `geoipDatabasePath` (.mmdb, opt-in),
