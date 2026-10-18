@@ -20,6 +20,7 @@ import { PERIOD_SCOPE } from '../constants'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
 import { formatNumber } from '../utils/format'
 import { pageSnapshotBadge } from '../utils/page-snapshot'
+import { measureFillHeight } from '../utils/fill-height'
 import { useMarketingNow } from '../composables/useMarketingNow'
 import {
   heatmapDataLabel,
@@ -217,6 +218,55 @@ watch(inventory, selectFirst)
 
 const previewWrapper = ref<HTMLElement | null>(null)
 
+/**
+ * Side by side, the list and the preview fill the window below the context
+ * bar, each scrolling inside itself: the page does not scroll, and the
+ * preview's toolbar and legend stay in sight however long the page or the
+ * list. Stacked (below xl), nothing is pinned: null.
+ */
+const panes = ref<HTMLElement | null>(null)
+const paneHeight = ref<number | null>(null)
+let paneFrame = 0
+
+function measurePanes(): void {
+  cancelAnimationFrame(paneFrame)
+  paneFrame = requestAnimationFrame(() => {
+    const element = panes.value
+    paneHeight.value =
+      element && window.matchMedia(SIDE_BY_SIDE_QUERY).matches
+        ? measureFillHeight(element)
+        : null
+  })
+}
+
+// What sits above or below the panes (a banner, the sampling note) moves
+// them: the body's size says so on a page that scrolls, this block's own on
+// a shell that scrolls a panel. Their own height leaves the answer as is,
+// so the observer settles at once.
+let paneObserver: ResizeObserver | null = null
+onMounted(() => {
+  measurePanes()
+  window.addEventListener('resize', measurePanes)
+  paneObserver = new ResizeObserver(measurePanes)
+  paneObserver.observe(document.body)
+  const block = panes.value?.parentElement
+  if (block) {
+    paneObserver.observe(block)
+  }
+})
+onBeforeUnmount(() => {
+  cancelAnimationFrame(paneFrame)
+  window.removeEventListener('resize', measurePanes)
+  paneObserver?.disconnect()
+})
+
+// The panes come and go with the waiting state.
+watch(panes, (element) => element && measurePanes())
+
+const paneStyle = computed(() =>
+  paneHeight.value === null ? undefined : { height: `${paneHeight.value}px` },
+)
+
 /** Stacked under the list (below xl), the preview is out of sight: bring it in. */
 async function pick(path: string): Promise<void> {
   selectPath(path, 'push')
@@ -362,9 +412,14 @@ const moreItems = computed(() => [
         :description="t('page.marketing.pages.tracking_off.description')"
       />
 
-      <div class="grid items-start gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
+      <div
+        ref="panes"
+        class="grid items-start gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]"
+      >
         <section
-          class="dms-card flex min-w-0 flex-col overflow-hidden p-0 xl:sticky xl:top-4"
+          class="dms-card flex min-w-0 flex-col overflow-hidden p-0"
+          :class="paneHeight === null ? 'xl:sticky xl:top-4' : ''"
+          :style="paneStyle"
         >
           <div class="flex items-center gap-2 border-b border-default p-3">
             <UInput
@@ -455,8 +510,13 @@ const moreItems = computed(() => [
           />
           <ul
             v-else
-            class="flex max-h-[45vh] flex-col gap-1 overflow-y-auto p-2 xl:max-h-[70vh]"
-            :class="loading ? 'opacity-60' : ''"
+            class="flex flex-col gap-1 overflow-y-auto p-2"
+            :class="[
+              loading ? 'opacity-60' : '',
+              paneHeight === null
+                ? 'max-h-[45vh] xl:max-h-[70vh]'
+                : 'min-h-0 flex-1',
+            ]"
           >
             <li v-for="page in rows" :key="page.path">
               <button
@@ -565,6 +625,7 @@ const moreItems = computed(() => [
           <USkeleton
             v-if="!mounted || !selectedPath || !website"
             class="h-[32rem] rounded-xl"
+            :style="paneStyle"
             aria-hidden="true"
           />
           <DmsMarketingPagePreview
@@ -576,6 +637,7 @@ const moreItems = computed(() => [
             :tracker-enabled="trackerEnabled"
             :pageviews="selectedPage?.pageviews"
             :used-in="usedIn"
+            :height="paneHeight"
             @website-updated="putWebsite"
           />
         </div>

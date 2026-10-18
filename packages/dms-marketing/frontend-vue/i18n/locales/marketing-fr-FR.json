@@ -928,6 +928,7 @@
           "drift": "{share} des clics visent des éléments absents de cet instantané",
           "drift_hint": "La page a peut-être changé depuis le {date}. Ces clics sont placés là où ils sont tombés dans la page, pas sur leur élément. Réinitialiser la page efface ses clics et son instantané pour repartir de la version actuelle.",
           "enable_snapshots": "Activer les instantanés de page",
+          "end_of_page": "Fin de la page",
           "fields_masked": "Texte visible, champs de formulaire masqués",
           "layout": "Format",
           "layout_desktop": "Ordinateur",

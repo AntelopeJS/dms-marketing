@@ -88,6 +88,12 @@ const props = defineProps<{
   pageviews?: number
   /** Funnels with a page step on this path. */
   usedIn?: MarketingFunnelListItem[]
+  /**
+   * Height the card fills, toolbar to bottom, the snapshot scrolling inside
+   * it whatever its length (see PagesExplorer). Null or absent: the card
+   * grows with the snapshot, as when it is stacked under the list.
+   */
+  height?: number | null
 }>()
 
 /** The site's snapshot options were saved here, as the backend answered
@@ -599,16 +605,23 @@ const scrolledHeight = computed(() =>
   Math.round(renderHeight.value * scale.value),
 )
 
+const filled = computed(() => !!props.height)
+
 /**
- * The pane grows with the page, up to the window's height: a short capture
- * leaves no empty band below it, and a long one scrolls inside a pane that
- * still fits the screen. The border is counted, or a 2px scroll would remain.
+ * Given a height, the pane takes what the card leaves it, the same for
+ * every snapshot: a long page scrolls inside it, a short one ends on the
+ * end-of-page band. Without one, the pane grows with the page up to the
+ * window's height. The border is counted, or a 2px scroll would remain.
  */
-const paneStyle = computed(() => ({
-  height: `${scrolledHeight.value + 2}px`,
-  maxHeight: 'calc(100dvh - 8rem)',
-  minHeight: '12rem',
-}))
+const paneStyle = computed(() =>
+  filled.value
+    ? { height: '100%' }
+    : {
+        height: `${scrolledHeight.value + 2}px`,
+        maxHeight: 'calc(100dvh - 8rem)',
+        minHeight: '12rem',
+      },
+)
 
 // --- Emptiness, explained ---------------------------------------------------
 
@@ -1120,7 +1133,10 @@ const surfaceEmpty = computed(() => {
 </script>
 
 <template>
-  <section class="dms-card flex min-w-0 flex-col overflow-hidden p-0">
+  <section
+    class="dms-card flex min-w-0 flex-col overflow-hidden p-0"
+    :style="filled ? { height: `${props.height}px` } : undefined"
+  >
     <!-- Toolbar -->
     <header
       class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-4 py-3"
@@ -1254,20 +1270,33 @@ const surfaceEmpty = computed(() => {
       />
     </p>
 
-    <div class="grid min-h-0 xl:grid-cols-[minmax(0,1fr)_15rem]">
-      <div class="min-w-0 p-3">
+    <div
+      class="grid min-h-0 xl:grid-cols-[minmax(0,1fr)_15rem]"
+      :class="filled ? 'flex-1 xl:grid-rows-[minmax(0,1fr)]' : ''"
+    >
+      <div class="flex min-h-0 min-w-0 flex-col p-3">
         <USkeleton
           v-if="surface === 'loading'"
           class="w-full rounded-lg"
-          :style="{ height: `${PANE_HEIGHT}px` }"
+          :class="filled ? 'min-h-0 flex-1' : ''"
+          :style="filled ? undefined : { height: `${PANE_HEIGHT}px` }"
         />
 
         <!-- Kept mounted across refetches: tearing it down would re-render the
              snapshot — and re-measure it — on every period change. -->
-        <div v-else-if="surface === 'frame'" class="relative">
+        <div
+          v-else-if="surface === 'frame'"
+          class="relative"
+          :class="filled ? 'min-h-0 flex-1' : ''"
+        >
           <div
             ref="container"
             class="overflow-x-hidden overflow-y-scroll rounded-lg border border-default bg-elevated"
+            :class="
+              filled
+                ? 'bg-[repeating-linear-gradient(135deg,transparent_0_8px,var(--ui-border)_8px_9px)]'
+                : ''
+            "
             :style="paneStyle"
           >
             <!-- A layout narrower than the pane keeps its width, centred. -->
@@ -1350,6 +1379,16 @@ const surfaceEmpty = computed(() => {
                 :fold-ratio="scrollFoldRatio"
               />
             </div>
+            <!-- Where the captured page stops: whatever of the pane is left
+                 below is not page, and must not read as a blank part of it. -->
+            <p
+              v-if="filled"
+              class="mx-auto flex items-center justify-center gap-1.5 border-t border-dashed border-accented py-2 text-[11px] text-dimmed"
+              :style="{ width: `${surfaceWidth}px` }"
+            >
+              <UIcon name="i-ph-arrow-line-down" class="size-3.5" />
+              {{ t('page.marketing.pages.preview.end_of_page') }}
+            </p>
           </div>
 
           <!-- Outside the scrollport on purpose: inside, it is laid out at the
@@ -1391,6 +1430,7 @@ const surfaceEmpty = computed(() => {
 
       <aside
         class="flex flex-col gap-4 border-t border-default p-4 xl:border-t-0 xl:border-l"
+        :class="filled ? 'min-h-0 overflow-y-auto' : ''"
       >
         <template v-if="overlayMode === 'clicks'">
           <div class="flex flex-col gap-1.5">

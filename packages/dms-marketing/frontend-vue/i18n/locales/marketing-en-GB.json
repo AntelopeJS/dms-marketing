@@ -928,6 +928,7 @@
           "drift": "{share} of clicks aim at elements missing from this snapshot",
           "drift_hint": "The page may have changed since {date}. Those clicks are drawn where they fell on the page, not on their element. Resetting the page clears its clicks and snapshot and starts again from the current version.",
           "enable_snapshots": "Enable page snapshots",
+          "end_of_page": "End of page",
           "fields_masked": "Text visible, form fields masked",
           "layout": "Layout",
           "layout_desktop": "Desktop",
