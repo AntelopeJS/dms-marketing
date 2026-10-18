@@ -23,6 +23,7 @@ import {
   funnelsLink,
 } from '../composables/useMarketingRoutes'
 import { useContextLink } from '../composables/useContextLink'
+import { useCopyDraft } from '../composables/useCopyDraft'
 import {
   DEFAULT_WINDOW_HOURS,
   draftIssues,
@@ -48,7 +49,7 @@ import { normalizeFunnelStepPath } from '../utils/step-path'
 import { fractionDigits } from '../constants'
 
 /**
- * The funnel builder (`?id=` to edit, `?from=` to start from a copy of a
+ * The funnel builder (`?id=` to edit, `?copy=` to start from a copy of a
  * funnel, `?split=1` to open the A/B section, `?steps=` to start from a
  * template). Steps are picked from the pages and events the site already
  * tracks, with their counts; the preview scores the draft over the last 30
@@ -152,7 +153,10 @@ function applyValues(next: FunnelDraftValues): void {
 }
 
 const { dirty, baseline, markClean } = useFormDirty(values)
-const { confirmLeave } = useUnsavedChanges({ dirty })
+// A Duplicate opens dirty (the copy is a change to save), but an untouched
+// copy holds nothing to lose: only edits to it hold the leave.
+const copy = useCopyDraft({ values, dirty, markClean })
+const { confirmLeave } = useUnsavedChanges({ dirty: copy.unsaved })
 
 // Errors land under their field: the client's checks on a save attempt, and
 // the server's — its codes name the field they belong to.
@@ -244,9 +248,6 @@ async function loadExisting(): Promise<void> {
   savedObjective.value = objectiveOf(draft)
 }
 
-/** The copy a Duplicate opened on, what Discard returns to. */
-const copied = ref<FunnelDraftValues | null>(null)
-
 /** Duplicate: the copy is a new draft, unsaved until the user saves it — its
  * experiment key must change, keys being unique per site. */
 async function loadCopy(): Promise<void> {
@@ -259,7 +260,7 @@ async function loadCopy(): Promise<void> {
     ),
     experimentKey: '',
   })
-  copied.value = values()
+  copy.open()
 }
 
 // The builder sits outside the context bar: it reads the website list itself,
@@ -741,13 +742,19 @@ async function save(): Promise<void> {
   }
 }
 
-/** Back to what the page opened on: the copy itself for a Duplicate, which
- * stays a change to save. */
+/** Back to what the page opened on. A Duplicate opened on its copy, which
+ * stays a change to save: discarding it drops the copy and leaves, with
+ * nothing left to hold the navigation. */
 function discard(): void {
   clearStepError()
   clearVariationError()
   fieldErrors.clear()
-  applyValues(copied.value ?? baseline.value)
+  if (copy.isCopy.value) {
+    copy.drop()
+    void router.push(backLink.value)
+    return
+  }
+  applyValues(baseline.value)
 }
 
 /** A link out of the builder, on the website and period it was opened from. */
