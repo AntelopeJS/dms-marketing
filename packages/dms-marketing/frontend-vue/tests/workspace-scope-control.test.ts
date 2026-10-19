@@ -98,4 +98,16 @@ describe('the workspace selector', () => {
     // Only once: no copy of it left above the panes.
     expect(template.lastIndexOf('<DmsMarketingWorkspaceScope')).toBe(scope)
   })
+
+  it('drops the selected row read in another workspace', () => {
+    // The header's views come from the row read for the scope on screen:
+    // a workspace switch never leaves the previous one's views in it.
+    const source = readFileSync(EXPLORER, 'utf8')
+    expect(source).toMatch(
+      /const readScope = computed\(\(\) =>\s*JSON\.stringify\(\[workspace\.value, pagesPeriod\.value\]\)/,
+    )
+    expect(source).toMatch(
+      /watch\(readScope, \(\) => \{\s*selectedPage\.value = undefined/,
+    )
+  })
 })

@@ -27,6 +27,7 @@ import {
   heatmapDataLabel,
   heatmapResetImpact,
   normalizePagePath,
+  selectedPageRow,
 } from '../utils/heatmap'
 import {
   effectiveWorkspace,
@@ -363,10 +364,17 @@ function inspectTyped(): void {
  */
 const selectedPage = ref<MarketingPageEntry>()
 watch([pages, selectedPath], ([list, path]) => {
-  const found = list.find((page) => page.path === path)
-  if (found || selectedPage.value?.path !== path) {
-    selectedPage.value = found
-  }
+  selectedPage.value = selectedPageRow(list, path, selectedPage.value)
+})
+
+/** What the list is read for, the filter aside: a change is another read. */
+const readScope = computed(() =>
+  JSON.stringify([workspace.value, pagesPeriod.value]),
+)
+// Another workspace or other days: the row read before says nothing of
+// them, the header waits for the path's row in the new list (or none).
+watch(readScope, () => {
+  selectedPage.value = undefined
 })
 
 /** Funnels with a page step on the selected path, for the "Used in" card. */
