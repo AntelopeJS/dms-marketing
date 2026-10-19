@@ -5,6 +5,7 @@ import {
   splitSampleSize,
   templateSteps,
   variationSnippet,
+  withRequestedSplit,
   DEFAULT_WINDOW_HOURS,
   WINDOW_PRESET_HOURS,
   type FunnelDraftValues,
@@ -69,6 +70,20 @@ describe('template links', () => {
       value: `/p${i}`,
     }))
     expect(templateSteps(JSON.stringify(many))).toHaveLength(10)
+  })
+})
+
+// QA B08: "Split into A/B test" opened a plain funnel with its split off.
+describe('a split requested by the link', () => {
+  it("turns a stored funnel's split on, and never off", () => {
+    expect(withRequestedSplit(draft({ split: false }), '1').split).toBe(true)
+    expect(withRequestedSplit(draft({ split: false }), undefined).split).toBe(
+      false,
+    )
+    expect(withRequestedSplit(draft({ split: true }), undefined).split).toBe(
+      true,
+    )
+    expect(withRequestedSplit(draft({ split: false }), ['1']).split).toBe(false)
   })
 })
 

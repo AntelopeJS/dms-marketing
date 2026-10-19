@@ -110,6 +110,18 @@ export function templateSteps(raw: unknown): StepValue[] {
     .slice(0, MAX_STEPS)
 }
 
+/**
+ * A stored funnel as the builder opens it: `?split=1` (the report's "Split
+ * into A/B test") turns its split on; a funnel that already carries one keeps
+ * it either way.
+ */
+export function withRequestedSplit(
+  draft: FunnelDraftValues,
+  raw: unknown,
+): FunnelDraftValues {
+  return raw === '1' ? { ...draft, split: true } : draft
+}
+
 /** Whether a window is an hour count the server stores as is. */
 export function isWindowHours(hours: number | string): hours is number {
   return (

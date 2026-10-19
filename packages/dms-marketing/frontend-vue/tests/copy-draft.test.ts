@@ -28,12 +28,25 @@ describe('a form opened on a copy', () => {
   })
 
   // QA m8: Cancel on a copy did nothing and the leave stayed held.
-  it('drops the copy, edits included: nothing holds the leave after', () => {
+  it('settles a cancelled copy, edits included: nothing holds the leave after', () => {
     const { value, dirty, copy } = form('')
     value.value = 'Copy of checkout'
     copy.open()
     value.value = 'Edited copy'
-    copy.drop()
+    copy.settle()
+    expect(copy.isCopy.value).toBe(false)
+    expect(dirty.value).toBe(false)
+    expect(copy.unsaved.value).toBe(false)
+  })
+
+  // QA B09: a saved copy still held the leave, so its report never opened.
+  it('settles a saved copy: leaving to its report asks nothing', () => {
+    const { value, dirty, copy } = form('')
+    value.value = 'Copy of checkout'
+    copy.open()
+    value.value = 'Checkout (B)'
+    expect(copy.unsaved.value).toBe(true)
+    copy.settle()
     expect(copy.isCopy.value).toBe(false)
     expect(dirty.value).toBe(false)
     expect(copy.unsaved.value).toBe(false)

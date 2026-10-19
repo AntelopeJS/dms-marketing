@@ -31,8 +31,9 @@ export function useCopyDraft<T>(options: UseCopyDraftOptions<T>) {
     copied.value = snapshot()
   }
 
-  /** Throws the copy away (with any edit to it): nothing holds the leave. */
-  function drop(): void {
+  /** Ends the copy on what is on screen: the form is clean and nothing holds
+   * the leave. Throwing it away (with any edit to it) and saving it both end it. */
+  function settle(): void {
     copied.value = null
     options.markClean()
   }
@@ -41,6 +42,6 @@ export function useCopyDraft<T>(options: UseCopyDraftOptions<T>) {
     isCopy: computed(() => copied.value !== null),
     unsaved,
     open,
-    drop,
+    settle,
   }
 }
