@@ -128,7 +128,13 @@ const slot = (name: string) =>
 /** The DMS blocks the bar embeds, drawn with the options they were given. */
 const DMS_STUBS = {
   DmsPageToolbarBlock: defineComponent({
-    props: { showUpdatedAt: Boolean, refresh: Boolean },
+    // Required, as on the DMS block: Vue warns when one is missing.
+    props: {
+      componentId: { type: String, required: true },
+      pageId: { type: String, required: true },
+      showUpdatedAt: Boolean,
+      refresh: Boolean,
+    },
     setup:
       (props, { slots, attrs }) =>
       () =>
@@ -136,6 +142,8 @@ const DMS_STUBS = {
           'section',
           {
             'data-block': 'page-toolbar',
+            'data-component-id': props.componentId,
+            'data-page-id': props.pageId,
             'data-updated': String(props.showUpdatedAt),
             'data-refresh': String(props.refresh),
             role: attrs.role,
@@ -207,6 +215,17 @@ describe('the context bar', () => {
     expect(html).toContain('data-variant="pill"')
     // The toolbar's own refresh, not one of the bar's.
     expect(html).not.toContain('i-ph-arrow-clockwise')
+  })
+
+  it("mounts the toolbar as a block of the page, under the bar's id", async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const html = await renderBar({ componentId: 'ctx-1', pageId: 'overview' })
+    expect(html).toContain('data-component-id="ctx-1-toolbar"')
+    expect(html).toContain('data-page-id="overview"')
+    expect(warn.mock.calls.flat().join(' ')).not.toContain(
+      'Missing required prop',
+    )
+    warn.mockRestore()
   })
 
   it("keeps the module presets and comparisons, drawn as the toolbar's", async () => {

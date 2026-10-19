@@ -278,9 +278,12 @@ const stateHint = computed(() =>
 
 <template>
   <div class="flex flex-col gap-4">
-    <!-- Without a website, the bar names none, and neither says when the
+    <!-- The toolbar is a block of the page, under the bar's own id. Without
+         a website, the bar names none, and neither says when the
          page was read nor offers to read it again. -->
     <DmsPageToolbarBlock
+      :component-id="`${componentId ?? 'marketing-context'}-toolbar`"
+      :page-id="pageId"
       role="toolbar"
       :aria-label="t('page.marketing.context.label')"
       :show-updated-at="!!selected"
