@@ -319,7 +319,7 @@ export async function storeSnapshot(
     html: stored.html,
   } as PageSnapshot);
   captureTimes.set(id, now.getTime());
-  noteCollected(1);
+  noteCollected(website.tenantId, 1);
   return true;
 }
 

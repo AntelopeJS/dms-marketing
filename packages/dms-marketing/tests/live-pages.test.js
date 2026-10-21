@@ -119,7 +119,7 @@ test("the KPI cards follow the arrivals topic themselves", () => {
   }
 });
 
-test("arrivals are published batched, with their count and nothing else", async () => {
+test("arrivals are published batched per tenant, with their count and nothing else", async () => {
   // What another suite's beacons left waiting is not this batch.
   stopCollectedNotices();
   const received = [];
@@ -127,13 +127,18 @@ test("arrivals are published batched, with their count and nothing else", async 
     received.push(message),
   );
   try {
-    noteCollected(3);
-    noteCollected(0);
-    noteCollected(2);
+    noteCollected("tenant-a", 3);
+    noteCollected("tenant-b", 1);
+    noteCollected("tenant-a", 0);
+    noteCollected("tenant-a", 2);
     await new Promise((resolve) => setTimeout(resolve, 1_500));
-    assert.equal(received.length, 1);
-    assert.equal(received[0].type, "collected");
-    assert.deepEqual(received[0].payload, { count: 5 });
+    // One message per tenant: the DMS delivers each to that tenant's pages.
+    assert.equal(received.length, 2);
+    assert.ok(received.every((message) => message.type === "collected"));
+    assert.deepEqual(
+      received.map((message) => message.payload.count).sort((a, b) => a - b),
+      [1, 5],
+    );
   } finally {
     unsubscribe();
     stopCollectedNotices();
@@ -146,7 +151,7 @@ test("a stop drops what was waiting to be published", async () => {
     received.push(message),
   );
   try {
-    noteCollected(4);
+    noteCollected("tenant-a", 4);
     stopCollectedNotices();
     await new Promise((resolve) => setTimeout(resolve, 1_500));
     assert.equal(received.length, 0);

@@ -165,7 +165,7 @@ export async function ingestPreparedBatch(
   const rollup = recordRollup(context, resolution, docs, previous);
   // Once the day's counters hold the batch, or failed to: the raw events
   // the heatmaps and funnels read are stored either way.
-  const notify = () => noteCollected(docs.length);
+  const notify = () => noteCollected(website.tenantId, docs.length);
   void rollup.then(notify, notify);
   return {
     accepted: docs.length,

@@ -20,18 +20,20 @@ const COLLECTED_TYPE = "collected";
  */
 const PUBLISH_INTERVAL_MS = MS_PER_SECOND;
 
-let pending = 0;
+/** The arrivals waiting to be published, per tenant. */
+const pending = new Map<string, number>();
 let timer: NodeJS.Timeout | null = null;
 
 /**
- * `count` events (or one snapshot) were stored: the pages hear of it within
- * the publish interval. Never throws, and never fails the write behind it.
+ * `count` events (or one snapshot) were stored for `tenantId`: that tenant's
+ * pages hear of it within the publish interval. Never throws, and never
+ * fails the write behind it.
  */
-export function noteCollected(count: number): void {
+export function noteCollected(tenantId: string, count: number): void {
   if (count <= 0) {
     return;
   }
-  pending += count;
+  pending.set(tenantId, (pending.get(tenantId) ?? 0) + count);
   if (!timer) {
     timer = setTimeout(flushCollected, PUBLISH_INTERVAL_MS);
     timer.unref();
@@ -44,29 +46,30 @@ export function stopCollectedNotices(): void {
     clearTimeout(timer);
     timer = null;
   }
-  pending = 0;
+  pending.clear();
 }
 
 function flushCollected(): void {
-  const count = pending;
-  pending = 0;
+  const batches = [...pending];
+  pending.clear();
   timer = null;
-  publishCollected(count);
+  for (const [tenantId, count] of batches) {
+    publishCollected(tenantId, count);
+  }
 }
 
 /**
- * The module's one publish. DMS page topics are not scoped to a tenant yet:
- * every session on an analytics page hears every tenant's arrivals, which
- * wake its blocks (at most once per `maxRate`) and count in its paused
- * "N new". The payload names no tenant, website or event. Once the DMS scopes
- * a topic to a tenant, the batch is kept per tenant and the tenant goes here.
+ * The module's one publish, scoped to the tenant whose websites collected
+ * (AntelopeJS/dms#353): only that tenant's analytics pages wake or count it
+ * in their paused "N new". The payload names no website or event.
  */
-function publishCollected(count: number): void {
+function publishCollected(tenantId: string, count: number): void {
   // Through a promise: a DMS not answering yet throws rather than rejects.
   Promise.resolve()
     .then(() =>
       PublishMessage(MARKETING_EVENTS_TOPIC, COLLECTED_TYPE, {
         payload: { count },
+        tenantId,
       }),
     )
     .catch((err: unknown) => {
