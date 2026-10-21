@@ -3,7 +3,6 @@ import { WebsiteStatisticsModel } from "@/db";
 import type { WebsiteStatistics } from "@/db/tables/website_statistics.table";
 import type { Website } from "@/db/tables/websites.table";
 import type { MarketingDayCounters, TopDimension, TopEntries } from "@/types";
-import { isDashboardWebsite, isModuleAreaPath } from "./dashboard-tracking";
 import { elapsedShare, type QueryWindow, windowDays } from "./period";
 
 export type RollupTotals = Omit<MarketingDayCounters, "day">;
@@ -42,55 +41,11 @@ export async function readRollups(
   website: Website,
   window: QueryWindow,
 ): Promise<WebsiteStatistics[]> {
-  const rows = await GetModel(
-    WebsiteStatisticsModel,
-    website.tenantId,
-  ).getDaysBetween(website._id, window.firstDay, window.lastDay);
-  return withoutHiddenPages(website, rows);
-}
-
-const PAGE_DIMENSIONS = [
-  "topPages",
-  "topEntryPages",
-  "topExitPages",
-] as const satisfies readonly TopDimension[];
-
-/**
- * The rows as the website's reports show them. On the dashboard's website
- * the module area is never counted (`hidesDashboardPath`); what an older
- * tag stored there leaves the page maps, and its views leave `pageviews`,
- * until retention prunes it. Sessions cannot be split by page and stay as
- * stored. Any other website's rows come back untouched.
- */
-export function withoutHiddenPages(
-  website: Pick<Website, "_id" | "tenantId">,
-  rows: WebsiteStatistics[],
-): WebsiteStatistics[] {
-  return isDashboardWebsite(website) ? rows.map(withoutModuleArea) : rows;
-}
-
-function withoutModuleArea(row: WebsiteStatistics): WebsiteStatistics {
-  if (!row.tops) {
-    return row;
-  }
-  let hiddenViews = 0;
-  const tops = { ...row.tops };
-  for (const dimension of PAGE_DIMENSIONS) {
-    const kept: TopEntries = {};
-    for (const [path, count] of Object.entries(tops[dimension] ?? {})) {
-      if (!isModuleAreaPath(path)) {
-        kept[path] = count;
-      } else if (dimension === "topPages") {
-        hiddenViews += count;
-      }
-    }
-    tops[dimension] = kept;
-  }
-  // A copy of the stored document (a plain object, whatever its type says).
-  return Object.assign({}, row, {
-    pageviews: Math.max(0, row.pageviews - hiddenViews),
-    tops,
-  });
+  return GetModel(WebsiteStatisticsModel, website.tenantId).getDaysBetween(
+    website._id,
+    window.firstDay,
+    window.lastDay,
+  );
 }
 
 export async function readRollupsWithComparison(

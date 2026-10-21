@@ -76,28 +76,15 @@ export function isModuleAreaPath(path: string): boolean {
 }
 
 /**
- * The dashboard's website never shows `path`: the tag leaves the module area
- * out and collection refuses it, and rows an older tag stored there are
- * hidden on read until retention prunes them. Any other website keeps every
- * path — a site of its own may well have a `/modules` page.
+ * The dashboard's website never collects `path`: the tag leaves the module
+ * area out and collection refuses it. Any other website keeps every path —
+ * a site of its own may well have a `/modules` page.
  */
 export function hidesDashboardPath(
   website: Pick<Website, "_id" | "tenantId">,
   path: string,
 ): boolean {
   return isModuleAreaPath(path) && isDashboardWebsite(website);
-}
-
-/**
- * The same rule for a database read: a regex matching the module area, for
- * the dashboard's website only; undefined (no filter) for any other.
- */
-export function hiddenDashboardUrlPattern(
-  website: Pick<Website, "_id" | "tenantId">,
-): string | undefined {
-  return isDashboardWebsite(website)
-    ? `(?i)^${MODULE_AREA_PATH}(/|$)`
-    : undefined;
 }
 
 /**

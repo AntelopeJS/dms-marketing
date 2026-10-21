@@ -23,7 +23,6 @@ import {
   SNAPSHOT_REFRESH_AGE_MS,
 } from "@/types/constants";
 import { BoundedCache } from "./bounded-cache";
-import { hidesDashboardPath } from "./dashboard-tracking";
 import { websiteAcceptsHostname } from "./origin-guard";
 import { findOpenSession } from "./sessionize";
 import { parseTrackedUrl } from "./url";
@@ -472,9 +471,6 @@ export async function readPageSnapshot(
   url: string,
   layout: SnapshotLayout,
 ): Promise<PageSnapshotPayload | null> {
-  if (hidesDashboardPath({ _id: websiteId, tenantId }, url)) {
-    return null;
-  }
   const rows = await GetModel(PageSnapshotsModel, tenantId).getByPath(
     websiteId,
     url,

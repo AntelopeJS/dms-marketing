@@ -72,7 +72,7 @@ config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludeP
   count. Restart `ajs dms dev` / rebuild the frontend after toggling the option.
 - The module area (`/modules`, `/modules/store`, `/modules/<module>/**`) is never counted either, not
   configurable: dashboard tracking measures the owner's product, not shipped modules. Collect/snapshot drop
-  it server-side for the dashboard's website and its reports hide older rows (retention prunes them).
+  it server-side for the dashboard's website.
 - Tracker attributes behind it, usable on any site: `data-exclude-paths="/x,/x/*,/x/**"`, and a live
   `data-website-id` (changing it retargets, removing it pauses).
 

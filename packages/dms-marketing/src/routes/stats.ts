@@ -18,7 +18,6 @@ import { getConfig } from "@/config";
 import { type DayTops, WebsiteStatisticsModel, WebsitesModel } from "@/db";
 import type { WebsiteStatistics } from "@/db/tables/website_statistics.table";
 import type { Website } from "@/db/tables/websites.table";
-import { hidesDashboardPath } from "@/services/dashboard-tracking";
 import { isGeoipActive } from "@/services/geoip";
 import {
   computeClickHeatmap,
@@ -33,7 +32,6 @@ import {
   resolveQueryWindow,
 } from "@/services/period";
 import { queryString } from "@/services/query-param";
-import { readRollups } from "@/services/rollups";
 import {
   type PageSnapshotSummary,
   readPageSnapshot,
@@ -142,7 +140,10 @@ async function loadDaysInRange(
   website: Website,
   window: QueryWindow,
 ): Promise<MarketingDayStatistics[]> {
-  const rows = await readRollups(website, window);
+  const rows = await GetModel(
+    WebsiteStatisticsModel,
+    website.tenantId,
+  ).getDaysBetween(website._id, window.firstDay, window.lastDay);
   return rows.map(toDayStatistics);
 }
 
@@ -288,7 +289,6 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
     const order: PagesSort =
       queryString(sort) === "clicks" ? "clicks" : "views";
     const matching = [...paths]
-      .filter((path) => !hidesDashboardPath(websiteDoc, path))
       .filter((path) => !needle || path.toLowerCase().includes(needle))
       .map((path): PageRow => {
         const row: PageRow = {

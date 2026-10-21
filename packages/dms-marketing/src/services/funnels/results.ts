@@ -131,15 +131,13 @@ function servedMs(runs: EventWindow[]): number {
  * the funnel and, when the row carries a started experiment, the per-arm
  * read; the window is then the experiment's runs rather than the requested
  * period, and the plain funnel figure follows it (the pane shows the arms,
- * not the merged funnel, as soon as a split runs). Events on a page
- * `hidesPath` names are left out, as if never collected.
+ * not the merged funnel, as soon as a split runs).
  */
 export async function computeFunnelResults(
   eventsModel: MarketingEventsModel,
   funnel: Funnel,
   since: Date,
   until: Date,
-  hidesPath: (path: string) => boolean = () => false,
 ): Promise<FunnelResults> {
   const experiment = funnel.experiment;
   const runs = experiment ? runWindows(experiment, until) : null;
@@ -153,8 +151,7 @@ export async function computeFunnelResults(
     fields: runs ? EXPERIMENT_FIELDS : FUNNEL_FIELDS,
   })) as ResultEvent[];
   const truncated = events.length >= MAX_FUNNEL_EVENTS;
-  const shown = events.filter((event) => !hidesPath(event.url));
-  const usable = runs ? withinRuns(shown, runs) : shown;
+  const usable = runs ? withinRuns(events, runs) : events;
   const reported = runs ? coveredWindow(runs) : read;
   return {
     computation: computeFunnelOverSessions(

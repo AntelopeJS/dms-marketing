@@ -1,7 +1,5 @@
 const assert = require("node:assert/strict");
-const { mock } = require("node:test");
 const test = it;
-const models = require("@antelopejs/interface-database-decorators/model");
 const { getConfig, setConfig } = require("../dist/config");
 const {
   dashboardExcludedPaths,
@@ -13,13 +11,6 @@ const {
   provisionDashboardWebsite,
   setSnapshotsByOwner,
 } = require("../dist/services/dashboard-tracking");
-const { computeFunnelResults } = require("../dist/services/funnels");
-const {
-  computeClickHeatmap,
-  computeScrollDepth,
-} = require("../dist/services/heatmap");
-const { withoutHiddenPages } = require("../dist/services/rollups");
-const { readPageSnapshot } = require("../dist/services/snapshots");
 const {
   MAX_EXTRA_DOMAINS,
   MAX_WEBSITE_ID_LENGTH,
@@ -421,94 +412,4 @@ test("only the dashboard's own website hides the module area", () => {
   assert.equal(hidesDashboardPath(DASHBOARD, "/modules/crm"), true);
   assert.equal(hidesDashboardPath(DASHBOARD, "/orders"), false);
   assert.equal(hidesDashboardPath(OTHER_SITE, "/modules/crm"), false);
-});
-
-function rollupRow(pageviews, tops) {
-  return { day: 1, pageviews, sessions: 3, tops };
-}
-
-test("rollup rows lose the module area's pages and views on the dashboard's website", () => {
-  const row = rollupRow(10, {
-    topPages: { "/": 4, "/modules": 3, "/modules/crm/x": 2, "/modulesx": 1 },
-    topEntryPages: { "/": 1, "/modules/store": 2 },
-    topExitPages: { "/modules": 3 },
-    topReferrers: { "/modules": 1 },
-  });
-  const [shown] = withoutHiddenPages(DASHBOARD, [row]);
-  assert.equal(shown.pageviews, 5);
-  assert.equal(shown.sessions, 3);
-  assert.deepEqual(shown.tops.topPages, { "/": 4, "/modulesx": 1 });
-  assert.deepEqual(shown.tops.topEntryPages, { "/": 1 });
-  assert.deepEqual(shown.tops.topExitPages, {});
-  // Only page maps hold paths; the stored row is left as it was.
-  assert.deepEqual(shown.tops.topReferrers, { "/modules": 1 });
-  assert.equal(row.pageviews, 10);
-  assert.equal(row.tops.topPages["/modules"], 3);
-  assert.deepEqual(withoutHiddenPages(OTHER_SITE, [row]), [row]);
-});
-
-describe("raw reads of the module area on the dashboard's website", () => {
-  const WINDOW = { since: new Date(0), until: new Date() };
-
-  beforeEach(() => {
-    mock.method(models, "GetModel", () => {
-      throw new Error("the module area is never read");
-    });
-  });
-
-  afterEach(() => mock.restoreAll());
-
-  test("heatmaps, scroll depth and snapshots come back empty", async () => {
-    const heatmap = await computeClickHeatmap(
-      TENANT,
-      [DASHBOARD._id],
-      "/modules/crm",
-      WINDOW,
-    );
-    assert.equal(heatmap.totalClicks, 0);
-    const scroll = await computeScrollDepth(
-      TENANT,
-      [DASHBOARD._id],
-      "/modules",
-      WINDOW,
-    );
-    assert.equal(scroll.views, 0);
-    assert.equal(
-      await readPageSnapshot(
-        TENANT,
-        DASHBOARD._id,
-        "/modules/store",
-        "desktop",
-      ),
-      null,
-    );
-  });
-
-  test("a funnel step on a module page matches nothing", async () => {
-    const at = new Date(1_000);
-    const stored = [
-      { sessionId: "a", kind: "pageview", url: "/modules/crm", timestamp: at },
-      { sessionId: "a", kind: "pageview", url: "/orders", timestamp: at },
-    ];
-    const eventsModel = { queryRange: async () => stored };
-    const funnel = {
-      websiteId: DASHBOARD._id,
-      steps: [
-        { kind: "url", value: "/modules/crm" },
-        { kind: "url", value: "/orders" },
-      ],
-      conversionWindowMs: 86_400_000,
-    };
-    const results = await computeFunnelResults(
-      eventsModel,
-      funnel,
-      WINDOW.since,
-      WINDOW.until,
-      (path) => hidesDashboardPath(DASHBOARD, path),
-    );
-    assert.deepEqual(
-      results.computation.steps.map((step) => step.matches),
-      [0, 1],
-    );
-  });
 });

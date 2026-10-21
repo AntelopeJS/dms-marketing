@@ -20,7 +20,6 @@ const {
   marketingEventsTableName,
 } = require("../dist/db/tables/marketing_events.table");
 const { hourlyValues } = require("../dist/services/hourly-traffic");
-const { dashboardWebsiteId } = require("../dist/services/dashboard-tracking");
 
 const SCHEMA = "hourly_traffic_test";
 const TENANT = "tenant-h";
@@ -168,27 +167,5 @@ describe("the Today hourly series", () => {
       assert.ok(pipeline.some((stage) => "$group" in stage));
       assert.ok(!pipeline.some((stage) => "$limit" in stage));
     }
-  });
-
-  test("the dashboard's website leaves its module area out of the series", async () => {
-    const { since, at } = today();
-    const dashboard = { _id: dashboardWebsiteId(TENANT), tenantId: TENANT };
-    const on = (websiteId, url, sessionId) =>
-      event("pageview", at(0), sessionId, { websiteId, url });
-    await events.insertMany([
-      on(dashboard._id, "/", "d1"),
-      on(dashboard._id, "/modulesx", "d1"),
-      on(dashboard._id, "/modules", "d2"),
-      on(dashboard._id, "/modules/crm/customers", "d2"),
-      on(dashboard._id, "/Modules/Store", "d3"),
-      on(WEBSITE._id, "/modules", "s1"),
-    ]);
-    const pageviews = (website) =>
-      hourlyValues(website, since, 24, "pageviews");
-    assert.equal((await pageviews(dashboard))[0], 2);
-    // A session spent in the module area alone is not one of the product's.
-    assert.equal((await hourlyValues(dashboard, since, 24, "sessions"))[0], 1);
-    // Any other site keeps its own /modules page.
-    assert.equal((await pageviews(WEBSITE))[0], 1);
   });
 });
