@@ -63,6 +63,8 @@ function withDeploymentDefaults(
     return {
       ...field,
       defaultValue: value,
+      // The deployment default is the module's: the field offers it back.
+      offersDefault: true,
       component: {
         ...field.component,
         options: {
