@@ -86,20 +86,14 @@ function acceptHostname(website: Website, hostname: string): boolean {
 /**
  * Brings the snapshot switch to `dashboardTracking.snapshots` while it is
  * the configuration's to set. Once a person changed it (`owner`), it is
- * left alone for good. A row from before the switch was tracked may be
- * turned on, never off: off is all provisioning ever wrote there, so an
- * enabled one may be an owner's choice.
+ * left alone for good.
  */
 function applyConfiguredSnapshots(
   website: Website,
   config: DashboardTrackingConfig,
 ): boolean {
   const current = website.snapshotsEnabled ?? false;
-  if (
-    website.snapshotsSetBy === "owner" ||
-    current === config.snapshots ||
-    (!config.snapshots && website.snapshotsSetBy !== "config")
-  ) {
+  if (website.snapshotsSetBy === "owner" || current === config.snapshots) {
     return false;
   }
   website.snapshotsEnabled = config.snapshots;
