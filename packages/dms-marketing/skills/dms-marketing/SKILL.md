@@ -28,7 +28,7 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
 - The Websites page is a DMS TableView (cards display, plain grid on offer) over
   `/api/marketing/tables/websites`, whose list answers each row with its card; "Add a website" and a site's
   settings open in modals. Link a site's settings with `/modules/marketing/websites?record=<id>`
-  (`&setting=snapshots` scrolls to the snapshot switch); the old `?edit=<id>` still redirects there.
+  (`&setting=snapshots` scrolls to the snapshot switch).
 
 ## Visitor site
 
