@@ -7,7 +7,6 @@ import {
   installLink,
   overviewLink,
   pagesLink,
-  legacyWebsiteEditLink,
   websiteSettingOf,
   websitesLink,
   withWebsite,
@@ -101,30 +100,5 @@ describe('module links', () => {
     expect(websiteSettingOf({ setting: 'snapshots' })).toBe('snapshots')
     expect(websiteSettingOf({ setting: 'other' })).toBeUndefined()
     expect(websiteSettingOf({ setting: ['snapshots'] })).toBeUndefined()
-  })
-
-  it('send an old drawer link (?edit=) to the settings modal', () => {
-    const path = '/modules/marketing/websites'
-    expect(
-      legacyWebsiteEditLink({
-        path,
-        query: { edit: 'site-1', setting: 'snapshots' },
-      }),
-    ).toBe(`${path}?record=site-1&setting=snapshots`)
-    expect(
-      legacyWebsiteEditLink({
-        path,
-        query: { edit: 'site 1', setting: 'other', view: 'mine' },
-      }),
-    ).toBe(`${path}?view=mine&record=site+1`)
-    expect(legacyWebsiteEditLink({ path, query: {} })).toBeNull()
-    expect(legacyWebsiteEditLink({ path, query: { edit: '' } })).toBeNull()
-    expect(legacyWebsiteEditLink({ path, query: { edit: ['a'] } })).toBeNull()
-    expect(
-      legacyWebsiteEditLink({
-        path: '/modules/marketing/pages',
-        query: { edit: 'site-1' },
-      }),
-    ).toBeNull()
   })
 })

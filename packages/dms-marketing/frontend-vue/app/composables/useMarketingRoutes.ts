@@ -98,36 +98,6 @@ export function websiteSettingOf(
   return query.setting === 'snapshots' ? 'snapshots' : undefined
 }
 
-interface RouteLike {
-  path: string
-  query: Record<string, unknown>
-}
-
-/**
- * The settings used to open in a drawer named by `?edit=<id>`; the modal
- * that replaced it is the table's `?record=<id>`. An old link (a bookmark,
- * a project's own) lands on its new form, `setting` kept; null for every
- * other URL.
- */
-export function legacyWebsiteEditLink(route: RouteLike): string | null {
-  const { edit, setting, ...rest } = route.query
-  if (route.path !== WEBSITES_PATH || typeof edit !== 'string' || !edit) {
-    return null
-  }
-  const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(rest)) {
-    if (typeof value === 'string') {
-      params.set(key, value)
-    }
-  }
-  params.set('record', edit)
-  const kept = websiteSettingOf({ setting })
-  if (kept) {
-    params.set('setting', kept)
-  }
-  return `${WEBSITES_PATH}?${params.toString()}`
-}
-
 /** The install guide: a new website, or the one `website` names. */
 export function installLink(website?: string | null): string {
   return withQuery(`${MODULE_BASE}/install`, { website })

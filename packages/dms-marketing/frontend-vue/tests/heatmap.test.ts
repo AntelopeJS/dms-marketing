@@ -1,8 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  heatmapDataLabel,
-  normalizePagePath,
-} from '../app/utils/heatmap'
+import { heatmapDataLabel, normalizePagePath } from '../app/utils/heatmap'
 
 /** A `t` that shows which key and which plural form were asked for. */
 function t(key: string, named: Record<string, unknown> = {}, plural?: number) {
