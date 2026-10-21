@@ -22,6 +22,7 @@ import {
   CONTEXT_PAGE_LIVE,
   LIVE_SCOPE,
   MarketingContext,
+  marketingToolbar,
   websiteUrl,
 } from "../blocks";
 import { analyticsCategory } from "../module";
@@ -39,7 +40,7 @@ function volumeKpi(metric: string, icon: string) {
     // never reads as a fall nobody compared.
     sparklineAccent: "primary",
     fetchUrl: websiteUrl(`${BLOCKS_API}/kpi?metric=${metric}`),
-    periodScope: MARKETING_PERIOD_SCOPE,
+    ...LIVE_SCOPE,
   }).meta(blockMeta(`kpi_${metric.replaceAll("-", "_")}`, icon));
 }
 
@@ -110,11 +111,9 @@ export class MarketingOverviewPage extends PageController(
     ],
   }),
 ) {
-  // The KPI cards take no `realtimeTopic`: the bar reads them on events.
-  static content = MarketingContext({
-    waitingGuide: true,
-    refreshBlocksOnEvents: true,
-  })
+  static toolbar = marketingToolbar();
+
+  static content = MarketingContext({ waitingGuide: true })
     .child(
       "kpis",
       Grid({ minColumnWidth: "200px" })

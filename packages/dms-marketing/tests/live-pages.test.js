@@ -23,7 +23,7 @@ const LIVE_PAGES = {
   funnel: MarketingFunnelPage,
 };
 
-/** Every component under the page's context bar, with its id path. */
+/** Every component under the page's context gate, with its id path. */
 function blocksOf(Page) {
   const found = [];
   const walk = (info, path) => {
@@ -60,11 +60,21 @@ test("every analytics page under the context bar is live, through the DMS gate",
   assert.ok(CONTEXT_PAGE_LIVE.maxRate > 0);
 });
 
-test("the context bar hears the arrivals on every live page", () => {
+test("every live page opens on the module's toolbar, the website picker first", () => {
   for (const [id, Page] of Object.entries(LIVE_PAGES)) {
-    const [bar] = blocksOf(Page);
-    assert.equal(bar.name, "DmsMarketingContext", id);
-    assert.equal(bar.options.realtimeTopic, MARKETING_EVENTS_TOPIC, id);
+    const toolbar = Page.toolbar.serializeSync();
+    assert.equal(toolbar.componentName, "dms-page-toolbar-block", id);
+    assert.deepEqual(
+      toolbar.children.map((child) => child.id),
+      ["website", "live", "period"],
+      id,
+    );
+    const [picker, , period] = toolbar.children.map((child) => child.component);
+    assert.equal(picker.componentName, "DmsMarketingWebsitePicker", id);
+    assert.equal(picker.options.realtimeTopic, MARKETING_EVENTS_TOPIC, id);
+    assert.equal(period.options.id, "marketing", id);
+    const [gate] = blocksOf(Page);
+    assert.equal(gate.name, "DmsMarketingContext", id);
   }
 });
 
@@ -99,19 +109,13 @@ test("a paused table keeps its rows and counts the events that came in", () => {
   }
 });
 
-test("the KPI cards, which take no topic, are read by the bar on arrivals", () => {
-  const blocks = blocksOf(MarketingOverviewPage);
-  assert.ok(blocks.some((block) => block.name === KPI_CARD));
-  assert.equal(blocks[0].options.refreshBlocksOnEvents, true);
-  for (const Page of [
-    MarketingAcquisitionPage,
-    MarketingPagesPage,
-    MarketingFunnelsPage,
-    MarketingFunnelPage,
-  ]) {
-    const bar = blocksOf(Page)[0];
-    assert.notEqual(bar.options.refreshBlocksOnEvents, true);
-    assert.ok(!blocksOf(Page).some((block) => block.name === KPI_CARD));
+test("the KPI cards follow the arrivals topic themselves", () => {
+  const cards = blocksOf(MarketingOverviewPage).filter(
+    (block) => block.name === KPI_CARD,
+  );
+  assert.ok(cards.length > 0);
+  for (const card of cards) {
+    assert.equal(card.options.realtimeTopic, MARKETING_EVENTS_TOPIC, card.path);
   }
 });
 

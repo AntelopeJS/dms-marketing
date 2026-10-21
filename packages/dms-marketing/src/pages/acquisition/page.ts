@@ -18,6 +18,7 @@ import {
   LIVE_SCOPE,
   LIVE_TABLE_HOLD,
   MarketingContext,
+  marketingToolbar,
   websiteUrl,
 } from "../blocks";
 import { analyticsCategory } from "../module";
@@ -183,6 +184,8 @@ export class MarketingAcquisitionPage extends PageController(
   },
   DefaultLayout(),
 ) {
+  static toolbar = marketingToolbar();
+
   static content = MarketingContext()
     .child(
       "waiting",

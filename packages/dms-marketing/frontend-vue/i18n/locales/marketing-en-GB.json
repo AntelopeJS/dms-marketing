@@ -105,8 +105,8 @@
           "name": "Collection paused notice"
         },
         "context": {
-          "description": "Picks the website and the period every block of the page reads.",
-          "name": "Website and period bar"
+          "description": "Shows the page's blocks once a website is picked, or the first-run and install guides.",
+          "name": "Website gate"
         },
         "devices": {
           "description": "Sessions by device type.",
@@ -168,6 +168,10 @@
           "description": "Tracked pages with their click and scroll heatmaps.",
           "name": "Pages and heatmaps"
         },
+        "period": {
+          "description": "The period and comparison every block of the page reads.",
+          "name": "Period"
+        },
         "quality": {
           "description": "Bounce rate, average session duration and pages per session.",
           "name": "Session quality"
@@ -195,6 +199,10 @@
         "settings_sampling": {
           "description": "The share of page loads recording clicks.",
           "name": "Sampling"
+        },
+        "toolbar": {
+          "description": "The page toolbar: the website, Direct / Pause and the period every block of the page reads.",
+          "name": "Website and period bar"
         },
         "tops": {
           "description": "Content, acquisition, audience and custom events.",
@@ -231,6 +239,10 @@
         "traffic_sessions": {
           "description": "Sessions per day, or per hour over a single day.",
           "name": "Sessions over time"
+        },
+        "website_picker": {
+          "description": "Picks the website every block of the page reads, with its tracking state.",
+          "name": "Website picker"
         },
         "website_waiting": {
           "description": "Shown while the website has sent no pageview, with a link to the install guide.",
@@ -376,11 +388,6 @@
       },
       "context": {
         "add_website": "Add a website",
-        "comparisons": {
-          "none": "No comparison",
-          "previous-period": "vs previous period",
-          "previous-year": "vs previous year"
-        },
         "error": {
           "description": "Tracking keeps running and nothing was lost. Try again in a moment.",
           "title": "Couldn't load your websites"

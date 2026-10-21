@@ -16,11 +16,10 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
 ## Setup
 
 - Marketing 0.5 requires `@antelopejs/dms` >=0.9 (interface-dms 0.7, renderer `@antelopejs/dms-frontend` 0.6);
-  0.4 is the DMS 0.8 line. The analytics pages' context bar is the DMS `PageToolbar` (website, Direct / Pause,
-  period): it needs a DMS shipping `DmsPageToolbarBlock` (`base/page-toolbar`). Its period uses the DMS short codes
+  0.4 is the DMS 0.8 line. Each analytics page declares `static toolbar = marketingToolbar()`: the DMS
+  `pageToolbar()` (website picker leading, Direct / Pause, period); it needs a DMS shipping `pageToolbar()` child options. Its period uses the DMS short codes
   (1D / 7D / 30D / 90D); the custom range's calendar segment is icon-only, with its accessible name, from the DMS.
-  The comparison is the selector's dropdown (`comparisonControl: "menu"`: vs previous period, vs previous year,
-  none); the routes read the `compareFrom`/`compareTo` it sends, and "none" sends none, so no change is shown.
+  The comparison is the toolbar's default dropdown (vs previous period, vs previous year, none); the routes read the `compareFrom`/`compareTo` it sends, and "none" sends none, so no change is shown.
 - Live: the analytics pages declare `live` (`CONTEXT_PAGE_LIVE`, 15 s, 60 s past 8 days). Ingestion publishes
   `marketing.events` (`{ count }`, batched 1/s) once a batch is in the rollup; every stock block carries it as
   `realtimeTopic`, tables add `liveHold`, the Overview's KPI cards (no topic) are read by the bar on arrivals.

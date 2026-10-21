@@ -4,6 +4,11 @@ import type {
 } from "@antelopejs/interface-dms/component";
 import { Banner } from "@antelopejs/interface-dms/base/banner";
 import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
+import {
+  type PageToolbarProps,
+  pageToolbar,
+} from "@antelopejs/interface-dms/base/page-toolbar";
+import type { PeriodPreset } from "@antelopejs/interface-dms/base/period-selector";
 import type { TableViewOptions } from "@antelopejs/interface-dms/base/table-view";
 import type { PageLiveOptions } from "@antelopejs/interface-dms/page";
 import { RegisterPageTopic } from "@antelopejs/interface-dms/realtime";
@@ -12,7 +17,7 @@ import { API_BASE_PATH } from "@/types/constants";
 
 /**
  * The period scope every analytics block of the module binds to: the id of
- * the DMS `PeriodSelector` in the context bar, and the prefix of its keys in
+ * the DMS `PeriodSelector` in the page toolbar, and the prefix of its keys in
  * the page URL (`?marketing.period=…`). The scope appends the period to the
  * block's reads.
  */
@@ -107,18 +112,12 @@ export function MarketingBlock<T extends object>(
     });
 }
 
-export interface MarketingContextOptions extends ScopedBlockOptions {
+export interface MarketingContextOptions {
   /**
    * While the website has not received its first event, show the way to the
    * install guide in place of the children: a page of zeros reads nothing.
    */
   waitingGuide?: boolean;
-  /**
-   * The page holds stock blocks that take no `realtimeTopic` (`KpiCard`):
-   * on each batch of events the bar asks every block of the page to read
-   * again (`refreshLivePageBlocks()`), through the live gate.
-   */
-  refreshBlocksOnEvents?: boolean;
 }
 
 /**
@@ -126,8 +125,8 @@ export interface MarketingContextOptions extends ScopedBlockOptions {
  * reads again on the module's arrivals (`MARKETING_EVENTS_TOPIC`), at most
  * every 15 s while the period spans a week or less and every minute past
  * that: a month of data barely moves in 15 s, and the funnels read raw
- * events. The bar's Direct / Pause toggle stops it, and the choice follows
- * the reader from one analytics page to the next.
+ * events. The toolbar's Direct / Pause toggle stops it, and the choice
+ * follows the reader from one analytics page to the next.
  */
 export const CONTEXT_PAGE_LIVE: PageLiveOptions = {
   maxRate: 15,
@@ -135,21 +134,62 @@ export const CONTEXT_PAGE_LIVE: PageLiveOptions = {
   rememberKey: MARKETING_PERIOD_SCOPE,
 };
 
+/** The windows an analytics page offers, a custom range last. */
+const CONTEXT_PRESETS: PeriodPreset[] = [
+  "today",
+  "last-7-days",
+  "last-30-days",
+  "last-90-days",
+  "custom",
+];
+
 /**
- * The context bar and first-run gate wrapping an analytics page: its children
- * render once the tenant has a website, under the bar that picks the website
- * and the period they read. The bar is the DMS `PageToolbar` (website, live
- * toggle, period), so the page needs no toolbar of its own. It binds the
- * arrivals topic to its page, so a page of custom blocks only (their
- * `useApiData` reads follow the page's topics) hears it too.
+ * The toolbar of an analytics page, first in its body: the website picker
+ * (`DmsMarketingWebsitePicker`) leads, then the DMS Direct / Pause toggle and
+ * the period, whose comparisons the toolbar offers as a menu on the previous
+ * period. A page declares it before its `MarketingContext()`.
+ *
+ * ```ts
+ * static toolbar = marketingToolbar();
+ * static content = MarketingContext().child(...);
+ * ```
+ */
+export function marketingToolbar(): ComponentBuilder<PageToolbarProps> {
+  return pageToolbar({
+    leading: {
+      website: MarketingBlock(
+        "WebsitePicker",
+        "website_picker",
+        "i-ph-globe",
+        LIVE_SCOPE,
+      ),
+    },
+    period: {
+      id: MARKETING_PERIOD_SCOPE,
+      presets: CONTEXT_PRESETS,
+      defaultPreset: "last-30-days",
+      comparisons: ["previous-period", "previous-year", "none"],
+      meta: blockMeta("period", "i-ph-calendar"),
+    },
+  }).meta(blockMeta("toolbar", "i-ph-sliders-horizontal"));
+}
+
+/**
+ * The first-run gate wrapping an analytics page: its children render once the
+ * tenant has a website and the URL names it, under the page's
+ * `marketingToolbar()`. It binds the arrivals topic to its page, so a page of
+ * custom blocks only (their `useApiData` reads follow the page's topics)
+ * hears it too.
  */
 export function MarketingContext(
-  options: Omit<MarketingContextOptions, "periodScope" | "realtimeTopic"> = {},
+  options: MarketingContextOptions = {},
 ): ComponentBuilder<MarketingContextOptions> {
-  return MarketingBlock("Context", "context", "i-ph-sliders-horizontal", {
-    ...LIVE_SCOPE,
-    ...options,
-  }).onCreated((page) => {
+  return MarketingBlock(
+    "Context",
+    "context",
+    "i-ph-sliders-horizontal",
+    options,
+  ).onCreated((page) => {
     const pageId = page.pageInfo?.fullId;
     if (pageId) {
       RegisterPageTopic(pageId, MARKETING_EVENTS_TOPIC);

@@ -22,6 +22,7 @@ import {
   LIVE_SCOPE,
   LIVE_TABLE_HOLD,
   MarketingContext,
+  marketingToolbar,
   websiteUrl,
 } from "../blocks";
 import { conversionCategory } from "../module";
@@ -237,6 +238,8 @@ export class MarketingFunnelsPage extends PageController(
     ],
   }),
 ) {
+  static toolbar = marketingToolbar();
+
   static content = MarketingContext()
     .child(
       "winner",

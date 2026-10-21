@@ -105,8 +105,8 @@
           "name": "Avis de collecte en pause"
         },
         "context": {
-          "description": "Choisit le site et la période que lisent tous les blocs de la page.",
-          "name": "Barre site et période"
+          "description": "Affiche les blocs de la page une fois un site choisi, ou les guides de démarrage et d'installation.",
+          "name": "Accès au site"
         },
         "devices": {
           "description": "Sessions par type d'appareil.",
@@ -168,6 +168,10 @@
           "description": "Les pages suivies et leurs heatmaps de clics et de défilement.",
           "name": "Pages et heatmaps"
         },
+        "period": {
+          "description": "La période et la comparaison que lisent tous les blocs de la page.",
+          "name": "Période"
+        },
         "quality": {
           "description": "Taux de rebond, durée moyenne de session et pages par session.",
           "name": "Qualité des sessions"
@@ -195,6 +199,10 @@
         "settings_sampling": {
           "description": "La part des pages vues qui enregistrent les clics.",
           "name": "Échantillonnage"
+        },
+        "toolbar": {
+          "description": "La barre de la page : le site, Direct / Pause et la période que lisent tous les blocs de la page.",
+          "name": "Barre site et période"
         },
         "tops": {
           "description": "Contenu, acquisition, audience et événements personnalisés.",
@@ -231,6 +239,10 @@
         "traffic_sessions": {
           "description": "Sessions par jour, ou par heure sur une seule journée.",
           "name": "Sessions dans le temps"
+        },
+        "website_picker": {
+          "description": "Choisit le site que lisent tous les blocs de la page, avec son état de suivi.",
+          "name": "Choix du site"
         },
         "website_waiting": {
           "description": "Affichée tant que le site n'a envoyé aucune page vue, avec un lien vers le guide d'installation.",
@@ -376,11 +388,6 @@
       },
       "context": {
         "add_website": "Ajouter un site",
-        "comparisons": {
-          "none": "Sans comparaison",
-          "previous-period": "vs période précédente",
-          "previous-year": "vs année précédente"
-        },
         "error": {
           "description": "Le suivi continue et rien n'est perdu. Réessayez dans un instant.",
           "title": "Impossible de charger vos sites"

@@ -10,6 +10,7 @@ import {
 import { renderToString } from 'vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Context from '../app/components/Context.vue'
+import WebsitePicker from '../app/components/WebsitePicker.vue'
 import type { MarketingContextPayload } from '../app/composables/useMarketingContext'
 
 const route = vi.hoisted(() => ({ query: {} as Record<string, string> }))
@@ -17,6 +18,7 @@ const route = vi.hoisted(() => ({ query: {} as Record<string, string> }))
 vi.mock('#dms/frontend-module', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   useDmsRoute: () => ({ query: route.query, path: '/' }),
+  useDmsRouter: () => ({ push: async () => {}, replace: async () => {} }),
 }))
 
 const NOW = Date.UTC(2026, 9, 16, 12)
@@ -107,6 +109,7 @@ beforeEach(() => {
     },
   )
   vi.stubGlobal('readerTimeZone', () => 'UTC')
+  vi.stubGlobal('usePageToolbarSize', () => ({ size: computed(() => 'sm') }))
   vi.stubGlobal('withQuery', (path: string) => path)
 })
 
@@ -125,62 +128,18 @@ const slot = (name: string) =>
         h('div', slots.default?.()),
   })
 
-/** The DMS blocks the bar embeds, drawn with the options they were given. */
-const DMS_STUBS = {
-  DmsPageToolbarBlock: defineComponent({
-    // Required, as on the DMS block: Vue warns when one is missing.
-    props: {
-      componentId: { type: String, required: true },
-      pageId: { type: String, required: true },
-      showUpdatedAt: Boolean,
-      refresh: Boolean,
-    },
-    setup:
-      (props, { slots, attrs }) =>
-      () =>
-        h(
-          'section',
-          {
-            'data-block': 'page-toolbar',
-            'data-component-id': props.componentId,
-            'data-page-id': props.pageId,
-            'data-updated': String(props.showUpdatedAt),
-            'data-refresh': String(props.refresh),
-            role: attrs.role,
-          },
-          slots.default?.(),
-        ),
-  }),
-  DmsLiveToggleBlock: defineComponent({
-    props: { variant: String },
-    setup: (props) => () =>
-      h('div', { 'data-block': 'live', 'data-variant': props.variant }),
-  }),
-  DmsPeriodSelector: defineComponent({
-    inheritAttrs: false,
-    setup:
-      (_props, { attrs }) =>
-      () =>
-        h('div', { 'data-block': 'period' }, JSON.stringify(attrs)),
-  }),
-}
-
 const TOPIC = 'marketing.events'
 
-async function renderBar(props: Record<string, unknown> = {}): Promise<string> {
+async function render(
+  component: object,
+  props: Record<string, unknown> = {},
+): Promise<string> {
   const app = createSSRApp(
     defineComponent({
       setup: () => () =>
-        h(
-          Context,
-          { realtimeTopic: TOPIC, ...props },
-          { default: () => h('main') },
-        ),
+        h(component, props, { default: () => h('main', 'blocks') }),
     }),
   )
-  for (const [name, component] of Object.entries(DMS_STUBS)) {
-    app.component(name, component)
-  }
   for (const name of [
     'UDropdownMenu',
     'UButton',
@@ -195,67 +154,13 @@ async function renderBar(props: Record<string, unknown> = {}): Promise<string> {
   return renderToString(app)
 }
 
-function periodOptions(html: string): Record<string, unknown> {
-  const match = /<div data-block="period">(.*?)<\/div>/.exec(html)
-  const text = (match?.[1] ?? '{}').replaceAll('&quot;', '"')
-  return JSON.parse(text) as Record<string, unknown>
-}
+const renderPicker = (props: Record<string, unknown> = {}) =>
+  render(WebsitePicker, { realtimeTopic: TOPIC, ...props })
 
-describe('the context bar', () => {
-  it('is the page toolbar: the website, then Direct / Pause and the period', async () => {
-    const html = await renderBar()
-    expect(html).toContain('data-block="page-toolbar"')
-    expect(html).toContain('role="toolbar"')
-    const website = html.indexOf('Acme Shop')
-    const live = html.indexOf('data-block="live"')
-    const period = html.indexOf('data-block="period"')
-    expect(website).toBeGreaterThan(-1)
-    expect(live).toBeGreaterThan(website)
-    expect(period).toBeGreaterThan(live)
-    expect(html).toContain('data-variant="pill"')
-    // The toolbar's own refresh, not one of the bar's.
-    expect(html).not.toContain('i-ph-arrow-clockwise')
-  })
-
-  it("mounts the toolbar as a block of the page, under the bar's id", async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    const html = await renderBar({ componentId: 'ctx-1', pageId: 'overview' })
-    expect(html).toContain('data-component-id="ctx-1-toolbar"')
-    expect(html).toContain('data-page-id="overview"')
-    expect(warn.mock.calls.flat().join(' ')).not.toContain(
-      'Missing required prop',
-    )
-    warn.mockRestore()
-  })
-
-  it("keeps the module presets and comparisons, drawn as the toolbar's", async () => {
-    const options = periodOptions(await renderBar())
-    expect(options).toMatchObject({
-      id: 'marketing',
-      'component-id': 'marketing-context-period',
-      variant: 'segmented',
-      'default-preset': 'last-30-days',
-      'default-comparison': 'previous-period',
-      // Its own dropdown: vs previous period, vs previous year, or none.
-      'comparison-control': 'menu',
-      'range-label': 'relative',
-      presets: [
-        'today',
-        'last-7-days',
-        'last-30-days',
-        'last-90-days',
-        'custom',
-      ],
-      comparisons: ['previous-period', 'previous-year', 'none'],
-    })
-    // The DMS short codes (1D / 7D…) and its calendar segment for custom.
-    expect(options).not.toHaveProperty('preset-labels')
-    expect(options).not.toHaveProperty('size')
-    expect(options).not.toHaveProperty('align')
-  })
-
+describe('the website picker of the page toolbar', () => {
   it("shows the website's state as a dot and the age of its last event", async () => {
-    const html = await renderBar()
+    const html = await renderPicker()
+    expect(html).toContain('Acme Shop')
     // The full line is the tooltip and the accessible name.
     expect(html).toContain('aria-label="page.marketing.context.live"')
     expect(html).toMatch(/>1 min\.? ago</)
@@ -263,25 +168,22 @@ describe('the context bar', () => {
 
   it("says when the reader's days start in the state's name, not in a chip", async () => {
     vi.stubGlobal('readerTimeZone', () => 'Europe/Brussels')
-    const html = await renderBar()
+    const html = await renderPicker()
     expect(html).toContain(
       'aria-label="page.marketing.context.live. page.marketing.context.utc_days"',
     )
     expect(html).not.toMatch(/>\s*UTC\s*</)
   })
 
-  it('names no website, and offers no refresh, before there is one', async () => {
+  it('names no website before there is one', async () => {
     contextData.value = { websites: [], selectedId: null }
-    const html = await renderBar()
+    const html = await renderPicker()
     expect(html).toContain('page.marketing.context.no_website')
-    expect(html).toContain('data-updated="false"')
-    expect(html).toContain('data-refresh="false"')
-    expect(html).not.toContain('data-block="live"')
-    expect(html).not.toContain('data-block="period"')
+    expect(html).not.toContain('data-website-picker')
   })
 
   it("reads the websites' last events through the page's live gate, on no clock", async () => {
-    await renderBar()
+    await renderPicker()
     expect(readOptions.refreshOnPageRefresh).toBe(false)
     expect(readOptions).not.toHaveProperty('refreshInterval')
     const [contextLive] = liveRefreshes
@@ -292,22 +194,27 @@ describe('the context bar', () => {
     // Nothing of its own ticks the blocks.
     await vi.advanceTimersByTimeAsync(5 * 60_000)
     expect(blockRefreshes).toBe(0)
+    expect(topicHandlers.size).toBe(0)
   })
+})
 
-  it('leaves the blocks with a topic to read on the arrivals by themselves', async () => {
-    await renderBar()
-    expect(topicHandlers.has(TOPIC)).toBe(false)
-  })
-
-  it('asks every block to read on each arrival for blocks without a topic', async () => {
+describe('the context gate', () => {
+  it('draws no toolbar of its own: the page declares it', async () => {
     route.query = { website: 'acme-shop' }
-    await renderBar({ refreshBlocksOnEvents: true })
-    const onEvent = topicHandlers.get(TOPIC)
-    expect(onEvent).toBeDefined()
-    onEvent?.({ type: 'collected', payload: { count: 3 } })
-    expect(blockRefreshes).toBe(1)
-    // A presence snapshot is no arrival.
-    onEvent?.({ topic: TOPIC, entries: [] })
-    expect(blockRefreshes).toBe(1)
+    const html = await render(Context)
+    expect(html).toContain('blocks')
+    expect(html).not.toContain('Acme Shop')
+    expect(liveRefreshes).toHaveLength(0)
+  })
+
+  it('holds the blocks until the URL names the website', async () => {
+    const html = await render(Context)
+    expect(html).not.toContain('blocks')
+  })
+
+  it('shows the first-run hero without a website', async () => {
+    contextData.value = { websites: [], selectedId: null }
+    const html = await render(Context)
+    expect(html).not.toContain('blocks')
   })
 })

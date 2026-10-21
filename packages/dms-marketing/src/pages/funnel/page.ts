@@ -7,6 +7,7 @@ import {
   MarketingBlock,
   CONTEXT_PAGE_LIVE,
   MarketingContext,
+  marketingToolbar,
 } from "../blocks";
 import { conversionCategory } from "../module";
 
@@ -36,6 +37,8 @@ export class MarketingFunnelPage extends PageController(
   },
   DefaultLayout({ hideHeader: true }),
 ) {
+  static toolbar = marketingToolbar();
+
   static content = MarketingContext().child(
     "report",
     MarketingBlock("FunnelReport", "funnel_report", "i-ph-funnel", {
