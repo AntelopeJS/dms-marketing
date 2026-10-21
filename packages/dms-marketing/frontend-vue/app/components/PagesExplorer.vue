@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   computed,
-  getCurrentInstance,
   nextTick,
   onBeforeUnmount,
   onMounted,
@@ -247,7 +246,7 @@ const usedIn = computed(() =>
 // holds its place, until the browser hydrating it is mounted. A client
 // navigation draws it with the list, from the first render: mounted later,
 // it would come in after the list, and its skeleton after none.
-const mounted = ref(!import.meta.env.SSR && !isHydrating())
+const mounted = ref(!import.meta.env.SSR && !isHydratingComponent())
 if (mounted.value) {
   selectFirst(inventory.value)
 }
@@ -255,16 +254,6 @@ onMounted(() => {
   mounted.value = true
   selectFirst(inventory.value)
 })
-
-/**
- * Whether this setup hydrates the server's HTML: Vue binds a hydrating
- * component's vnode to its server-rendered node before its setup runs, where
- * a fresh mount has no node yet.
- */
-function isHydrating(): boolean {
-  const instance = getCurrentInstance()
-  return !!instance && !instance.isMounted && !!instance.vnode.el
-}
 
 const countLabel = computed(() => {
   const listed = pages.value.length
