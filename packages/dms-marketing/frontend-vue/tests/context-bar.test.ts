@@ -207,6 +207,12 @@ describe('the context gate', () => {
     expect(liveRefreshes).toHaveLength(0)
   })
 
+  it('sits 16px under the page toolbar, not 24px as the page stack', async () => {
+    route.query = { website: 'acme-shop' }
+    const html = await render(Context)
+    expect(html).toMatch(/^<div class="-mt-2 flex flex-col gap-4"/)
+  })
+
   it('holds the blocks until the URL names the website', async () => {
     const html = await render(Context)
     expect(html).not.toContain('blocks')

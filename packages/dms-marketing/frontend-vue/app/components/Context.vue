@@ -26,6 +26,9 @@ import { installLink } from '../composables/useMarketingRoutes'
  * URL naming no website (or one the tenant does not have) is redirected to
  * the one saved, and the page renders on it.
  */
+// The gate comes first under the page toolbar. The DMS page stack sets its
+// items 24px apart (space-y-6); `-mt-2` keeps the 16px the analytics pages
+// had when the bar was drawn in this gate (gap-4).
 const props = withDefaults(defineProps<{ waitingGuide?: boolean }>(), {
   waitingGuide: false,
 })
@@ -69,7 +72,7 @@ provide(MARKETING_CONTEXT_KEY, {
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
+  <div class="-mt-2 flex flex-col gap-4">
     <DmsEmptyState
       v-if="failed"
       variant="error"
