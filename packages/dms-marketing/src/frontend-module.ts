@@ -14,7 +14,9 @@ import {
 
 /** The patterns the tag leaves uncounted: the sign-in pages, then the
  * configured ones. */
-function dashboardExcludedPaths(config: DashboardTrackingConfig): string[] {
+export function dashboardExcludedPaths(
+  config: DashboardTrackingConfig,
+): string[] {
   return [...new Set([...DASHBOARD_AUTH_PATHS, ...config.excludePaths])];
 }
 
@@ -24,7 +26,7 @@ function dashboardExcludedPaths(config: DashboardTrackingConfig): string[] {
  * frontend registers its plugin only when the options are there. Read by the
  * frontend at boot: a change takes a frontend restart.
  */
-function dashboardFrontendOptions(
+export function dashboardFrontendOptions(
   config: DashboardTrackingConfig,
 ): Partial<AddFrontendModuleOptions> {
   if (!config.enabled) {
