@@ -8,6 +8,7 @@ import type {
   MarketingWebsite,
 } from '../composables/useMarketingApi'
 import {
+  useDashboardWorkspaces,
   usePageInventory,
   useWebsiteFunnels,
   useWebsites,
@@ -20,7 +21,13 @@ import { formatNumber } from '../utils/format'
 import { pageSnapshotBadge } from '../utils/page-snapshot'
 import { measureFillHeight } from '../utils/fill-height'
 import { useMarketingNow } from '../composables/useMarketingNow'
-import { normalizePagePath } from '../utils/heatmap'
+import { normalizePagePath, selectedPageRow } from '../utils/heatmap'
+import {
+  effectiveWorkspace,
+  rememberedWorkspace,
+  rememberWorkspace,
+  WORKSPACE_QUERY,
+} from '../utils/workspace-scope'
 
 /**
  * Pages & heatmaps: the paths visitors loaded on the selected website, with
@@ -103,15 +110,79 @@ function putWebsite(saved: MarketingWebsite): void {
   }
 }
 
+// --- Workspace scope ----------------------------------------------------------
+
+// A platform owner on the dashboard's own website reads it for another
+// workspace, or all of them (see utils/workspace-scope). Everyone else gets
+// an empty list from the backend, which also refuses the scope itself.
+const workspacesRead = useDashboardWorkspaces(websiteId)
+const workspaceOptions = computed(() =>
+  workspacesRead.error.value
+    ? []
+    : (workspacesRead.data.value?.workspaces ?? []),
+)
+const queryWorkspace = () => {
+  const value = route.query[WORKSPACE_QUERY]
+  return typeof value === 'string' ? value : ''
+}
+/** What the link asks for, else this browser's last pick (once mounted:
+ * the storage is the browser's). */
+const wantedWorkspace = ref(queryWorkspace())
+/** The scope the reads use: the own workspace until the selector offers
+ * the wanted one. */
+const workspace = computed(() =>
+  effectiveWorkspace(wantedWorkspace.value, workspaceOptions.value),
+)
+/** Another workspace's data: read-only, backdrops masked by the backend. */
+const foreign = computed(() => workspace.value !== '')
+/** A wanted scope waits for the selector's answer, so a link to one never
+ * reads the own workspace first, nor fails for a viewer it is not for. */
+const scopeReady = computed(
+  () =>
+    !wantedWorkspace.value ||
+    workspacesRead.status.value === 'success' ||
+    workspacesRead.status.value === 'error',
+)
+const scopedWebsiteId = computed(() =>
+  scopeReady.value ? websiteId.value : '',
+)
+
+function selectWorkspace(value: string): void {
+  wantedWorkspace.value = value
+  rememberWorkspace(value)
+  void router.replace({
+    query: { ...route.query, [WORKSPACE_QUERY]: value || undefined },
+  })
+}
+
+// Back and Forward move the scope with the URL.
+watch(queryWorkspace, (value) => {
+  wantedWorkspace.value = value || rememberedWorkspace()
+})
+
+// A remembered scope lands in the URL too: a copied link carries it.
+watch(workspace, (value) => {
+  if (value && queryWorkspace() !== value) {
+    void router.replace({ query: { ...route.query, [WORKSPACE_QUERY]: value } })
+  }
+})
+
 const inventoryRead = usePageInventory({
-  websiteId,
+  websiteId: scopedWebsiteId,
   period: pagesPeriod,
   search: searchedTerm,
   sort,
+  workspace,
 })
 const inventory = computed(() =>
   inventoryRead.error.value ? null : inventoryRead.data.value,
 )
+
+// The pages panel holds the workspace selector from the first paint: a
+// server render, or a navigation, reads the workspaces before it draws, so
+// the panel never grows under the reader (the inventory reads alongside).
+await workspacesRead
+
 const loading = computed(() => inventoryRead.status.value === 'pending')
 /** A list is on screen (the previous one while another loads), or failed. */
 const settled = computed(
@@ -282,10 +353,17 @@ function inspectTyped(): void {
  */
 const selectedPage = ref<MarketingPageEntry>()
 watch([pages, selectedPath], ([list, path]) => {
-  const found = list.find((page) => page.path === path)
-  if (found || selectedPage.value?.path !== path) {
-    selectedPage.value = found
-  }
+  selectedPage.value = selectedPageRow(list, path, selectedPage.value)
+})
+
+/** What the list is read for, the filter aside: a change is another read. */
+const readScope = computed(() =>
+  JSON.stringify([workspace.value, pagesPeriod.value]),
+)
+// Another workspace or other days: the row read before says nothing of
+// them, the header waits for the path's row in the new list (or none).
+watch(readScope, () => {
+  selectedPage.value = undefined
 })
 
 /** Funnels with a page step on the selected path, for the "Used in" card. */
@@ -303,6 +381,7 @@ const mounted = ref(false)
 onMounted(() => {
   mounted.value = true
   selectFirst(inventory.value)
+  wantedWorkspace.value ||= rememberedWorkspace()
 })
 
 const countLabel = computed(() => {
@@ -364,6 +443,18 @@ const sortItems = computed(() => [
           :class="paneHeight === null ? 'xl:sticky xl:top-4' : ''"
           :style="paneStyle"
         >
+          <!-- Whose dashboard the list reads, above its search: read with
+               the page, so the row is there from the first paint. -->
+          <div
+            v-if="workspaceOptions.length > 1"
+            class="border-b border-default p-3"
+          >
+            <DmsMarketingWorkspaceScope
+              :workspaces="workspaceOptions"
+              :model-value="workspace"
+              @update:model-value="selectWorkspace"
+            />
+          </div>
           <div class="flex items-center gap-2 border-b border-default p-3">
             <UInput
               v-model="search"
@@ -572,6 +663,8 @@ const sortItems = computed(() => [
             :pageviews="selectedPage?.pageviews"
             :used-in="usedIn"
             :height="paneHeight"
+            :workspace="workspace"
+            :workspace-snapshots="inventory?.snapshotsEnabled ?? false"
             @website-updated="putWebsite"
           />
         </div>

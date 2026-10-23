@@ -452,7 +452,8 @@
         },
         "snapshot_retention_above_raw": "Les instantanés de page ne peuvent pas durer plus longtemps que les événements bruts : ils survivraient aux clics qu'ils illustrent.",
         "statistics_retention_below_raw": "Les statistiques ne peuvent pas durer moins longtemps que les événements bruts : funnels et résultats A/B perdraient les sessions de leurs événements.",
-        "website_not_found": "Ce site n'existe pas ou appartient à un autre espace de travail."
+        "website_not_found": "Ce site n'existe pas ou appartient à un autre espace de travail.",
+        "workspace_not_found": "Cet espace n'existe pas, n'a pas de suivi du tableau de bord, ou vous n'avez pas accès à ses données."
       },
       "experiment": {
         "colours_note": "Chaque variante garde sa couleur partout : A est neutre, B a la couleur principale. Le vert et le rouge ne signifient qu'un verdict.",
@@ -954,7 +955,8 @@
           "status_line": "Instantané du {date} · {layout} {width} px",
           "strip_details": "Pourquoi cet avertissement",
           "too_heavy": "Page trop lourde pour un instantané",
-          "too_heavy_hint": "L'instantané de la dernière page vue échantillonnée pesait {size} Mio à l'envoi (compressé quand le navigateur le permet), au-delà du plafond de {limit} Mio : cette page n'a donc pas d'instantané. Les chiffres de clics et de défilement ci-dessus n'en sont pas affectés. Un nouvel essai a lieu chaque jour : un balisage plus léger — ou une section lourde marquée data-dms-marketing-block — la ramène sous le plafond, et l'option snapshotMaxBytes du module relève le plafond."
+          "too_heavy_hint": "L'instantané de la dernière page vue échantillonnée pesait {size} Mio à l'envoi (compressé quand le navigateur le permet), au-delà du plafond de {limit} Mio : cette page n'a donc pas d'instantané. Les chiffres de clics et de défilement ci-dessus n'en sont pas affectés. Un nouvel essai a lieu chaque jour : un balisage plus léger — ou une section lourde marquée data-dms-marketing-block — la ramène sous le plafond, et l'option snapshotMaxBytes du module relève le plafond.",
+          "workspace_masked": "Page d'un autre espace : tout le texte est masqué"
         },
         "reset": {
           "and": "{first} et {second}",
@@ -1016,6 +1018,16 @@
           "action": "Vérifier l'installation",
           "description": "Les pages et heatmaps apparaissent dès que le traceur est sur le site et qu'une première page est chargée.",
           "title": "{website} n'a encore envoyé aucune page vue"
+        },
+        "workspace": {
+          "all": "Tous les espaces",
+          "all_hint": "{count} espace combiné | {count} espaces combinés",
+          "combined_note": "Combiné sur {count} espace, en lecture seule. Les instantanés s'affichent avec leur texte masqué. | Combiné sur {count} espaces, en lecture seule. Les instantanés s'affichent avec leur texte masqué.",
+          "label": "Espace :",
+          "note_label": "À propos de cette vue",
+          "other_note": "Tableau de bord d'un autre espace, en lecture seule. Les instantanés s'affichent avec leur texte masqué.",
+          "switch": "Changer l'espace dont les heatmaps sont lues",
+          "yours": "Votre espace"
         },
         "quoted": "« {text} »"
       },

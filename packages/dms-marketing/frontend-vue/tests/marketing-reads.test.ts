@@ -2,6 +2,7 @@ import { createSSRApp, defineComponent, h, ref, toValue } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  useDashboardWorkspaces,
   useFunnelTemplates,
   useHeatmapCountRead,
   useMarketingContextRead,
@@ -177,6 +178,21 @@ describe('the reads with triggers of their own', () => {
     expect(polling()).toBe(4000)
     interval.value = 0
     expect(polling()).toBe(0)
+  })
+})
+
+describe('the dashboard workspaces', () => {
+  // The pages panel grew a row after the first paint while the workspaces
+  // were read in the browser only.
+  it('are read with the page, server render included, once there is a site', () => {
+    const website = ref('')
+    useDashboardWorkspaces(website)
+    const [workspaces] = calls
+    expect(workspaces?.options.server).not.toBe(false)
+    expect(workspaces?.url()).toBeNull()
+    website.value = 'dashboard-site'
+    expect(workspaces?.url()).toBe('/api/marketing/stats/workspaces')
+    expect(query(workspaces)).toEqual({ website: 'dashboard-site' })
   })
 })
 

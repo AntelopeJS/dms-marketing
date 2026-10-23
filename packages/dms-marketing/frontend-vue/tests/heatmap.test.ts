@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { heatmapDataLabel, normalizePagePath } from '../app/utils/heatmap'
+import {
+  heatmapDataLabel,
+  normalizePagePath,
+  selectedPageRow,
+} from '../app/utils/heatmap'
 
 /** A `t` that shows which key and which plural form were asked for. */
 function t(key: string, named: Record<string, unknown> = {}, plural?: number) {
@@ -25,5 +29,29 @@ describe('heatmap helpers', () => {
     expect(heatmapDataLabel({ events: 18, snapshots: 1 }, t, 'en-GB')).toBe(
       '18 events[n] + 1 snapshots',
     )
+  })
+
+  describe('selectedPageRow', () => {
+    const pricing = { path: '/pricing', pageviews: 42 }
+    const home = { path: '/', pageviews: 7 }
+
+    it('takes the selected path row from the list just read', () => {
+      expect(
+        selectedPageRow([home, { ...pricing, pageviews: 3 }], '/pricing', pricing),
+      ).toEqual({ path: '/pricing', pageviews: 3 })
+    })
+
+    it('keeps the row a filter hides from the list', () => {
+      expect(selectedPageRow([home], '/pricing', pricing)).toBe(pricing)
+    })
+
+    it('keeps nothing once dropped (another workspace or other days)', () => {
+      expect(selectedPageRow([home], '/pricing', undefined)).toBeUndefined()
+    })
+
+    it('never keeps the row of another path', () => {
+      expect(selectedPageRow([home], '/about', pricing)).toBeUndefined()
+      expect(selectedPageRow([home], undefined, pricing)).toBeUndefined()
+    })
   })
 })
