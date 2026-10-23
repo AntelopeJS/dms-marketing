@@ -109,7 +109,9 @@ function isDashboardPathPattern(value: unknown): value is string {
  * instead of reaching the tag or the website record. Only `enabled: true`
  * turns it on, and only `snapshots: true` enables the captures.
  */
-function parseDashboardTracking(input: unknown): DashboardTrackingConfig {
+export function parseDashboardTracking(
+  input: unknown,
+): DashboardTrackingConfig {
   const value =
     input && typeof input === "object"
       ? (input as Partial<Record<keyof DashboardTrackingConfig, unknown>>)

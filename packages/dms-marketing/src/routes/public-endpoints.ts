@@ -1,5 +1,5 @@
 import type { FrontendPublicEndpoint } from "@antelopejs/interface-dms/page";
-import { API_BASE_PATH } from "@/types/constants";
+import { API_BASE_PATH } from "../types/constants";
 
 const SCRIPT_METHODS = ["GET", "HEAD"];
 const BEACON_METHODS = ["POST"];

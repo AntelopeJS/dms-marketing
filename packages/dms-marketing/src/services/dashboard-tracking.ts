@@ -1,11 +1,7 @@
 import { createHash } from "node:crypto";
 import { MODULE_URL_PREFIX } from "@antelopejs/interface-dms/page";
 import type { Website } from "@/db/tables/websites.table";
-import {
-  DASHBOARD_AUTH_PATHS,
-  FRONTEND_CONFIG_KEY,
-  MAX_EXTRA_DOMAINS,
-} from "@/types/constants";
+import { MAX_EXTRA_DOMAINS } from "@/types/constants";
 import type { DashboardTrackingConfig } from "@/config";
 import { websiteAcceptsHostname } from "./origin-guard";
 
@@ -40,30 +36,7 @@ export function isDashboardWebsite(
   return website._id === dashboardWebsiteId(website.tenantId);
 }
 
-/**
- * The module area of the DMS — the modules page, the store and every page a
- * module registers under `MODULE_URL_PREFIX`: never counted, whatever the
- * configuration, like the sign-in pages. Dashboard tracking analyses the
- * product the owner builds, not the modules AntelopeJS or the community
- * ship; a project wanting figures on a module of its own tracks its own
- * pages instead. `/x/**` covers `/x` itself.
- */
-export const DASHBOARD_MODULE_AREA_PATHS = [`${MODULE_URL_PREFIX}/**`];
 const MODULE_AREA_PATH = MODULE_URL_PREFIX.toLowerCase();
-
-/** The patterns the tag leaves uncounted: the sign-in pages and the module
- * area, then the configured ones. */
-export function dashboardExcludedPaths(
-  config: DashboardTrackingConfig,
-): string[] {
-  return [
-    ...new Set([
-      ...DASHBOARD_AUTH_PATHS,
-      ...DASHBOARD_MODULE_AREA_PATHS,
-      ...config.excludePaths,
-    ]),
-  ];
-}
 
 /**
  * `path` (as stored: pathname only) lies in the DMS module area, which the
@@ -88,24 +61,6 @@ export function hidesDashboardPath(
 }
 
 /**
- * What `AddFrontendModule` gets for the dashboard's tag: nothing while it is
- * off, so a module left at the default registers exactly as before; the
- * frontend registers its plugin only when the options are there. Read by the
- * frontend at boot: a change takes a frontend restart.
- */
-export function dashboardFrontendOptions(config: DashboardTrackingConfig) {
-  if (!config.enabled) {
-    return {};
-  }
-  return {
-    configKey: FRONTEND_CONFIG_KEY,
-    options: {
-      dashboardTracking: { excludePaths: dashboardExcludedPaths(config) },
-    },
-  };
-}
-
-/**
  * A host the site does not accept yet joins its extra domains while there is
  * room: the dashboard answers on whatever host its deployment gives it
  * (localhost, a staging name, the real one), and no owner registered it.
@@ -126,20 +81,14 @@ function acceptHostname(website: Website, hostname: string): boolean {
 /**
  * Brings the snapshot switch to `dashboardTracking.snapshots` while it is
  * the configuration's to set. Once a person changed it (`owner`), it is
- * left alone for good. A row from before the switch was tracked may be
- * turned on, never off: off is all provisioning ever wrote there, so an
- * enabled one may be an owner's choice.
+ * left alone for good.
  */
 function applyConfiguredSnapshots(
   website: Website,
   config: DashboardTrackingConfig,
 ): boolean {
   const current = website.snapshotsEnabled ?? false;
-  if (
-    website.snapshotsSetBy === "owner" ||
-    current === config.snapshots ||
-    (!config.snapshots && website.snapshotsSetBy !== "config")
-  ) {
+  if (website.snapshotsSetBy === "owner" || current === config.snapshots) {
     return false;
   }
   website.snapshotsEnabled = config.snapshots;
