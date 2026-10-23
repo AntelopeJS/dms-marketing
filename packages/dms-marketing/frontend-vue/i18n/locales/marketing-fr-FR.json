@@ -332,7 +332,7 @@
         "window_max": "Max {max} h",
         "window_presets": {
           "1": "1 h",
-          "24": "Toute la session"
+          "24": "24 h"
         },
         "step_matched_as": "Cherché comme {path}",
         "step_unseen": "Aucun événement brut ne lui correspond ces 30 derniers jours : les funnels comptent les événements bruts, pas les statistiques journalières ci-contre"

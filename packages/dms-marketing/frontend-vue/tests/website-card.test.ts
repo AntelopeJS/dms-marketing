@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import { websiteCardOf } from '../app/utils/website-card'
 import {
-  WEBSITE_STATE_DOTS,
-  websiteCardOf,
-  websiteStateLine,
-} from '../app/utils/website-card'
+  WEBSITE_LIVE_WINDOW_MS,
+  websiteDisplayState,
+} from '../app/utils/website-state'
 
 /** A row as the websites table lists it: stored fields, card merged in. */
 function listedRow(overrides: Record<string, unknown> = {}) {
@@ -100,36 +100,20 @@ describe('websiteCardOf', () => {
   })
 })
 
-describe('websiteStateLine', () => {
-  const ago = (at: number) => `at ${at}`
+// QA m10: a card read off the table shows the same state as everywhere else,
+// not the backend's sticky \`live\`.
+describe('a listed card', () => {
+  const lastActivityAt = Date.UTC(2026, 9, 17, 12)
 
-  it('says how long ago a live or imported site was seen', () => {
-    expect(websiteStateLine({ state: 'live', lastActivityAt: 5 }, ago)).toEqual(
-      { key: 'page.marketing.context.live', params: { ago: 'at 5' } },
-    )
-    expect(
-      websiteStateLine({ state: 'imported', lastActivityAt: 7 }, ago),
-    ).toEqual({
-      key: 'page.marketing.context.imported',
-      params: { ago: 'at 7' },
-    })
+  it('is not shown live once its last event is over 5 minutes old', () => {
+    const card = websiteCardOf(listedRow({ lastActivityAt }))
+    const later = lastActivityAt + WEBSITE_LIVE_WINDOW_MS + 1
+    expect(card.state).toBe('live')
+    expect(websiteDisplayState(card, later)).toBe('idle')
   })
 
-  it('names the bare state otherwise', () => {
-    expect(
-      websiteStateLine({ state: 'waiting', lastActivityAt: null }, ago),
-    ).toEqual({ key: 'page.marketing.context.state.waiting' })
-    expect(
-      websiteStateLine({ state: 'live', lastActivityAt: null }, ago),
-    ).toEqual({ key: 'page.marketing.context.state.live' })
-  })
-
-  it('has a dot for every state', () => {
-    expect(Object.keys(WEBSITE_STATE_DOTS).sort()).toEqual([
-      'imported',
-      'live',
-      'paused',
-      'waiting',
-    ])
+  it('is shown live while its last event is recent', () => {
+    const card = websiteCardOf(listedRow({ lastActivityAt }))
+    expect(websiteDisplayState(card, lastActivityAt + 60_000)).toBe('live')
   })
 })

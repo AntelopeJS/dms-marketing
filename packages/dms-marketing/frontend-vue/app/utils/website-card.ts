@@ -91,32 +91,3 @@ export function websiteCardOf(row: WebsiteRow): MarketingWebsiteCard {
     dashboard: row.dashboard === true,
   }
 }
-
-/** The dot before a card's state line. */
-export const WEBSITE_STATE_DOTS: Record<WebsiteState, string> = {
-  live: 'bg-success',
-  imported: 'bg-info',
-  waiting: 'bg-warning',
-  paused: 'bg-(--ui-text-dimmed)',
-}
-
-/**
- * The i18n key and parameters of a card's state line: how long ago it was
- * last seen once live or imported, the bare state otherwise. `ago` words an
- * epoch in the reader's terms ("3 min ago").
- */
-export function websiteStateLine(
-  card: Pick<MarketingWebsiteCard, 'state' | 'lastActivityAt'>,
-  ago: (at: number) => string,
-): { key: string; params?: Record<string, string> } {
-  if (
-    (card.state === 'live' || card.state === 'imported') &&
-    card.lastActivityAt
-  ) {
-    return {
-      key: `page.marketing.context.${card.state}`,
-      params: { ago: ago(card.lastActivityAt) },
-    }
-  }
-  return { key: `page.marketing.context.state.${card.state}` }
-}

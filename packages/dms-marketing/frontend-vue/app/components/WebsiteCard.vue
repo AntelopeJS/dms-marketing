@@ -11,12 +11,12 @@ import {
   initials,
 } from '../utils/format'
 import { allowHostConfirmation, hostConflictOf } from '../utils/host-conflict'
+import { websiteCardOf, type WebsiteRow } from '../utils/website-card'
 import {
   WEBSITE_STATE_DOTS,
-  websiteCardOf,
+  websiteDisplayState,
   websiteStateLine,
-  type WebsiteRow,
-} from '../utils/website-card'
+} from '../utils/website-state'
 import { requestWebsiteSetting } from '../utils/website-settings'
 import { fractionDigits } from '../constants'
 
@@ -53,12 +53,12 @@ const now = useMarketingNow(CLOCK_TICK_MS)
 /** The browser's zone, which a server render writes the dates in. */
 const readerZone = readerTimeZone()
 
-const stateLine = computed(() => {
-  const line = websiteStateLine(card.value, (at) =>
-    formatRelativeTime(at, now.value, locale.value),
-  )
-  return t(line.key, line.params ?? {})
-})
+// \`live\` only while the last event is recent (website-state), as everywhere
+// a site's state shows.
+const displayState = computed(() => websiteDisplayState(card.value, now.value))
+const stateLine = computed(() =>
+  websiteStateLine(card.value, now.value, t, locale.value),
+)
 
 /** Opens the settings modal, on `setting` when given. */
 function edit(setting?: 'snapshots'): void {
@@ -179,7 +179,7 @@ function resume(): Promise<void> {
     >
       <span
         class="size-2 rounded-full"
-        :class="WEBSITE_STATE_DOTS[card.state]"
+        :class="WEBSITE_STATE_DOTS[displayState]"
       />
       {{ stateLine }}
     </p>
