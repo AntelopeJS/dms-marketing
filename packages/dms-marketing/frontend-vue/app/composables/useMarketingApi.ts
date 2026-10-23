@@ -123,6 +123,9 @@ export interface MarketingPageSnapshot {
   exact: boolean
   capturedAt: number
   origin: string
+  /** Origin and path captured — never a query string or fragment; absent
+   * from an older backend. */
+  url?: string
   viewport: { width: number; height: number }
   document: { width: number; height: number }
   colorScheme?: 'light' | 'dark'
@@ -137,6 +140,16 @@ export interface MarketingPageSnapshotResponse {
   snapshot: MarketingPageSnapshot | null
 }
 
+/** What was captured of one path, every layout together. */
+export interface MarketingPageSnapshotSummary {
+  /** The newest capture with a document, else the newest oversize report. */
+  capturedAt: number
+  /** Layouts holding a document, widest first. */
+  layouts: MarketingSnapshotLayout[]
+  /** Only oversize reports: the page is too heavy to capture. */
+  tooHeavy: boolean
+}
+
 /** One observed path of a tracked site, over the requested window. */
 export interface MarketingPageEntry {
   path: string
@@ -144,6 +157,9 @@ export interface MarketingPageEntry {
   clicks: number
   /** Page loads sampled for clicks and scrolls, as counted. */
   sampled: number
+  /** Null for no capture; absent while the site has snapshots off (or from
+   * an older backend). */
+  snapshot?: MarketingPageSnapshotSummary | null
 }
 
 /**
@@ -173,6 +189,8 @@ export interface MarketingPages {
   sampleRate: number | null
   /** Global collection switch; off means nothing new is being recorded. */
   trackerEnabled: boolean
+  /** The site's snapshot option; absent from an older backend. */
+  snapshotsEnabled?: boolean
 }
 
 export interface MarketingFunnelStep {

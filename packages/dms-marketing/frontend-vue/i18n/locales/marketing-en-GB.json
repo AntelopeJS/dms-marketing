@@ -923,7 +923,12 @@
           "all_masked": "All text masked",
           "approximate_layout": "Showing the {layout} snapshot at {width}px",
           "approximate_layout_hint": "No visitor has been captured at this width yet, so the layout is reflowed. Clicks still land on their element.",
+          "captured_from": "from {url}",
+          "captured_from_hint": "The page the snapshot was taken on. Its query string and fragment are never kept: they can carry tokens or addresses.",
+          "drift": "{share} of clicks aim at elements missing from this snapshot",
+          "drift_hint": "The page may have changed since {date}. Those clicks are drawn where they fell on the page, not on their element. Resetting the page clears its clicks and snapshot and starts again from the current version.",
           "enable_snapshots": "Enable page snapshots",
+          "end_of_page": "End of page",
           "fields_masked": "Text visible, form fields masked",
           "layout": "Layout",
           "layout_desktop": "Desktop",
@@ -942,10 +947,12 @@
           "overflow_hint": "The snapshot lays out at {width}px. The overlay follows the document, so it stays aligned; the backdrop may be cut off.",
           "oversized": "Page too tall to preview accurately",
           "oversized_hint": "The document exceeds the largest surface that can be drawn, so the overlay and the backdrop no longer line up. The click figures are unaffected.",
+          "snapshot_settings": "Snapshot settings",
           "snapshots_enabled": "Page snapshots",
           "snapshots_off": "Page snapshots are off for this site",
           "snapshots_off_hint": "Clicks and scrolls are still counted, but the heatmap is only drawn over a snapshot of the page as visitors see it: its text and images are then stored, every form field masked, for the snapshot retention set in the module settings. Enable it if that fits this site's privacy commitments.",
           "status_line": "Snapshot captured {date} · {layout} {width}px",
+          "strip_details": "Why this warning",
           "too_heavy": "Page too heavy to capture",
           "too_heavy_hint": "The last sampled visit's capture came to {size} MiB to upload (compressed where the browser can), past the {limit} MiB cap, so this page has no backdrop. The click and scroll figures above are unaffected. A visit retries daily: lighter markup — or a heavy section marked data-dms-marketing-block — brings it under the cap, and the snapshotMaxBytes module option raises the cap."
         },
@@ -969,6 +976,13 @@
           "snapshots": "{count} snapshot | {count} snapshots"
         },
         "row_clicks": "{count} click | {count} clicks",
+        "row_snapshot": {
+          "none": "No snapshot",
+          "none_title": "No snapshot yet: the next sampled visit captures one",
+          "title": "Snapshot captured {date} · {layouts} | Snapshots captured up to {date} · {layouts}",
+          "too_heavy": "Too heavy",
+          "too_heavy_title": "Page too heavy to capture (tried {date})"
+        },
         "row_views": "{count} view | {count} views",
         "sampled_unit": "sampled view | sampled views",
         "sampling_note": "Clicks and scrolls were recorded on {rate} of page loads over this period.",
@@ -1089,9 +1103,19 @@
           "title": "Delete {name}?"
         },
         "description": "The sites sending data to this workspace, their tracker, and what is captured on each.",
+        "discard_confirm": {
+          "title": "Delete the site's snapshots?",
+          "description": "Changing this option deletes the site's snapshot. Clicks and scroll depth are kept; the next sampled visits capture the pages again. | Changing this option deletes the site's {count} snapshots. Clicks and scroll depth are kept; the next sampled visits capture the pages again.",
+          "description_unknown": "Changing this option deletes the site's existing snapshots. Clicks and scroll depth are kept; the next sampled visits capture the pages again.",
+          "confirm": "Change and delete",
+          "cancel": "Keep the snapshots",
+          "cancel_none": "Cancel",
+          "confirm_none": "Change",
+          "description_none": "The site holds no snapshot yet. The next sampled visits capture its pages under the new setting.",
+          "title_none": "Change the site's snapshot settings?"
+        },
         "drawer": {
           "added": "added {date}",
-          "capture": "Capture",
           "close": "Close",
           "danger": "Danger zone",
           "eyebrow": "Website",
@@ -1124,6 +1148,7 @@
         "save_error": "The website could not be saved.",
         "saved": "Website saved",
         "snapshots": "Page snapshots",
+        "snapshots_edit": "Page snapshot settings of {name}",
         "snapshots_masked": "On · text masked",
         "snapshots_off": "Off",
         "snapshots_on": "On · text visible",

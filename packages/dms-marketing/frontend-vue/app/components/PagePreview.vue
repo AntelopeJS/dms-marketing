@@ -16,12 +16,13 @@ import {
   usePageSnapshot,
   type PagePreviewRequest,
 } from '../composables/useMarketingReads'
-import { funnelLink, settingsLink } from '../composables/useMarketingRoutes'
-import { formatNumber, formatShortDate } from '../utils/format'
 import {
-  heatmapDataLabel,
-  heatmapResetImpact,
-} from '../utils/heatmap'
+  funnelLink,
+  settingsLink,
+  websitesLink,
+} from '../composables/useMarketingRoutes'
+import { formatNumber, formatShortDate } from '../utils/format'
+import { heatmapDataLabel, heatmapResetImpact } from '../utils/heatmap'
 import { heatLegendGradient } from '../utils/heatmapPalette'
 import {
   DEFAULT_RENDER_HEIGHT,
@@ -32,7 +33,13 @@ import {
   type AnchorBox,
   type AnchorRequest,
 } from '../composables/useSnapshotFrame'
+import {
+  confirmSnapshotChange,
+  snapshotOptionItems,
+} from '../utils/snapshot-options'
 import { rewriteViewportUnits } from '../utils/snapshotViewportUnits'
+import { anchorDrift } from '../utils/anchor-drift'
+import { dismissDrift, driftDismissed } from '../utils/drift-dismissals'
 
 /**
  * Click and scroll-depth overlays of one tracked page, over a snapshot of
@@ -82,6 +89,12 @@ const props = defineProps<{
   pageviews?: number
   /** Funnels with a page step on this path. */
   usedIn?: MarketingFunnelListItem[]
+  /**
+   * Height the card fills, toolbar to bottom, the snapshot scrolling inside
+   * it whatever its length (see PagesExplorer). Null or absent: the card
+   * grows with the snapshot, as when it is stacked under the list.
+   */
+  height?: number | null
 }>()
 
 /** The site's snapshot options were saved here, as the backend answered
@@ -323,11 +336,37 @@ function mebibytes(bytes: number): string {
 
 const savingOptions = ref(false)
 
+const countSiteHeatmap = useHeatmapCountRead(() => props.website?._id ?? '')
+
+/**
+ * Whether the change may go ahead: it deletes the site's snapshots and
+ * changes what later captures keep, so it is asked first — with the count
+ * when there are some (see asksBeforeSnapshotChange). Declining leaves the
+ * website as it is, and the menu's checkbox with it.
+ */
+function confirmSnapshotDiscard(
+  website: MarketingWebsite,
+  patch: MarketingWebsitePatch,
+): Promise<boolean> {
+  return confirmSnapshotChange(website, patch, {
+    count: async () => {
+      savingOptions.value = true
+      try {
+        return (await countSiteHeatmap()).snapshots
+      } finally {
+        savingOptions.value = false
+      }
+    },
+    confirm,
+    t,
+  })
+}
+
 async function updateSnapshotOptions(
   patch: MarketingWebsitePatch,
 ): Promise<void> {
   const website = props.website
-  if (!website) {
+  if (!website || !(await confirmSnapshotDiscard(website, patch))) {
     return
   }
   savingOptions.value = true
@@ -346,7 +385,7 @@ async function updateSnapshotOptions(
 // --- Frame geometry ---------------------------------------------------------
 
 const frame = ref<HTMLIFrameElement | null>(null)
-const { measuredWidth, measuredHeight, tier, measureAnchors } =
+const { measuredWidth, measuredHeight, tier, measureAnchors, missingAnchors } =
   useSnapshotFrame(frame)
 
 const frameKey = computed(() =>
@@ -418,6 +457,9 @@ const overlayWidth = computed(() =>
  * fraction, never a blank one.
  */
 const anchorBoxes = ref(new Map<string, AnchorBox>())
+/** Keys of the anchors the snapshot has no element for; null until the
+ *  frame has been measured. */
+const missingAnchorKeys = ref<Set<string> | null>(null)
 
 function anchorKey(anchor: AnchorRequest): string {
   return `${anchor.selector}\0${anchor.nth}`
@@ -468,6 +510,7 @@ async function refreshAnchorBoxes(): Promise<void> {
     if (anchorBoxes.value.size > 0) {
       anchorBoxes.value = new Map()
     }
+    missingAnchorKeys.value = null
     return
   }
   await nextTick()
@@ -480,7 +523,22 @@ async function refreshAnchorBoxes(): Promise<void> {
     resolved.set(anchorKey(box), box)
   }
   anchorBoxes.value = resolved
+  missingAnchorKeys.value = new Set(
+    missingAnchors(requestedAnchors.value).map(anchorKey),
+  )
 }
+
+/**
+ * Clicks aiming at elements this snapshot does not have: drawn at their
+ * document fraction, and past a threshold a sign the page changed since it
+ * was captured (see anchorDrift).
+ */
+const drift = computed(() => {
+  const missing = missingAnchorKeys.value
+  return missing
+    ? anchorDrift(points.value, (anchor) => missing.has(anchorKey(anchor)))
+    : null
+})
 
 watch(
   [requestedAnchors, tier, renderHeight, overlayWidth],
@@ -548,19 +606,25 @@ const scrolledHeight = computed(() =>
   Math.round(renderHeight.value * scale.value),
 )
 
+const filled = computed(() => !!props.height)
+
 /**
- * The pane grows with the page, up to the window's height: a short capture
- * leaves no empty band below it, and a long one scrolls inside a pane that
- * still fits the screen. The border is counted, or a 2px scroll would remain.
+ * Given a height, the pane takes what the card leaves it, the same for
+ * every snapshot: a long page scrolls inside it, a short one ends on the
+ * end-of-page band. Without one, the pane grows with the page up to the
+ * window's height. The border is counted, or a 2px scroll would remain.
  */
-const paneStyle = computed(() => ({
-  height: `${scrolledHeight.value + 2}px`,
-  maxHeight: 'calc(100dvh - 8rem)',
-  minHeight: '12rem',
-}))
+const paneStyle = computed(() =>
+  filled.value
+    ? { height: '100%' }
+    : {
+        height: `${scrolledHeight.value + 2}px`,
+        maxHeight: 'calc(100dvh - 8rem)',
+        minHeight: '12rem',
+      },
+)
 
 // --- Emptiness, explained ---------------------------------------------------
-
 
 /** Silence has shared causes (collection off, no view sampled) before the
  *  per-overlay one; both overlays explain themselves through this. */
@@ -669,9 +733,37 @@ interface StatusStrip {
   neutral?: boolean
   icon: string
   title: string
-  description: string
+  description?: string
+  /** The explanation, behind an info button instead of under the title: a
+   * strip that must stay one line above the snapshot. */
+  details?: string
   action?: StripAction
+  /** A second, quieter action: the setting behind the strip, where it lives. */
+  secondary?: StripAction
+  /** Closes the strip; the next one that applies, if any, takes its place. */
+  dismiss?: () => void
 }
+
+/** Where the site's snapshot switch lives: the Websites page's settings,
+ * scrolled to it. The menu's toggles are only a shortcut to it. */
+const snapshotSettingsLink = computed(() =>
+  props.website ? websitesLink(props.website._id, 'snapshots') : '',
+)
+
+function snapshotSettingsAction(): StripAction | undefined {
+  return snapshotSettingsLink.value
+    ? {
+        label: t('page.marketing.pages.preview.snapshot_settings'),
+        to: snapshotSettingsLink.value,
+      }
+    : undefined
+}
+
+/** The drift strip was closed on this page this session (see
+ * drift-dismissals). */
+const driftDismissedHere = computed(
+  () => !!props.website && driftDismissed(props.website._id, props.path),
+)
 
 /**
  * Highest priority first: one strip says what needs attention, instead of
@@ -702,6 +794,7 @@ const statusStrip = computed<StatusStrip | null>(() => {
             label: t('page.marketing.pages.preview.enable_snapshots'),
             run: () => void updateSnapshotOptions({ snapshotsEnabled: true }),
           },
+          secondary: snapshotSettingsAction(),
         }
       : null,
     noSnapshotYet.value
@@ -715,6 +808,7 @@ const statusStrip = computed<StatusStrip | null>(() => {
               : t('page.marketing.pages.preview.no_snapshot_hint_rate', {
                   rate: props.sampleRateLabel,
                 }),
+          secondary: snapshotSettingsAction(),
         }
       : null,
     snapshot.value && tooHeavy.value
@@ -728,6 +822,38 @@ const statusStrip = computed<StatusStrip | null>(() => {
               snapshot.value.maxBytes ?? DEFAULT_SNAPSHOT_BYTE_CAP,
             ),
           }),
+          secondary: snapshotSettingsAction(),
+        }
+      : null,
+    overlayMode.value === 'clicks' &&
+    drift.value?.significant &&
+    !driftDismissedHere.value
+      ? {
+          tone: 'warning',
+          icon: 'i-ph-git-diff',
+          title: t('page.marketing.pages.preview.drift', {
+            share: String(
+              formatPercentage(drift.value.share, locale.value, {
+                maximumFractionDigits: 0,
+              }),
+            ),
+          }),
+          // One line: the share and the way out. Why, and what the reset
+          // does, wait behind the info button.
+          details: t('page.marketing.pages.preview.drift_hint', {
+            date: snapshot.value
+              ? formatShortDate(snapshot.value.capturedAt, locale.value)
+              : '',
+          }),
+          action: {
+            label: t('page.marketing.pages.reset.page_button'),
+            run: () => void resetPageHeatmap(),
+          },
+          dismiss: () => {
+            if (props.website) {
+              dismissDrift(props.website._id, props.path)
+            }
+          },
         }
       : null,
     truncatedState.value
@@ -790,6 +916,13 @@ const statusLine = computed(() => {
     width: snapshot.value.viewport.width,
   })
 })
+
+/** Where the snapshot was taken: origin and path, as stored. */
+const capturedUrl = computed(() =>
+  snapshot.value
+    ? (snapshot.value.url ?? `${snapshot.value.origin}${props.path}`)
+    : '',
+)
 
 const maskLine = computed(() =>
   t(
@@ -931,21 +1064,20 @@ watch(
 
 const moreItems = computed(() => [
   [
-    {
-      type: 'checkbox' as const,
-      label: t('page.marketing.pages.preview.snapshots_enabled'),
-      checked: snapshotsEnabled.value,
-      onUpdateChecked: (value: boolean): void =>
-        void updateSnapshotOptions({ snapshotsEnabled: value }),
-    },
-    {
-      type: 'checkbox' as const,
-      label: t('page.marketing.pages.preview.mask_text'),
-      checked: props.website?.snapshotMaskText === true,
-      disabled: !snapshotsEnabled.value,
-      onUpdateChecked: (value: boolean): void =>
-        void updateSnapshotOptions({ snapshotMaskText: value }),
-    },
+    ...snapshotOptionItems(
+      props.website,
+      (patch) => void updateSnapshotOptions(patch),
+      t,
+    ),
+    ...(snapshotSettingsLink.value
+      ? [
+          {
+            label: t('page.marketing.pages.preview.snapshot_settings'),
+            icon: 'i-ph-gear-six',
+            to: snapshotSettingsLink.value,
+          },
+        ]
+      : []),
   ],
   ...(externalUrl.value
     ? [
@@ -1021,7 +1153,10 @@ const surfaceEmpty = computed(() => {
 </script>
 
 <template>
-  <section class="dms-card flex min-w-0 flex-col overflow-hidden p-0">
+  <section
+    class="dms-card flex min-w-0 flex-col overflow-hidden p-0"
+    :style="filled ? { height: `${props.height}px` } : undefined"
+  >
     <!-- Toolbar -->
     <header
       class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-4 py-3"
@@ -1102,9 +1237,29 @@ const surfaceEmpty = computed(() => {
         :icon="statusStrip.icon"
         :title="statusStrip.title"
         :description="statusStrip.description"
+        :dismissible="!!statusStrip.dismiss"
+        @dismiss="statusStrip.dismiss?.()"
       >
-        <template v-if="statusStrip.action" #actions>
+        <template v-if="statusStrip.details" #description>
+          <UPopover :content="{ align: 'start' }">
+            <UButton
+              icon="i-ph-info"
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              class="-my-1 align-middle"
+              :aria-label="t('page.marketing.pages.preview.strip_details')"
+            />
+            <template #content>
+              <p class="max-w-sm p-3 text-xs leading-relaxed text-muted">
+                {{ statusStrip.details }}
+              </p>
+            </template>
+          </UPopover>
+        </template>
+        <template v-if="statusStrip.action || statusStrip.secondary" #actions>
           <UButton
+            v-if="statusStrip.action"
             size="xs"
             color="neutral"
             variant="outline"
@@ -1112,6 +1267,15 @@ const surfaceEmpty = computed(() => {
             :label="statusStrip.action.label"
             :to="statusStrip.action.to"
             @click="statusStrip.action.run?.()"
+          />
+          <UButton
+            v-if="statusStrip.secondary"
+            size="xs"
+            color="neutral"
+            variant="ghost"
+            :label="statusStrip.secondary.label"
+            :to="statusStrip.secondary.to"
+            @click="statusStrip.secondary.run?.()"
           />
         </template>
       </DmsBanner>
@@ -1124,23 +1288,54 @@ const surfaceEmpty = computed(() => {
         <UIcon name="i-ph-camera" class="size-3.5 text-success" />
         {{ statusLine }}
       </span>
+      <span
+        class="min-w-0 truncate font-mono text-dimmed"
+        :title="t('page.marketing.pages.preview.captured_from_hint')"
+      >
+        {{
+          t('page.marketing.pages.preview.captured_from', { url: capturedUrl })
+        }}
+      </span>
       <span class="text-dimmed">· {{ maskLine }}</span>
+      <UButton
+        v-if="snapshotSettingsLink"
+        :to="snapshotSettingsLink"
+        size="xs"
+        color="neutral"
+        variant="link"
+        icon="i-ph-gear-six"
+        class="ms-auto"
+        :label="t('page.marketing.pages.preview.snapshot_settings')"
+      />
     </p>
 
-    <div class="grid min-h-0 xl:grid-cols-[minmax(0,1fr)_15rem]">
-      <div class="min-w-0 p-3">
+    <div
+      class="grid min-h-0 xl:grid-cols-[minmax(0,1fr)_15rem]"
+      :class="filled ? 'flex-1 xl:grid-rows-[minmax(0,1fr)]' : ''"
+    >
+      <div class="flex min-h-0 min-w-0 flex-col p-3">
         <USkeleton
           v-if="surface === 'loading'"
           class="w-full rounded-lg"
-          :style="{ height: `${PANE_HEIGHT}px` }"
+          :class="filled ? 'min-h-0 flex-1' : ''"
+          :style="filled ? undefined : { height: `${PANE_HEIGHT}px` }"
         />
 
         <!-- Kept mounted across refetches: tearing it down would re-render the
              snapshot — and re-measure it — on every period change. -->
-        <div v-else-if="surface === 'frame'" class="relative">
+        <div
+          v-else-if="surface === 'frame'"
+          class="relative"
+          :class="filled ? 'min-h-0 flex-1' : ''"
+        >
           <div
             ref="container"
             class="overflow-x-hidden overflow-y-scroll rounded-lg border border-default bg-elevated"
+            :class="
+              filled
+                ? 'bg-[repeating-linear-gradient(135deg,transparent_0_8px,var(--ui-border)_8px_9px)]'
+                : ''
+            "
             :style="paneStyle"
           >
             <!-- A layout narrower than the pane keeps its width, centred. -->
@@ -1223,6 +1418,16 @@ const surfaceEmpty = computed(() => {
                 :fold-ratio="scrollFoldRatio"
               />
             </div>
+            <!-- Where the captured page stops: whatever of the pane is left
+                 below is not page, and must not read as a blank part of it. -->
+            <p
+              v-if="filled"
+              class="mx-auto flex items-center justify-center gap-1.5 border-t border-dashed border-accented py-2 text-[11px] text-dimmed"
+              :style="{ width: `${surfaceWidth}px` }"
+            >
+              <UIcon name="i-ph-arrow-line-down" class="size-3.5" />
+              {{ t('page.marketing.pages.preview.end_of_page') }}
+            </p>
           </div>
 
           <!-- Outside the scrollport on purpose: inside, it is laid out at the
@@ -1264,6 +1469,7 @@ const surfaceEmpty = computed(() => {
 
       <aside
         class="flex flex-col gap-4 border-t border-default p-4 xl:border-t-0 xl:border-l"
+        :class="filled ? 'min-h-0 overflow-y-auto' : ''"
       >
         <template v-if="overlayMode === 'clicks'">
           <div class="flex flex-col gap-1.5">
