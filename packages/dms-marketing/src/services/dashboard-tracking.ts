@@ -1,10 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Website } from "@/db/tables/websites.table";
-import {
-  DASHBOARD_AUTH_PATHS,
-  FRONTEND_CONFIG_KEY,
-  MAX_EXTRA_DOMAINS,
-} from "@/types/constants";
+import { MAX_EXTRA_DOMAINS } from "@/types/constants";
 import type { DashboardTrackingConfig } from "@/config";
 import { websiteAcceptsHostname } from "./origin-guard";
 
@@ -39,32 +35,6 @@ export function isDashboardWebsite(
   return website._id === dashboardWebsiteId(website.tenantId);
 }
 
-/** The patterns the tag leaves uncounted: the sign-in pages, then the
- * configured ones. */
-export function dashboardExcludedPaths(
-  config: DashboardTrackingConfig,
-): string[] {
-  return [...new Set([...DASHBOARD_AUTH_PATHS, ...config.excludePaths])];
-}
-
-/**
- * What `AddFrontendModule` gets for the dashboard's tag: nothing while it is
- * off, so a module left at the default registers exactly as before; the
- * frontend registers its plugin only when the options are there. Read by the
- * frontend at boot: a change takes a frontend restart.
- */
-export function dashboardFrontendOptions(config: DashboardTrackingConfig) {
-  if (!config.enabled) {
-    return {};
-  }
-  return {
-    configKey: FRONTEND_CONFIG_KEY,
-    options: {
-      dashboardTracking: { excludePaths: dashboardExcludedPaths(config) },
-    },
-  };
-}
-
 /**
  * A host the site does not accept yet joins its extra domains while there is
  * room: the dashboard answers on whatever host its deployment gives it
@@ -86,20 +56,14 @@ function acceptHostname(website: Website, hostname: string): boolean {
 /**
  * Brings the snapshot switch to `dashboardTracking.snapshots` while it is
  * the configuration's to set. Once a person changed it (`owner`), it is
- * left alone for good. A row from before the switch was tracked may be
- * turned on, never off: off is all provisioning ever wrote there, so an
- * enabled one may be an owner's choice.
+ * left alone for good.
  */
 function applyConfiguredSnapshots(
   website: Website,
   config: DashboardTrackingConfig,
 ): boolean {
   const current = website.snapshotsEnabled ?? false;
-  if (
-    website.snapshotsSetBy === "owner" ||
-    current === config.snapshots ||
-    (!config.snapshots && website.snapshotsSetBy !== "config")
-  ) {
+  if (website.snapshotsSetBy === "owner" || current === config.snapshots) {
     return false;
   }
   website.snapshotsEnabled = config.snapshots;
