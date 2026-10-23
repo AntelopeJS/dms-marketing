@@ -27,6 +27,23 @@ export function normalizePagePath(typed: string): string | undefined {
   }
 }
 
+/**
+ * The selected path's row in the list just read, else the row it `kept`
+ * while a filter hides it. The caller drops what it kept when the list is
+ * read for another scope (workspace, days): there the path has its own
+ * figures, or none.
+ */
+export function selectedPageRow<Row extends { path: string }>(
+  list: readonly Row[],
+  path: string | undefined,
+  kept: Row | undefined,
+): Row | undefined {
+  return (
+    list.find((page) => page.path === path) ??
+    (kept?.path === path ? kept : undefined)
+  )
+}
+
 /** What a heatmap reset deletes or deleted. */
 export interface HeatmapDataCounts {
   events: number

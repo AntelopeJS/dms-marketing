@@ -22,6 +22,8 @@ interface ChannelsResponse {
   items: ChannelRow[]
   /** The comparison days lost their channel split: no delta to show. */
   compareUnavailable?: boolean
+  /** Compared with a window that has rows: else no change column. */
+  compared?: boolean
 }
 
 const props = withDefaults(
@@ -34,6 +36,7 @@ const props = withDefaults(
   { periodScope: undefined, componentId: undefined, pageId: undefined },
 )
 
+/** The channels the route always lists, each in its row: the skeleton's. */
 const SKELETON_ROWS = 6
 /** The key the campaigns table is mounted under on the page: its tab reads `?campaigns.tab=`. */
 const CAMPAIGNS_TAB_QUERY = 'campaigns.tab'
@@ -48,6 +51,12 @@ const { data, isLoading, error, refresh } = useChartFetch<ChannelsResponse>({
 })
 
 const rows = computed(() => data.value?.items ?? [])
+/**
+ * The change column, while the period is compared (kept through a re-read):
+ * "No comparison" leaves it out rather than a column of dashes.
+ */
+const compared = computed(() => data.value?.compared !== false)
+const columns = computed(() => (compared.value ? 5 : 4))
 const maxShare = computed(() =>
   Math.max(1, ...rows.value.map((row) => row.share)),
 )
@@ -168,6 +177,7 @@ function showCampaigns(channel: string): void {
             {{ t('page.marketing.acquisition.channels.share') }}
           </th>
           <th
+            v-if="compared"
             scope="col"
             class="px-4 py-2 text-right font-normal"
             :title="t('page.marketing.acquisition.channels.vs_previous_hint')"
@@ -182,8 +192,15 @@ function showCampaigns(channel: string): void {
           :key="index"
           class="border-t border-default"
         >
-          <td class="px-4 py-3" colspan="5">
+          <!-- A channel row's size: its icon well sets the height. -->
+          <td class="w-10 py-2.5 ps-4">
+            <USkeleton class="size-8 rounded-[9px]" />
+          </td>
+          <td class="px-2 py-2.5" :colspan="columns - 2">
             <USkeleton class="h-4 w-full" />
+          </td>
+          <td class="px-4 py-2.5">
+            <USkeleton class="ms-auto h-4 w-12" />
           </td>
         </tr>
       </tbody>
@@ -243,7 +260,7 @@ function showCampaigns(channel: string): void {
           >
             {{ formatPercentage(row.share / 100, locale, fractionDigits(1)) }}
           </td>
-          <td class="px-4 py-2.5 text-right">
+          <td v-if="compared" class="px-4 py-2.5 text-right">
             <span
               class="rounded px-1.5 py-0.5 font-mono text-[11px] whitespace-nowrap tabular-nums"
               :class="deltaClass(row.delta)"

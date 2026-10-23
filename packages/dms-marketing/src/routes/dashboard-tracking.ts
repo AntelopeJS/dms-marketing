@@ -16,6 +16,7 @@ import {
   forgetAcceptedSources,
   requestSourceHostname,
 } from "@/services/origin-guard";
+import { deleteSnapshots } from "@/services/snapshots";
 import { invalidateWebsiteCache } from "@/services/website-cache";
 import { isValidHostname, normalizeHostname } from "@/services/website-hosts";
 import {
@@ -55,12 +56,17 @@ export class DashboardTrackingController extends Controller(
     if (!isValidHostname(hostname)) {
       throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_HOSTNAME_MESSAGE);
     }
-    const { website, changed } = await provisionDashboardWebsite(
-      GetModel(WebsitesModel),
-      getRequestTenantId(context),
-      hostname,
-      config,
-    );
+    const { website, changed, snapshotsChanged } =
+      await provisionDashboardWebsite(
+        GetModel(WebsitesModel),
+        getRequestTenantId(context),
+        hostname,
+        config,
+      );
+    if (snapshotsChanged) {
+      // As an owner's change does: captures taken under the other setting go.
+      await deleteSnapshots(website.tenantId, website._id);
+    }
     if (changed) {
       invalidateWebsiteCache(website._id);
       forgetAcceptedSources(website);

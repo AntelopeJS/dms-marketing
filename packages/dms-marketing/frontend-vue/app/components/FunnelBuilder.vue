@@ -5,6 +5,7 @@ import { parseExperimentValue } from '../composables/useExperiment'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
 import { useLatestRequest } from '../composables/useLatestRequest'
 import {
+  saveFunnel,
   useMarketingApi,
   type MarketingExperiment,
   type MarketingFunnelPreview,
@@ -23,7 +24,9 @@ import {
   funnelsLink,
 } from '../composables/useMarketingRoutes'
 import { useContextLink } from '../composables/useContextLink'
+import { useCopyDraft } from '../composables/useCopyDraft'
 import {
+  DEFAULT_WINDOW_HOURS,
   draftIssues,
   isWindowHours,
   MAX_EXPERIMENT_KEY_LENGTH,
@@ -37,6 +40,8 @@ import {
   templateSteps,
   localizedSnippetComments,
   variationSnippet,
+  WINDOW_PRESET_HOURS,
+  withRequestedSplit,
   type DraftField,
   type FunnelDraftValues,
   type StepValue,
@@ -46,8 +51,8 @@ import { normalizeFunnelStepPath } from '../utils/step-path'
 import { fractionDigits } from '../constants'
 
 /**
- * The funnel builder (`?id=` to edit, `?from=` to start from a copy of a
- * funnel, `?split=1` to open the A/B section, `?steps=` to start from a
+ * The funnel builder (`?id=` to edit, `?copy=` to start from a copy of a
+ * funnel, `?split=1` to open the A/B section switched on, `?steps=` to start from a
  * template). Steps are picked from the pages and events the site already
  * tracks, with their counts; the preview scores the draft over the last 30
  * days while it is edited. Follows the DMS form contract — unsaved changes
@@ -72,9 +77,6 @@ interface VariationDraft {
   weight: number | string
 }
 
-// A funnel is matched within one session, which ends after 30 minutes
-// without activity: a window of days would change nothing (FB-11).
-const WINDOW_PRESETS = [1, 24]
 const PREVIEW_DEBOUNCE_MS = 450
 const SUGGESTIONS_SHOWN = 6
 const MINIMUM_DETECTABLE_LIFT = 0.2
@@ -109,7 +111,7 @@ const uid = () => nextUid++
 const name = ref('')
 const websiteId = ref<string>('')
 const steps = ref<StepDraft[]>([{ uid: uid(), kind: 'url', value: '' }])
-const windowHours = ref<number | string>(24)
+const windowHours = ref<number | string>(DEFAULT_WINDOW_HOURS)
 const splitEnabled = ref(route.query.split === '1')
 const experimentKey = ref('')
 const variations = ref<VariationDraft[]>([
@@ -153,7 +155,10 @@ function applyValues(next: FunnelDraftValues): void {
 }
 
 const { dirty, baseline, markClean } = useFormDirty(values)
-const { confirmLeave } = useUnsavedChanges({ dirty })
+// A Duplicate opens dirty (the copy is a change to save), but an untouched
+// copy holds nothing to lose: only edits to it hold the leave.
+const copy = useCopyDraft({ values, dirty, markClean })
+const { confirmLeave } = useUnsavedChanges({ dirty: copy.unsaved })
 
 // Errors land under their field: the client's checks on a save attempt, and
 // the server's — its codes name the field they belong to.
@@ -240,13 +245,10 @@ function objectiveOf(draft: FunnelDraftValues): string {
 
 async function loadExisting(): Promise<void> {
   const { draft, experiment } = await fetchDefinition()
-  applyValues(draft)
+  applyValues(withRequestedSplit(draft, route.query.split))
   original.value = experiment
   savedObjective.value = objectiveOf(draft)
 }
-
-/** The copy a Duplicate opened on, what Discard returns to. */
-const copied = ref<FunnelDraftValues | null>(null)
 
 /** Duplicate: the copy is a new draft, unsaved until the user saves it — its
  * experiment key must change, keys being unique per site. */
@@ -260,7 +262,7 @@ async function loadCopy(): Promise<void> {
     ),
     experimentKey: '',
   })
-  copied.value = values()
+  copy.open()
 }
 
 // The builder sits outside the context bar: it reads the website list itself,
@@ -575,7 +577,7 @@ function moveStep(index: number, offset: number): void {
 }
 
 const windowItems = computed(() =>
-  WINDOW_PRESETS.map((hours) => ({
+  WINDOW_PRESET_HOURS.map((hours) => ({
     value: hours,
     label: t(`page.marketing.builder.window_presets.${hours}`),
   })),
@@ -722,12 +724,10 @@ async function save(): Promise<void> {
       conversionWindowHours: windowHours.value as number,
       experiment: experimentPayload(),
     }
-    const id = isEdit ? funnelId : (await api.createFunnel(input))[0]
-    if (isEdit) {
-      await api.updateFunnel(funnelId, input)
-    }
-    // Clean before leaving, or the leave guard would ask.
-    markClean()
+    const id = await saveFunnel(api, input, funnelId)
+    // Clean before leaving, or the leave guard would ask: a saved copy is
+    // no copy any more.
+    copy.settle()
     toast.add({
       color: 'success',
       title: t('page.marketing.builder.saved'),
@@ -742,13 +742,19 @@ async function save(): Promise<void> {
   }
 }
 
-/** Back to what the page opened on: the copy itself for a Duplicate, which
- * stays a change to save. */
+/** Back to what the page opened on. A Duplicate opened on its copy, which
+ * stays a change to save: discarding it drops the copy and leaves, with
+ * nothing left to hold the navigation. */
 function discard(): void {
   clearStepError()
   clearVariationError()
   fieldErrors.clear()
-  applyValues(copied.value ?? baseline.value)
+  if (copy.isCopy.value) {
+    copy.settle()
+    void router.push(backLink.value)
+    return
+  }
+  applyValues(baseline.value)
 }
 
 /** A link out of the builder, on the website and period it was opened from. */

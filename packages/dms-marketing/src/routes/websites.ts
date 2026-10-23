@@ -18,16 +18,21 @@ import {
   AuthTenantMember,
   AuthTenantOwner,
 } from "@antelopejs/interface-dms/guards";
+import { PublishMessage } from "@antelopejs/interface-dms/realtime";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { z } from "zod";
 import { WebsitesModel } from "@/db";
 import type { Website } from "@/db/tables/websites.table";
+import { setSnapshotsByOwner } from "@/services/dashboard-tracking";
 import { invalidateExperimentDefinitions } from "@/services/experiment-definitions";
 import { deleteSnapshots } from "@/services/snapshots";
 import {
+  assertWebsiteDeletable,
   listTenantWebsites,
+  purgeWebsiteCollectedData,
   purgeWebsiteTrackingData,
   requireTenantWebsite,
+  WEBSITE_PURGE_SCOPES,
 } from "@/services/tenant-website";
 import { invalidateWebsiteCache } from "@/services/website-cache";
 import { forgetAcceptedSources } from "@/services/origin-guard";
@@ -41,13 +46,13 @@ import {
 import {
   connectionStatus,
   websiteDeletionImpact,
-  websitesSummary,
 } from "@/services/website-report";
 import {
   API_BASE_PATH,
   HTTP_BAD_REQUEST,
   HTTP_CONFLICT,
   MAX_EXTRA_DOMAINS,
+  WEBSITES_REALTIME_TOPIC,
 } from "@/types/constants";
 
 const INVALID_WEBSITE_MESSAGE = "$page.marketing.errors.invalid_website";
@@ -62,6 +67,8 @@ const websiteCreateSchema = z.object({
 });
 
 const allowHostSchema = z.object({ hostname: hostnameSchema });
+
+const purgeSchema = z.object({ scope: z.enum(WEBSITE_PURGE_SCOPES) });
 
 const websiteUpdateSchema = z.object({
   name: nameSchema.optional(),
@@ -93,6 +100,16 @@ async function assertHostsFree(website: Website): Promise<void> {
   }
 }
 
+/**
+ * Tells the Websites pages a site changed: they read their cards again. Only
+ * the id travels, and the reads stay tenant-scoped.
+ */
+function publishWebsiteChange(type: string, id: string): void {
+  void PublishMessage(WEBSITES_REALTIME_TOPIC, type, {
+    payload: { ids: [id] },
+  }).catch(() => undefined);
+}
+
 /** Minimal website CRUD, tenant-scoped through the JWT claim. */
 export class WebsitesController extends Controller(
   `${API_BASE_PATH}/websites`,
@@ -103,16 +120,6 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     return listTenantWebsites(getRequestTenantId(context));
-  }
-
-  /** The Websites page: one card per site. */
-  @Get("summary")
-  async summary(
-    @AuthTenantMember() _user: User,
-    @Context() context: RequestContext,
-  ) {
-    const tenantId = getRequestTenantId(context);
-    return websitesSummary(tenantId, await listTenantWebsites(tenantId));
   }
 
   /**
@@ -133,7 +140,8 @@ export class WebsitesController extends Controller(
     );
   }
 
-  /** What deleting the site discards, for the confirmation to list. */
+  /** What deleting the site, or purging its data, discards: for the
+   * confirmations to list. */
   @Get("/:id/deletion")
   async deletion(
     @AuthTenantOwner() _user: User,
@@ -170,6 +178,7 @@ export class WebsitesController extends Controller(
     await GetModel(WebsitesModel).update(website);
     invalidateWebsiteCache(id);
     forgetAcceptedSources(website);
+    publishWebsiteChange("updated", id);
     return website;
   }
 
@@ -201,6 +210,7 @@ export class WebsitesController extends Controller(
     } as Website;
     await assertHostsFree(website);
     await GetModel(WebsitesModel).insert(website);
+    publishWebsiteChange("created", website._id);
     return website;
   }
 
@@ -209,6 +219,8 @@ export class WebsitesController extends Controller(
    * option discards the site's captures: off means forgotten, and a mask
    * setting only holds for captures taken under it. `trackingEnabled` false
    * pauses the site: collect refuses its beacons until it is back on.
+   * Changing `snapshotsEnabled` makes it the owner's: a configured value
+   * (`dashboardTracking.snapshots`) never overrides it again.
    */
   @Put("/:id")
   async update(
@@ -248,7 +260,7 @@ export class WebsitesController extends Controller(
       (data.snapshotMaskText !== undefined &&
         data.snapshotMaskText !== (website.snapshotMaskText ?? false));
     if (data.snapshotsEnabled !== undefined) {
-      website.snapshotsEnabled = data.snapshotsEnabled;
+      setSnapshotsByOwner(website, data.snapshotsEnabled);
     }
     if (data.snapshotMaskText !== undefined) {
       website.snapshotMaskText = data.snapshotMaskText;
@@ -261,7 +273,39 @@ export class WebsitesController extends Controller(
     invalidateWebsiteCache(id);
     invalidateExperimentDefinitions(id);
     forgetAcceptedSources(website);
+    publishWebsiteChange("updated", id);
     return website;
+  }
+
+  /**
+   * Deletes what the site collected — `{ scope: "all" }` — or its heatmaps
+   * alone — `{ scope: "heatmaps" }` — and keeps the site, its settings and
+   * its funnels, whose results start again from zero. The scope is never
+   * implied. Idempotent: a second call deletes nothing and answers zeros.
+   */
+  @Post("/:id/purge")
+  async purge(
+    @AuthTenantOwner() _user: User,
+    @Parameter("id") id: string,
+    @JSONBody() body: unknown,
+    @Context() context: RequestContext,
+  ) {
+    const website = await requireTenantWebsite(context, id);
+    const { scope } = assertValidation(
+      body,
+      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
+      // reference passed here is not actually unbound.
+      // oxlint-disable-next-line typescript/unbound-method
+      purgeSchema.parse,
+      validationIssues,
+    );
+    const deleted = await purgeWebsiteCollectedData(
+      website.tenantId,
+      id,
+      scope,
+    );
+    publishWebsiteChange("updated", id);
+    return { purged: id, scope, deleted };
   }
 
   /**
@@ -277,10 +321,13 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
+    // The dashboard's own site is kept (409): purge its data instead.
+    assertWebsiteDeletable(website);
     await purgeWebsiteTrackingData(website.tenantId, id);
     await GetModel(WebsitesModel).delete(id);
     invalidateWebsiteCache(id);
     invalidateExperimentDefinitions(id);
+    publishWebsiteChange("deleted", id);
     return { deleted: id };
   }
 }

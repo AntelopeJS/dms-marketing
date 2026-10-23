@@ -371,7 +371,7 @@ const stepTwoState = computed(() =>
               <span class="font-mono">{{ website.domain }}</span>
               {{ t('page.marketing.install.and_subdomains') }}
               <DmsAutoLink
-                :to="websitesLink()"
+                :to="websitesLink(website.id)"
                 class="text-primary hover:underline"
               >
                 {{ t('page.marketing.common.edit') }}

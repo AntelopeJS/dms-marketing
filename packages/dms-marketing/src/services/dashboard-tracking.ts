@@ -1,10 +1,7 @@
 import { createHash } from "node:crypto";
+import { MODULE_URL_PREFIX } from "@antelopejs/interface-dms/page";
 import type { Website } from "@/db/tables/websites.table";
-import {
-  DASHBOARD_AUTH_PATHS,
-  FRONTEND_CONFIG_KEY,
-  MAX_EXTRA_DOMAINS,
-} from "@/types/constants";
+import { MAX_EXTRA_DOMAINS } from "@/types/constants";
 import type { DashboardTrackingConfig } from "@/config";
 import { websiteAcceptsHostname } from "./origin-guard";
 
@@ -39,30 +36,28 @@ export function isDashboardWebsite(
   return website._id === dashboardWebsiteId(website.tenantId);
 }
 
-/** The patterns the tag leaves uncounted: the sign-in pages, then the
- * configured ones. */
-export function dashboardExcludedPaths(
-  config: DashboardTrackingConfig,
-): string[] {
-  return [...new Set([...DASHBOARD_AUTH_PATHS, ...config.excludePaths])];
+const MODULE_AREA_PATH = MODULE_URL_PREFIX.toLowerCase();
+
+/**
+ * `path` (as stored: pathname only) lies in the DMS module area, which the
+ * dashboard's website never counts (`DASHBOARD_MODULE_AREA_PATHS`). Case
+ * blind: the dashboard's router is, so `/Modules/x` shows the same page.
+ */
+export function isModuleAreaPath(path: string): boolean {
+  const lower = path.toLowerCase();
+  return lower === MODULE_AREA_PATH || lower.startsWith(`${MODULE_AREA_PATH}/`);
 }
 
 /**
- * What `AddFrontendModule` gets for the dashboard's tag: nothing while it is
- * off, so a module left at the default registers exactly as before; the
- * frontend registers its plugin only when the options are there. Read by the
- * frontend at boot: a change takes a frontend restart.
+ * The dashboard's website never collects `path`: the tag leaves the module
+ * area out and collection refuses it. Any other website keeps every path —
+ * a site of its own may well have a `/modules` page.
  */
-export function dashboardFrontendOptions(config: DashboardTrackingConfig) {
-  if (!config.enabled) {
-    return {};
-  }
-  return {
-    configKey: FRONTEND_CONFIG_KEY,
-    options: {
-      dashboardTracking: { excludePaths: dashboardExcludedPaths(config) },
-    },
-  };
+export function hidesDashboardPath(
+  website: Pick<Website, "_id" | "tenantId">,
+  path: string,
+): boolean {
+  return isModuleAreaPath(path) && isDashboardWebsite(website);
 }
 
 /**
@@ -71,11 +66,7 @@ export function dashboardFrontendOptions(config: DashboardTrackingConfig) {
  * (localhost, a staging name, the real one), and no owner registered it.
  * Past the cap the beacons are refused and logged like any other site's.
  */
-async function acceptHostname(
-  store: DashboardWebsiteStore,
-  website: Website,
-  hostname: string,
-): Promise<boolean> {
+function acceptHostname(website: Website, hostname: string): boolean {
   const extraDomains = website.extraDomains ?? [];
   if (
     websiteAcceptsHostname(website, hostname) ||
@@ -84,9 +75,66 @@ async function acceptHostname(
     return false;
   }
   website.extraDomains = [...extraDomains, hostname];
+  return true;
+}
+
+/**
+ * Brings the snapshot switch to `dashboardTracking.snapshots` while it is
+ * the configuration's to set. Once a person changed it (`owner`), it is
+ * left alone for good.
+ */
+function applyConfiguredSnapshots(
+  website: Website,
+  config: DashboardTrackingConfig,
+): boolean {
+  const current = website.snapshotsEnabled ?? false;
+  if (website.snapshotsSetBy === "owner" || current === config.snapshots) {
+    return false;
+  }
+  website.snapshotsEnabled = config.snapshots;
+  website.snapshotsSetBy = "config";
+  return true;
+}
+
+/**
+ * A person sets the snapshot switch (the Websites page, the API): the value
+ * becomes the owner's, which configuration never overrides again. False
+ * when it already had that value — re-saving a form claims nothing.
+ */
+export function setSnapshotsByOwner(
+  website: Website,
+  enabled: boolean,
+): boolean {
+  if ((website.snapshotsEnabled ?? false) === enabled) {
+    return false;
+  }
+  website.snapshotsEnabled = enabled;
+  website.snapshotsSetBy = "owner";
+  return true;
+}
+
+async function refreshWebsite(
+  store: DashboardWebsiteStore,
+  website: Website,
+  hostname: string,
+  config: DashboardTrackingConfig,
+): Promise<DashboardProvisioning> {
+  const snapshotsChanged = applyConfiguredSnapshots(website, config);
+  const hostAdded = acceptHostname(website, hostname);
+  if (!snapshotsChanged && !hostAdded) {
+    return { website, changed: false, snapshotsChanged };
+  }
   website.updatedAt = new Date();
   await store.update(website);
-  return true;
+  return { website, changed: true, snapshotsChanged };
+}
+
+export interface DashboardProvisioning {
+  website: Website;
+  /** The record changed: cached copies are stale. */
+  changed: boolean;
+  /** `snapshotsEnabled` changed on an existing record: its captures go. */
+  snapshotsChanged: boolean;
 }
 
 /**
@@ -95,24 +143,20 @@ async function acceptHostname(
  * its name and settings — an owner may rename or pause it like any other —
  * and a site an owner deleted comes back on the next dashboard visit.
  *
- * Snapshots stay off: a capture of an admin page would store the records it
- * shows.
- *
- * Returns whether the record changed, for the caller to drop cached copies.
+ * Snapshots follow `dashboardTracking.snapshots` (off by default: a capture
+ * of an admin page stores the records it shows, so text is masked) until an
+ * owner changes them; see `applyConfiguredSnapshots`.
  */
 export async function provisionDashboardWebsite(
   store: DashboardWebsiteStore,
   tenantId: string,
   hostname: string,
   config: DashboardTrackingConfig,
-): Promise<{ website: Website; changed: boolean }> {
+): Promise<DashboardProvisioning> {
   const id = dashboardWebsiteId(tenantId);
   const existing = await store.get(id);
   if (existing) {
-    return {
-      website: existing,
-      changed: await acceptHostname(store, existing, hostname),
-    };
+    return refreshWebsite(store, existing, hostname, config);
   }
   const now = new Date();
   const website = {
@@ -122,7 +166,8 @@ export async function provisionDashboardWebsite(
     domain: hostname,
     extraDomains: [],
     trackingEnabled: true,
-    snapshotsEnabled: false,
+    snapshotsEnabled: config.snapshots,
+    snapshotsSetBy: "config",
     snapshotMaskText: true,
     createdAt: now,
     updatedAt: now,
@@ -135,10 +180,7 @@ export async function provisionDashboardWebsite(
     if (!raced) {
       throw err;
     }
-    return {
-      website: raced,
-      changed: await acceptHostname(store, raced, hostname),
-    };
+    return refreshWebsite(store, raced, hostname, config);
   }
-  return { website, changed: true };
+  return { website, changed: true, snapshotsChanged: false };
 }

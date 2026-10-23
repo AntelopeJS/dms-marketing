@@ -6,6 +6,7 @@ import {
   MarketingBlock,
   CONTEXT_PAGE_LIVE,
   MarketingContext,
+  marketingToolbar,
 } from "../blocks";
 import { analyticsCategory } from "../module";
 
@@ -28,6 +29,8 @@ export class MarketingPagesPage extends PageController(
   },
   DefaultLayout(),
 ) {
+  static toolbar = marketingToolbar();
+
   static content = MarketingContext({ waitingGuide: true }).child(
     "explorer",
     MarketingBlock("PagesExplorer", "pages_explorer", "i-ph-cursor-click", {

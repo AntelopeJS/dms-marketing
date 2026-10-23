@@ -151,6 +151,28 @@ test("days raw events miss come before the winner; a missing comparison after", 
   assert.equal(winnerBanner([summary()], coverage(false, false)), null);
 });
 
+test("changes and a missing comparison are named after the comparison", () => {
+  const [year] = funnelTablePayload(
+    [summary()],
+    undefined,
+    "previous-year",
+  ).results;
+  assert.equal(
+    year.comparison.text.key,
+    "$page.marketing.compose.delta_previous_year",
+  );
+  const [period] = funnelTablePayload([summary()], undefined).results;
+  assert.equal(period.comparison.text.key, "$page.marketing.compose.delta");
+  assert.equal(
+    winnerBanner([summary()], coverage(false, true), "previous-year").title,
+    "$page.marketing.funnels.coverage.previous_year_title",
+  );
+  assert.equal(
+    winnerBanner([summary()], coverage(false, true)).title,
+    "$page.marketing.funnels.coverage.previous_title",
+  );
+});
+
 test("the delete confirmation asks for the name and warns about a running test", () => {
   const plain = funnelDeleteConfirmation({ _id: "f1", name: "Checkout" });
   assert.equal(plain.confirmText, "Checkout");

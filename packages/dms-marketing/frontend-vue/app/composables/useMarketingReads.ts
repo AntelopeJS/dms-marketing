@@ -14,8 +14,8 @@ import type {
   MarketingScrollDepth,
   MarketingSnapshotLayout,
   MarketingWebsite,
-  MarketingWebsiteCard,
   MarketingWebsiteDeletionImpact,
+  MarketingWorkspaces,
 } from './useMarketingApi'
 
 /**
@@ -26,8 +26,9 @@ import type {
  * over the one on screen). The page preview and the funnel builder draw in
  * the browser only (`server: false`); a dialog or the builder reads what it
  * shows when it asks (`ReadOnDemand`). The page's refreshes
- * (`refreshPageBlocks()`) read every one of them again but the context
- * bar's, which reads on its own clock. Writes go through `useMarketingApi`.
+ * (`refreshPageBlocks()`) and the events of its realtime topics read every
+ * one of them again but the context bar's, which reads through its own
+ * live refresh. Writes go through `useMarketingApi`.
  *
  * A read bound to the period waits for it: the server knows it only once the
  * browser's time zone is known, and the browser once the context bar's
@@ -47,32 +48,15 @@ function periodRead(
   return state ? (appendPeriodToUrl(url, state) ?? url) : null
 }
 
-/** How the context bar reads the context: on its own clock. */
-export interface ContextReadOptions {
-  /**
-   * Reads again every this many milliseconds while the caller shows the
-   * data; a ref or a getter changes it, and `0` or `null` stops it.
-   */
-  refreshInterval?: MaybeRefOrGetter<number | null | undefined>
-}
-
 /**
  * The tenant's websites as the context bar lists them, and the saved pick:
- * read again on the bar's own triggers (its clock, its refresh button), not
- * with the page's blocks.
+ * read again on the bar's own triggers (the page's live gate, its refresh
+ * button), not with the page's blocks.
  */
-export function useMarketingContextRead(
-  options: ContextReadOptions = {},
-): ApiDataResult<MarketingContextPayload> {
+export function useMarketingContextRead(): ApiDataResult<MarketingContextPayload> {
   return useApiData<MarketingContextPayload>('/api/marketing/context', {
     refreshOnPageRefresh: false,
-    refreshInterval: options.refreshInterval,
   })
-}
-
-/** The Websites page's cards. */
-export function useWebsiteCards(): ApiDataResult<MarketingWebsiteCard[]> {
-  return useApiData<MarketingWebsiteCard[]>('/api/marketing/websites/summary')
 }
 
 /** The tenant's websites, with their capture options. */
@@ -104,6 +88,9 @@ export interface PageInventoryRequest {
   period: MaybeRefOrGetter<MarketingPeriod>
   search: MaybeRefOrGetter<string>
   sort: MaybeRefOrGetter<MarketingPagesSort>
+  /** Another workspace's dashboard, or `all` (see useDashboardWorkspaces);
+   * empty for the website's own data. */
+  workspace?: MaybeRefOrGetter<string>
 }
 
 /** The paths a website's visitors loaded over the period. */
@@ -120,6 +107,7 @@ export function usePageInventory(
         website: toValue(request.websiteId),
         search: toValue(request.search),
         sort: toValue(request.sort),
+        workspace: toValue(request.workspace) || undefined,
       }),
     },
   )
@@ -171,6 +159,8 @@ export interface PagePreviewRequest {
   websiteId: MaybeRefOrGetter<string | undefined>
   path: MaybeRefOrGetter<string>
   period: MaybeRefOrGetter<MarketingPeriod>
+  /** As PageInventoryRequest's. */
+  workspace?: MaybeRefOrGetter<string | undefined>
 }
 
 function previewRead<T>(
@@ -186,6 +176,7 @@ function previewRead<T>(
       query: () => ({
         website: toValue(request.websiteId),
         path: toValue(request.path),
+        workspace: toValue(request.workspace) || undefined,
       }),
       server: false,
     },
@@ -217,6 +208,8 @@ export interface PageSnapshotRequest {
    * backend while the request stays the same, so the capture is read again.
    */
   maskText: MaybeRefOrGetter<boolean>
+  /** As PageInventoryRequest's: the backend masks such a capture. */
+  workspace?: MaybeRefOrGetter<string | undefined>
 }
 
 /** A page's capture in a layout, drawn in the browser. */
@@ -235,10 +228,26 @@ export function usePageSnapshot(
         website: toValue(request.websiteId),
         path: toValue(request.path),
         layout: toValue(request.layout),
+        workspace: toValue(request.workspace) || undefined,
       }),
       watch: [() => toValue(request.maskText)],
       server: false,
     },
+  )
+}
+
+/**
+ * The workspaces a platform owner can read the dashboard's heatmaps of, from
+ * the dashboard's own website; an empty list for anyone else, on any other
+ * website, and on a single-workspace install. Read with the page: the pages
+ * panel shows its selector from the first paint.
+ */
+export function useDashboardWorkspaces(
+  websiteId: MaybeRefOrGetter<string>,
+): ApiDataResult<MarketingWorkspaces> {
+  return useApiData<MarketingWorkspaces>(
+    () => (toValue(websiteId) ? '/api/marketing/stats/workspaces' : null),
+    { query: () => ({ website: toValue(websiteId) }) },
   )
 }
 
