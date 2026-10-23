@@ -105,8 +105,8 @@
           "name": "Avis de collecte en pause"
         },
         "context": {
-          "description": "Choisit le site et la période que lisent tous les blocs de la page.",
-          "name": "Barre site et période"
+          "description": "Affiche les blocs de la page une fois un site choisi, ou les guides de démarrage et d'installation.",
+          "name": "Accès au site"
         },
         "devices": {
           "description": "Sessions par type d'appareil.",
@@ -168,6 +168,10 @@
           "description": "Les pages suivies et leurs heatmaps de clics et de défilement.",
           "name": "Pages et heatmaps"
         },
+        "period": {
+          "description": "La période et la comparaison que lisent tous les blocs de la page.",
+          "name": "Période"
+        },
         "quality": {
           "description": "Taux de rebond, durée moyenne de session et pages par session.",
           "name": "Qualité des sessions"
@@ -195,6 +199,10 @@
         "settings_sampling": {
           "description": "La part des pages vues qui enregistrent les clics.",
           "name": "Échantillonnage"
+        },
+        "toolbar": {
+          "description": "La barre de la page : le site, Direct / Pause et la période que lisent tous les blocs de la page.",
+          "name": "Barre site et période"
         },
         "tops": {
           "description": "Contenu, acquisition, audience et événements personnalisés.",
@@ -231,6 +239,10 @@
         "traffic_sessions": {
           "description": "Sessions par jour, ou par heure sur une seule journée.",
           "name": "Sessions dans le temps"
+        },
+        "website_picker": {
+          "description": "Choisit le site que lisent tous les blocs de la page, avec son état de suivi.",
+          "name": "Choix du site"
         },
         "website_waiting": {
           "description": "Affichée tant que le site n'a envoyé aucune page vue, avec un lien vers le guide d'installation.",
@@ -376,40 +388,34 @@
       },
       "context": {
         "add_website": "Ajouter un site",
-        "comparisons": {
-          "none": "Sans comparaison",
-          "previous-period": "vs période précédente",
-          "previous-year": "vs année précédente"
-        },
         "error": {
           "description": "Le suivi continue et rien n'est perdu. Réessayez dans un instant.",
           "title": "Impossible de charger vos sites"
         },
         "idle": "Dernier événement {ago}",
         "imported": "Historique importé · dernier événement {ago}",
+        "just_now": "à l'instant",
         "label": "Site et période",
         "live": "En direct · dernier événement {ago}",
         "no_website": "Aucun site pour l'instant",
-        "presets": {
-          "custom": "Personnalisée",
-          "last-30-days": "30 j",
-          "last-7-days": "7 j",
-          "last-90-days": "90 j",
-          "today": "Aujourd'hui"
-        },
         "range_cut": "Seuls les {days} derniers jours de cette plage sont affichés.",
-        "refresh": "Actualiser",
         "state": {
           "imported": "Historique importé uniquement",
           "live": "En direct",
           "paused": "Suivi en pause pour ce site",
           "waiting": "En attente du premier événement"
         },
+        "state_short": {
+          "imported": "Importé",
+          "live": "En direct",
+          "paused": "En pause",
+          "waiting": "En attente"
+        },
         "switch_error": "Impossible de passer sur ce site",
         "switch_website": "Changer de site",
         "utc_days": "Les statistiques sont comptées par jour UTC : chaque jour affiché ici commence à {time}, heure locale.",
-        "vs_previous": "vs période précédente",
         "vs_previous_short": "vs précédente",
+        "vs_previous_year_short": "vs année précédente",
         "waiting_guide": {
           "action": "Ouvrir le guide d'installation",
           "description": "Ajoutez le traceur au site, puis ouvrez une de ses pages : les premiers chiffres apparaissent ici en moins d'une minute.",
@@ -726,6 +732,7 @@
         "coverage": {
           "period_title": "Les funnels ne couvrent cette période qu'à partir du {date}",
           "previous_title": "Pas de comparaison avec la période précédente",
+          "previous_year_title": "Pas de comparaison avec l'année précédente",
           "description": "Les funnels sont calculés sur les événements bruts, conservés à partir du {date} : les jours antérieurs ne comptent rien, et une période de comparaison qu'ils ne couvrent pas est écartée plutôt qu'affichée comme une énorme variation."
         }
       },
@@ -1211,6 +1218,9 @@
           "title": "Ajouter un site",
           "description": "Nommez le site et son domaine ; le guide d'installation vous donne ensuite la balise à coller."
         }
+      },
+      "live": {
+        "new_events": "{count} nouvel événement | {count} nouveaux événements"
       }
     }
   }

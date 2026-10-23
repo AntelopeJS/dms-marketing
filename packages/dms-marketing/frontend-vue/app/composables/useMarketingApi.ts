@@ -406,6 +406,8 @@ export interface MarketingFunnelResults {
   /** The same funnel over the comparison window; null on a split, without
    * one, or when raw events do not cover it. */
   previous?: MarketingFunnelComputation | null
+  /** What the period is compared with; null without a comparison window. */
+  comparison?: 'previous-period' | 'previous-year' | null
   coverage?: MarketingFunnelCoverage
 }
 

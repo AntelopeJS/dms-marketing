@@ -24,6 +24,7 @@ import {
 } from "@/types/constants";
 import { BoundedCache } from "./bounded-cache";
 import { websiteAcceptsHostname } from "./origin-guard";
+import { noteCollected } from "./realtime";
 import { findOpenSession } from "./sessionize";
 import { parseTrackedUrl } from "./url";
 
@@ -443,6 +444,7 @@ export async function storeSnapshot(
     scrollRoot: "html" in input && input.html.includes(SCROLL_ROOT_ATTRIBUTE),
   } as PageSnapshot);
   captureStates.set(id, { capturedAt: now.getTime(), unmarked: false });
+  noteCollected(website.tenantId, 1);
   return true;
 }
 

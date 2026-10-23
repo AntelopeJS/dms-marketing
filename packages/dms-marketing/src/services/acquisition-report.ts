@@ -32,6 +32,12 @@ export interface ChannelsPayload {
    * the dimension existed. Every delta is then null.
    */
   compareUnavailable: boolean;
+  /**
+   * The period is compared with a window that has rows: without one (no
+   * comparison chosen, or none to read), the card leaves its change column
+   * out instead of a column of dashes.
+   */
+  compared: boolean;
 }
 
 /**
@@ -66,6 +72,7 @@ export function channelsPayload(read: RollupRead): ChannelsPayload {
       };
     }).sort((a, b) => b.sessions - a.sessions),
     compareUnavailable: read.compare !== null && !comparable,
+    compared: read.compare !== null,
   };
 }
 

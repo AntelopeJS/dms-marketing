@@ -36,6 +36,8 @@ import {
   winnerBanner,
 } from "@/services/funnels-table";
 import {
+  type ComparisonKind,
+  comparisonKindOf,
   periodQueryOf,
   type QueryWindow,
   resolveCompareWindow,
@@ -97,6 +99,8 @@ async function windowsCoverage(
 interface WebsiteFunnels {
   rows: FunnelSummaryRow[];
   coverage: FunnelCoverage;
+  /** What the changes are measured against, as their labels name it. */
+  comparison: ComparisonKind;
 }
 
 /**
@@ -126,7 +130,7 @@ async function summarizeWebsiteFunnels(
       summarizeFunnel(funnel, site.tenantId, window, comparable),
     ),
   );
-  return { rows, coverage };
+  return { rows, coverage, comparison: comparisonKindOf(query) };
 }
 
 export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
@@ -143,8 +147,12 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
     @Parameter("website", "query") website?: string,
   ) {
     const kind = queryString(kindFilter)?.replace(/^is:/, "");
-    const { rows } = await summarizeWebsiteFunnels(context, user, website);
-    return funnelTablePayload(rows, kind);
+    const { rows, comparison } = await summarizeWebsiteFunnels(
+      context,
+      user,
+      website,
+    );
+    return funnelTablePayload(rows, kind, comparison);
   }
 
   /**
@@ -157,12 +165,12 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
   ) {
-    const { rows, coverage } = await summarizeWebsiteFunnels(
+    const { rows, coverage, comparison } = await summarizeWebsiteFunnels(
       context,
       user,
       website,
     );
-    return winnerBanner(rows, coverage);
+    return winnerBanner(rows, coverage, comparison);
   }
 
   /** Funnels the site's own journeys suggest, for the first-run state. */
@@ -262,6 +270,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
       ...results,
       verdict: experimentVerdict(results),
       previous: previous?.computation ?? null,
+      comparison: compare ? comparisonKindOf(query) : null,
       coverage,
     };
   }

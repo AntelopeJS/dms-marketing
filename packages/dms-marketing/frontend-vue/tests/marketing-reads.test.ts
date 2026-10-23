@@ -153,13 +153,11 @@ describe('useMarketingNow', () => {
 })
 
 describe('the reads with triggers of their own', () => {
-  it('reads the context bar on its own clock, not with the page', () => {
-    useMarketingContextRead({ refreshInterval: 60_000 })
+  it('reads the context bar on its own triggers, on no clock of its own', () => {
+    useMarketingContextRead()
     const [context] = calls
-    expect(context?.options).toMatchObject({
-      refreshOnPageRefresh: false,
-      refreshInterval: 60_000,
-    })
+    expect(context?.options).toMatchObject({ refreshOnPageRefresh: false })
+    expect(context?.options).not.toHaveProperty('refreshInterval')
   })
 
   it('polls the connection check when asked to', () => {

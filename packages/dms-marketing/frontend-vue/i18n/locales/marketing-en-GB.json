@@ -105,8 +105,8 @@
           "name": "Collection paused notice"
         },
         "context": {
-          "description": "Picks the website and the period every block of the page reads.",
-          "name": "Website and period bar"
+          "description": "Shows the page's blocks once a website is picked, or the first-run and install guides.",
+          "name": "Website gate"
         },
         "devices": {
           "description": "Sessions by device type.",
@@ -168,6 +168,10 @@
           "description": "Tracked pages with their click and scroll heatmaps.",
           "name": "Pages and heatmaps"
         },
+        "period": {
+          "description": "The period and comparison every block of the page reads.",
+          "name": "Period"
+        },
         "quality": {
           "description": "Bounce rate, average session duration and pages per session.",
           "name": "Session quality"
@@ -195,6 +199,10 @@
         "settings_sampling": {
           "description": "The share of page loads recording clicks.",
           "name": "Sampling"
+        },
+        "toolbar": {
+          "description": "The page toolbar: the website, Direct / Pause and the period every block of the page reads.",
+          "name": "Website and period bar"
         },
         "tops": {
           "description": "Content, acquisition, audience and custom events.",
@@ -231,6 +239,10 @@
         "traffic_sessions": {
           "description": "Sessions per day, or per hour over a single day.",
           "name": "Sessions over time"
+        },
+        "website_picker": {
+          "description": "Picks the website every block of the page reads, with its tracking state.",
+          "name": "Website picker"
         },
         "website_waiting": {
           "description": "Shown while the website has sent no pageview, with a link to the install guide.",
@@ -376,40 +388,34 @@
       },
       "context": {
         "add_website": "Add a website",
-        "comparisons": {
-          "none": "No comparison",
-          "previous-period": "vs previous period",
-          "previous-year": "vs previous year"
-        },
         "error": {
           "description": "Tracking keeps running and nothing was lost. Try again in a moment.",
           "title": "Couldn't load your websites"
         },
         "idle": "Last event {ago}",
         "imported": "Imported history · last event {ago}",
+        "just_now": "just now",
         "label": "Website and period",
         "live": "Live · last event {ago}",
         "no_website": "No website yet",
-        "presets": {
-          "custom": "Custom",
-          "last-30-days": "30D",
-          "last-7-days": "7D",
-          "last-90-days": "90D",
-          "today": "Today"
-        },
         "range_cut": "Only the last {days} days of this range are shown.",
-        "refresh": "Refresh",
         "state": {
           "imported": "Imported history only",
           "live": "Live",
           "paused": "Tracking paused for this website",
           "waiting": "Waiting for the first event"
         },
+        "state_short": {
+          "imported": "Imported",
+          "live": "Live",
+          "paused": "Paused",
+          "waiting": "Waiting"
+        },
         "switch_error": "Couldn't switch to this website",
         "switch_website": "Switch website",
         "utc_days": "Statistics are counted per UTC day: each day shown here starts at {time} your time.",
-        "vs_previous": "vs previous period",
         "vs_previous_short": "vs previous",
+        "vs_previous_year_short": "vs previous year",
         "waiting_guide": {
           "action": "Open the install guide",
           "description": "Add the tracker to the site, then open one of its pages: the first figures show up here within a minute.",
@@ -726,6 +732,7 @@
         "coverage": {
           "period_title": "Funnels cover this period from {date} only",
           "previous_title": "No comparison with the previous period",
+          "previous_year_title": "No comparison with the previous year",
           "description": "Funnels are computed from raw events, kept from {date} on: earlier days count nothing, and a comparison window they don't cover is left out rather than shown as a huge change."
         }
       },
@@ -1211,6 +1218,9 @@
           "title": "Add a website",
           "description": "Name the site and its domain; the install guide then gives you the tag to paste."
         }
+      },
+      "live": {
+        "new_events": "{count} new event | {count} new events"
       }
     }
   }

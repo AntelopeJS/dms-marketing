@@ -18,6 +18,7 @@ import {
   loadSettings,
   pruneAllTenants,
   reloadSettings,
+  stopCollectedNotices,
 } from "./services";
 import { MS_PER_SECOND } from "./types/constants";
 
@@ -83,6 +84,7 @@ function logReloadError(err: unknown): void {
 export function destroy(): void {}
 
 export function stop(): void {
+  stopCollectedNotices();
   if (settingsReload) {
     clearInterval(settingsReload);
     settingsReload = null;
