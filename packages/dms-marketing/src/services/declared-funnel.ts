@@ -21,12 +21,10 @@ import {
 import { parseExperimentInput } from "@/utils/experiment-type";
 import { parseFunnelSteps } from "@/utils/funnel-steps-type";
 import {
-  contentHash,
   declaredIdSchema,
   declaredTenant,
   describeIssue,
   instantOf,
-  isUntouchedSinceDeclared,
   MarketingDeclarationError,
   requireDeclaredId,
 } from "./declarations";
@@ -34,18 +32,6 @@ import { invalidateExperimentDefinitions } from "./experiment-definitions";
 import { nameSchema } from "./website-rules";
 
 const OPERATION = "EnsureFunnel";
-
-/**
- * Where a declaration may move a split, from where it stands. As on the
- * dashboard, nothing returns to draft — that would unfreeze arms exposures
- * were recorded against. A declaration may also create a split already
- * stopped (a finished test shipped with its history): one run, closed.
- */
-const DECLARED_TRANSITIONS: Record<ExperimentStatus, ExperimentStatus[]> = {
-  draft: ["draft", "running", "stopped"],
-  running: ["running", "stopped"],
-  stopped: ["stopped", "running"],
-};
 
 const windowSchema = z
   .number()
@@ -60,8 +46,8 @@ interface DeclaredExperiment {
   status: ExperimentStatus;
 }
 
-/** What a declaration sets, normalized: also what its hash covers. Runs are
- * left out — they are derived from the moves, never declared. */
+/** What a declaration sets, normalized. Runs are left out: they follow from
+ * the declared status. */
 interface FunnelContent {
   websiteId: string;
   name: string;
@@ -134,26 +120,6 @@ function declaredContent(
   };
 }
 
-function storedContent(funnel: Funnel): FunnelContent {
-  const experiment = funnel.experiment ?? null;
-  return {
-    websiteId: funnel.websiteId,
-    name: funnel.name,
-    steps: funnel.steps.map((step) => ({ kind: step.kind, value: step.value })),
-    conversionWindowMs: funnel.conversionWindowMs,
-    experiment: experiment
-      ? {
-          key: experiment.key,
-          variations: experiment.variations.map((v) => ({
-            key: v.key,
-            weight: v.weight,
-          })),
-          status: experiment.status,
-        }
-      : null,
-  };
-}
-
 /** A caller-given instant of a run, never in the future; now by default. */
 function runInstant(id: string, field: string, value: unknown): number {
   const now = Date.now();
@@ -168,79 +134,36 @@ function runInstant(id: string, field: string, value: unknown): number {
 }
 
 /**
- * The runs a declared move leaves: starting appends a run (from
- * `startedAt`), stopping closes the open one (at `stoppedAt`), creating a
- * stopped split records one closed run. A run never starts before the
- * previous one ended, nor ends before it started.
+ * The runs of a split created with `to`: none in draft, one open run when
+ * running, one closed run when stopped (a finished test shipped with its
+ * history). A run never ends before it started.
  */
 function declaredRuns(
   id: string,
-  existing: FunnelExperiment | null,
   to: ExperimentStatus,
   declaration: MarketingExperimentDeclaration | null | undefined,
 ): ExperimentRun[] {
-  const runs = existing?.runs.map((run) => ({ ...run })) ?? [];
-  const from = existing?.status ?? "draft";
-  if (!DECLARED_TRANSITIONS[from].includes(to)) {
-    throw refuse(id, `the experiment cannot move from ${from} to ${to}`);
-  }
-  if (from === to) {
-    return runs;
-  }
-  const last = runs[runs.length - 1];
-  if (to === "stopped" && from === "running" && last) {
-    const stoppedAt = runInstant(id, "stoppedAt", declaration?.stoppedAt);
-    if (stoppedAt < last.startedAt) {
-      throw refuse(id, "experiment.stoppedAt: before the run started");
-    }
-    last.stoppedAt = stoppedAt;
-    return runs;
+  if (to === "draft") {
+    return [];
   }
   const startedAt = runInstant(id, "startedAt", declaration?.startedAt);
-  if (last?.stoppedAt != null && startedAt < last.stoppedAt) {
-    throw refuse(id, "experiment.startedAt: before the previous run ended");
-  }
   if (to === "running") {
-    runs.push({ startedAt, stoppedAt: null });
-    return runs;
+    return [{ startedAt, stoppedAt: null }];
   }
   const stoppedAt = runInstant(id, "stoppedAt", declaration?.stoppedAt);
   if (stoppedAt < startedAt) {
     throw refuse(id, "experiment.stoppedAt: before experiment.startedAt");
   }
-  runs.push({ startedAt, stoppedAt });
-  return runs;
+  return [{ startedAt, stoppedAt }];
 }
 
-/**
- * The experiment to store. Once a split has left draft, its key, its arms
- * and its website are frozen, as on the dashboard: changing them mid-run
- * would silently reassign visitors.
- */
+/** The experiment to store, with the runs its status implies. */
 function resolvedExperiment(
   id: string,
   content: FunnelContent,
-  current: Funnel | undefined,
   declaration: MarketingFunnelDeclaration,
 ): FunnelExperiment | null {
-  const existing = current?.experiment ?? null;
   const requested = content.experiment;
-  if (existing && existing.status !== "draft") {
-    const frozen =
-      requested !== null &&
-      requested.key === existing.key &&
-      JSON.stringify(requested.variations) ===
-        JSON.stringify(
-          existing.variations.map((v) => ({ key: v.key, weight: v.weight })),
-        ) &&
-      content.websiteId === current?.websiteId;
-    if (!frozen) {
-      throw refuse(
-        id,
-        "the experiment has left draft: its key, variations and website can no longer change",
-      );
-    }
-  }
   if (!requested) {
     return null;
   }
@@ -248,7 +171,7 @@ function resolvedExperiment(
     key: requested.key,
     status: requested.status,
     variations: requested.variations,
-    runs: declaredRuns(id, existing, requested.status, declaration.experiment),
+    runs: declaredRuns(id, requested.status, declaration.experiment),
   };
 }
 
@@ -277,47 +200,10 @@ async function assertUniqueKey(
   }
 }
 
-async function refreshFunnel(
-  model: FunnelsModel,
-  existing: Funnel,
-  content: FunnelContent,
-  declaration: MarketingFunnelDeclaration,
-): Promise<MarketingDeclarationResult> {
-  const id = existing._id;
-  if (
-    !isUntouchedSinceDeclared(existing.declaredHash, storedContent(existing))
-  ) {
-    if (existing.declaredHash) {
-      await model.compareDeclared(existing, { declaredHash: "" });
-    }
-    return { id, status: "kept" };
-  }
-  const declaredHash = contentHash(content);
-  if (declaredHash === existing.declaredHash) {
-    return { id, status: "unchanged" };
-  }
-  const experiment = resolvedExperiment(id, content, existing, declaration);
-  await assertUniqueKey(id, model, content.websiteId, experiment);
-  const previousWebsiteId = existing.websiteId;
-  const applied = await model.compareDeclared(existing, {
-    websiteId: content.websiteId,
-    name: content.name,
-    steps: content.steps,
-    conversionWindowMs: content.conversionWindowMs,
-    experiment,
-    declaredHash,
-  });
-  if (!applied) {
-    return { id, status: "kept" };
-  }
-  invalidateExperimentDefinitions(content.websiteId);
-  if (previousWebsiteId !== content.websiteId) {
-    invalidateExperimentDefinitions(previousWebsiteId);
-  }
-  return { id, status: "updated" };
-}
-
-/** EnsureFunnel: the declared id is the funnel id within its tenant. */
+/**
+ * EnsureFunnel: the declared id is the funnel id within its tenant. Written
+ * once, when the tenant is provisioned: an id that already exists is `kept`.
+ */
 export async function ensureFunnel(
   declaration: MarketingFunnelDeclaration,
 ): Promise<MarketingDeclarationResult> {
@@ -328,9 +214,9 @@ export async function ensureFunnel(
   const model = GetModel(FunnelsModel, tenantId);
   const existing = await model.get(id);
   if (existing) {
-    return refreshFunnel(model, existing, content, declaration);
+    return { id, status: "kept" };
   }
-  const experiment = resolvedExperiment(id, content, undefined, declaration);
+  const experiment = resolvedExperiment(id, content, declaration);
   await assertUniqueKey(id, model, content.websiteId, experiment);
   const funnel = {
     _id: id,
@@ -339,16 +225,14 @@ export async function ensureFunnel(
     steps: content.steps,
     conversionWindowMs: content.conversionWindowMs,
     experiment,
-    declaredHash: contentHash(content),
   } as Funnel;
   try {
     await model.insert(funnel);
   } catch (err) {
-    const raced = await model.get(id);
-    if (!raced) {
+    if (!(await model.get(id))) {
       throw err;
     }
-    return refreshFunnel(model, raced, content, declaration);
+    return { id, status: "kept" };
   }
   invalidateExperimentDefinitions(content.websiteId);
   return { id, status: "created" };
