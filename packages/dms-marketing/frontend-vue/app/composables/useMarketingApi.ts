@@ -399,6 +399,24 @@ export interface MarketingDashboardTracking {
 
 // --- Facade -----------------------------------------------------------------
 
+type MarketingApi = ReturnType<typeof useMarketingApi>
+
+/**
+ * Writes a funnel definition, creating it when no id is given, and answers
+ * the id of the definition written.
+ */
+export async function saveFunnel(
+  api: Pick<MarketingApi, 'createFunnel' | 'updateFunnel'>,
+  input: MarketingFunnelInput,
+  funnelId?: string,
+): Promise<string> {
+  if (!funnelId) {
+    return (await api.createFunnel(input))._id
+  }
+  await api.updateFunnel(funnelId, input)
+  return funnelId
+}
+
 export function useMarketingApi() {
   const { $authFetch } = useAuthFetch()
 
@@ -454,9 +472,9 @@ export function useMarketingApi() {
 
     // Definitions CRUD over the funnels data-api routes; the list is read by
     // `useWebsiteFunnels`, one definition by `useFunnelRead`. The insert
-    // answers the generated keys, an array — not the row.
+    // answers the created row, its `_id` included (interface-data-api 0.3).
     createFunnel: (input: MarketingFunnelInput) =>
-      $authFetch<string[]>('/api/marketing/tables/funnels/new', {
+      $authFetch<MarketingFunnelListItem>('/api/marketing/tables/funnels/new', {
         method: 'POST',
         body: input,
       }),
