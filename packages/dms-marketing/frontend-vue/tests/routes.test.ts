@@ -7,7 +7,7 @@ import {
   installLink,
   overviewLink,
   pagesLink,
-  websiteSettingTarget,
+  websiteSettingOf,
   websitesLink,
   withWebsite,
 } from '../app/composables/useMarketingRoutes'
@@ -86,25 +86,19 @@ describe('module links', () => {
   it('open the Websites page on a site setting', () => {
     expect(websitesLink()).toBe('/modules/marketing/websites')
     expect(websitesLink('site 1')).toBe(
-      '/modules/marketing/websites?edit=site+1',
+      '/modules/marketing/websites?record=site+1',
     )
     expect(websitesLink('site-1', 'snapshots')).toBe(
-      '/modules/marketing/websites?edit=site-1&setting=snapshots',
+      '/modules/marketing/websites?record=site-1&setting=snapshots',
     )
-    // A setting without a site has no drawer to open.
+    // A setting without a site has no modal to open.
     expect(websitesLink(null, 'snapshots')).toBe('/modules/marketing/websites')
   })
 
-  it('read the drawer target back from the Websites page query', () => {
-    expect(websiteSettingTarget({})).toBeNull()
-    expect(websiteSettingTarget({ edit: '' })).toBeNull()
-    expect(websiteSettingTarget({ edit: ['a'] })).toBeNull()
-    expect(websiteSettingTarget({ edit: 'site-1' })).toEqual({ id: 'site-1' })
-    expect(
-      websiteSettingTarget({ edit: 'site-1', setting: 'snapshots' }),
-    ).toEqual({ id: 'site-1', setting: 'snapshots' })
-    expect(websiteSettingTarget({ edit: 'site-1', setting: 'other' })).toEqual({
-      id: 'site-1',
-    })
+  it('read the setting to scroll to back from the Websites page query', () => {
+    expect(websiteSettingOf({})).toBeUndefined()
+    expect(websiteSettingOf({ setting: 'snapshots' })).toBe('snapshots')
+    expect(websiteSettingOf({ setting: 'other' })).toBeUndefined()
+    expect(websiteSettingOf({ setting: ['snapshots'] })).toBeUndefined()
   })
 })

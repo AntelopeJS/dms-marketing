@@ -20,7 +20,11 @@ export interface DmsFrontendSdk {
     setup: DmsPluginSetup,
     options?: { clientOnly?: boolean },
   ) => void
-  registerMiddleware: (name: string, handler: unknown) => void
+  registerMiddleware: (
+    name: string,
+    handler: unknown,
+    options?: { global?: boolean },
+  ) => void
   provide: (key: string, value: unknown) => void
   use: (plugin: Plugin) => void
 }

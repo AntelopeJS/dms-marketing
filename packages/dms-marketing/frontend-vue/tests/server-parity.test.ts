@@ -23,6 +23,9 @@ describe('front rules mirror the server', () => {
       server.MAX_FUNNEL_STEP_VALUE_LENGTH,
     )
     expect(draft.MAX_WINDOW_HOURS).toBe(server.MAX_CONVERSION_WINDOW_HOURS)
+    expect(draft.DEFAULT_WINDOW_HOURS).toBe(
+      server.DEFAULT_CONVERSION_WINDOW_HOURS,
+    )
     expect(draft.MIN_VARIATIONS).toBe(server.MIN_EXPERIMENT_VARIATIONS)
     expect(draft.MAX_VARIATIONS).toBe(server.MAX_EXPERIMENT_VARIATIONS)
     expect(draft.MAX_EXPERIMENT_KEY_LENGTH).toBe(

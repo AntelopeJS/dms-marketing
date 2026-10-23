@@ -61,6 +61,17 @@ export class WebsitesModel extends BasicDataModel(Website, websitesTableName) {
       .run();
   }
 
+  /** The sites among `ids` that exist, in no particular order. */
+  async getMany(ids: string[]): Promise<Website[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const rows = await this.table.getAll(ids).run();
+    return rows
+      .map((row) => WebsitesModel.fromDatabase(row))
+      .filter((website) => website !== undefined);
+  }
+
   async listTenantIds(): Promise<string[]> {
     return this.table.distinct("tenantId").run();
   }

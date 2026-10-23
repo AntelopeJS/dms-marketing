@@ -3,9 +3,7 @@ const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const test = it;
-const {
-  dashboardExcludedPaths,
-} = require("../dist/services/dashboard-tracking");
+const { dashboardExcludedPaths } = require("../dist/frontend-module");
 
 // --- The tracker on a single-page site ---------------------------------
 
