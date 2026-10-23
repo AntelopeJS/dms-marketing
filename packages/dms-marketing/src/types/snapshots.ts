@@ -3,6 +3,7 @@ import {
   MAX_REPORTED_SNAPSHOT_BYTES,
   MAX_SNAPSHOT_BYTES,
   MAX_SNAPSHOT_DOCUMENT_PX,
+  MAX_SNAPSHOT_INFLATED_BYTES,
   MAX_SNAPSHOT_VIEWPORT_PX,
   MAX_URL_LENGTH,
   MAX_WEBSITE_ID_LENGTH,
@@ -59,7 +60,8 @@ const snapshotPageSchema = z.object({
 export const snapshotRequestSchema = z.union([
   snapshotPageSchema.extend({
     document: dimensionSchema(MAX_SNAPSHOT_DOCUMENT_PX),
-    html: z.string().min(1).max(MAX_SNAPSHOT_BYTES),
+    /** Bounded by the inflated cap: the upload cap applies to the wire. */
+    html: z.string().min(1).max(MAX_SNAPSHOT_INFLATED_BYTES),
   }),
   snapshotPageSchema.extend({
     oversizeBytes: z.number().int().positive().max(MAX_REPORTED_SNAPSHOT_BYTES),

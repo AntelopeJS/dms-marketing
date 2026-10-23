@@ -6,6 +6,9 @@ import {
   DEFAULT_SNAPSHOT_RETENTION_MS,
   DEFAULT_STATISTICS_RETENTION_MS,
   MAX_NAME_LENGTH,
+  MAX_SNAPSHOT_BYTES,
+  MAX_SNAPSHOT_MAX_BYTES,
+  MIN_SNAPSHOT_MAX_BYTES,
 } from "./types/constants";
 
 /**
@@ -43,6 +46,13 @@ export interface DmsMarketingConfig {
    * prune bounds it by `rawEventsRetention`.
    */
   snapshotRetention: number;
+  /**
+   * Cap on one snapshot upload as it travels (gzipped where the browser
+   * compresses it), in bytes. Clamped to 64 KiB – 8 MiB so a stored row
+   * stays well under MongoDB's 16 MiB document limit; a page past it gets
+   * no backdrop and the preview says so.
+   */
+  snapshotMaxBytes: number;
   sessionIdleTimeout: number;
   heatmapSampleRate: number;
   /**
@@ -76,6 +86,7 @@ const DEFAULT_CONFIG: DmsMarketingConfig = {
   rawEventsRetention: DEFAULT_RAW_EVENTS_RETENTION_MS,
   statisticsRetention: DEFAULT_STATISTICS_RETENTION_MS,
   snapshotRetention: DEFAULT_SNAPSHOT_RETENTION_MS,
+  snapshotMaxBytes: MAX_SNAPSHOT_BYTES,
   sessionIdleTimeout: DEFAULT_SESSION_IDLE_TIMEOUT_MS,
   heatmapSampleRate: DEFAULT_HEATMAP_SAMPLE_RATIO,
   visitorHashSecret: "",
@@ -98,7 +109,9 @@ function isDashboardPathPattern(value: unknown): value is string {
  * instead of reaching the tag or the website record. Only `enabled: true`
  * turns it on, and only `snapshots: true` enables the captures.
  */
-function parseDashboardTracking(input: unknown): DashboardTrackingConfig {
+export function parseDashboardTracking(
+  input: unknown,
+): DashboardTrackingConfig {
   const value =
     input && typeof input === "object"
       ? (input as Partial<Record<keyof DashboardTrackingConfig, unknown>>)
@@ -118,6 +131,17 @@ function parseDashboardTracking(input: unknown): DashboardTrackingConfig {
   };
 }
 
+/** A number within the bounds, the default for anything else. */
+function parseSnapshotMaxBytes(input: unknown): number {
+  if (typeof input !== "number" || !Number.isFinite(input)) {
+    return MAX_SNAPSHOT_BYTES;
+  }
+  return Math.min(
+    MAX_SNAPSHOT_MAX_BYTES,
+    Math.max(MIN_SNAPSHOT_MAX_BYTES, Math.floor(input)),
+  );
+}
+
 let baseConfig: DmsMarketingConfig = DEFAULT_CONFIG;
 let globalConfig: DmsMarketingConfig = DEFAULT_CONFIG;
 let runtimeOverrides: Partial<DmsMarketingConfig> = {};
@@ -129,6 +153,7 @@ function mergeEffective(): void {
 export function setConfig(input?: DmsMarketingConfigInput): void {
   baseConfig = {
     ...defu(input ?? {}, DEFAULT_CONFIG),
+    snapshotMaxBytes: parseSnapshotMaxBytes(input?.snapshotMaxBytes),
     dashboardTracking: parseDashboardTracking(input?.dashboardTracking),
   };
   mergeEffective();
