@@ -105,8 +105,8 @@
           "name": "Collection paused notice"
         },
         "context": {
-          "description": "Picks the website and the period every block of the page reads.",
-          "name": "Website and period bar"
+          "description": "Shows the page's blocks once a website is picked, or the first-run and install guides.",
+          "name": "Website gate"
         },
         "devices": {
           "description": "Sessions by device type.",
@@ -168,6 +168,10 @@
           "description": "Tracked pages with their click and scroll heatmaps.",
           "name": "Pages and heatmaps"
         },
+        "period": {
+          "description": "The period and comparison every block of the page reads.",
+          "name": "Period"
+        },
         "quality": {
           "description": "Bounce rate, average session duration and pages per session.",
           "name": "Session quality"
@@ -195,6 +199,10 @@
         "settings_sampling": {
           "description": "The share of page loads recording clicks.",
           "name": "Sampling"
+        },
+        "toolbar": {
+          "description": "The page toolbar: the website, Direct / Pause and the period every block of the page reads.",
+          "name": "Website and period bar"
         },
         "tops": {
           "description": "Content, acquisition, audience and custom events.",
@@ -232,13 +240,17 @@
           "description": "Sessions per day, or per hour over a single day.",
           "name": "Sessions over time"
         },
+        "website_picker": {
+          "description": "Picks the website every block of the page reads, with its tracking state.",
+          "name": "Website picker"
+        },
         "website_waiting": {
           "description": "Shown while the website has sent no pageview, with a link to the install guide.",
           "name": "First pageview notice"
         },
-        "websites_grid": {
-          "description": "The tracked websites and their settings.",
-          "name": "Websites"
+        "websites_table": {
+          "name": "Websites",
+          "description": "The tracked websites as cards, each opening its settings."
         }
       },
       "builder": {
@@ -332,7 +344,7 @@
         "window_max": "Max {max} h",
         "window_presets": {
           "1": "1 h",
-          "24": "Whole session"
+          "24": "24 h"
         },
         "step_matched_as": "Matched as {path}",
         "step_unseen": "No raw event matches it in the last 30 days: funnels count raw events, not the daily statistics beside"
@@ -376,40 +388,34 @@
       },
       "context": {
         "add_website": "Add a website",
-        "comparisons": {
-          "none": "No comparison",
-          "previous-period": "vs previous period",
-          "previous-year": "vs previous year"
-        },
         "error": {
           "description": "Tracking keeps running and nothing was lost. Try again in a moment.",
           "title": "Couldn't load your websites"
         },
         "idle": "Last event {ago}",
         "imported": "Imported history · last event {ago}",
+        "just_now": "just now",
         "label": "Website and period",
         "live": "Live · last event {ago}",
         "no_website": "No website yet",
-        "presets": {
-          "custom": "Custom",
-          "last-30-days": "30D",
-          "last-7-days": "7D",
-          "last-90-days": "90D",
-          "today": "Today"
-        },
         "range_cut": "Only the last {days} days of this range are shown.",
-        "refresh": "Refresh",
         "state": {
           "imported": "Imported history only",
           "live": "Live",
           "paused": "Tracking paused for this website",
           "waiting": "Waiting for the first event"
         },
+        "state_short": {
+          "imported": "Imported",
+          "live": "Live",
+          "paused": "Paused",
+          "waiting": "Waiting"
+        },
         "switch_error": "Couldn't switch to this website",
         "switch_website": "Switch website",
         "utc_days": "Statistics are counted per UTC day: each day shown here starts at {time} your time.",
-        "vs_previous": "vs previous period",
         "vs_previous_short": "vs previous",
+        "vs_previous_year_short": "vs previous year",
         "waiting_guide": {
           "action": "Open the install guide",
           "description": "Add the tracker to the site, then open one of its pages: the first figures show up here within a minute.",
@@ -427,6 +433,7 @@
         "xr": "XR headset"
       },
       "errors": {
+        "dashboard_website_kept": "This is the dashboard's own website: it cannot be deleted. Pause its tracking or purge its data instead.",
         "duplicate_host": "Another website of this workspace already declares this host.",
         "duplicate_host_named": "{site} already declares {host}: a host belongs to one website of the workspace.",
         "duplicate_experiment_key": "Another A/B test on this website already uses this key.",
@@ -451,7 +458,8 @@
         },
         "snapshot_retention_above_raw": "Snapshots can't be kept longer than raw events: they would outlive every click they back.",
         "statistics_retention_below_raw": "Statistics can't be kept shorter than raw events: funnels and A/B results would lose the sessions of their events.",
-        "website_not_found": "This website does not exist, or belongs to another workspace."
+        "website_not_found": "This website does not exist, or belongs to another workspace.",
+        "workspace_not_found": "This workspace does not exist, has no dashboard tracking, or is not yours to read."
       },
       "experiment": {
         "colours_note": "Arms keep their colour everywhere: A is neutral, B is the primary colour. Green and red only mean a verdict.",
@@ -724,6 +732,7 @@
         "coverage": {
           "period_title": "Funnels cover this period from {date} only",
           "previous_title": "No comparison with the previous period",
+          "previous_year_title": "No comparison with the previous year",
           "description": "Funnels are computed from raw events, kept from {date} on: earlier days count nothing, and a comparison window they don't cover is left out rather than shown as a huge change."
         }
       },
@@ -902,7 +911,6 @@
         },
         "list_truncated": "Only the first {count} pages are listed. Filter, or type a path, to find another.",
         "missing_hint": "Missing a page? Type its exact path above.",
-        "more_list": "More list actions",
         "most_clicked": "Most clicked",
         "most_clicked_empty": "No element anchored yet: clicks show on the page only.",
         "no_match": {
@@ -923,7 +931,12 @@
           "all_masked": "All text masked",
           "approximate_layout": "Showing the {layout} snapshot at {width}px",
           "approximate_layout_hint": "No visitor has been captured at this width yet, so the layout is reflowed. Clicks still land on their element.",
+          "captured_from": "from {url}",
+          "captured_from_hint": "The page the snapshot was taken on. Its query string and fragment are never kept: they can carry tokens or addresses.",
+          "drift": "{share} of clicks aim at elements missing from this snapshot",
+          "drift_hint": "The page may have changed since {date}. Those clicks are drawn where they fell on the page, not on their element. Resetting the page clears its clicks and snapshot and starts again from the current version.",
           "enable_snapshots": "Enable page snapshots",
+          "end_of_page": "End of page",
           "fields_masked": "Text visible, form fields masked",
           "layout": "Layout",
           "layout_desktop": "Desktop",
@@ -942,12 +955,15 @@
           "overflow_hint": "The snapshot lays out at {width}px. The overlay follows the document, so it stays aligned; the backdrop may be cut off.",
           "oversized": "Page too tall to preview accurately",
           "oversized_hint": "The document exceeds the largest surface that can be drawn, so the overlay and the backdrop no longer line up. The click figures are unaffected.",
+          "snapshot_settings": "Snapshot settings",
           "snapshots_enabled": "Page snapshots",
           "snapshots_off": "Page snapshots are off for this site",
           "snapshots_off_hint": "Clicks and scrolls are still counted, but the heatmap is only drawn over a snapshot of the page as visitors see it: its text and images are then stored, every form field masked, for the snapshot retention set in the module settings. Enable it if that fits this site's privacy commitments.",
           "status_line": "Snapshot captured {date} · {layout} {width}px",
+          "strip_details": "Why this warning",
           "too_heavy": "Page too heavy to capture",
-          "too_heavy_hint": "The last sampled visit serialised {size} MiB of HTML and CSS, past the {limit} MiB upload cap, so this page has no backdrop. The click and scroll figures above are unaffected. A visit retries daily: lighter markup — or a heavy section marked data-dms-marketing-block — brings it under the cap."
+          "too_heavy_hint": "The last sampled visit's capture came to {size} MiB to upload (compressed where the browser can), past the {limit} MiB cap, so this page has no backdrop. The click and scroll figures above are unaffected. A visit retries daily: lighter markup — or a heavy section marked data-dms-marketing-block — brings it under the cap, and the snapshotMaxBytes module option raises the cap.",
+          "workspace_masked": "Another workspace's page: all text masked"
         },
         "reset": {
           "and": "{first} and {second}",
@@ -962,13 +978,16 @@
           "page_description": "Deletes the clicks, scroll depths and snapshots of this page, whatever the period. Type its path to confirm.",
           "page_done": "Heatmap of the page reset",
           "page_title": "Reset the heatmap of this page?",
-          "site_button": "Reset every heatmap…",
-          "site_description": "Deletes every click, scroll depth and page snapshot of the website, whatever the period. Type the domain to confirm.",
-          "site_done": "Heatmaps of {name} reset",
-          "site_title": "Reset the heatmaps of {name}?",
           "snapshots": "{count} snapshot | {count} snapshots"
         },
         "row_clicks": "{count} click | {count} clicks",
+        "row_snapshot": {
+          "none": "No snapshot",
+          "none_title": "No snapshot yet: the next sampled visit captures one",
+          "title": "Snapshot captured {date} · {layouts} | Snapshots captured up to {date} · {layouts}",
+          "too_heavy": "Too heavy",
+          "too_heavy_title": "Page too heavy to capture (tried {date})"
+        },
         "row_views": "{count} view | {count} views",
         "sampled_unit": "sampled view | sampled views",
         "sampling_note": "Clicks and scrolls were recorded on {rate} of page loads over this period.",
@@ -1006,6 +1025,16 @@
           "action": "Check the installation",
           "description": "Pages and heatmaps appear once the tracker is on the site and a first page is loaded.",
           "title": "{website} hasn't received a visit yet"
+        },
+        "workspace": {
+          "all": "All workspaces",
+          "all_hint": "{count} workspace combined | {count} workspaces combined",
+          "combined_note": "Combined across {count} workspace, read-only. Snapshots show with their text masked. | Combined across {count} workspaces, read-only. Snapshots show with their text masked.",
+          "label": "Workspace:",
+          "note_label": "About this view",
+          "other_note": "Another workspace's dashboard, read-only. Snapshots show with their text masked.",
+          "switch": "Change the workspace the heatmaps read",
+          "yours": "Your workspace"
         },
         "quoted": "“{text}”"
       },
@@ -1069,13 +1098,17 @@
         },
         "column": {
           "domain": "Domain",
-          "name": "Name"
+          "name": "Name",
+          "tracking": "Tracking",
+          "snapshots": "Page snapshots",
+          "created": "Added"
         },
         "create": "Add a website",
         "delete": {
           "action": "Delete website…",
           "confirm": "Delete website",
           "description": "Everything tracked on this website goes, for every period. Type the domain to confirm.",
+          "dashboard_kept": "This is the dashboard's own website, which the module tracks itself: it cannot be deleted. Pause its tracking or purge its data instead.",
           "done": "{name} deleted",
           "funnels": "Funnels and their A/B tests",
           "impact_error": "Couldn't list what deleting this website would remove.",
@@ -1088,14 +1121,38 @@
           "snapshots": "Snapshots",
           "title": "Delete {name}?"
         },
+        "purge": {
+          "all_action": "Purge all data…",
+          "all_confirm": "Purge all data",
+          "all_description": "Everything collected on this website goes, for every period: pageviews, sessions, daily statistics, clicks, scroll depths, snapshots, A/B exposures and imported history. The website, its settings and its funnels stay; their results start again from zero. Type the domain to confirm.",
+          "all_done": "Data of {name} purged",
+          "all_hint": "Everything collected: traffic, sessions, heatmaps, A/B exposures and imported history.",
+          "all_title": "Purge all the data of {name}?",
+          "done_all_counts": "Deleted: {events} events, {sessions} sessions and {snapshots} snapshots.",
+          "done_heatmaps_counts": "Deleted: {events} clicks and scroll depths, and {snapshots} snapshots.",
+          "heatmap_events": "Clicks and scroll depths, all time",
+          "heatmaps_action": "Purge heatmaps…",
+          "heatmaps_confirm": "Purge heatmaps",
+          "heatmaps_description": "The clicks, scroll depths and snapshots of every page go, for every period: click counts drop to zero everywhere. Pageviews, sessions and funnels are kept. Type the domain to confirm.",
+          "heatmaps_done": "Heatmaps of {name} purged",
+          "heatmaps_hint": "Clicks, scroll depths and snapshots of every page. Traffic is kept.",
+          "heatmaps_title": "Purge the heatmaps of {name}?",
+          "kept": "The website, its settings, funnels and A/B tests are kept",
+          "kept_traffic": "Pageviews, sessions, funnels and A/B tests are kept",
+          "section": "Purge collected data",
+          "section_description": "The website keeps its settings, funnels and A/B tests; their results start again from zero."
+        },
         "description": "The sites sending data to this workspace, their tracker, and what is captured on each.",
-        "drawer": {
-          "added": "added {date}",
-          "capture": "Capture",
-          "close": "Close",
-          "danger": "Danger zone",
-          "eyebrow": "Website",
-          "general": "General"
+        "discard_confirm": {
+          "title": "Delete the site's snapshots?",
+          "description": "Changing this option deletes the site's snapshot. Clicks and scroll depth are kept; the next sampled visits capture the pages again. | Changing this option deletes the site's {count} snapshots. Clicks and scroll depth are kept; the next sampled visits capture the pages again.",
+          "description_unknown": "Changing this option deletes the site's existing snapshots. Clicks and scroll depth are kept; the next sampled visits capture the pages again.",
+          "confirm": "Change and delete",
+          "cancel": "Keep the snapshots",
+          "cancel_none": "Cancel",
+          "confirm_none": "Change",
+          "description_none": "The site holds no snapshot yet. The next sampled visits capture its pages under the new setting.",
+          "title_none": "Change the site's snapshot settings?"
         },
         "error": "Couldn't load the websites",
         "fields": {
@@ -1124,6 +1181,7 @@
         "save_error": "The website could not be saved.",
         "saved": "Website saved",
         "snapshots": "Page snapshots",
+        "snapshots_edit": "Page snapshot settings of {name}",
         "snapshots_masked": "On · text masked",
         "snapshots_off": "Off",
         "snapshots_on": "On · text visible",
@@ -1144,7 +1202,25 @@
         "edit_named": "Settings of {name}",
         "snippet_named": "Tracker snippet for {name}",
         "open_overview_named": "Open the {name} overview",
-        "finish_install_named": "Finish installing {name}"
+        "finish_install_named": "Finish installing {name}",
+        "search": "Search websites",
+        "menu_named": "Actions for {name}",
+        "edit": "Settings",
+        "no_match": "No website matches these filters.",
+        "count": "{count} website | {count} websites",
+        "modal": {
+          "title": "Website settings",
+          "general": "General",
+          "danger": "Danger zone",
+          "added": "added {date}"
+        },
+        "create_modal": {
+          "title": "Add a website",
+          "description": "Name the site and its domain; the install guide then gives you the tag to paste."
+        }
+      },
+      "live": {
+        "new_events": "{count} new event | {count} new events"
       }
     }
   }

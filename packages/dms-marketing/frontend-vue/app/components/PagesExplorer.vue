@@ -12,15 +12,14 @@ import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 // a lazy chunk of its own, fetched only once a page is selected, so the
 // preview would land a beat after the list, its column empty meanwhile.
 import DmsMarketingPagePreview from './PagePreview.vue'
-import {
-  useMarketingApi,
-  type MarketingPageEntry,
-  type MarketingPages,
-  type MarketingPagesSort,
-  type MarketingWebsite,
+import type {
+  MarketingPageEntry,
+  MarketingPages,
+  MarketingPagesSort,
+  MarketingWebsite,
 } from '../composables/useMarketingApi'
 import {
-  useHeatmapCountRead,
+  useDashboardWorkspaces,
   usePageInventory,
   useWebsiteFunnels,
   useWebsites,
@@ -30,11 +29,16 @@ import { installLink } from '../composables/useMarketingRoutes'
 import { PERIOD_SCOPE } from '../constants'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
 import { formatNumber } from '../utils/format'
+import { pageSnapshotBadge } from '../utils/page-snapshot'
+import { measureFillHeight } from '../utils/fill-height'
+import { useMarketingNow } from '../composables/useMarketingNow'
+import { normalizePagePath, selectedPageRow } from '../utils/heatmap'
 import {
-  heatmapDataLabel,
-  heatmapResetImpact,
-  normalizePagePath,
-} from '../utils/heatmap'
+  effectiveWorkspace,
+  rememberedWorkspace,
+  rememberWorkspace,
+  WORKSPACE_QUERY,
+} from '../utils/workspace-scope'
 
 /**
  * Pages & heatmaps: the paths visitors loaded on the selected website, with
@@ -55,6 +59,8 @@ const props = withDefaults(
 )
 
 const SEARCH_DEBOUNCE_MS = 300
+/** The snapshot ages of the rows move on by the minute. */
+const NOW_TICK_MS = 60_000
 const SKELETON_ROWS = 8
 /** Where the list and the preview sit side by side (Tailwind `xl`). */
 const SIDE_BY_SIDE_QUERY = '(min-width: 1280px)'
@@ -62,10 +68,7 @@ const SIDE_BY_SIDE_QUERY = '(min-width: 1280px)'
 const { t, locale } = useI18n()
 const route = useDmsRoute()
 const router = useDmsRouter()
-const api = useMarketingApi()
 const context = useMarketingContext()
-const toast = useToast()
-const { confirm } = useConfirm()
 
 const websiteId = computed(() => context.selected.value?.id ?? '')
 const period = usePeriodScope(props.periodScope)
@@ -96,25 +99,101 @@ const website = computed(
     null,
 )
 
-/** A site as its update answered it, in place: the list is not read again. */
+/**
+ * A site as its update answered it, in place: the sites are not read again.
+ * The pages are, when its snapshot options changed — saving them deleted the
+ * site's snapshots, which the rows show.
+ */
 function putWebsite(saved: MarketingWebsite): void {
   const sites = websitesRead.data.value
+  const previous = sites?.find((site) => site._id === saved._id)
   if (sites) {
     websitesRead.data.value = sites.map((site) =>
       site._id === saved._id ? saved : site,
     )
   }
+  if (
+    previous &&
+    (previous.snapshotsEnabled !== saved.snapshotsEnabled ||
+      previous.snapshotMaskText !== saved.snapshotMaskText)
+  ) {
+    void loadPages()
+  }
 }
 
+// --- Workspace scope ----------------------------------------------------------
+
+// A platform owner on the dashboard's own website reads it for another
+// workspace, or all of them (see utils/workspace-scope). Everyone else gets
+// an empty list from the backend, which also refuses the scope itself.
+const workspacesRead = useDashboardWorkspaces(websiteId)
+const workspaceOptions = computed(() =>
+  workspacesRead.error.value
+    ? []
+    : (workspacesRead.data.value?.workspaces ?? []),
+)
+const queryWorkspace = () => {
+  const value = route.query[WORKSPACE_QUERY]
+  return typeof value === 'string' ? value : ''
+}
+/** What the link asks for, else this browser's last pick (once mounted:
+ * the storage is the browser's). */
+const wantedWorkspace = ref(queryWorkspace())
+/** The scope the reads use: the own workspace until the selector offers
+ * the wanted one. */
+const workspace = computed(() =>
+  effectiveWorkspace(wantedWorkspace.value, workspaceOptions.value),
+)
+/** Another workspace's data: read-only, backdrops masked by the backend. */
+const foreign = computed(() => workspace.value !== '')
+/** A wanted scope waits for the selector's answer, so a link to one never
+ * reads the own workspace first, nor fails for a viewer it is not for. */
+const scopeReady = computed(
+  () =>
+    !wantedWorkspace.value ||
+    workspacesRead.status.value === 'success' ||
+    workspacesRead.status.value === 'error',
+)
+const scopedWebsiteId = computed(() =>
+  scopeReady.value ? websiteId.value : '',
+)
+
+function selectWorkspace(value: string): void {
+  wantedWorkspace.value = value
+  rememberWorkspace(value)
+  void router.replace({
+    query: { ...route.query, [WORKSPACE_QUERY]: value || undefined },
+  })
+}
+
+// Back and Forward move the scope with the URL.
+watch(queryWorkspace, (value) => {
+  wantedWorkspace.value = value || rememberedWorkspace()
+})
+
+// A remembered scope lands in the URL too: a copied link carries it.
+watch(workspace, (value) => {
+  if (value && queryWorkspace() !== value) {
+    void router.replace({ query: { ...route.query, [WORKSPACE_QUERY]: value } })
+  }
+})
+
 const inventoryRead = usePageInventory({
-  websiteId,
+  websiteId: scopedWebsiteId,
   period: pagesPeriod,
   search: searchedTerm,
   sort,
+  workspace,
 })
 const inventory = computed(() =>
   inventoryRead.error.value ? null : inventoryRead.data.value,
 )
+
+// The pages panel holds the workspace selector from the first paint: a
+// server render, or a navigation, reads the workspaces before it draws, so
+// the panel never grows under the reader (the inventory reads alongside).
+await workspacesRead
+
 const loading = computed(() => inventoryRead.status.value === 'pending')
 /** A list is on screen (the previous one while another loads), or failed. */
 const settled = computed(
@@ -129,7 +208,6 @@ const failed = computed(
 const loadPages = (): Promise<void> => inventoryRead.refresh()
 
 const funnelsRead = useWebsiteFunnels(websiteId)
-const countSiteHeatmap = useHeatmapCountRead(websiteId)
 const funnels = computed(() =>
   funnelsRead.error.value ? [] : (funnelsRead.data.value ?? []),
 )
@@ -165,6 +243,16 @@ const sampleRateLabel = computed(() => {
 })
 const trackerEnabled = computed(() => inventory.value?.trackerEnabled ?? true)
 const waiting = computed(() => context.selected.value?.state === 'waiting')
+
+const now = useMarketingNow(NOW_TICK_MS)
+
+/** The listed pages, each with what its row says of its snapshot. */
+const rows = computed(() =>
+  pages.value.map((page) => ({
+    ...page,
+    badge: pageSnapshotBadge(page.snapshot, now.value, t, locale.value),
+  })),
+)
 
 function metricOf(page: { pageviews: number; clicks: number }): number {
   return sort.value === 'clicks' ? page.clicks : page.pageviews
@@ -202,6 +290,55 @@ watch(inventory, selectFirst)
 
 const previewWrapper = ref<HTMLElement | null>(null)
 
+/**
+ * Side by side, the list and the preview fill the window below the context
+ * bar, each scrolling inside itself: the page does not scroll, and the
+ * preview's toolbar and legend stay in sight however long the page or the
+ * list. Stacked (below xl), nothing is pinned: null.
+ */
+const panes = ref<HTMLElement | null>(null)
+const paneHeight = ref<number | null>(null)
+let paneFrame = 0
+
+function measurePanes(): void {
+  cancelAnimationFrame(paneFrame)
+  paneFrame = requestAnimationFrame(() => {
+    const element = panes.value
+    paneHeight.value =
+      element && window.matchMedia(SIDE_BY_SIDE_QUERY).matches
+        ? measureFillHeight(element)
+        : null
+  })
+}
+
+// What sits above or below the panes (a banner, the sampling note) moves
+// them: the body's size says so on a page that scrolls, this block's own on
+// a shell that scrolls a panel. Their own height leaves the answer as is,
+// so the observer settles at once.
+let paneObserver: ResizeObserver | null = null
+onMounted(() => {
+  measurePanes()
+  window.addEventListener('resize', measurePanes)
+  paneObserver = new ResizeObserver(measurePanes)
+  paneObserver.observe(document.body)
+  const block = panes.value?.parentElement
+  if (block) {
+    paneObserver.observe(block)
+  }
+})
+onBeforeUnmount(() => {
+  cancelAnimationFrame(paneFrame)
+  window.removeEventListener('resize', measurePanes)
+  paneObserver?.disconnect()
+})
+
+// The panes come and go with the waiting state.
+watch(panes, (element) => element && measurePanes())
+
+const paneStyle = computed(() =>
+  paneHeight.value === null ? undefined : { height: `${paneHeight.value}px` },
+)
+
 /** Stacked under the list (below xl), the preview is out of sight: bring it in. */
 async function pick(path: string): Promise<void> {
   selectPath(path, 'push')
@@ -227,10 +364,17 @@ function inspectTyped(): void {
  */
 const selectedPage = ref<MarketingPageEntry>()
 watch([pages, selectedPath], ([list, path]) => {
-  const found = list.find((page) => page.path === path)
-  if (found || selectedPage.value?.path !== path) {
-    selectedPage.value = found
-  }
+  selectedPage.value = selectedPageRow(list, path, selectedPage.value)
+})
+
+/** What the list is read for, the filter aside: a change is another read. */
+const readScope = computed(() =>
+  JSON.stringify([workspace.value, pagesPeriod.value]),
+)
+// Another workspace or other days: the row read before says nothing of
+// them, the header waits for the path's row in the new list (or none).
+watch(readScope, () => {
+  selectedPage.value = undefined
 })
 
 /** Funnels with a page step on the selected path, for the "Used in" card. */
@@ -253,6 +397,7 @@ if (mounted.value) {
 onMounted(() => {
   mounted.value = true
   selectFirst(inventory.value)
+  wantedWorkspace.value ||= rememberedWorkspace()
 })
 
 const countLabel = computed(() => {
@@ -266,53 +411,6 @@ const countLabel = computed(() => {
 const sortItems = computed(() => [
   { value: 'views', label: t('page.marketing.pages.views') },
   { value: 'clicks', label: t('page.marketing.pages.overlay.clicks') },
-])
-
-async function resetSite(): Promise<void> {
-  const site = website.value
-  if (!site) {
-    return
-  }
-  const counts = await countSiteHeatmap().catch(() => null)
-  await confirm({
-    title: t('page.marketing.pages.reset.site_title', { name: site.name }),
-    description: t('page.marketing.pages.reset.site_description'),
-    color: 'error',
-    icon: 'i-ph-eraser',
-    confirmLabel:
-      counts && counts.events + counts.snapshots > 0
-        ? t('page.marketing.pages.reset.confirm_count', {
-            what: heatmapDataLabel(counts, t, locale.value),
-          })
-        : t('page.marketing.pages.reset.confirm'),
-    confirmText: site.domain,
-    // A hostname is not case-sensitive: neither is the typed check.
-    confirmTextCaseInsensitive: true,
-    impact: heatmapResetImpact(counts, t, locale.value),
-    onConfirm: async () => {
-      const deleted = await api.resetHeatmap(site._id)
-      toast.add({
-        color: 'success',
-        title: t('page.marketing.pages.reset.site_done', { name: site.name }),
-        description: t('page.marketing.pages.reset.done', {
-          what: heatmapDataLabel(deleted, t, locale.value),
-        }),
-      })
-      // The dialog closes once the pages show the emptied counts.
-      await refreshPageBlocks()
-    },
-  })
-}
-
-const moreItems = computed(() => [
-  [
-    {
-      label: t('page.marketing.pages.reset.site_button'),
-      icon: 'i-ph-eraser',
-      color: 'error' as const,
-      onSelect: () => void resetSite(),
-    },
-  ],
 ])
 </script>
 
@@ -352,10 +450,27 @@ const moreItems = computed(() => [
         :description="t('page.marketing.pages.tracking_off.description')"
       />
 
-      <div class="grid items-start gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
+      <div
+        ref="panes"
+        class="grid items-start gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]"
+      >
         <section
-          class="dms-card flex min-w-0 flex-col overflow-hidden p-0 xl:sticky xl:top-4"
+          class="dms-card flex min-w-0 flex-col overflow-hidden p-0"
+          :class="paneHeight === null ? 'xl:sticky xl:top-4' : ''"
+          :style="paneStyle"
         >
+          <!-- Whose dashboard the list reads, above its search: read with
+               the page, so the row is there from the first paint. -->
+          <div
+            v-if="workspaceOptions.length > 1"
+            class="border-b border-default p-3"
+          >
+            <DmsMarketingWorkspaceScope
+              :workspaces="workspaceOptions"
+              :model-value="workspace"
+              @update:model-value="selectWorkspace"
+            />
+          </div>
           <div class="flex items-center gap-2 border-b border-default p-3">
             <UInput
               v-model="search"
@@ -365,15 +480,6 @@ const moreItems = computed(() => [
               :placeholder="t('page.marketing.pages.search_placeholder')"
               @keyup.enter="inspectTyped"
             />
-            <UDropdownMenu :items="moreItems" :content="{ align: 'end' }">
-              <UButton
-                icon="i-ph-dots-three"
-                size="sm"
-                color="neutral"
-                variant="ghost"
-                :aria-label="t('page.marketing.pages.more_list')"
-              />
-            </UDropdownMenu>
           </div>
           <div class="flex items-center justify-between gap-2 px-4 py-2">
             <DmsEyebrow :label="countLabel" />
@@ -445,10 +551,15 @@ const moreItems = computed(() => [
           />
           <ul
             v-else
-            class="flex max-h-[45vh] flex-col gap-1 overflow-y-auto p-2 xl:max-h-[70vh]"
-            :class="loading ? 'opacity-60' : ''"
+            class="flex flex-col gap-1 overflow-y-auto p-2"
+            :class="[
+              loading ? 'opacity-60' : '',
+              paneHeight === null
+                ? 'max-h-[45vh] xl:max-h-[70vh]'
+                : 'min-h-0 flex-1',
+            ]"
           >
-            <li v-for="page in pages" :key="page.path">
+            <li v-for="page in rows" :key="page.path">
               <button
                 type="button"
                 class="flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left transition-colors"
@@ -505,6 +616,20 @@ const moreItems = computed(() => [
                     </template>
                   </span>
                   <span
+                    v-if="page.badge"
+                    class="flex shrink-0 items-center gap-1 text-[11px]"
+                    :class="page.badge.muted ? 'text-dimmed' : 'text-muted'"
+                    :title="page.badge.title"
+                  >
+                    <UIcon
+                      :name="page.badge.icon"
+                      class="size-3"
+                      :class="page.badge.muted ? '' : 'text-success'"
+                    />
+                    <span class="sr-only">{{ page.badge.title }}</span>
+                    <span aria-hidden="true">{{ page.badge.label }}</span>
+                  </span>
+                  <span
                     class="h-1 w-14 overflow-hidden rounded-full bg-elevated"
                     aria-hidden="true"
                   >
@@ -541,6 +666,7 @@ const moreItems = computed(() => [
           <USkeleton
             v-if="!mounted || !selectedPath || !website"
             class="h-[32rem] rounded-xl"
+            :style="paneStyle"
             aria-hidden="true"
           />
           <DmsMarketingPagePreview
@@ -552,6 +678,9 @@ const moreItems = computed(() => [
             :tracker-enabled="trackerEnabled"
             :pageviews="selectedPage?.pageviews"
             :used-in="usedIn"
+            :height="paneHeight"
+            :workspace="workspace"
+            :workspace-snapshots="inventory?.snapshotsEnabled ?? false"
             @website-updated="putWebsite"
           />
         </div>

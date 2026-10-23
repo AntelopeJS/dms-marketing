@@ -20,13 +20,14 @@ import {
   MARKETING_PERIOD_SCOPE,
   MarketingBlock,
   CONTEXT_PAGE_LIVE,
+  LIVE_SCOPE,
   MarketingContext,
+  marketingToolbar,
   websiteUrl,
 } from "../blocks";
 import { analyticsCategory } from "../module";
 
 const KPI_PREFIX = "$page.marketing.overview.kpis.";
-const COMPARE_LABEL = "$page.marketing.context.vs_previous";
 
 function volumeKpi(metric: string, icon: string) {
   return KpiCard({
@@ -38,9 +39,8 @@ function volumeKpi(metric: string, icon: string) {
     // The trend badge carries the change: the line only draws the days, and
     // never reads as a fall nobody compared.
     sparklineAccent: "primary",
-    compareLabel: COMPARE_LABEL,
     fetchUrl: websiteUrl(`${BLOCKS_API}/kpi?metric=${metric}`),
-    periodScope: MARKETING_PERIOD_SCOPE,
+    ...LIVE_SCOPE,
   }).meta(blockMeta(`kpi_${metric.replaceAll("-", "_")}`, icon));
 }
 
@@ -52,7 +52,7 @@ function trafficChart(metric: "sessions" | "pageviews") {
     title: `${TRAFFIC_PREFIX}${metric}_title`,
     icon: "i-ph-chart-line",
     fetchUrl: websiteUrl(`${BLOCKS_API}/traffic?metric=${metric}`),
-    periodScope: MARKETING_PERIOD_SCOPE,
+    ...LIVE_SCOPE,
     valueFormat: "number",
     primaryLabel: `${TRAFFIC_PREFIX}this_period`,
     comparisonLabel: `${TRAFFIC_PREFIX}compared_period`,
@@ -111,6 +111,8 @@ export class MarketingOverviewPage extends PageController(
     ],
   }),
 ) {
+  static toolbar = marketingToolbar();
+
   static content = MarketingContext({ waitingGuide: true })
     .child(
       "kpis",
@@ -129,7 +131,7 @@ export class MarketingOverviewPage extends PageController(
       "quality",
       StatGroup({
         fetchUrl: websiteUrl(`${BLOCKS_API}/quality`),
-        periodScope: MARKETING_PERIOD_SCOPE,
+        ...LIVE_SCOPE,
         label: "$page.marketing.blocks.quality.name",
         skeletonCount: 3,
       }).meta(blockMeta("quality", "i-ph-gauge")),
@@ -169,7 +171,7 @@ export class MarketingOverviewPage extends PageController(
               TopListCard({
                 title: "$page.marketing.overview.devices.title",
                 fetchUrl: websiteUrl(`${BLOCKS_API}/devices`),
-                periodScope: MARKETING_PERIOD_SCOPE,
+                ...LIVE_SCOPE,
                 valueFormat: "number",
                 emptyLabel: "$page.marketing.overview.devices.empty",
                 skeletonCount: 3,

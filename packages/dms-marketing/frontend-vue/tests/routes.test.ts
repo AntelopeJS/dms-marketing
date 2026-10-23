@@ -7,6 +7,8 @@ import {
   installLink,
   overviewLink,
   pagesLink,
+  websiteSettingOf,
+  websitesLink,
   withWebsite,
 } from '../app/composables/useMarketingRoutes'
 
@@ -79,5 +81,24 @@ describe('module links', () => {
     expect(withWebsite(acquisitionLink(), { website: ['site-1'] })).toBe(
       '/modules/marketing/acquisition',
     )
+  })
+
+  it('open the Websites page on a site setting', () => {
+    expect(websitesLink()).toBe('/modules/marketing/websites')
+    expect(websitesLink('site 1')).toBe(
+      '/modules/marketing/websites?record=site+1',
+    )
+    expect(websitesLink('site-1', 'snapshots')).toBe(
+      '/modules/marketing/websites?record=site-1&setting=snapshots',
+    )
+    // A setting without a site has no modal to open.
+    expect(websitesLink(null, 'snapshots')).toBe('/modules/marketing/websites')
+  })
+
+  it('read the setting to scroll to back from the Websites page query', () => {
+    expect(websiteSettingOf({})).toBeUndefined()
+    expect(websiteSettingOf({ setting: 'snapshots' })).toBe('snapshots')
+    expect(websiteSettingOf({ setting: 'other' })).toBeUndefined()
+    expect(websiteSettingOf({ setting: ['snapshots'] })).toBeUndefined()
   })
 })

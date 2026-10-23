@@ -14,6 +14,7 @@ import {
 import { assertValidation } from "@antelopejs/interface-api-util";
 import { getConfig } from "@/config";
 import type { Website } from "@/db/tables/websites.table";
+import { hidesDashboardPath } from "@/services/dashboard-tracking";
 import {
   isAutomatedClient,
   snapshotRateLimiter,
@@ -24,7 +25,7 @@ import {
   websiteAcceptsHostname,
 } from "@/services/origin-guard";
 import { queryString } from "@/services/query-param";
-import { parseJsonOr400 } from "@/services/request-body";
+import { inflateIfGzipped, parseJsonOr400 } from "@/services/request-body";
 import { userAgentOf } from "@/services/request-meta";
 import { getVisitorHashSecret } from "@/services/settings";
 import { storeSnapshot, wantsSnapshot } from "@/services/snapshots";
@@ -36,7 +37,9 @@ import {
   API_BASE_PATH,
   HTTP_FORBIDDEN,
   HTTP_NOT_FOUND,
-  MAX_SNAPSHOT_BYTES,
+  HTTP_PAYLOAD_TOO_LARGE,
+  MAX_SNAPSHOT_INFLATED_BYTES,
+  MAX_SNAPSHOT_MAX_BYTES,
   MAX_URL_LENGTH,
 } from "@/types/constants";
 
@@ -46,10 +49,12 @@ const SCRIPT_CONTENT_TYPE = "application/javascript; charset=utf-8";
 /** Global the served capture script reads its settings from. */
 const SNAPSHOT_CONFIG_GLOBAL = "__dmsMarketingSnapshotConfig";
 /** Per page and per visit, never shared: the answer is a decision, not a file. */
+const SCROLL_ROOT_FLAG = "1";
 const NO_STORE = "private, no-store";
 
 const UNKNOWN_WEBSITE_MESSAGE = "unknown website";
 const ORIGIN_NOT_ALLOWED_MESSAGE = "origin not allowed";
+const TOO_LARGE_MESSAGE = "payload too large";
 
 const REFUSED = { accepted: false };
 
@@ -59,6 +64,15 @@ interface ServedSnapshotConfig {
   maskText: boolean;
   maxBytes: number;
   token: string;
+}
+
+/** The negotiation's query, as received. `root=1`: the tracker sees the page
+ * scroll an inner container (see wantsSnapshot). */
+interface NegotiationQuery {
+  website: unknown;
+  pathname: unknown;
+  width: unknown;
+  scrollRoot: boolean;
 }
 
 let cachedScript: string | null = null;
@@ -76,7 +90,7 @@ function loadScript(): string {
 function servedScript(website: Website, token: string): string {
   const config: ServedSnapshotConfig = {
     maskText: website.snapshotMaskText === true,
-    maxBytes: MAX_SNAPSHOT_BYTES,
+    maxBytes: getConfig().snapshotMaxBytes,
     token,
   };
   return `window.${SNAPSHOT_CONFIG_GLOBAL}=${JSON.stringify(config)};\n${loadScript()}`;
@@ -125,21 +139,25 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
     @Parameter("website", "query") website?: string,
     @Parameter("path", "query") pathname?: string,
     @Parameter("width", "query") width?: string,
+    @Parameter("root", "query") root?: string,
   ) {
-    const body = await this.negotiatedScript(context, website, pathname, width);
+    const body = await this.negotiatedScript(context, {
+      website,
+      pathname,
+      width,
+      scrollRoot: queryString(root) === SCROLL_ROOT_FLAG,
+    });
     context.response.addHeader("Cache-Control", NO_STORE);
     context.response.getWriteStream(SCRIPT_CONTENT_TYPE).end(body);
   }
 
   private async negotiatedScript(
     context: RequestContext,
-    website: unknown,
-    pathname: unknown,
-    width: unknown,
+    query: NegotiationQuery,
   ): Promise<string> {
-    const websiteId = queryString(website);
-    const url = trackedPath(pathname);
-    const viewportWidth = Number.parseInt(queryString(width) ?? "", 10);
+    const websiteId = queryString(query.website);
+    const url = trackedPath(query.pathname);
+    const viewportWidth = Number.parseInt(queryString(query.width) ?? "", 10);
     if (
       !getConfig().trackerEnabled ||
       !websiteId ||
@@ -149,7 +167,12 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
       return "";
     }
     const site = await resolveWebsite(websiteId);
-    if (!site || !site.trackingEnabled || !site.snapshotsEnabled) {
+    if (
+      !site ||
+      !site.trackingEnabled ||
+      !site.snapshotsEnabled ||
+      hidesDashboardPath(site, url)
+    ) {
       return "";
     }
     const source = requestSourceHostname(context.rawRequest.headers);
@@ -164,25 +187,35 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
       url,
       viewportWidth,
       visitorOf(context, site, await getClientIp(context)),
+      query.scrollRoot,
     );
     return token ? servedScript(site, token) : "";
   }
 
   /**
-   * text/plain JSON like collect (no preflight). `@RawBody` reads the body
-   * under a hard cap (413 past it) before anything parses it; refusals past
+   * text/plain JSON like collect (no preflight), gzipped when the browser
+   * can compress it. `@RawBody` reads the body under the highest cap
+   * `snapshotMaxBytes` may take, then the configured one applies to the body
+   * as it came (413 past either), and a gzipped body inflates under a cap
+   * of its own before anything parses it; refusals past
    * the origin check are silent 200s, as on collect — headerless uploads
    * included, since the capture script's fetch always carries an Origin.
    */
   @Post("snapshot")
   async upload(
     @Context() context: RequestContext,
-    @RawBody(MAX_SNAPSHOT_BYTES) body: Buffer,
+    @RawBody(MAX_SNAPSHOT_MAX_BYTES) body: Buffer,
   ) {
-    if (!getConfig().trackerEnabled) {
+    const config = getConfig();
+    if (!config.trackerEnabled) {
       return REFUSED;
     }
-    const json = parseJsonOr400(body);
+    if (body.length > config.snapshotMaxBytes) {
+      throw new HTTPResult(HTTP_PAYLOAD_TOO_LARGE, TOO_LARGE_MESSAGE);
+    }
+    const json = parseJsonOr400(
+      inflateIfGzipped(body, MAX_SNAPSHOT_INFLATED_BYTES),
+    );
     // zod v3 binds `parse` to its schema in the ZodType constructor, so the
     // reference passed here is not actually unbound.
     // oxlint-disable-next-line typescript/unbound-method
@@ -201,6 +234,7 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
     if (
       source === undefined ||
       !website.snapshotsEnabled ||
+      hidesDashboardPath(website, parseTrackedUrl(data.url).path) ||
       isAutomatedClient(userAgentOf(context)) ||
       !snapshotRateLimiter.consume(`${website._id}\n${ip}`, 1)
     ) {

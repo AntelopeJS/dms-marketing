@@ -64,6 +64,8 @@ describe("a page snapshot declared from code", () => {
       "desktop",
     );
     assert.equal(stored.origin, `https://${HOST}`);
+    // What the preview says it was taken from: the query string is not kept.
+    assert.equal(stored.url, `https://${HOST}/pricing`);
     assert.deepEqual(stored.document, { width: 1280, height: 2400 });
     assert.match(stored.html, /<h1>Plans<\/h1>/);
     assert.doesNotMatch(stored.html, /<script/);

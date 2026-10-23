@@ -171,12 +171,21 @@ const kpis = computed(() => [
   },
 ])
 
+/** The changes are measured against the same days a year before. */
+const isPreviousYear = computed(
+  () => props.results.comparison === 'previous-year',
+)
+
 function trend(delta: number | null, unit: 'percent' | 'points') {
   if (delta === null) {
     return {}
   }
   return {
-    detail: `${formatSignedDelta(delta, unit, locale.value)} · ${t('page.marketing.context.vs_previous_short')}`,
+    detail: `${formatSignedDelta(delta, unit, locale.value)} · ${t(
+      isPreviousYear.value
+        ? 'page.marketing.context.vs_previous_year_short'
+        : 'page.marketing.context.vs_previous_short',
+    )}`,
     detailTone:
       Math.abs(delta) < 0.05
         ? ('neutral' as const)
@@ -284,7 +293,11 @@ const coverageDate = computed(() =>
           ? t('page.marketing.funnels.coverage.period_title', {
               date: coverageDate,
             })
-          : t('page.marketing.funnels.coverage.previous_title')
+          : t(
+              isPreviousYear
+                ? 'page.marketing.funnels.coverage.previous_year_title'
+                : 'page.marketing.funnels.coverage.previous_title',
+            )
       "
       :description="
         t('page.marketing.funnels.coverage.description', {

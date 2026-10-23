@@ -5,6 +5,7 @@ const models = require("@antelopejs/interface-database-decorators/model");
 const { setConfig } = require("../dist/config");
 const { MarketingEventsModel, MarketingSessionsModel } = require("../dist/db");
 const { processCollectBatch } = require("../dist/services/collect");
+const { dashboardWebsiteId } = require("../dist/services/dashboard-tracking");
 const {
   forgetAcceptedSources,
   listRejectedSources,
@@ -129,6 +130,40 @@ describe("a collect batch", () => {
         ["custom", "/landing"],
       ],
     );
+  });
+
+  test("the dashboard's website drops what its module area sends", async () => {
+    const dashboard = {
+      ...WEBSITE,
+      _id: dashboardWebsiteId(WEBSITE.tenantId),
+    };
+    const origin = "https://example.com";
+    const outcome = await processCollectBatch(
+      dashboard,
+      [
+        pageview(`${origin}/modules`),
+        pageview(`${origin}/modules/crm/customers?tab=2`),
+        { kind: "custom", url: `${origin}/modules/store`, name: "install" },
+        { kind: "click", url: `${origin}/Modules/crm`, data: { x: 1, y: 1 } },
+        pageview(`${origin}/home`),
+        pageview(`${origin}/modulesx`),
+      ],
+      newVisitor(),
+    );
+    assert.deepEqual(outcome, { accepted: 2, dropped: 4 });
+    assert.deepEqual(
+      store.events.map((event) => event.url),
+      ["/home", "/modulesx"],
+    );
+  });
+
+  test("any other website keeps a page of its own under /modules", async () => {
+    const outcome = await processCollectBatch(
+      WEBSITE,
+      [pageview("https://example.com/modules/crm")],
+      newVisitor(),
+    );
+    assert.deepEqual(outcome, { accepted: 1, dropped: 0 });
   });
 
   test("an event and its daily row are dated by the same clock", async () => {
@@ -361,6 +396,28 @@ test("a sanitized snapshot keeps what renders the page", () => {
   );
   assert.match(html, /<select><option>Shown<\/option><\/select>/);
   assert.doesNotMatch(html, /<\/(br|img|wbr)>/);
+});
+
+test("a stylesheet survives a < that opens no markup, never one that does", () => {
+  // Tailwind v4 writes media ranges with a bare `<`.
+  const tailwind =
+    "@media (width < 48rem){.a{display:none}}.b:has(> p){margin:0}";
+  assert.match(
+    sanitizeSnapshotHtml(`<style>${tailwind}</style>`),
+    /<style>@media \(width < 48rem\)\{\.a\{display:none\}\}\.b:has\(> p\)\{margin:0\}<\/style>/,
+  );
+  const breakouts = [
+    '<style>a{content:"</style><script>alert(1)</script>"}</style>',
+    "<style>a{}</STYLE ><img src=x onerror=alert(2)></style>",
+    "<svg><style><img src=x onerror=alert(3)></style></svg>",
+    "<math><style><!--</style><img src=x onerror=alert(4)>--></style></math>",
+  ];
+  for (const breakout of breakouts) {
+    assert.doesNotMatch(
+      sanitizeSnapshotHtml(breakout),
+      /alert|onerror|<script/i,
+    );
+  }
 });
 
 test("only browser-stamped hostnames are offered for Allow this host", () => {

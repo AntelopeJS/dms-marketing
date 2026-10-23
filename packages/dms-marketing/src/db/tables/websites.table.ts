@@ -9,6 +9,8 @@ import { CORE_SCHEMA_NAME } from "@antelopejs/interface-dms/constants";
 
 export const websitesTableName = "marketing_websites";
 
+export type WebsiteSnapshotsSetBy = "config" | "owner";
+
 /**
  * A tracked website — the unit of collection and the tenancy bridge: the
  * public collect endpoint carries no JWT, so events reference a website id
@@ -41,6 +43,15 @@ export class Website extends Table {
    * never does. */
   @Field("boolean")
   declare snapshotsEnabled: boolean;
+
+  /**
+   * Who set `snapshotsEnabled` last: `config` when the module configuration
+   * did (`dashboardTracking.snapshots`), `owner` once someone changed it on
+   * the Websites page or over the API. A configured value only applies
+   * while the row is not the owner's. Absent on a website someone created.
+   */
+  @Field("string")
+  declare snapshotsSetBy?: WebsiteSnapshotsSetBy;
 
   /** Every text node of a capture masked, not just form values. */
   @Field("boolean")

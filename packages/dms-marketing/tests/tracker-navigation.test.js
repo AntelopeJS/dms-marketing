@@ -3,6 +3,7 @@ const { readFileSync } = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const test = it;
+const { dashboardExcludedPaths } = require("../dist/frontend-module");
 
 // --- The tracker on a single-page site ---------------------------------
 
@@ -145,6 +146,32 @@ test("excluded paths send nothing, custom events included", () => {
     "site /settings/profile/security",
     "site /settings",
   ]);
+  assert.equal(
+    sent.some((event) => event.kind === "custom"),
+    false,
+  );
+});
+
+test("the dashboard's tag sends nothing from the module area", () => {
+  const patterns = dashboardExcludedPaths({
+    enabled: true,
+    websiteName: "Dashboard",
+    excludePaths: [],
+    snapshots: false,
+  });
+  const tracker = loadTracker(
+    { "data-website-id": "site", "data-exclude-paths": patterns.join(",") },
+    "/modules",
+  );
+  tracker.track("on-modules");
+  tracker.navigate("/modules/store");
+  tracker.navigate("/modules/crm/customers");
+  tracker.track("on-a-module");
+  tracker.navigate("/modules/");
+  tracker.navigate("/orders");
+  tracker.navigate("/modulesx");
+  const sent = tracker.sent();
+  assert.deepEqual(pageviews(sent), ["site /orders", "site /modulesx"]);
   assert.equal(
     sent.some((event) => event.kind === "custom"),
     false,
