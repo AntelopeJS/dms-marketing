@@ -266,6 +266,63 @@ export function sanitizeSnapshotHtml(html: string): string {
   return `<!DOCTYPE html>${SNAPSHOT_CSP_META}${sanitizeHtml(html, SANITIZE_OPTIONS)}`;
 }
 
+/** Attributes that carry text a visitor could read: the ones
+ * static/snapshot.js masks with the text. */
+const TEXT_ATTRIBUTES = new Set([
+  "title",
+  "alt",
+  "label",
+  "placeholder",
+  "aria-label",
+  "aria-description",
+  "aria-placeholder",
+  "aria-valuetext",
+]);
+const MASK_CHAR = "x";
+const CHARACTER_REFERENCE = /&(?:[a-z\d]+|#\d+|#x[\da-f]+);/gi;
+
+/** As the capture masks: every visible character, whitespace kept so
+ * lines still wrap where they did. The parser hands text re-escaped, so a
+ * character reference is one character. */
+function maskText(text: string): string {
+  return text.replace(CHARACTER_REFERENCE, MASK_CHAR).replace(/\S/g, MASK_CHAR);
+}
+
+function withMaskedAttributes(
+  tagName: string,
+  attribs: sanitizeHtml.Attributes,
+): sanitizeHtml.Tag {
+  const tag = withoutUnsafeAttributes(tagName, attribs);
+  for (const name of Object.keys(tag.attribs)) {
+    if (TEXT_ATTRIBUTES.has(name)) {
+      tag.attribs[name] = maskText(tag.attribs[name] ?? "");
+    }
+  }
+  return tag;
+}
+
+/** The sanitizer's pass, text masked: `<style>` stays verbatim (the parser
+ * hands it to no text filter), so the page keeps its look. */
+const MASK_OPTIONS: sanitizeHtml.IOptions = {
+  ...SANITIZE_OPTIONS,
+  textFilter: maskText,
+  transformTags: {
+    ...SANITIZE_OPTIONS.transformTags,
+    "*": withMaskedAttributes,
+  },
+};
+
+/**
+ * A stored document with its text masked, whatever its site's own mask
+ * setting: the structure, blocks and styles stay, every word, label and
+ * alternative text becomes `x`. What a backdrop read outside the viewer's
+ * workspace sends — another workspace's unmasked capture never leaves the
+ * server. Sanitized again on the way, the policy back in front.
+ */
+export function maskSnapshotHtml(html: string): string {
+  return `<!DOCTYPE html>${SNAPSHOT_CSP_META}${sanitizeHtml(html, MASK_OPTIONS)}`;
+}
+
 /** The page's origin, only on a host the website declares: it is what the
  * console's "Open" links to. */
 export function pageOrigin(
@@ -433,6 +490,43 @@ export async function summarizeSnapshots(
   return summaries;
 }
 
+/**
+ * The captures of several sites, summarized per path as one: the layouts
+ * any holds, too heavy only where every site's captures of it are.
+ */
+export async function summarizeScopedSnapshots(
+  sites: Array<{ tenantId: string; websiteId: string }>,
+): Promise<Map<string, PageSnapshotSummary>> {
+  const merged = new Map<string, PageSnapshotSummary>();
+  const all = await Promise.all(
+    sites.map((site) => summarizeSnapshots(site.tenantId, site.websiteId)),
+  );
+  for (const summaries of all) {
+    for (const [url, summary] of summaries) {
+      const seen = merged.get(url);
+      merged.set(
+        url,
+        seen
+          ? {
+              // A document beats an oversize report, as within one site.
+              capturedAt:
+                seen.tooHeavy === summary.tooHeavy
+                  ? Math.max(seen.capturedAt, summary.capturedAt)
+                  : (seen.tooHeavy ? summary : seen).capturedAt,
+              layouts: SNAPSHOT_LAYOUTS.filter(
+                (layout) =>
+                  seen.layouts.includes(layout) ||
+                  summary.layouts.includes(layout),
+              ),
+              tooHeavy: seen.tooHeavy && summary.tooHeavy,
+            }
+          : summary,
+      );
+    }
+  }
+  return merged;
+}
+
 export interface PageSnapshotPayload {
   layout: SnapshotLayout;
   /** False when no capture exists at the asked layout and the nearest one
@@ -450,6 +544,8 @@ export interface PageSnapshotPayload {
   /** The upload cap in force (`snapshotMaxBytes`), for an oversize notice. */
   maxBytes: number;
   html: string | null;
+  /** Text masked by the server on the way out (see maskSnapshotHtml). */
+  masked?: boolean;
 }
 
 function layoutRank(layout: SnapshotLayout): number {
@@ -495,6 +591,45 @@ export async function readPageSnapshot(
     html: row.html
       ? gunzipSync(Buffer.from(row.html, "base64")).toString("utf8")
       : null,
+  };
+}
+
+/** A document first, then the asked layout, then the newest. */
+function bestAcrossSites(a: PageSnapshotPayload, b: PageSnapshotPayload) {
+  return (
+    Number(b.html !== null) - Number(a.html !== null) ||
+    Number(b.exact) - Number(a.exact) ||
+    b.capturedAt - a.capturedAt
+  );
+}
+
+/**
+ * Backdrop of one path over several sites, each read in its own tenant: the
+ * best capture of each, then the one that renders, at the asked layout, the
+ * most recent — the page as it looks now. With `mask`, its text is masked
+ * here, before anything is sent.
+ */
+export async function readScopedPageSnapshot(
+  sites: Array<{ tenantId: string; websiteId: string }>,
+  url: string,
+  layout: SnapshotLayout,
+  mask: boolean,
+): Promise<PageSnapshotPayload | null> {
+  const found = await Promise.all(
+    sites.map((site) =>
+      readPageSnapshot(site.tenantId, site.websiteId, url, layout),
+    ),
+  );
+  const best = found
+    .filter((snapshot) => snapshot !== null)
+    .sort(bestAcrossSites)[0];
+  if (!best || !mask) {
+    return best ?? null;
+  }
+  return {
+    ...best,
+    html: best.html === null ? null : maskSnapshotHtml(best.html),
+    masked: true,
   };
 }
 

@@ -95,7 +95,18 @@ const props = defineProps<{
    * grows with the snapshot, as when it is stacked under the list.
    */
   height?: number | null
+  /**
+   * Another workspace's dashboard, or `all` (see PagesExplorer): the page is
+   * read there, read-only — no reset, no snapshot option — and its capture
+   * comes masked from the backend. Absent or empty: the website's own.
+   */
+  workspace?: string
+  /** Whether any site of that scope keeps snapshots. */
+  workspaceSnapshots?: boolean
 }>()
+
+/** Read past the viewer's workspace (see `workspace`). */
+const foreign = computed(() => !!props.workspace)
 
 /** The site's snapshot options were saved here, as the backend answered
  * them; the parent owns the row. */
@@ -159,6 +170,7 @@ const previewRequest: PagePreviewRequest = {
   websiteId: () => props.website?._id,
   path: () => props.path,
   period: () => props.period,
+  workspace: () => props.workspace,
 }
 const heatmapRead = usePageHeatmap(previewRequest)
 const heatmap = computed(() =>
@@ -279,8 +291,10 @@ const layout = computed<MarketingSnapshotLayout>(
       ?.layout ?? 'desktop',
 )
 
-const snapshotsEnabled = computed(
-  () => props.website?.snapshotsEnabled ?? false,
+const snapshotsEnabled = computed(() =>
+  foreign.value
+    ? props.workspaceSnapshots === true
+    : (props.website?.snapshotsEnabled ?? false),
 )
 
 // Not fetched while the site has snapshots off: the option's banner is the
@@ -291,6 +305,7 @@ const snapshotRead = usePageSnapshot({
   layout,
   enabled: snapshotsEnabled,
   maskText: () => props.website?.snapshotMaskText === true,
+  workspace: () => props.workspace,
 })
 const isSnapshotAsked = computed(
   () => snapshotsEnabled.value && !!props.website?._id && !!props.path,
@@ -747,7 +762,9 @@ interface StatusStrip {
 /** Where the site's snapshot switch lives: the Websites page's settings,
  * scrolled to it. The menu's toggles are only a shortcut to it. */
 const snapshotSettingsLink = computed(() =>
-  props.website ? websitesLink(props.website._id, 'snapshots') : '',
+  props.website && !foreign.value
+    ? websitesLink(props.website._id, 'snapshots')
+    : '',
 )
 
 function snapshotSettingsAction(): StripAction | undefined {
@@ -790,10 +807,13 @@ const statusStrip = computed<StatusStrip | null>(() => {
           icon: 'i-ph-camera-slash',
           title: t('page.marketing.pages.preview.snapshots_off'),
           description: t('page.marketing.pages.preview.snapshots_off_hint'),
-          action: {
-            label: t('page.marketing.pages.preview.enable_snapshots'),
-            run: () => void updateSnapshotOptions({ snapshotsEnabled: true }),
-          },
+          action: foreign.value
+            ? undefined
+            : {
+                label: t('page.marketing.pages.preview.enable_snapshots'),
+                run: () =>
+                  void updateSnapshotOptions({ snapshotsEnabled: true }),
+              },
           secondary: snapshotSettingsAction(),
         }
       : null,
@@ -845,10 +865,12 @@ const statusStrip = computed<StatusStrip | null>(() => {
               ? formatShortDate(snapshot.value.capturedAt, locale.value)
               : '',
           }),
-          action: {
-            label: t('page.marketing.pages.reset.page_button'),
-            run: () => void resetPageHeatmap(),
-          },
+          action: foreign.value
+            ? undefined
+            : {
+                label: t('page.marketing.pages.reset.page_button'),
+                run: () => void resetPageHeatmap(),
+              },
           dismiss: () => {
             if (props.website) {
               dismissDrift(props.website._id, props.path)
@@ -924,13 +946,16 @@ const capturedUrl = computed(() =>
     : '',
 )
 
-const maskLine = computed(() =>
-  t(
+const maskLine = computed(() => {
+  if (snapshot.value?.masked || foreign.value) {
+    return t('page.marketing.pages.preview.workspace_masked')
+  }
+  return t(
     props.website?.snapshotMaskText
       ? 'page.marketing.pages.preview.all_masked'
       : 'page.marketing.pages.preview.fields_masked',
-  ),
-)
+  )
+})
 
 // --- Most clicked -----------------------------------------------------------
 
@@ -1062,44 +1087,53 @@ watch(
   { flush: 'post' },
 )
 
-const moreItems = computed(() => [
+// Another workspace's page is read-only: its options and reset are its own.
+const moreItems = computed(() =>
   [
-    ...snapshotOptionItems(
-      props.website,
-      (patch) => void updateSnapshotOptions(patch),
-      t,
-    ),
-    ...(snapshotSettingsLink.value
+    [
+      ...(foreign.value
+        ? []
+        : snapshotOptionItems(
+            props.website,
+            (patch) => void updateSnapshotOptions(patch),
+            t,
+          )),
+      ...(snapshotSettingsLink.value
+        ? [
+            {
+              label: t('page.marketing.pages.preview.snapshot_settings'),
+              icon: 'i-ph-gear-six',
+              to: snapshotSettingsLink.value,
+            },
+          ]
+        : []),
+    ],
+    ...(externalUrl.value
       ? [
-          {
-            label: t('page.marketing.pages.preview.snapshot_settings'),
-            icon: 'i-ph-gear-six',
-            to: snapshotSettingsLink.value,
-          },
+          [
+            {
+              label: t('page.marketing.pages.preview.open_in_tab'),
+              icon: 'i-ph-arrow-square-out',
+              to: externalUrl.value,
+              target: '_blank',
+            },
+          ],
         ]
       : []),
-  ],
-  ...(externalUrl.value
-    ? [
-        [
-          {
-            label: t('page.marketing.pages.preview.open_in_tab'),
-            icon: 'i-ph-arrow-square-out',
-            to: externalUrl.value,
-            target: '_blank',
-          },
-        ],
-      ]
-    : []),
-  [
-    {
-      label: t('page.marketing.pages.reset.page_button'),
-      icon: 'i-ph-eraser',
-      color: 'error' as const,
-      onSelect: () => void resetPageHeatmap(),
-    },
-  ],
-])
+    ...(foreign.value
+      ? []
+      : [
+          [
+            {
+              label: t('page.marketing.pages.reset.page_button'),
+              icon: 'i-ph-eraser',
+              color: 'error' as const,
+              onSelect: () => void resetPageHeatmap(),
+            },
+          ],
+        ]),
+  ].filter((group) => group.length > 0),
+)
 
 // --- Surface ----------------------------------------------------------------
 
@@ -1216,7 +1250,11 @@ const surfaceEmpty = computed(() => {
             :aria-label="t('page.marketing.pages.preview.layout')"
           />
         </span>
-        <UDropdownMenu :items="moreItems" :content="{ align: 'end' }">
+        <UDropdownMenu
+          v-if="moreItems.length > 0"
+          :items="moreItems"
+          :content="{ align: 'end' }"
+        >
           <UButton
             icon="i-ph-dots-three"
             size="xs"

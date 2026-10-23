@@ -1,5 +1,8 @@
 import path from "node:path";
-import type { AddFrontendModuleOptions } from "@antelopejs/interface-dms/page";
+import {
+  type AddFrontendModuleOptions,
+  MODULE_URL_PREFIX,
+} from "@antelopejs/interface-dms/page";
 import {
   type DashboardTrackingConfig,
   type DmsMarketingConfigInput,
@@ -12,12 +15,28 @@ import {
   FRONTEND_MODULE_NAME,
 } from "./types/constants";
 
-/** The patterns the tag leaves uncounted: the sign-in pages, then the
- * configured ones. */
+/**
+ * The module area of the DMS — the modules page, the store and every page a
+ * module registers under `MODULE_URL_PREFIX`: never counted, whatever the
+ * configuration, like the sign-in pages. Dashboard tracking analyses the
+ * product the owner builds, not the modules AntelopeJS or the community
+ * ship; a project wanting figures on a module of its own tracks its own
+ * pages instead. `/x/**` covers `/x` itself.
+ */
+export const DASHBOARD_MODULE_AREA_PATHS = [`${MODULE_URL_PREFIX}/**`];
+
+/** The patterns the tag leaves uncounted: the sign-in pages and the module
+ * area, then the configured ones. */
 export function dashboardExcludedPaths(
   config: DashboardTrackingConfig,
 ): string[] {
-  return [...new Set([...DASHBOARD_AUTH_PATHS, ...config.excludePaths])];
+  return [
+    ...new Set([
+      ...DASHBOARD_AUTH_PATHS,
+      ...DASHBOARD_MODULE_AREA_PATHS,
+      ...config.excludePaths,
+    ]),
+  ];
 }
 
 /**

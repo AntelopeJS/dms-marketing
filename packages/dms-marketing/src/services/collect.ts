@@ -23,6 +23,7 @@ import {
 } from "@/types/constants";
 import { campaignKey, resolveChannel } from "./acquisition";
 import { BoundedCache } from "./bounded-cache";
+import { hidesDashboardPath } from "./dashboard-tracking";
 import { runningExperimentKeys } from "./experiment-definitions";
 import { lookupCountry } from "./geoip";
 import { noteCollected } from "./realtime";
@@ -102,7 +103,10 @@ export async function processCollectBatch(
   const now = new Date();
   const prepared = await acceptExposures(
     website,
-    prepareEvents(website._id, events),
+    prepareEvents(website._id, events).filter(
+      // The tag never sends these; an older tag or a crafted beacon may.
+      (event) => !hidesDashboardPath(website, event.url.path),
+    ),
   );
   const refused = { accepted: 0, dropped: events.length };
   if (prepared.length === 0) {

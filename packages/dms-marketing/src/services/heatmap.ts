@@ -109,6 +109,15 @@ function anchorOf(data: ClickEventData): MarketingHeatmapAnchor | null {
   };
 }
 
+/** The key a cell was bucketed under: its anchor and document fractions
+ * are grid values already, so the key comes back from the cell alone. */
+function cellKey(cell: MarketingHeatmapPoint): string {
+  const anchor = cell.anchor;
+  return anchor
+    ? `a:${anchor.selector}:${anchor.nth}:${toGridIndex(anchor.ox)}:${toGridIndex(anchor.oy)}`
+    : `d:${toGridIndex(cell.x)}:${toGridIndex(cell.y)}`;
+}
+
 /**
  * Re-bucket the least-weighted anchored cells into the document grid once
  * they outnumber MAX_ANCHORED_HEATMAP_CELLS: clicks past the cap lose their
@@ -179,10 +188,28 @@ function bucketClick(
   return true;
 }
 
+/** Cells and totals from their cells: the anchored cap first, since
+ * re-bucketing merges weights into document cells. */
+function heatmapOf(
+  cells: Map<string, MarketingHeatmapPoint>,
+  totalClicks: number,
+  truncated: boolean,
+): MarketingHeatmapPayload {
+  capAnchoredCells(cells);
+  const points = [...cells.values()];
+  return {
+    points,
+    maxWeight: points.reduce((top, point) => Math.max(top, point.weight), 0),
+    totalClicks,
+    truncated,
+  };
+}
+
 /** Fold click payloads into heatmap cells and totals. */
 function bucketClicks(
   payloads: ClickPayload[],
-): Omit<MarketingHeatmapPayload, "truncated"> {
+  truncated: boolean,
+): MarketingHeatmapPayload {
   const cells = new Map<string, MarketingHeatmapPoint>();
   let totalClicks = 0;
   for (const payload of payloads) {
@@ -191,14 +218,35 @@ function bucketClicks(
       totalClicks++;
     }
   }
-  // maxWeight only after the cap: re-bucketing merges weights into document cells.
-  capAnchoredCells(cells);
-  const points = [...cells.values()];
-  return {
-    points,
-    maxWeight: points.reduce((top, point) => Math.max(top, point.weight), 0),
-    totalClicks,
-  };
+  return heatmapOf(cells, totalClicks, truncated);
+}
+
+/**
+ * Heatmaps computed apart — one per workspace, each in its own tenant —
+ * merged into one: a cell is the same element (selector, rank, offset) or
+ * the same document cell in all of them, so their weights add up; the
+ * anchored cap applies again to the union.
+ */
+export function mergeClickHeatmaps(
+  heatmaps: MarketingHeatmapPayload[],
+): MarketingHeatmapPayload {
+  const cells = new Map<string, MarketingHeatmapPoint>();
+  let totalClicks = 0;
+  let truncated = false;
+  for (const heatmap of heatmaps) {
+    totalClicks += heatmap.totalClicks;
+    truncated ||= heatmap.truncated;
+    for (const point of heatmap.points) {
+      const key = cellKey(point);
+      const cell = cells.get(key);
+      if (cell) {
+        cell.weight += point.weight;
+      } else {
+        cells.set(key, { ...point });
+      }
+    }
+  }
+  return heatmapOf(cells, totalClicks, truncated);
 }
 
 /**
@@ -232,10 +280,7 @@ export async function computeClickHeatmap(
     limit: MAX_HEATMAP_EVENTS,
     fields: CLICK_FIELDS,
   });
-  return {
-    ...bucketClicks(events),
-    truncated: events.length >= MAX_HEATMAP_EVENTS,
-  };
+  return bucketClicks(events, events.length >= MAX_HEATMAP_EVENTS);
 }
 
 /**
@@ -289,6 +334,25 @@ export async function computeScrollDepth(
   return { ...cumulativeReach(buckets), truncated: false };
 }
 
+/** Scroll distributions computed apart, one per workspace, added up. */
+export function mergeScrollDepths(
+  depths: MarketingScrollDepthPayload[],
+): MarketingScrollDepthPayload {
+  const reached = Array.from<number>({ length: SCROLL_DEPTH_SCALE + 1 }).fill(
+    0,
+  );
+  let views = 0;
+  for (const depth of depths) {
+    views += depth.views;
+    depth.reached.forEach((count, index) => (reached[index] += count));
+  }
+  return {
+    views,
+    reached: views > 0 ? reached : [],
+    truncated: depths.some((depth) => depth.truncated),
+  };
+}
+
 /** Per-path heatmap activity of one site over a window, for the inventory. */
 export interface PageActivity {
   clicks: Map<string, number>;
@@ -320,11 +384,21 @@ async function countByPath(
   return new Map(rows.map((row) => [row.url, row.count]));
 }
 
-export async function computePageActivity(
+/** One site's activity before its sampling share is settled: the parts
+ * that add up across sites. */
+interface PageActivityCounts {
+  clicks: Map<string, number>;
+  sampled: Map<string, number>;
+  /** Pageviews declaring a rate, and the sampled share among them. */
+  declaredViews: number;
+  sampledShare: number;
+}
+
+async function countPageActivity(
   tenantId: string,
   websiteId: string,
   window: QueryWindow,
-): Promise<PageActivity> {
+): Promise<PageActivityCounts> {
   const [clicks, sampled, declared] = await Promise.all([
     countByPath(tenantId, websiteId, window, "click"),
     countByPath(tenantId, websiteId, window, "scroll"),
@@ -334,18 +408,58 @@ export async function computePageActivity(
       until: window.until,
     }),
   ]);
-  let pageviews = 0;
+  let declaredViews = 0;
   let sampledShare = 0;
   for (const { sample, views } of declared) {
-    pageviews += views;
+    declaredViews += views;
     sampledShare += sample * views;
+  }
+  return { clicks, sampled, declaredViews, sampledShare };
+}
+
+function addCounts(into: Map<string, number>, from: Map<string, number>) {
+  for (const [path, count] of from) {
+    into.set(path, (into.get(path) ?? 0) + count);
+  }
+}
+
+export async function computePageActivity(
+  tenantId: string,
+  websiteId: string,
+  window: QueryWindow,
+): Promise<PageActivity> {
+  return computeScopedPageActivity([{ tenantId, websiteId }], window);
+}
+
+/**
+ * The activity of several sites, each counted in its own tenant, added up:
+ * the sampling share is the declared one over all their pageviews.
+ */
+export async function computeScopedPageActivity(
+  sites: Array<{ tenantId: string; websiteId: string }>,
+  window: QueryWindow,
+): Promise<PageActivity> {
+  const counted = await Promise.all(
+    sites.map((site) =>
+      countPageActivity(site.tenantId, site.websiteId, window),
+    ),
+  );
+  const clicks = new Map<string, number>();
+  const sampled = new Map<string, number>();
+  let declaredViews = 0;
+  let sampledShare = 0;
+  for (const counts of counted) {
+    addCounts(clicks, counts.clicks);
+    addCounts(sampled, counts.sampled);
+    declaredViews += counts.declaredViews;
+    sampledShare += counts.sampledShare;
   }
   return {
     clicks,
     sampled,
     sampleRate:
-      pageviews >= MIN_PAGEVIEWS_FOR_SAMPLE_RATE
-        ? sampledShare / pageviews
+      declaredViews >= MIN_PAGEVIEWS_FOR_SAMPLE_RATE
+        ? sampledShare / declaredViews
         : null,
   };
 }

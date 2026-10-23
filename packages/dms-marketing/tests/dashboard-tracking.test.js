@@ -7,7 +7,9 @@ const {
 } = require("../dist/frontend-module");
 const {
   dashboardWebsiteId,
+  hidesDashboardPath,
   isDashboardWebsite,
+  isModuleAreaPath,
   provisionDashboardWebsite,
   setSnapshotsByOwner,
 } = require("../dist/services/dashboard-tracking");
@@ -81,14 +83,17 @@ test("malformed values fall back instead of reaching the tag", () => {
   assert.deepEqual(getConfig().dashboardTracking.excludePaths, []);
 });
 
-test("the sign-in pages are always excluded, before the configured ones", () => {
+test("the sign-in pages and the module area are always excluded, before the configured ones", () => {
   assert.deepEqual(
     dashboardExcludedPaths({ ...ENABLED, excludePaths: ["/settings/**"] }),
-    ["/auth/**", "/settings/**"],
+    ["/auth/**", "/modules/**", "/settings/**"],
   );
   assert.deepEqual(
-    dashboardExcludedPaths({ ...ENABLED, excludePaths: ["/auth/**"] }),
-    ["/auth/**"],
+    dashboardExcludedPaths({
+      ...ENABLED,
+      excludePaths: ["/auth/**", "/modules/**"],
+    }),
+    ["/auth/**", "/modules/**"],
   );
 });
 
@@ -102,7 +107,9 @@ test("the frontend module registers as before while it is off", () => {
     {
       configKey: "dmsMarketing",
       options: {
-        dashboardTracking: { excludePaths: ["/auth/**", "/settings/**"] },
+        dashboardTracking: {
+          excludePaths: ["/auth/**", "/modules/**", "/settings/**"],
+        },
       },
     },
   );
@@ -347,4 +354,31 @@ test("re-saving the same snapshot value does not claim the switch", () => {
   const website = { snapshotsEnabled: true, snapshotsSetBy: "config" };
   assert.equal(setSnapshotsByOwner(website, true), false);
   assert.equal(website.snapshotsSetBy, "config");
+});
+
+// --- The module area ---------------------------------------------------------
+
+const TENANT = "tenant-a";
+const DASHBOARD = { _id: dashboardWebsiteId(TENANT), tenantId: TENANT };
+const OTHER_SITE = { _id: "some-uuid", tenantId: TENANT };
+
+test("the module area is the modules page, the store and every module page", () => {
+  for (const path of [
+    "/modules",
+    "/modules/",
+    "/modules/store",
+    "/modules/crm/customers/42",
+    "/Modules/CRM",
+  ]) {
+    assert.equal(isModuleAreaPath(path), true, path);
+  }
+  for (const path of ["/", "/modulesx", "/settings/modules", "/module"]) {
+    assert.equal(isModuleAreaPath(path), false, path);
+  }
+});
+
+test("only the dashboard's own website hides the module area", () => {
+  assert.equal(hidesDashboardPath(DASHBOARD, "/modules/crm"), true);
+  assert.equal(hidesDashboardPath(DASHBOARD, "/orders"), false);
+  assert.equal(hidesDashboardPath(OTHER_SITE, "/modules/crm"), false);
 });

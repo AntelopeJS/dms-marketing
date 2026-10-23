@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { MODULE_URL_PREFIX } from "@antelopejs/interface-dms/page";
 import type { Website } from "@/db/tables/websites.table";
 import { MAX_EXTRA_DOMAINS } from "@/types/constants";
 import type { DashboardTrackingConfig } from "@/config";
@@ -33,6 +34,30 @@ export function isDashboardWebsite(
   website: Pick<Website, "_id" | "tenantId">,
 ): boolean {
   return website._id === dashboardWebsiteId(website.tenantId);
+}
+
+const MODULE_AREA_PATH = MODULE_URL_PREFIX.toLowerCase();
+
+/**
+ * `path` (as stored: pathname only) lies in the DMS module area, which the
+ * dashboard's website never counts (`DASHBOARD_MODULE_AREA_PATHS`). Case
+ * blind: the dashboard's router is, so `/Modules/x` shows the same page.
+ */
+export function isModuleAreaPath(path: string): boolean {
+  const lower = path.toLowerCase();
+  return lower === MODULE_AREA_PATH || lower.startsWith(`${MODULE_AREA_PATH}/`);
+}
+
+/**
+ * The dashboard's website never collects `path`: the tag leaves the module
+ * area out and collection refuses it. Any other website keeps every path —
+ * a site of its own may well have a `/modules` page.
+ */
+export function hidesDashboardPath(
+  website: Pick<Website, "_id" | "tenantId">,
+  path: string,
+): boolean {
+  return isModuleAreaPath(path) && isDashboardWebsite(website);
 }
 
 /**

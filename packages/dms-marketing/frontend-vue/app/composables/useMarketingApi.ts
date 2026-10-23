@@ -24,7 +24,10 @@ export interface MarketingRejectedSource {
   lastAt: number
 }
 
-/** One card of the Websites page (GET /api/marketing/websites/summary). */
+/**
+ * One card of the Websites page: the computed fields a row of the websites
+ * table (GET /api/marketing/tables/websites/list) carries.
+ */
 export interface MarketingWebsiteCard extends ContextWebsite {
   extraDomains: string[]
   snapshotsEnabled: boolean
@@ -37,9 +40,14 @@ export interface MarketingWebsiteCard extends ContextWebsite {
   snapshots: number
   sampleRate: number
   rejected: MarketingRejectedSource[]
+  /** The site `dashboardTracking` provisions: it cannot be deleted. */
+  dashboard: boolean
 }
 
-/** What deleting a website discards (GET /websites/:id/deletion). */
+/**
+ * What deleting a website, or purging its data, discards
+ * (GET /websites/:id/deletion).
+ */
 export interface MarketingWebsiteDeletionImpact {
   /** Every stored day, not a window. */
   sessions: number
@@ -48,6 +56,24 @@ export interface MarketingWebsiteDeletionImpact {
   since: number | null
   funnels: number
   snapshots: number
+  /** Clicks and scrolls, every period: what the heatmaps are drawn from. */
+  heatmapEvents: number
+}
+
+/** What a purge deletes: everything collected, or the heatmaps alone. */
+export type MarketingPurgeScope = 'all' | 'heatmaps'
+
+/** Rows a purge deleted (POST /websites/:id/purge), 0 for what it keeps. */
+export interface MarketingWebsitePurge {
+  purged: string
+  scope: MarketingPurgeScope
+  deleted: {
+    events: number
+    sessions: number
+    days: number
+    snapshots: number
+    imports: number
+  }
 }
 
 export interface MarketingConnectionStatus {
@@ -133,11 +159,27 @@ export interface MarketingPageSnapshot {
   /** The upload cap in force; absent from an older backend. */
   maxBytes?: number
   html: string | null
+  /** Text masked by the backend: a capture of another workspace. */
+  masked?: boolean
 }
 
 export interface MarketingPageSnapshotResponse {
   /** Null while no visit has captured the page yet. */
   snapshot: MarketingPageSnapshot | null
+}
+
+/** A workspace the dashboard's heatmaps can be read for (platform owners). */
+export interface MarketingWorkspace {
+  id: string
+  name: string
+  /** The viewer's own workspace. */
+  current: boolean
+}
+
+export interface MarketingWorkspaces {
+  /** Empty: no selector (not a platform owner, a customer website, or a
+   * single workspace). */
+  workspaces: MarketingWorkspace[]
 }
 
 /** What was captured of one path, every layout together. */
@@ -465,6 +507,12 @@ export function useMarketingApi() {
       $authFetch<{ deleted: string }>(
         `/api/marketing/websites/${encodeURIComponent(website)}`,
         { method: 'DELETE' },
+      ),
+
+    purgeWebsite: (website: string, scope: MarketingPurgeScope) =>
+      $authFetch<MarketingWebsitePurge>(
+        `/api/marketing/websites/${encodeURIComponent(website)}/purge`,
+        { method: 'POST', body: { scope } },
       ),
 
     previewFunnel: (
