@@ -5,6 +5,7 @@ const models = require("@antelopejs/interface-database-decorators/model");
 const { setConfig } = require("../dist/config");
 const { MarketingEventsModel, MarketingSessionsModel } = require("../dist/db");
 const { processCollectBatch } = require("../dist/services/collect");
+const { dashboardWebsiteId } = require("../dist/services/dashboard-tracking");
 const {
   forgetAcceptedSources,
   listRejectedSources,
@@ -129,6 +130,40 @@ describe("a collect batch", () => {
         ["custom", "/landing"],
       ],
     );
+  });
+
+  test("the dashboard's website drops what its module area sends", async () => {
+    const dashboard = {
+      ...WEBSITE,
+      _id: dashboardWebsiteId(WEBSITE.tenantId),
+    };
+    const origin = "https://example.com";
+    const outcome = await processCollectBatch(
+      dashboard,
+      [
+        pageview(`${origin}/modules`),
+        pageview(`${origin}/modules/crm/customers?tab=2`),
+        { kind: "custom", url: `${origin}/modules/store`, name: "install" },
+        { kind: "click", url: `${origin}/Modules/crm`, data: { x: 1, y: 1 } },
+        pageview(`${origin}/home`),
+        pageview(`${origin}/modulesx`),
+      ],
+      newVisitor(),
+    );
+    assert.deepEqual(outcome, { accepted: 2, dropped: 4 });
+    assert.deepEqual(
+      store.events.map((event) => event.url),
+      ["/home", "/modulesx"],
+    );
+  });
+
+  test("any other website keeps a page of its own under /modules", async () => {
+    const outcome = await processCollectBatch(
+      WEBSITE,
+      [pageview("https://example.com/modules/crm")],
+      newVisitor(),
+    );
+    assert.deepEqual(outcome, { accepted: 1, dropped: 0 });
   });
 
   test("an event and its daily row are dated by the same clock", async () => {

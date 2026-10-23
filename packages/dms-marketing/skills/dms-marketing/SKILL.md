@@ -78,6 +78,9 @@ config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludeP
   switch until a person changes it on the Websites page (`snapshotsSetBy: "owner"`): never re-enabled after.
 - `/auth/**` is never counted; signing out pauses the tag, a workspace switch retargets it. SPA navigations
   count. Restart `ajs dms dev` / rebuild the frontend after toggling the option.
+- The module area (`/modules`, `/modules/store`, `/modules/<module>/**`) is never counted either, not
+  configurable: dashboard tracking measures the owner's product, not shipped modules. Collect/snapshot drop
+  it server-side for the dashboard's website.
 - Platform owners (`users.owner`) on their own dashboard website can read other workspaces' dashboard
   heatmaps: `GET /api/marketing/stats/workspaces?website=<own dashboard id>` lists the DMS core tenants
   with a dashboard site (empty for anyone else or with fewer than 2), and `stats/pages|heatmap|scroll|snapshot`
