@@ -48,7 +48,7 @@ export class Website extends Table {
    * Who set `snapshotsEnabled` last: `config` when the module configuration
    * did (`dashboardTracking.snapshots`), `owner` once someone changed it on
    * the Websites page or over the API. A configured value only applies
-   * while the row is not the owner's. Absent on rows written before it.
+   * while the row is not the owner's. Absent on a website someone created.
    */
   @Field("string")
   declare snapshotsSetBy?: WebsiteSnapshotsSetBy;

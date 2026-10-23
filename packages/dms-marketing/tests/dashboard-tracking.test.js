@@ -4,6 +4,8 @@ const { getConfig, setConfig } = require("../dist/config");
 const {
   dashboardExcludedPaths,
   dashboardFrontendOptions,
+} = require("../dist/frontend-module");
+const {
   dashboardWebsiteId,
   isDashboardWebsite,
   provisionDashboardWebsite,
@@ -345,37 +347,4 @@ test("re-saving the same snapshot value does not claim the switch", () => {
   const website = { snapshotsEnabled: true, snapshotsSetBy: "config" };
   assert.equal(setSnapshotsByOwner(website, true), false);
   assert.equal(website.snapshotsSetBy, "config");
-});
-
-test("a row from before the switch was tracked is turned on, never off", async () => {
-  const id = dashboardWebsiteId("tenant-a");
-  const legacy = {
-    _id: id,
-    tenantId: "tenant-a",
-    name: "Dashboard",
-    domain: "localhost",
-    extraDomains: [],
-    trackingEnabled: true,
-    snapshotMaskText: true,
-  };
-  const store = fakeStore();
-  store.rows.set(id, { ...legacy, snapshotsEnabled: false });
-  const on = await provisionDashboardWebsite(
-    store,
-    "tenant-a",
-    "localhost",
-    WITH_SNAPSHOTS,
-  );
-  assert.equal(on.snapshotsChanged, true);
-  assert.equal(store.rows.get(id).snapshotsEnabled, true);
-  // Enabled with no record of who did it: maybe an owner, so it stays.
-  store.rows.set(id, { ...legacy, snapshotsEnabled: true });
-  const kept = await provisionDashboardWebsite(
-    store,
-    "tenant-a",
-    "localhost",
-    ENABLED,
-  );
-  assert.equal(kept.changed, false);
-  assert.equal(store.rows.get(id).snapshotsEnabled, true);
 });
