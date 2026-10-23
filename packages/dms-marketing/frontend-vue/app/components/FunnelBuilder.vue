@@ -5,6 +5,7 @@ import { parseExperimentValue } from '../composables/useExperiment'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
 import { useLatestRequest } from '../composables/useLatestRequest'
 import {
+  saveFunnel,
   useMarketingApi,
   type MarketingExperiment,
   type MarketingFunnelPreview,
@@ -722,10 +723,7 @@ async function save(): Promise<void> {
       conversionWindowHours: windowHours.value as number,
       experiment: experimentPayload(),
     }
-    const id = isEdit ? funnelId : (await api.createFunnel(input))[0]
-    if (isEdit) {
-      await api.updateFunnel(funnelId, input)
-    }
+    const id = await saveFunnel(api, input, funnelId)
     // Clean before leaving, or the leave guard would ask.
     markClean()
     toast.add({

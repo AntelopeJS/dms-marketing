@@ -7,6 +7,7 @@ import { MongoMemoryReplSet } from "mongodb-memory-server-core";
 const DATABASE = "marketing_retention";
 const MONGO_VERSION = "8.0.8";
 const JWT_SECRET = "marketing-test-secret";
+const HTML_RENDER_SECRET = "test-html-render-secret";
 let mongo: MongoMemoryReplSet;
 let storagePath: string;
 
@@ -31,7 +32,13 @@ export default defineConfig({
         version: ">=0.9.3 <1.0.0",
       },
       config: {
+        // No frontend server runs here: the dashboard URL is the API, whose
+        // paths the front proxy serves unchanged.
+        clientBaseUrl: "http://127.0.0.1",
         auth: { jwtSecret: JWT_SECRET },
+        // Outside development, which the test run is not, dms 0.10 refuses
+        // to start without a render secret of its own.
+        htmlRender: { serviceSecret: HTML_RENDER_SECRET },
         frontend: { bootstrapSecret: JWT_SECRET },
       },
     },
@@ -49,7 +56,7 @@ export default defineConfig({
       source: { type: "local", path: "node_modules/@antelopejs/mongodb" },
     },
     api: {
-      source: { type: "package", package: "@antelopejs/api", version: "1.3.5" },
+      source: { type: "package", package: "@antelopejs/api", version: "1.4.0" },
       config: {
         servers: [{ protocol: "http", host: "127.0.0.1", port: 0 }],
         publicBaseUrl: "http://127.0.0.1",
@@ -67,7 +74,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/file-storage-local",
-        version: "0.1.9",
+        version: "0.1.12",
       },
     },
     nodemailer: {

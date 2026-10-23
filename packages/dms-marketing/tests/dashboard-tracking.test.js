@@ -4,6 +4,8 @@ const { getConfig, setConfig } = require("../dist/config");
 const {
   dashboardExcludedPaths,
   dashboardFrontendOptions,
+} = require("../dist/frontend-module");
+const {
   dashboardWebsiteId,
   isDashboardWebsite,
   provisionDashboardWebsite,

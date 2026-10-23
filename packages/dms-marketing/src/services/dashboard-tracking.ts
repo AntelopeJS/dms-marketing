@@ -1,10 +1,6 @@
 import { createHash } from "node:crypto";
 import type { Website } from "@/db/tables/websites.table";
-import {
-  DASHBOARD_AUTH_PATHS,
-  FRONTEND_CONFIG_KEY,
-  MAX_EXTRA_DOMAINS,
-} from "@/types/constants";
+import { MAX_EXTRA_DOMAINS } from "@/types/constants";
 import type { DashboardTrackingConfig } from "@/config";
 import { websiteAcceptsHostname } from "./origin-guard";
 
@@ -37,32 +33,6 @@ export function isDashboardWebsite(
   website: Pick<Website, "_id" | "tenantId">,
 ): boolean {
   return website._id === dashboardWebsiteId(website.tenantId);
-}
-
-/** The patterns the tag leaves uncounted: the sign-in pages, then the
- * configured ones. */
-export function dashboardExcludedPaths(
-  config: DashboardTrackingConfig,
-): string[] {
-  return [...new Set([...DASHBOARD_AUTH_PATHS, ...config.excludePaths])];
-}
-
-/**
- * What `AddFrontendModule` gets for the dashboard's tag: nothing while it is
- * off, so a module left at the default registers exactly as before; the
- * frontend registers its plugin only when the options are there. Read by the
- * frontend at boot: a change takes a frontend restart.
- */
-export function dashboardFrontendOptions(config: DashboardTrackingConfig) {
-  if (!config.enabled) {
-    return {};
-  }
-  return {
-    configKey: FRONTEND_CONFIG_KEY,
-    options: {
-      dashboardTracking: { excludePaths: dashboardExcludedPaths(config) },
-    },
-  };
 }
 
 /**
