@@ -332,7 +332,7 @@
         "window_max": "Max {max} h",
         "window_presets": {
           "1": "1 h",
-          "24": "Whole session"
+          "24": "24 h"
         },
         "step_matched_as": "Matched as {path}",
         "step_unseen": "No raw event matches it in the last 30 days: funnels count raw events, not the daily statistics beside"
