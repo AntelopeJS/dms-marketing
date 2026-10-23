@@ -235,6 +235,12 @@ export const PAUSED_TRACKER_CACHE_MAX_AGE_SECONDS = 60;
 
 export const API_BASE_PATH = "/api/marketing";
 
+/**
+ * Published on when a website is created, changed or deleted, so the
+ * Websites page of every viewer reads its cards again.
+ */
+export const WEBSITES_REALTIME_TOPIC = "marketing.websites";
+
 export const HTTP_BAD_REQUEST = 400;
 export const HTTP_FORBIDDEN = 403;
 export const HTTP_NOT_FOUND = 404;

@@ -236,9 +236,9 @@
           "description": "Affichée tant que le site n'a envoyé aucune page vue, avec un lien vers le guide d'installation.",
           "name": "Alerte première page vue"
         },
-        "websites_grid": {
-          "description": "Les sites suivis et leurs paramètres.",
-          "name": "Sites"
+        "websites_table": {
+          "name": "Sites",
+          "description": "Les sites suivis en cartes, chacune ouvrant ses paramètres."
         }
       },
       "builder": {
@@ -332,7 +332,7 @@
         "window_max": "Max {max} h",
         "window_presets": {
           "1": "1 h",
-          "24": "Toute la session"
+          "24": "24 h"
         },
         "step_matched_as": "Cherché comme {path}",
         "step_unseen": "Aucun événement brut ne lui correspond ces 30 derniers jours : les funnels comptent les événements bruts, pas les statistiques journalières ci-contre"
@@ -427,6 +427,7 @@
         "xr": "Casque XR"
       },
       "errors": {
+        "dashboard_website_kept": "C'est le site du tableau de bord lui-même : il ne peut pas être supprimé. Mettez son suivi en pause ou purgez ses données à la place.",
         "duplicate_host": "Un autre site de cet espace déclare déjà cet hôte.",
         "duplicate_host_named": "{site} déclare déjà {host} : un hôte n'appartient qu'à un site de l'espace.",
         "duplicate_experiment_key": "Un autre test A/B de ce site utilise déjà cette clé.",
@@ -903,7 +904,6 @@
         },
         "list_truncated": "Seules les {count} premières pages sont listées. Filtrez, ou saisissez un chemin, pour en trouver une autre.",
         "missing_hint": "Une page manque ? Saisissez son chemin exact ci-dessus.",
-        "more_list": "Autres actions de la liste",
         "most_clicked": "Les plus cliqués",
         "most_clicked_empty": "Aucun élément ancré pour l'instant : les clics s'affichent seulement sur la page.",
         "no_match": {
@@ -971,10 +971,6 @@
           "page_description": "Supprime les clics, profondeurs de défilement et instantanés de cette page, quelle que soit la période. Saisissez son chemin pour confirmer.",
           "page_done": "Heatmap de la page réinitialisée",
           "page_title": "Réinitialiser la heatmap de cette page ?",
-          "site_button": "Réinitialiser toutes les heatmaps…",
-          "site_description": "Supprime tous les clics, profondeurs de défilement et instantanés de page du site, quelle que soit la période. Saisissez le domaine pour confirmer.",
-          "site_done": "Heatmaps de {name} réinitialisées",
-          "site_title": "Réinitialiser les heatmaps de {name} ?",
           "snapshots": "{count} instantané | {count} instantanés"
         },
         "row_clicks": "{count} clic | {count} clics",
@@ -1095,13 +1091,17 @@
         },
         "column": {
           "domain": "Domaine",
-          "name": "Nom"
+          "name": "Nom",
+          "tracking": "Suivi",
+          "snapshots": "Instantanés de page",
+          "created": "Ajouté"
         },
         "create": "Ajouter un site",
         "delete": {
           "action": "Supprimer le site…",
           "confirm": "Supprimer le site",
           "description": "Tout ce qui a été suivi sur ce site disparaît, pour toutes les périodes. Saisissez le domaine pour confirmer.",
+          "dashboard_kept": "C'est le site du tableau de bord lui-même, que le module suit tout seul : il ne peut pas être supprimé. Mettez son suivi en pause ou purgez ses données à la place.",
           "done": "{name} supprimé",
           "funnels": "Funnels et leurs tests A/B",
           "impact_error": "Impossible de lister ce que la suppression de ce site effacerait.",
@@ -1114,6 +1114,27 @@
           "snapshots": "Instantanés de page",
           "title": "Supprimer {name} ?"
         },
+        "purge": {
+          "all_action": "Purger toutes les données…",
+          "all_confirm": "Purger toutes les données",
+          "all_description": "Tout ce qui a été collecté sur ce site disparaît, pour toutes les périodes : pages vues, sessions, statistiques quotidiennes, clics, profondeurs de défilement, instantanés, expositions A/B et historique importé. Le site, ses réglages et ses funnels restent ; leurs résultats repartent de zéro. Saisissez le domaine pour confirmer.",
+          "all_done": "Données de {name} purgées",
+          "all_hint": "Tout ce qui a été collecté : trafic, sessions, heatmaps, expositions A/B et historique importé.",
+          "all_title": "Purger toutes les données de {name} ?",
+          "done_all_counts": "Supprimé : {events} événements, {sessions} sessions et {snapshots} instantanés.",
+          "done_heatmaps_counts": "Supprimé : {events} clics et profondeurs de défilement, et {snapshots} instantanés.",
+          "heatmap_events": "Clics et profondeurs de défilement, depuis le début",
+          "heatmaps_action": "Purger les heatmaps…",
+          "heatmaps_confirm": "Purger les heatmaps",
+          "heatmaps_description": "Les clics, profondeurs de défilement et instantanés de toutes les pages disparaissent, pour toutes les périodes : les nombres de clics retombent à zéro partout. Pages vues, sessions et funnels sont conservés. Saisissez le domaine pour confirmer.",
+          "heatmaps_done": "Heatmaps de {name} purgées",
+          "heatmaps_hint": "Clics, profondeurs de défilement et instantanés de toutes les pages. Le trafic est conservé.",
+          "heatmaps_title": "Purger les heatmaps de {name} ?",
+          "kept": "Le site, ses réglages, ses funnels et ses tests A/B sont conservés",
+          "kept_traffic": "Pages vues, sessions, funnels et tests A/B sont conservés",
+          "section": "Purger les données collectées",
+          "section_description": "Le site garde ses réglages, ses funnels et ses tests A/B ; leurs résultats repartent de zéro."
+        },
         "description": "Les sites qui envoient des données à cet espace, leur traceur et ce qui est enregistré sur chacun.",
         "discard_confirm": {
           "title": "Supprimer les instantanés du site ?",
@@ -1125,13 +1146,6 @@
           "confirm_none": "Modifier",
           "description_none": "Le site ne détient encore aucun instantané. Les prochaines visites échantillonnées prendront ses pages avec le nouveau réglage.",
           "title_none": "Modifier les réglages d'instantané du site ?"
-        },
-        "drawer": {
-          "added": "ajouté le {date}",
-          "close": "Fermer",
-          "danger": "Zone de danger",
-          "eyebrow": "Site",
-          "general": "Général"
         },
         "error": "Impossible de charger les sites",
         "fields": {
@@ -1181,7 +1195,22 @@
         "edit_named": "Paramètres du site {name}",
         "snippet_named": "Balise du traceur du site {name}",
         "open_overview_named": "Ouvrir la vue d'ensemble du site {name}",
-        "finish_install_named": "Terminer l'installation du site {name}"
+        "finish_install_named": "Terminer l'installation du site {name}",
+        "search": "Rechercher un site",
+        "menu_named": "Actions pour {name}",
+        "edit": "Paramètres",
+        "no_match": "Aucun site ne correspond à ces filtres.",
+        "count": "{count} site | {count} sites",
+        "modal": {
+          "title": "Paramètres du site",
+          "general": "Général",
+          "danger": "Zone de danger",
+          "added": "ajouté le {date}"
+        },
+        "create_modal": {
+          "title": "Ajouter un site",
+          "description": "Nommez le site et son domaine ; le guide d'installation vous donne ensuite la balise à coller."
+        }
       }
     }
   }

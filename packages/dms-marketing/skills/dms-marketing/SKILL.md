@@ -25,6 +25,10 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
 - Behind a proxy set the DMS `auth.trustedProxies`; the old `trustedProxyHops` option is gone.
 - One website row per tracked site (Websites page or `POST /api/marketing/websites {name, domain, extraDomains?}`).
   Its `domain` gates ingestion: the beacon's Origin must be that apex, a subdomain or an extra host.
+- The Websites page is a DMS TableView (cards display, plain grid on offer) over
+  `/api/marketing/tables/websites`, whose list answers each row with its card; "Add a website" and a site's
+  settings open in modals. Link a site's settings with `/modules/marketing/websites?record=<id>`
+  (`&setting=snapshots` scrolls to the snapshot switch).
 
 ## Visitor site
 
@@ -37,10 +41,13 @@ window.dmsMarketing?.track("signup_submitted", { plan: "pro" }); // name <= 50 c
 const arm = await window.dmsMarketing?.variation("hero-cta");      // null = render the control
 ```
 
+- A site's data is purged, the site kept, with `POST /api/marketing/websites/:id/purge {scope: "heatmaps"|"all"}`
+  (tenant owner; settings modal, Danger zone): heatmaps = clicks, scroll depths and snapshots; all = every
+  event, session, rollup, snapshot and import. Funnels stay, their results start again from zero.
 - The dashboard origin forwards the scripts and beacons because the module declares them `publicEndpoints`
   (renderer 0.6 refuses other cross-origin writes); the backend origin works too.
 - Never `type="module"` (breaks `document.currentScript`). Always guard with `?.`.
-- Snapshots (heatmap backdrops) are opt-in per site (Websites page, General tab, next to Collect data); mask with
+- Snapshots (heatmap backdrops) are opt-in per site (Websites page, a site's settings modal, General tab, next to Collect data); mask with
   `data-dms-marketing-mask` / `data-dms-marketing-block`. Captures drop transient overlays on their own (top
   layer, fixed/floating role=dialog/menu/listbox/tooltip, fixed toasts and toast viewports); block anything else
   per element. Captures inline only the CSS rules matching the page
@@ -65,7 +72,8 @@ config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludeP
 
 - Off by default. On, the module's frontend loads the tracker on every signed-in dashboard page and
   `POST /api/marketing/dashboard-tracking` creates one website per tenant on first use (domain = the
-  dashboard's host; later hosts join `extraDomains`). Rename, pause or delete it like any site.
+  dashboard's host; later hosts join `extraDomains`). Rename or pause it like any site; it is never
+  deleted (`DELETE` answers 409): purge its data instead.
 - `snapshots: true` provisions it with page snapshots on (text masked) for heatmap backdrops. Config owns the
   switch until a person changes it on the Websites page (`snapshotsSetBy: "owner"`): never re-enabled after.
 - `/auth/**` is never counted; signing out pauses the tag, a workspace switch retargets it. SPA navigations

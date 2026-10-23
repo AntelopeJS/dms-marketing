@@ -15,6 +15,7 @@ import {
   toContextWebsite,
   type WebsiteActivity,
 } from "./context";
+import { isDashboardWebsite } from "./dashboard-tracking";
 import { listRejectedSources, type RejectedSource } from "./origin-guard";
 import { periodStart, trailingWindow } from "./period";
 import { mergeDimension, readRollups, sumRollups } from "./rollups";
@@ -37,6 +38,8 @@ export interface WebsiteCard extends ContextWebsite {
   /** Share of page loads that record clicks and scrolls, 0–1. */
   sampleRate: number;
   rejected: RejectedSource[];
+  /** The site `dashboardTracking` provisions: it cannot be deleted. */
+  dashboard: boolean;
 }
 
 async function cardOf(
@@ -60,6 +63,7 @@ async function cardOf(
     snapshots,
     sampleRate: getConfig().heatmapSampleRate,
     rejected: listRejectedSources(website._id),
+    dashboard: isDashboardWebsite(website),
   };
 }
 
@@ -71,7 +75,25 @@ export async function websitesSummary(
   return Promise.all(websites.map((website) => cardOf(website, activity)));
 }
 
-/** What deleting a website discards, for its confirmation. */
+/**
+ * Each listed row with its card, in the list's order; a row whose card is
+ * missing (the site went between the two reads) is listed as it came.
+ */
+export function mergeWebsiteCards<Row extends { _id: string }>(
+  rows: Row[],
+  cards: WebsiteCard[],
+): Row[] {
+  const byId = new Map(cards.map((card) => [card.id, card]));
+  return rows.map((row) => {
+    const card = byId.get(row._id);
+    return card ? { ...row, ...card } : row;
+  });
+}
+
+/**
+ * What deleting a website, or purging its data, discards: for their
+ * confirmations.
+ */
 export interface WebsiteDeletionImpact {
   /** Every stored day, not a window: the rollups all go. */
   sessions: number;
@@ -80,15 +102,20 @@ export interface WebsiteDeletionImpact {
   since: number | null;
   funnels: number;
   snapshots: number;
+  /** Clicks and scrolls, every period: what the heatmaps are drawn from. */
+  heatmapEvents: number;
 }
 
 export async function websiteDeletionImpact(
   website: Website,
 ): Promise<WebsiteDeletionImpact> {
-  const [days, funnels, snapshots] = await Promise.all([
+  const [days, funnels, snapshots, heatmapEvents] = await Promise.all([
     GetModel(WebsiteStatisticsModel, website.tenantId).getCounters(website._id),
     GetModel(FunnelsModel, website.tenantId).listByWebsite(website._id),
     GetModel(PageSnapshotsModel, website.tenantId).countByWebsite(website._id),
+    GetModel(MarketingEventsModel, website.tenantId).countHeatmapEvents(
+      website._id,
+    ),
   ]);
   return {
     sessions: days.reduce((sum, day) => sum + (day.sessions ?? 0), 0),
@@ -96,6 +123,7 @@ export async function websiteDeletionImpact(
     since: days.length > 0 ? Math.min(...days.map((day) => day.day)) : null,
     funnels: funnels.length,
     snapshots,
+    heatmapEvents,
   };
 }
 

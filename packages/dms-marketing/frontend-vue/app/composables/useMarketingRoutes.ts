@@ -71,33 +71,31 @@ export function funnelBuilderLink(
   })
 }
 
-/** A setting of the Websites page's edit drawer a link can open on. */
+/** A setting of the Websites page's settings modal a link can open on. */
 export type WebsiteSetting = 'snapshots'
 
+const WEBSITES_PATH = `${MODULE_BASE}/websites`
+
 /**
- * The Websites page; with `edit`, its settings drawer opened on that site,
- * scrolled to `setting` when given — where a setting shown elsewhere (the
- * heatmap preview's snapshot state) links to.
+ * The Websites page; with `record`, the settings modal of that site open
+ * (the table's deep link), scrolled to `setting` when given — where a
+ * setting shown elsewhere (the heatmap preview's snapshot state) links to.
  */
 export function websitesLink(
-  edit?: string | null,
+  record?: string | null,
   setting?: WebsiteSetting,
 ): string {
-  return withQuery(`${MODULE_BASE}/websites`, {
-    edit,
-    setting: edit ? setting : null,
+  return withQuery(WEBSITES_PATH, {
+    record,
+    setting: record ? setting : null,
   })
 }
 
-/** The drawer target of a Websites page URL, null when it names none. */
-export function websiteSettingTarget(
+/** The setting a Websites page URL scrolls the open modal to, if any. */
+export function websiteSettingOf(
   query: Record<string, unknown>,
-): { id: string; setting?: WebsiteSetting } | null {
-  const id = query.edit
-  if (typeof id !== 'string' || !id) {
-    return null
-  }
-  return query.setting === 'snapshots' ? { id, setting: 'snapshots' } : { id }
+): WebsiteSetting | undefined {
+  return query.setting === 'snapshots' ? 'snapshots' : undefined
 }
 
 /** The install guide: a new website, or the one `website` names. */

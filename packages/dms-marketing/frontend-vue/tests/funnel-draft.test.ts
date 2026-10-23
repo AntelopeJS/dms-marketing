@@ -5,9 +5,14 @@ import {
   splitSampleSize,
   templateSteps,
   variationSnippet,
+  withRequestedSplit,
+  DEFAULT_WINDOW_HOURS,
+  WINDOW_PRESET_HOURS,
   type FunnelDraftValues,
 } from '../app/utils/funnel-draft'
 import { sampleSizePerArm } from '../app/utils/sample-size'
+import en from '../i18n/locales/marketing-en-GB.json'
+import fr from '../i18n/locales/marketing-fr-FR.json'
 
 function draft(overrides: Partial<FunnelDraftValues> = {}): FunnelDraftValues {
   return {
@@ -65,6 +70,20 @@ describe('template links', () => {
       value: `/p${i}`,
     }))
     expect(templateSteps(JSON.stringify(many))).toHaveLength(10)
+  })
+})
+
+// QA B08: "Split into A/B test" opened a plain funnel with its split off.
+describe('a split requested by the link', () => {
+  it("turns a stored funnel's split on, and never off", () => {
+    expect(withRequestedSplit(draft({ split: false }), '1').split).toBe(true)
+    expect(withRequestedSplit(draft({ split: false }), undefined).split).toBe(
+      false,
+    )
+    expect(withRequestedSplit(draft({ split: true }), undefined).split).toBe(
+      true,
+    )
+    expect(withRequestedSplit(draft({ split: false }), ['1']).split).toBe(false)
   })
 })
 
@@ -190,5 +209,23 @@ describe('variation snippet', () => {
     })
     expect(code).toContain('// afficher bold')
     expect(code).toContain('// garder control')
+  })
+})
+
+describe('window presets', () => {
+  // QA m8: a preset read "Whole session" while the funnel saved "24 h".
+  it('label each preset with the hours it saves, in every locale', () => {
+    for (const messages of [en, fr]) {
+      const labels: Record<string, string> =
+        messages.page.marketing.builder.window_presets
+      expect(Object.keys(labels).map(Number)).toEqual([...WINDOW_PRESET_HOURS])
+      for (const hours of WINDOW_PRESET_HOURS) {
+        expect(labels[hours]?.replace(/\s/g, '')).toBe(`${hours}h`)
+      }
+    }
+  })
+
+  it('preselect the default window', () => {
+    expect(WINDOW_PRESET_HOURS).toContain(DEFAULT_WINDOW_HOURS)
   })
 })

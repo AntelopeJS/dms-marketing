@@ -60,6 +60,16 @@ function cacheKey(websiteId: string, visitorId: string): string {
   return `${websiteId}:${visitorId}`;
 }
 
+/** Drops the cached sessions of a site whose sessions were deleted. */
+export function forgetWebsiteSessions(websiteId: string): void {
+  const prefix = cacheKey(websiteId, "");
+  for (const key of sessionCache.keys()) {
+    if (key.startsWith(prefix)) {
+      sessionCache.delete(key);
+    }
+  }
+}
+
 function cacheSession(key: string, session: MarketingSession): void {
   setBounded(sessionCache, key, session, SESSION_CACHE_MAX_ENTRIES);
 }
