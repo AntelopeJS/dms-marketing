@@ -1346,6 +1346,15 @@ const surfaceEmpty = computed(() => {
         :label="t('page.marketing.pages.preview.snapshot_settings')"
       />
     </p>
+    <!-- The status line's place while the capture is read, at its height (a
+         text-xs line): arriving in a free row, it pushed the pane down. -->
+    <p
+      v-else-if="!snapshotSettled"
+      class="flex items-center border-b border-default px-4 py-2"
+      aria-hidden="true"
+    >
+      <USkeleton class="h-4 w-72 max-w-full" />
+    </p>
 
     <div
       class="grid min-h-0 xl:grid-cols-[minmax(0,1fr)_15rem]"

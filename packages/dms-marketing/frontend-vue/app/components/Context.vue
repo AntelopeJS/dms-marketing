@@ -53,15 +53,23 @@ const {
 // Watched with the query too, so a block rewriting the URL for its own state
 // (the heatmap path) keeps it. Set up once the context is read.
 await ready
-watch(
-  [selectedId, () => route.query],
-  ([id]) => {
-    if (id && route.query.website !== id) {
-      void router.replace({ query: { ...route.query, website: id } })
-    }
-  },
-  { immediate: true },
-)
+function linkSelected(id: string | null): Promise<unknown> | undefined {
+  if (id && route.query.website !== id) {
+    return router.replace({ query: { ...route.query, website: id } })
+  }
+}
+// A navigation in the browser waits for the URL to name the website: the
+// page then opens on its blocks, not on the gate's placeholder first. The
+// blocks then set up while the page's suspense is still pending, so one that
+// holds the navigation for its data (a fetched banner) is drawn with the page.
+// Vite's SSR flag: the DMS builds with Vite alone, where Nuxt's client flag
+// is undefined (see tests/build-flags.test.ts).
+if (!import.meta.env.SSR) {
+  await linkSelected(selectedId.value)
+}
+watch([selectedId, () => route.query], ([id]) => void linkSelected(id), {
+  immediate: true,
+})
 
 provide(MARKETING_CONTEXT_KEY, {
   websites,

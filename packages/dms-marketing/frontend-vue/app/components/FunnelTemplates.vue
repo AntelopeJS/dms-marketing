@@ -91,7 +91,22 @@ function stepsKey(steps: MarketingFunnelStep[]): string {
         />
       </template>
     </DmsEmptyState>
+    <!-- The blank start comes first: the templates loading after it never
+         move it. -->
     <div class="mt-6 grid gap-3 md:grid-cols-3">
+      <button
+        type="button"
+        class="flex flex-col items-start gap-2 rounded-xl border border-dashed border-default p-4 text-left transition-colors hover:border-primary"
+        @click="startFrom(null)"
+      >
+        <DmsEyebrow :label="t('page.marketing.funnels.empty.blank')" />
+        <span class="text-sm font-semibold text-highlighted">
+          {{ t('page.marketing.funnels.empty.scratch') }}
+        </span>
+        <span class="text-xs text-muted">
+          {{ t('page.marketing.funnels.empty.scratch_description') }}
+        </span>
+      </button>
       <template v-if="templates === null && !waiting">
         <USkeleton v-for="index in 2" :key="index" class="h-32 rounded-xl" />
       </template>
@@ -130,19 +145,6 @@ function stepsKey(steps: MarketingFunnelStep[]): string {
               template.entering,
             )
           }}
-        </span>
-      </button>
-      <button
-        type="button"
-        class="flex flex-col items-start gap-2 rounded-xl border border-dashed border-default p-4 text-left transition-colors hover:border-primary"
-        @click="startFrom(null)"
-      >
-        <DmsEyebrow :label="t('page.marketing.funnels.empty.blank')" />
-        <span class="text-sm font-semibold text-highlighted">
-          {{ t('page.marketing.funnels.empty.scratch') }}
-        </span>
-        <span class="text-xs text-muted">
-          {{ t('page.marketing.funnels.empty.scratch_description') }}
         </span>
       </button>
     </div>
