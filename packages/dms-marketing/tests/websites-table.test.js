@@ -3,6 +3,11 @@ const { mock } = require("node:test");
 const test = it;
 const models = require("@antelopejs/interface-database-decorators/model");
 const { EnsureWebsite } = require("@antelopejs/interface-dms-marketing");
+const { generateAccessToken } = require("@antelopejs/interface-dms/auth");
+const { UserModel } = require("@antelopejs/interface-dms/auth/db");
+const {
+  resolveRequestTenantId,
+} = require("@antelopejs/interface-dms/request-tenant");
 const { WebsitesModel } = require("../dist/db");
 const { withCardRow, withCardRows } = require("../dist/data-api/websites");
 const { MarketingWebsitesPage } = require("../dist/pages/websites/page");
@@ -15,12 +20,24 @@ const realGetModel = models.GetModel;
 /** A request of the default tenant, as the JWT fallback reads it. */
 const DEFAULT_TENANT_CTX = { rawRequest: { headers: {} } };
 
-/** A request whose (unsigned, test-only) bearer names `tenantId`. */
-function requestOf(tenantId) {
-  const part = (value) =>
-    Buffer.from(JSON.stringify(value)).toString("base64url");
-  const token = `${part({ alg: "none" })}.${part({ tenantId })}.`;
-  return { rawRequest: { headers: { authorization: `Bearer ${token}` } } };
+/**
+ * A request of a user of `tenantId`, its token verified and its tenant bound
+ * as the route's auth decorator does at runtime: dms 0.10 never reads the
+ * tenant of an unverified token.
+ */
+async function requestOf(tenantId) {
+  const users = realGetModel(UserModel);
+  const [userId] = await users.insert({
+    email: `${tenantId}@example.com`,
+    name: tenantId,
+    authKey: `${tenantId}-auth-key`,
+    isValidated: true,
+  });
+  const user = await users.get(userId);
+  const { token } = await generateAccessToken(tenantId, user);
+  const ctx = { rawRequest: { headers: { authorization: `Bearer ${token}` } } };
+  assert.equal(await resolveRequestTenantId(ctx), tenantId);
+  return ctx;
 }
 
 /** A list route answering `rows`, as the data controller's would. */
@@ -90,7 +107,7 @@ describe("the Websites table", () => {
 
     const asOther = await withCardRows(
       listing([{ _id: "table-cards-a" }]),
-    ).func(requestOf("table-cards-other"), {});
+    ).func(await requestOf("table-cards-other"), {});
     assert.deepEqual(asOther.results, [{ _id: "table-cards-a" }]);
   });
 
