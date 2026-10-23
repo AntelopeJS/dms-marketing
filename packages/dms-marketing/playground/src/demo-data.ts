@@ -13,8 +13,9 @@ import { Hook, RegisterHook } from "@antelopejs/interface-dms/hooks";
  * default tenant (a busy shop, a quieter docs site, one still waiting for its
  * first pageview), 120 days of daily rollups, 30 days of raw events behind
  * funnels, an A/B test and a heatmap, and a snapshot to draw it on. Written
- * once, straight into the tables, because collect stamps events with the
- * server clock and could never backfill history.
+ * once, when DMS provisions the default tenant, straight into the tables,
+ * because collect stamps events with the server clock and could never
+ * backfill history.
  *
  * Set DMS_MARKETING_DEMO=0 to start the playground without it.
  */
@@ -497,12 +498,8 @@ function website(id: string, name: string, domain: string, ageDays: number, extr
   };
 }
 
-async function seedWebsites(): Promise<boolean> {
-  const websites = table(CORE_SCHEMA_NAME, "marketing_websites");
-  if (await websites.get(SHOP_ID).run()) {
-    return false;
-  }
-  await websites
+async function seedWebsites(): Promise<void> {
+  await table(CORE_SCHEMA_NAME, "marketing_websites")
     .insert([
       website(SHOP_ID, "Acme shop", "shop.acme.test", 200, {
         extraDomains: ["staging.acme.test", "acme.eu"],
@@ -512,17 +509,17 @@ async function seedWebsites(): Promise<boolean> {
       website(PORTAL_ID, "Partners portal", "partners.acme.test", 10),
     ])
     .run();
-  return true;
 }
 
 export function registerDemoData(): void {
   if (process.env.DMS_MARKETING_DEMO === "0") {
     return;
   }
-  RegisterHook(Hook.DATABASE_INITIALIZED, async () => {
-    if (!(await seedWebsites())) {
+  RegisterHook(Hook.TENANT_BEING_PROVISIONED, async ({ tenantId }) => {
+    if (tenantId !== DEFAULT_TENANT_ID) {
       return undefined;
     }
+    await seedWebsites();
     await seedRollups(SHOP_ID, 1, 11);
     await seedRollups(DOCS_ID, 0.21, 13);
     await seedRawEvents();
