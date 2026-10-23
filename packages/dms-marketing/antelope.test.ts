@@ -32,6 +32,9 @@ export default defineConfig({
         version: ">=0.9.3 <1.0.0",
       },
       config: {
+        // No frontend server runs here: the dashboard URL is the API, whose
+        // paths the front proxy serves unchanged.
+        clientBaseUrl: "http://127.0.0.1",
         auth: { jwtSecret: JWT_SECRET },
         // Outside development, which the test run is not, dms 0.10 refuses
         // to start without a render secret of its own.
@@ -71,7 +74,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/file-storage-local",
-        version: "0.1.9",
+        version: "0.1.12",
       },
     },
     nodemailer: {

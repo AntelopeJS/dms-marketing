@@ -58,8 +58,8 @@ importers:
         specifier: '>=0.0.6 <1.0.0'
         version: 0.0.6(socks@2.8.10)
       '@antelopejs/mongodb':
-        specifier: 1.4.3
-        version: 1.4.3(socks@2.8.10)
+        specifier: 1.4.4
+        version: 1.4.4(socks@2.8.10)
       '@antelopejs/tooling-configs':
         specifier: '>=0.0.9 <1.0.0'
         version: 0.0.9(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
@@ -171,8 +171,8 @@ packages:
   '@antelopejs/interface-mongodb@0.0.6':
     resolution: {integrity: sha512-jNb6fVIMQFFTkUnaY4KrSdA5JknmUCpnjIMC6/GuN8wEoUbo/LBZGq7q1Kz1IGcNpiByRbWHvDVW9J693i1kFw==}
 
-  '@antelopejs/mongodb@1.4.3':
-    resolution: {integrity: sha512-foA61Zpc2Sf5rOVtyOCcPL1LC+BdLp9hvfAOduTUzGkNg0vOISIenkm9ooIIQKt5yTuk/8iimOtVF4wXHsDckg==}
+  '@antelopejs/mongodb@1.4.4':
+    resolution: {integrity: sha512-ISDS9sRlzcN28s3HbjKPstpnsrwXmehuoXR0C8OEl4MkE4KB1MIEN1eQ87gp45UijQzh71z9VN3qj40EmvAA1w==}
 
   '@antelopejs/tooling-configs@0.0.9':
     resolution: {integrity: sha512-ceAS76KVZ1zDbXldNg/6cVDA9Xsh5FCG4WQgt51W0aJbv9XvpNDVuS53QCIyDL8Pwj0QaCCuK3a4p/QSAgCdDg==}
@@ -2673,6 +2673,10 @@ snapshots:
     dependencies:
       '@antelopejs/interface-core': 0.2.4
 
+  '@antelopejs/interface-database@0.1.10(@antelopejs/interface-core@0.2.6)':
+    dependencies:
+      '@antelopejs/interface-core': 0.2.6
+
   '@antelopejs/interface-dms@0.7.2(4266f05b78ff47df7f114a7ce109eeb7)':
     dependencies:
       '@antelopejs/interface-api': 0.0.15(@antelopejs/interface-core@0.2.4)
@@ -2704,10 +2708,10 @@ snapshots:
       - snappy
       - socks
 
-  '@antelopejs/mongodb@1.4.3(socks@2.8.10)':
+  '@antelopejs/mongodb@1.4.4(socks@2.8.10)':
     dependencies:
-      '@antelopejs/interface-core': 0.2.4
-      '@antelopejs/interface-database': 0.1.10(@antelopejs/interface-core@0.2.4)
+      '@antelopejs/interface-core': 0.2.6
+      '@antelopejs/interface-database': 0.1.10(@antelopejs/interface-core@0.2.6)
       '@antelopejs/interface-mongodb': 0.0.6(socks@2.8.10)
       chai: 4.5.0
       mongodb: 6.21.0(socks@2.8.10)

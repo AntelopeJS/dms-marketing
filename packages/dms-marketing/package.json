@@ -78,7 +78,7 @@
   "devDependencies": {
     "@antelopejs/core": ">=1.17.0 <2",
     "@antelopejs/interface-mongodb": ">=0.0.6 <1.0.0",
-    "@antelopejs/mongodb": "1.4.3",
+    "@antelopejs/mongodb": "1.4.4",
     "@antelopejs/tooling-configs": ">=0.0.9 <1.0.0",
     "@types/node": "^22.19.15",
     "@types/sanitize-html": "^2.16.2",
