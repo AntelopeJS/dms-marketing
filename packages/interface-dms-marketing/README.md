@@ -45,13 +45,13 @@ export async function pricingHeatmap(tenantId: string) {
 
 Without `from` and `to`, the heatmap covers the last 7 days. Pass an authenticated tenant id only.
 
-For an explicitly selected global demo, declare content from `start()`. All four content APIs require `tenantId`; omission, blank strings and surrounding whitespace reject. For SaaS tenants, prefer the application's durable `created` consumer, with operation deduplication and persisted receipts; see the [lifecycle integration guide](docs/1.index.md#saas-lifecycle-integration). Marketing does not provision or authorize tenants.
+Declare content from a `Hook.TENANT_BEING_PROVISIONED` handler: the DMS fires it once per tenant, when the tenant is created (the `default` tenant included). All four content APIs require `tenantId`; omission, blank strings and surrounding whitespace reject. Marketing does not provision or authorize tenants.
 
 ```ts
+import { Hook, RegisterHook } from "@antelopejs/interface-dms/hooks";
 import { EnsureFunnel, EnsureWebsite } from "@antelopejs/interface-dms-marketing";
 
-export async function start() {
-  const tenantId = "default"; // Explicit global demo, not an implicit fallback.
+async function writeShopContent(tenantId: string) {
   await EnsureWebsite({ tenantId, id: "shop", name: "Shop", domain: "shop.example.com" });
   await EnsureFunnel({
     tenantId,
@@ -62,6 +62,12 @@ export async function start() {
       { kind: "url", value: "/cart" },
       { kind: "custom", value: "order_placed" },
     ],
+  });
+}
+
+export function construct() {
+  RegisterHook(Hook.TENANT_BEING_PROVISIONED, async ({ tenantId }) => {
+    await writeShopContent(tenantId);
   });
 }
 ```

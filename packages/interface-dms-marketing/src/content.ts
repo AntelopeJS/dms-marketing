@@ -6,19 +6,13 @@ import { InterfaceFunction } from "@antelopejs/interface-core";
  * imported from elsewhere.
  *
  * Every call is keyed by an id (or, for a snapshot, a page) the caller
- * chooses and is safe to repeat on each boot or hot reload. Calls made
- * before the implementing module is ready wait for it. They need the DMS database, which is ready once the DMS has
- * settled `Hook.DATABASE_INITIALIZED` from its own `start()`: await them from
- * a module's `start()` or later, never inside `construct()` — fire and forget
- * there, catching the rejection.
- * These are trusted backend calls, not tenant provisioning or authorization.
- * `start()` runs per process, not per tenant. SaaS callers supply an authorized
- * tenantId and ensure its storage exists through their own tenant lifecycle.
- * Every call requires an explicit nonempty tenantId, without surrounding
- * whitespace; "default" is valid only when explicitly chosen. This neither
- * authorizes the caller nor proves provisioning has completed. SaaS applications
- * should register a durable "created" workspace lifecycle consumer before
- * startup reconciliation; marketing does not register one or depend on SaaS.
+ * chooses and is safe to repeat on each boot or hot reload.
+ * Call them from a `Hook.TENANT_BEING_PROVISIONED` handler: the DMS fires it
+ * once per tenant, when the tenant is created (the `default` tenant on the
+ * start that creates it, once `Hook.DATABASE_INITIALIZED` has settled), so the
+ * marketing tables and settings are ready and nothing waits.
+ * These are trusted backend calls, not authorization. Every call requires an
+ * explicit nonempty tenantId, without surrounding whitespace.
  */
 
 /** How a declaration call left the stored record. */
