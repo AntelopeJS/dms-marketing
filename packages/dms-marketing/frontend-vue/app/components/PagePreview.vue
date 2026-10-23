@@ -129,7 +129,8 @@ const PROBE_VIEWPORT_HEIGHT = 900
 const PANE_HEIGHT = 620
 /** Overflow beyond the chosen layout width worth telling the operator about. */
 const OVERFLOW_TOLERANCE = 1.05
-const SNAPSHOT_BYTE_CAP = 1024 * 1024
+/** The upload cap of a backend that does not say its own. */
+const DEFAULT_SNAPSHOT_BYTE_CAP = 1024 * 1024
 const LIGHT_CANVAS = '#ffffff'
 const DARK_CANVAS = '#111111'
 
@@ -723,7 +724,9 @@ const statusStrip = computed<StatusStrip | null>(() => {
           title: t('page.marketing.pages.preview.too_heavy'),
           description: t('page.marketing.pages.preview.too_heavy_hint', {
             size: mebibytes(snapshot.value.bytes),
-            limit: mebibytes(SNAPSHOT_BYTE_CAP),
+            limit: mebibytes(
+              snapshot.value.maxBytes ?? DEFAULT_SNAPSHOT_BYTE_CAP,
+            ),
           }),
         }
       : null,
