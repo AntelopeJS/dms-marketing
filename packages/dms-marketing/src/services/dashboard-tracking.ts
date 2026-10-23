@@ -41,11 +41,7 @@ export function isDashboardWebsite(
  * (localhost, a staging name, the real one), and no owner registered it.
  * Past the cap the beacons are refused and logged like any other site's.
  */
-async function acceptHostname(
-  store: DashboardWebsiteStore,
-  website: Website,
-  hostname: string,
-): Promise<boolean> {
+function acceptHostname(website: Website, hostname: string): boolean {
   const extraDomains = website.extraDomains ?? [];
   if (
     websiteAcceptsHostname(website, hostname) ||
@@ -54,9 +50,66 @@ async function acceptHostname(
     return false;
   }
   website.extraDomains = [...extraDomains, hostname];
+  return true;
+}
+
+/**
+ * Brings the snapshot switch to `dashboardTracking.snapshots` while it is
+ * the configuration's to set. Once a person changed it (`owner`), it is
+ * left alone for good.
+ */
+function applyConfiguredSnapshots(
+  website: Website,
+  config: DashboardTrackingConfig,
+): boolean {
+  const current = website.snapshotsEnabled ?? false;
+  if (website.snapshotsSetBy === "owner" || current === config.snapshots) {
+    return false;
+  }
+  website.snapshotsEnabled = config.snapshots;
+  website.snapshotsSetBy = "config";
+  return true;
+}
+
+/**
+ * A person sets the snapshot switch (the Websites page, the API): the value
+ * becomes the owner's, which configuration never overrides again. False
+ * when it already had that value — re-saving a form claims nothing.
+ */
+export function setSnapshotsByOwner(
+  website: Website,
+  enabled: boolean,
+): boolean {
+  if ((website.snapshotsEnabled ?? false) === enabled) {
+    return false;
+  }
+  website.snapshotsEnabled = enabled;
+  website.snapshotsSetBy = "owner";
+  return true;
+}
+
+async function refreshWebsite(
+  store: DashboardWebsiteStore,
+  website: Website,
+  hostname: string,
+  config: DashboardTrackingConfig,
+): Promise<DashboardProvisioning> {
+  const snapshotsChanged = applyConfiguredSnapshots(website, config);
+  const hostAdded = acceptHostname(website, hostname);
+  if (!snapshotsChanged && !hostAdded) {
+    return { website, changed: false, snapshotsChanged };
+  }
   website.updatedAt = new Date();
   await store.update(website);
-  return true;
+  return { website, changed: true, snapshotsChanged };
+}
+
+export interface DashboardProvisioning {
+  website: Website;
+  /** The record changed: cached copies are stale. */
+  changed: boolean;
+  /** `snapshotsEnabled` changed on an existing record: its captures go. */
+  snapshotsChanged: boolean;
 }
 
 /**
@@ -65,24 +118,20 @@ async function acceptHostname(
  * its name and settings — an owner may rename or pause it like any other —
  * and a site an owner deleted comes back on the next dashboard visit.
  *
- * Snapshots stay off: a capture of an admin page would store the records it
- * shows.
- *
- * Returns whether the record changed, for the caller to drop cached copies.
+ * Snapshots follow `dashboardTracking.snapshots` (off by default: a capture
+ * of an admin page stores the records it shows, so text is masked) until an
+ * owner changes them; see `applyConfiguredSnapshots`.
  */
 export async function provisionDashboardWebsite(
   store: DashboardWebsiteStore,
   tenantId: string,
   hostname: string,
   config: DashboardTrackingConfig,
-): Promise<{ website: Website; changed: boolean }> {
+): Promise<DashboardProvisioning> {
   const id = dashboardWebsiteId(tenantId);
   const existing = await store.get(id);
   if (existing) {
-    return {
-      website: existing,
-      changed: await acceptHostname(store, existing, hostname),
-    };
+    return refreshWebsite(store, existing, hostname, config);
   }
   const now = new Date();
   const website = {
@@ -92,7 +141,8 @@ export async function provisionDashboardWebsite(
     domain: hostname,
     extraDomains: [],
     trackingEnabled: true,
-    snapshotsEnabled: false,
+    snapshotsEnabled: config.snapshots,
+    snapshotsSetBy: "config",
     snapshotMaskText: true,
     createdAt: now,
     updatedAt: now,
@@ -105,10 +155,7 @@ export async function provisionDashboardWebsite(
     if (!raced) {
       throw err;
     }
-    return {
-      website: raced,
-      changed: await acceptHostname(store, raced, hostname),
-    };
+    return refreshWebsite(store, raced, hostname, config);
   }
-  return { website, changed: true };
+  return { website, changed: true, snapshotsChanged: false };
 }

@@ -56,12 +56,15 @@ const arm = await window.dmsMarketing?.variation("hero-cta");      // null = ren
 For a demo, a playground or a back office measuring its own admin, no tag to write:
 
 ```typescript
-config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludePaths: ["/settings/**"] } }
+config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludePaths: ["/settings/**"],
+  snapshots: true } } // snapshots: optional, off by default
 ```
 
 - Off by default. On, the module's frontend loads the tracker on every signed-in dashboard page and
   `POST /api/marketing/dashboard-tracking` creates one website per tenant on first use (domain = the
   dashboard's host; later hosts join `extraDomains`). Rename, pause or delete it like any site.
+- `snapshots: true` provisions it with page snapshots on (text masked) for heatmap backdrops. Config owns the
+  switch until a person changes it on the Websites page (`snapshotsSetBy: "owner"`): never re-enabled after.
 - `/auth/**` is never counted; signing out pauses the tag, a workspace switch retargets it. SPA navigations
   count. Restart `ajs dms dev` / rebuild the frontend after toggling the option.
 - Tracker attributes behind it, usable on any site: `data-exclude-paths="/x,/x/*,/x/**"`, and a live
