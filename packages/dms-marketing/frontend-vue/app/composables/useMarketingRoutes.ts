@@ -71,8 +71,33 @@ export function funnelBuilderLink(
   })
 }
 
-export function websitesLink(): string {
-  return `${MODULE_BASE}/websites`
+/** A setting of the Websites page's edit drawer a link can open on. */
+export type WebsiteSetting = 'snapshots'
+
+/**
+ * The Websites page; with `edit`, its settings drawer opened on that site,
+ * scrolled to `setting` when given — where a setting shown elsewhere (the
+ * heatmap preview's snapshot state) links to.
+ */
+export function websitesLink(
+  edit?: string | null,
+  setting?: WebsiteSetting,
+): string {
+  return withQuery(`${MODULE_BASE}/websites`, {
+    edit,
+    setting: edit ? setting : null,
+  })
+}
+
+/** The drawer target of a Websites page URL, null when it names none. */
+export function websiteSettingTarget(
+  query: Record<string, unknown>,
+): { id: string; setting?: WebsiteSetting } | null {
+  const id = query.edit
+  if (typeof id !== 'string' || !id) {
+    return null
+  }
+  return query.setting === 'snapshots' ? { id, setting: 'snapshots' } : { id }
 }
 
 /** The install guide: a new website, or the one `website` names. */

@@ -38,6 +38,15 @@
  * (static/snapshot.js) or nothing — so a visit never serializes a page
  * nobody will keep, and a page is captured about once a day however busy
  * it is. Off unless the website opted in.
+ *
+ * Scroll root: an app shell often keeps its document still and scrolls an
+ * inner container instead (a dashboard panel, a sidebar layout). When the
+ * document does not scroll, the page's scroll root is the element marked
+ * `data-marketing-scroll-root` if there is one, else the largest visible
+ * element scrolling vertically (overflow-y auto or scroll, content taller
+ * than its box) that covers most of the window; the document otherwise.
+ * Scroll depth is measured on it, and click positions are taken in its
+ * content, as if the page were unrolled — which is how a capture draws it.
  */
 (() => {
   /** Global the tracker route injects the module settings through. */
@@ -69,6 +78,20 @@
   const SCROLL_MEASURE_DELAY_MS = 1000;
   /** Where a keyboard-activated click is anchored inside its element. */
   const ELEMENT_CENTER = 0.5;
+  /** Names the element that scrolls the page, where the document does not. */
+  const SCROLL_ROOT_ATTRIBUTE = "data-marketing-scroll-root";
+  /** Share of the window an inner scroll container must cover to stand for
+   * the page: less is a list, a code block or a dropdown. */
+  const SCROLL_ROOT_COVERAGE = 0.5;
+  /** Points of the window (fractions of its width and height) probed for an
+   * inner scroll container: one covering most of the window holds several. */
+  const SCROLL_ROOT_PROBES = [
+    [0.5, 0.5],
+    [0.5, 0.25],
+    [0.5, 0.75],
+    [0.25, 0.5],
+    [0.75, 0.5],
+  ];
 
   // --- Public API -----------------------------------------------------------
 
@@ -267,6 +290,7 @@
     pageExcluded = isExcludedPath(lastPath);
     scrolledUrl = currentUrl();
     maxScrollDepth = -1;
+    scrollRootElement = null;
     if (!websiteId || pageExcluded) {
       return;
     }
@@ -298,15 +322,97 @@
     }
   });
 
+  // --- Scroll root (see the header) ----------------------------------------
+
+  function documentScrolls() {
+    const root = document.documentElement;
+    return root.scrollHeight - root.clientHeight > 1;
+  }
+
+  function scrollsVertically(element) {
+    if (element.scrollHeight - element.clientHeight <= 1) {
+      return false;
+    }
+    const overflow = getComputedStyle(element).overflowY;
+    return overflow === "auto" || overflow === "scroll";
+  }
+
+  /** Area of the element's box inside the window. */
+  function visibleArea(element) {
+    const box = element.getBoundingClientRect();
+    const width = Math.min(box.right, innerWidth) - Math.max(box.left, 0);
+    const height = Math.min(box.bottom, innerHeight) - Math.max(box.top, 0);
+    return width > 0 && height > 0 ? width * height : 0;
+  }
+
+  /**
+   * The element scrolling the page, or null when it is the document. Found
+   * from what lies under a few points of the window, never by walking the
+   * whole tree: a container covering most of the window holds them.
+   */
+  function findScrollRoot() {
+    if (documentScrolls()) {
+      return null;
+    }
+    const marked = document.querySelector(`[${SCROLL_ROOT_ATTRIBUTE}]`);
+    if (marked) {
+      return marked;
+    }
+    if (typeof document.elementFromPoint !== "function") {
+      return null;
+    }
+    const visited = new Set();
+    let best = null;
+    let bestArea = innerWidth * innerHeight * SCROLL_ROOT_COVERAGE;
+    for (const [fx, fy] of SCROLL_ROOT_PROBES) {
+      let node = document.elementFromPoint(innerWidth * fx, innerHeight * fy);
+      // An ancestor already visited was checked with all of its own.
+      for (; node && !visited.has(node); node = node.parentElement) {
+        visited.add(node);
+        if (
+          node === document.body ||
+          node === document.documentElement ||
+          !scrollsVertically(node)
+        ) {
+          continue;
+        }
+        const area = visibleArea(node);
+        if (area > bestArea) {
+          best = node;
+          bestArea = area;
+        }
+      }
+    }
+    return best;
+  }
+
+  /** Kept while it stays in the page and the document still does not
+   * scroll; looked for again otherwise — and on every new view. */
+  let scrollRootElement = null;
+
+  function scrollRoot() {
+    if (
+      !scrollRootElement ||
+      !scrollRootElement.isConnected ||
+      documentScrolls()
+    ) {
+      scrollRootElement = findScrollRoot();
+    }
+    return scrollRootElement;
+  }
+
   // --- Scroll depth (max reached per page, flushed on leave) ----------------
 
   function currentScrollDepth() {
-    const root = document.documentElement;
+    const inner = scrollRoot();
+    const root = inner || document.documentElement;
     const scrollable = root.scrollHeight - root.clientHeight;
     if (scrollable <= 0) {
       return PERCENT_SCALE;
     }
-    const scrolled = root.scrollTop || document.body.scrollTop || 0;
+    const scrolled = inner
+      ? inner.scrollTop
+      : root.scrollTop || document.body.scrollTop || 0;
     return Math.min(
       PERCENT_SCALE,
       Math.round((scrolled / scrollable) * PERCENT_SCALE),
@@ -320,7 +426,12 @@
     }
   }
 
-  window.addEventListener("scroll", measureScrollDepth, { passive: true });
+  // Captured on the document: an element's scroll does not bubble, and the
+  // window never hears it.
+  document.addEventListener("scroll", measureScrollDepth, {
+    capture: true,
+    passive: true,
+  });
 
   /**
    * Every sampled view reports a depth, scrolled or not: what shows without
@@ -442,6 +553,38 @@
     };
   }
 
+  /**
+   * Vertical position of a point in the page's content, and the content's
+   * height: with an inner scroll root, the range it hides is unrolled — a
+   * click on something inside it moves down by its scroll offset, one on
+   * something under it (a footer below the panel) by the whole hidden range
+   * — so `dy` reads the same however far the visitor had scrolled it, and
+   * lines up with a capture of the whole page. Beside it (a sidebar) or
+   * above it (a header), nothing moves.
+   */
+  function contentPosition(target, point) {
+    const height = document.documentElement.scrollHeight;
+    const root = scrollRoot();
+    if (!root) {
+      return { y: point.pageY, height: height };
+    }
+    const hidden = root.scrollHeight - root.clientHeight;
+    let y = point.pageY;
+    if (root.contains(target)) {
+      y += root.scrollTop;
+    } else {
+      const box = root.getBoundingClientRect();
+      if (
+        point.clientY >= box.bottom &&
+        point.clientX >= box.left &&
+        point.clientX < box.right
+      ) {
+        y += hidden;
+      }
+    }
+    return { y: y, height: height + hidden };
+  }
+
   document.addEventListener(
     "click",
     (event) => {
@@ -455,6 +598,7 @@
       }
       const doc = document.documentElement;
       const point = clickPoint(target, event);
+      const content = contentPosition(target, point);
       enqueue(
         Object.assign(base(), {
           kind: "click",
@@ -463,7 +607,7 @@
               x: normalized(point.clientX, innerWidth),
               y: normalized(point.clientY, innerHeight),
               dx: normalized(point.pageX, doc.scrollWidth),
-              dy: normalized(point.pageY, doc.scrollHeight),
+              dy: normalized(content.y, content.height),
               selector: shortSelector(target),
             },
             elementAnchor(target, point),
@@ -508,12 +652,17 @@
       website: websiteId,
       endpoint: snapshotEndpoint,
       path: path,
+      // Looked for at capture time, the page as it is then.
+      scrollRoot: findScrollRoot,
     };
     const loader = document.createElement("script");
     loader.async = true;
     loader.src =
       `${hostUrl}/api/marketing/snapshot.js?website=${encodeURIComponent(websiteId)}` +
-      `&path=${encodeURIComponent(path)}&width=${innerWidth}`;
+      `&path=${encodeURIComponent(path)}&width=${innerWidth}` +
+      // Lets the backend replace a capture taken before captures marked the
+      // scroll root, instead of waiting for it to age.
+      (scrollRoot() ? "&root=1" : "");
     const settle = () => loader.remove();
     loader.addEventListener("load", settle);
     loader.addEventListener("error", settle);

@@ -5,6 +5,11 @@ import {
 } from "../tables/page_snapshots.table";
 import { deleteExpiredRows } from "./retention";
 
+export type PageSnapshotCapture = Pick<
+  PageSnapshot,
+  "url" | "layout" | "capturedAt" | "documentWidth"
+>;
+
 export class PageSnapshotsModel extends BasicDataModel(
   PageSnapshot,
   pageSnapshotsTableName,
@@ -15,6 +20,17 @@ export class PageSnapshotsModel extends BasicDataModel(
       .getAll([websiteId], "websiteId")
       .filter((doc) => doc.key("url").eq(url))
       .run();
+  }
+
+  /**
+   * Every capture of one site without its document — what the pages list
+   * tells per path, in one read. `documentWidth` is 0 on an oversize report.
+   */
+  async listCaptures(websiteId: string): Promise<PageSnapshotCapture[]> {
+    return this.table
+      .getAll([websiteId], "websiteId")
+      .pluck("url", "layout", "capturedAt", "documentWidth")
+      .run() as Promise<PageSnapshotCapture[]>;
   }
 
   /** Captures of one site, or of one path when `url` is given. */

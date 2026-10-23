@@ -4,9 +4,12 @@ const { getConfig, setConfig } = require("../dist/config");
 const {
   dashboardExcludedPaths,
   dashboardFrontendOptions,
+} = require("../dist/frontend-module");
+const {
   dashboardWebsiteId,
   isDashboardWebsite,
   provisionDashboardWebsite,
+  setSnapshotsByOwner,
 } = require("../dist/services/dashboard-tracking");
 const {
   MAX_EXTRA_DOMAINS,
@@ -17,7 +20,9 @@ const ENABLED = {
   enabled: true,
   websiteName: "Back office",
   excludePaths: [],
+  snapshots: false,
 };
+const WITH_SNAPSHOTS = { ...ENABLED, snapshots: true };
 
 after(() => setConfig({}));
 
@@ -29,9 +34,11 @@ test("dashboard tracking is off unless enabled", () => {
     enabled: false,
     websiteName: "Dashboard",
     excludePaths: [],
+    snapshots: false,
   });
-  setConfig({ dashboardTracking: { enabled: "yes" } });
+  setConfig({ dashboardTracking: { enabled: "yes", snapshots: "yes" } });
   assert.equal(getConfig().dashboardTracking.enabled, false);
+  assert.equal(getConfig().dashboardTracking.snapshots, false);
 });
 
 test("the configured name and excluded paths are kept", () => {
@@ -40,12 +47,14 @@ test("the configured name and excluded paths are kept", () => {
       enabled: true,
       websiteName: "  Admin  ",
       excludePaths: ["/settings/**", "/modules/crm/*", "/about"],
+      snapshots: true,
     },
   });
   assert.deepEqual(getConfig().dashboardTracking, {
     enabled: true,
     websiteName: "Admin",
     excludePaths: ["/settings/**", "/modules/crm/*", "/about"],
+    snapshots: true,
   });
 });
 
@@ -154,6 +163,8 @@ test("the first visit creates the tenant's dashboard website", async () => {
   assert.equal(website.domain, "localhost");
   assert.equal(website.trackingEnabled, true);
   assert.equal(website.snapshotsEnabled, false);
+  assert.equal(website.snapshotsSetBy, "config");
+  assert.equal(website.snapshotMaskText, true);
   assert.equal(store.inserts, 1);
 });
 
@@ -247,4 +258,93 @@ test("two first visits at once end with one website", async () => {
   );
   assert.equal(website.name, "First");
   assert.equal(store.rows.size, 1);
+});
+
+// --- Configured snapshots ----------------------------------------------------
+
+test("snapshots: true provisions the website with snapshots on", async () => {
+  const store = fakeStore();
+  const { website, snapshotsChanged } = await provisionDashboardWebsite(
+    store,
+    "tenant-a",
+    "localhost",
+    WITH_SNAPSHOTS,
+  );
+  assert.equal(website.snapshotsEnabled, true);
+  assert.equal(website.snapshotsSetBy, "config");
+  // Text stays masked: an admin page shows records.
+  assert.equal(website.snapshotMaskText, true);
+  assert.equal(snapshotsChanged, false);
+});
+
+test("a website the configuration owns follows it both ways", async () => {
+  const store = fakeStore();
+  await provisionDashboardWebsite(store, "tenant-a", "localhost", ENABLED);
+  const on = await provisionDashboardWebsite(
+    store,
+    "tenant-a",
+    "localhost",
+    WITH_SNAPSHOTS,
+  );
+  assert.equal(on.changed, true);
+  assert.equal(on.snapshotsChanged, true);
+  assert.equal(on.website.snapshotsEnabled, true);
+  const id = dashboardWebsiteId("tenant-a");
+  assert.equal(store.rows.get(id).snapshotsEnabled, true);
+  const again = await provisionDashboardWebsite(
+    store,
+    "tenant-a",
+    "localhost",
+    WITH_SNAPSHOTS,
+  );
+  assert.equal(again.changed, false);
+  const off = await provisionDashboardWebsite(
+    store,
+    "tenant-a",
+    "localhost",
+    ENABLED,
+  );
+  assert.equal(off.snapshotsChanged, true);
+  assert.equal(store.rows.get(id).snapshotsEnabled, false);
+  assert.equal(store.rows.get(id).snapshotsSetBy, "config");
+});
+
+test("an owner's snapshot choice is never overridden by the configuration", async () => {
+  const store = fakeStore();
+  const id = dashboardWebsiteId("tenant-a");
+  const { website } = await provisionDashboardWebsite(
+    store,
+    "tenant-a",
+    "localhost",
+    WITH_SNAPSHOTS,
+  );
+  // The owner turns them off on the Websites page.
+  assert.equal(setSnapshotsByOwner(website, false), true);
+  assert.equal(website.snapshotsSetBy, "owner");
+  await store.update(website);
+  const updates = store.updates;
+  for (let visit = 0; visit < 3; visit++) {
+    const next = await provisionDashboardWebsite(
+      store,
+      "tenant-a",
+      "localhost",
+      WITH_SNAPSHOTS,
+    );
+    assert.equal(next.changed, false);
+    assert.equal(next.snapshotsChanged, false);
+  }
+  assert.equal(store.rows.get(id).snapshotsEnabled, false);
+  assert.equal(store.updates, updates);
+  // Turned back on by the owner, the configuration's "off" does not win either.
+  const row = await store.get(id);
+  setSnapshotsByOwner(row, true);
+  await store.update(row);
+  await provisionDashboardWebsite(store, "tenant-a", "localhost", ENABLED);
+  assert.equal(store.rows.get(id).snapshotsEnabled, true);
+});
+
+test("re-saving the same snapshot value does not claim the switch", () => {
+  const website = { snapshotsEnabled: true, snapshotsSetBy: "config" };
+  assert.equal(setSnapshotsByOwner(website, true), false);
+  assert.equal(website.snapshotsSetBy, "config");
 });

@@ -18,7 +18,7 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
 - Marketing 0.5 requires `@antelopejs/dms` >=0.9 (interface-dms 0.7, renderer `@antelopejs/dms-frontend` 0.6);
   0.4 is the DMS 0.8 line.
 - `ajs project modules add @antelopejs/dms-marketing`. Options: `trackerEnabled`, `rawEventsRetention`,
-  `statisticsRetention`, `snapshotRetention`, `sessionIdleTimeout` (all ms), `heatmapSampleRate` (0-1),
+  `statisticsRetention`, `snapshotRetention`, `sessionIdleTimeout` (all ms), `heatmapSampleRate` (0-1), `snapshotMaxBytes`,
   `visitorHashSecret` (set it when running several instances), `geoipDatabasePath` (.mmdb, opt-in),
   `dashboardTracking` (see below).
   The Settings page overrides switch, retentions and sampling at runtime for the whole deployment.
@@ -40,19 +40,34 @@ const arm = await window.dmsMarketing?.variation("hero-cta");      // null = ren
 - The dashboard origin forwards the scripts and beacons because the module declares them `publicEndpoints`
   (renderer 0.6 refuses other cross-origin writes); the backend origin works too.
 - Never `type="module"` (breaks `document.currentScript`). Always guard with `?.`.
-- Snapshots (heatmap backdrops) are opt-in per site; mask with `data-dms-marketing-mask` / `data-dms-marketing-block`.
+- Snapshots (heatmap backdrops) are opt-in per site (Websites page, General tab, next to Collect data); mask with
+  `data-dms-marketing-mask` / `data-dms-marketing-block`. Captures drop transient overlays on their own (top
+  layer, fixed/floating role=dialog/menu/listbox/tooltip, fixed toasts and toast viewports); block anything else
+  per element. Captures inline only the CSS rules matching the page
+  and upload gzipped; cap `snapshotMaxBytes` (default 1 MiB compressed, 64 KiB–8 MiB). One capture per
+  (path, layout) a day; a page without a snapshot (reset, option change, retention) is captured at its next
+  sampled visit (within 5 min across instances); a refused upload does not count as a capture.
+  The pages list shows each path's snapshot age ("No snapshot" when none) from one read per site. The
+  preview names the page captured: origin + path, a query string or fragment is never stored. It warns when
+  ≥ 10 % (and ≥ 5) of the anchored clicks target elements absent from the snapshot: the page changed, reset it.
+- App shells whose document does not scroll (an inner panel does): the tracker and the capture detect the
+  largest visible vertical scroller covering half the window; put `data-marketing-scroll-root` on the
+  container to name it explicitly. Scroll depth, click `dy` and the backdrop then cover the whole content.
 
 ## Tracking the dashboard itself
 
 For a demo, a playground or a back office measuring its own admin, no tag to write:
 
 ```typescript
-config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludePaths: ["/settings/**"] } }
+config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludePaths: ["/settings/**"],
+  snapshots: true } } // snapshots: optional, off by default
 ```
 
 - Off by default. On, the module's frontend loads the tracker on every signed-in dashboard page and
   `POST /api/marketing/dashboard-tracking` creates one website per tenant on first use (domain = the
   dashboard's host; later hosts join `extraDomains`). Rename, pause or delete it like any site.
+- `snapshots: true` provisions it with page snapshots on (text masked) for heatmap backdrops. Config owns the
+  switch until a person changes it on the Websites page (`snapshotsSetBy: "owner"`): never re-enabled after.
 - `/auth/**` is never counted; signing out pauses the tag, a workspace switch retargets it. SPA navigations
   count. Restart `ajs dms dev` / rebuild the frontend after toggling the option.
 - Tracker attributes behind it, usable on any site: `data-exclude-paths="/x,/x/*,/x/**"`, and a live
@@ -87,7 +102,7 @@ await ImportAnalytics({ tenantId, importId: "shop-history", websiteId: "shop-sit
   draft splits. `startedAt` on a running split makes imported exposures count.
 - EnsurePageSnapshot: the heatmap backdrop of a page the tracker cannot capture (not online, imported
   history); keyed by path + layout of `viewport` (desktop ≥ 1024, tablet ≥ 600, phone); sanitized like a
-  capture; needs `snapshotsEnabled`; a live capture replaces it and is never overwritten (`kept`).
+  capture (a `<style>` with `<` before a letter, `!`, `/` or `?` is dropped: CSS-escape that character); needs `snapshotsEnabled`; a live capture replaces it and is never overwritten (`kept`).
 - `tenantId` is required on every content call: no default. Full contract: the interface package's
   `docs/1.index.md`.
 
