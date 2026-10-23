@@ -1,6 +1,40 @@
 # Changelog
 
 
+## v0.7.0
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.6.1...v0.7.0)
+
+### 🚀 Enhancements
+
+- **frontend:** The frontend registration as a pure function, declared as dmsFrontend ([#59](https://github.com/AntelopeJS/dms-marketing/pull/59))
+- **dashboard-tracking:** Opt-in page snapshots for the dashboard website ([#58](https://github.com/AntelopeJS/dms-marketing/pull/58))
+- **snapshots:** Findable snapshot switch, dashboard snapshots option, lighter captures ([#48](https://github.com/AntelopeJS/dms-marketing/pull/48))
+- **websites:** List websites in a TableView with settings and create modals ([#50](https://github.com/AntelopeJS/dms-marketing/pull/50))
+- **heatmaps:** Read the dashboard's heatmaps per workspace or across all workspaces (platform owner) ([#52](https://github.com/AntelopeJS/dms-marketing/pull/52))
+- **dashboard-tracking:** Never count the DMS module area ([#53](https://github.com/AntelopeJS/dms-marketing/pull/53))
+- **marketing:** Adopt the DMS page toolbar for the analytics context bar ([#51](https://github.com/AntelopeJS/dms-marketing/pull/51))
+
+### 🩹 Fixes
+
+- **snapshots:** Lighter captures, scroll-root tracking and capture coverage ([#57](https://github.com/AntelopeJS/dms-marketing/pull/57))
+- **marketing:** Funnel builder window and copy cancel, live state, funnel breadcrumb ([#49](https://github.com/AntelopeJS/dms-marketing/pull/49))
+- **marketing:** Render the module's blocks with the page, skeletons at their content's size ([#54](https://github.com/AntelopeJS/dms-marketing/pull/54))
+- **settings:** Offer the deployment default on the settings form's fields ([#56](https://github.com/AntelopeJS/dms-marketing/pull/56))
+
+### 📦 Build
+
+- Run on @antelopejs/dms 0.10 and @antelopejs/dms-frontend 0.8 ([#62](https://github.com/AntelopeJS/dms-marketing/pull/62))
+
+### ✅ Tests
+
+- Render secret for dms 0.10, api 1.4.0 and core 1.17.0 in the test stack ([#60](https://github.com/AntelopeJS/dms-marketing/pull/60))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Maxime Westhoven ([@mwesto](http://github.com/mwesto))
+
 ## v0.6.1
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.6.0...v0.6.1)
