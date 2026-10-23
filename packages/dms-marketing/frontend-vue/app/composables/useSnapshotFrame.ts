@@ -1,4 +1,5 @@
 import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { unrollSnapshotScrollRoot } from '../utils/snapshotScrollRoot'
 
 /**
  * Geometry of a page snapshot rendered in a same-origin, script-less frame.
@@ -10,6 +11,10 @@ import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
  * from a reading taken through it runs away, every `100vh` section growing
  * one tick at a time, exactly as it would with a live page. Once published,
  * later growth is ignored until `reset()`.
+ *
+ * A capture of an app shell scrolling an inner panel is unrolled first (see
+ * snapshotScrollRoot): the reading is then the whole content, not the
+ * visitor's window.
  */
 
 /** Fallback document height when nothing measured it. */
@@ -112,6 +117,7 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     if (!doc || closed) {
       return
     }
+    unrollSnapshotScrollRoot(doc)
     void (doc.fonts?.ready ?? Promise.resolve()).then(() => {
       if (closed) {
         return
@@ -184,6 +190,26 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     return boxes
   }
 
+  /**
+   * The anchors whose element the snapshot does not have at all — no
+   * `nth` match, or a selector this document cannot parse. An element that
+   * is there but not drawn at this width (a phone-only menu in a desktop
+   * layout) is not missing: measureAnchors gives it no box, this keeps it.
+   */
+  function missingAnchors(anchors: AnchorRequest[]): AnchorRequest[] {
+    const doc = frameDocument()
+    if (!doc) {
+      return []
+    }
+    return anchors.filter((anchor) => {
+      try {
+        return !doc.querySelectorAll(anchor.selector)[anchor.nth]
+      } catch {
+        return true
+      }
+    })
+  }
+
   onBeforeUnmount(() => {
     watchedFrame?.removeEventListener('load', onFrameLoad)
     watchedFrame = null
@@ -201,5 +227,13 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     return measuredHeight.value !== null ? 'measured' : 'pending'
   })
 
-  return { measuredWidth, measuredHeight, tier, reset, close, measureAnchors }
+  return {
+    measuredWidth,
+    measuredHeight,
+    tier,
+    reset,
+    close,
+    measureAnchors,
+    missingAnchors,
+  }
 }

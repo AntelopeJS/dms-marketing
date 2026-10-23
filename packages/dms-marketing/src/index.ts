@@ -3,17 +3,15 @@ import "./data-api";
 import "./routes";
 import "./pages";
 
-import path from "node:path";
 import { ImplementInterface } from "@antelopejs/interface-core";
 import { Logging } from "@antelopejs/interface-core/logging";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { Hook, RegisterHook } from "@antelopejs/interface-dms/hooks";
 import { AddFrontendModule } from "@antelopejs/interface-dms/page";
 import cron, { type ScheduledTask } from "node-cron";
-import { type DmsMarketingConfigInput, getConfig, setConfig } from "./config";
+import { type DmsMarketingConfigInput, setConfig } from "./config";
 import { registerMarketingHookListeners } from "./hooks";
-import { TRACKER_PUBLIC_ENDPOINTS } from "./routes/public-endpoints";
-import { dashboardFrontendOptions } from "./services/dashboard-tracking";
+import { frontendModule } from "./frontend-module";
 import { markMarketingReady } from "./services/readiness";
 import {
   loadGeoipDatabase,
@@ -22,7 +20,7 @@ import {
   reloadSettings,
   stopCollectedNotices,
 } from "./services";
-import { FRONTEND_MODULE_NAME, MS_PER_SECOND } from "./types/constants";
+import { MS_PER_SECOND } from "./types/constants";
 
 const HOURLY_CRON = "0 * * * *";
 /** How stale another instance's Settings save can be here (switch included). */
@@ -46,14 +44,7 @@ export async function construct(
     await import("./implementations/dms-marketing"),
   );
 
-  await AddFrontendModule({
-    name: FRONTEND_MODULE_NAME,
-    sourcePath: path.join(__dirname, "../frontend-vue"),
-    renderer: { name: "vue", version: "3" },
-    priority: 0,
-    publicEndpoints: TRACKER_PUBLIC_ENDPOINTS,
-    ...dashboardFrontendOptions(getConfig().dashboardTracking),
-  });
+  await AddFrontendModule(frontendModule(config));
 }
 
 /**

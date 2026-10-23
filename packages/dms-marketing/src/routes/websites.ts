@@ -22,6 +22,7 @@ import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { z } from "zod";
 import { WebsitesModel } from "@/db";
 import type { Website } from "@/db/tables/websites.table";
+import { setSnapshotsByOwner } from "@/services/dashboard-tracking";
 import { invalidateExperimentDefinitions } from "@/services/experiment-definitions";
 import { deleteSnapshots } from "@/services/snapshots";
 import {
@@ -209,6 +210,8 @@ export class WebsitesController extends Controller(
    * option discards the site's captures: off means forgotten, and a mask
    * setting only holds for captures taken under it. `trackingEnabled` false
    * pauses the site: collect refuses its beacons until it is back on.
+   * Changing `snapshotsEnabled` makes it the owner's: a configured value
+   * (`dashboardTracking.snapshots`) never overrides it again.
    */
   @Put("/:id")
   async update(
@@ -248,7 +251,7 @@ export class WebsitesController extends Controller(
       (data.snapshotMaskText !== undefined &&
         data.snapshotMaskText !== (website.snapshotMaskText ?? false));
     if (data.snapshotsEnabled !== undefined) {
-      website.snapshotsEnabled = data.snapshotsEnabled;
+      setSnapshotsByOwner(website, data.snapshotsEnabled);
     }
     if (data.snapshotMaskText !== undefined) {
       website.snapshotMaskText = data.snapshotMaskText;

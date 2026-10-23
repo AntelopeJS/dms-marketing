@@ -5,6 +5,7 @@ import { parseExperimentValue } from '../composables/useExperiment'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
 import { useLatestRequest } from '../composables/useLatestRequest'
 import {
+  saveFunnel,
   useMarketingApi,
   type MarketingExperiment,
   type MarketingFunnelPreview,
@@ -40,6 +41,7 @@ import {
   localizedSnippetComments,
   variationSnippet,
   WINDOW_PRESET_HOURS,
+  withRequestedSplit,
   type DraftField,
   type FunnelDraftValues,
   type StepValue,
@@ -50,7 +52,7 @@ import { fractionDigits } from '../constants'
 
 /**
  * The funnel builder (`?id=` to edit, `?copy=` to start from a copy of a
- * funnel, `?split=1` to open the A/B section, `?steps=` to start from a
+ * funnel, `?split=1` to open the A/B section switched on, `?steps=` to start from a
  * template). Steps are picked from the pages and events the site already
  * tracks, with their counts; the preview scores the draft over the last 30
  * days while it is edited. Follows the DMS form contract — unsaved changes
@@ -243,7 +245,7 @@ function objectiveOf(draft: FunnelDraftValues): string {
 
 async function loadExisting(): Promise<void> {
   const { draft, experiment } = await fetchDefinition()
-  applyValues(draft)
+  applyValues(withRequestedSplit(draft, route.query.split))
   original.value = experiment
   savedObjective.value = objectiveOf(draft)
 }
@@ -722,12 +724,10 @@ async function save(): Promise<void> {
       conversionWindowHours: windowHours.value as number,
       experiment: experimentPayload(),
     }
-    const id = isEdit ? funnelId : (await api.createFunnel(input))[0]
-    if (isEdit) {
-      await api.updateFunnel(funnelId, input)
-    }
-    // Clean before leaving, or the leave guard would ask.
-    markClean()
+    const id = await saveFunnel(api, input, funnelId)
+    // Clean before leaving, or the leave guard would ask: a saved copy is
+    // no copy any more.
+    copy.settle()
     toast.add({
       color: 'success',
       title: t('page.marketing.builder.saved'),
@@ -750,7 +750,7 @@ function discard(): void {
   clearVariationError()
   fieldErrors.clear()
   if (copy.isCopy.value) {
-    copy.drop()
+    copy.settle()
     void router.push(backLink.value)
     return
   }

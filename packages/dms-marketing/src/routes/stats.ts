@@ -32,7 +32,11 @@ import {
   resolveQueryWindow,
 } from "@/services/period";
 import { queryString } from "@/services/query-param";
-import { readPageSnapshot } from "@/services/snapshots";
+import {
+  type PageSnapshotSummary,
+  readPageSnapshot,
+  summarizeSnapshots,
+} from "@/services/snapshots";
 import { requireTenantWebsite } from "@/services/tenant-website";
 import { parseTrackedUrl } from "@/services/url";
 import {
@@ -205,6 +209,8 @@ interface PageRow {
   pageviews: number;
   clicks: number;
   sampled: number;
+  /** Null for no capture; absent while the site has snapshots off. */
+  snapshot?: PageSnapshotSummary | null;
 }
 
 /**
@@ -243,7 +249,9 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
    * window), and paths with clicks but no rollup entry are listed too.
    * `sampleRate` is the measured share of sampled page loads — the rate the
    * snippet really applies — and `trackerEnabled` tells "collection off".
-   * `sort=clicks` orders by clicks, anything else by views.
+   * `sort=clicks` orders by clicks, anything else by views. While the site
+   * has snapshots on, each path also says what was captured of it, from one
+   * read of the site's captures (documents left out).
    */
   @Get("pages")
   // The parameter list of a decorated handler is its HTTP surface, not an
@@ -262,7 +270,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
       queryString(website),
     );
     const window = requestWindow(context);
-    const [inRange, activity] = await Promise.all([
+    const [inRange, activity, snapshots] = await Promise.all([
       GetModel(WebsiteStatisticsModel, websiteDoc.tenantId).getTopsSince(
         websiteDoc._id,
         window.firstDay,
@@ -270,6 +278,9 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
         window.lastDay,
       ),
       computePageActivity(websiteDoc.tenantId, websiteDoc._id, window),
+      websiteDoc.snapshotsEnabled
+        ? summarizeSnapshots(websiteDoc.tenantId, websiteDoc._id)
+        : null,
     ]);
 
     const views = mergeDimension(inRange, "topPages");
@@ -279,12 +290,18 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
       queryString(sort) === "clicks" ? "clicks" : "views";
     const matching = [...paths]
       .filter((path) => !needle || path.toLowerCase().includes(needle))
-      .map((path): PageRow => ({
-        path,
-        pageviews: views[path] ?? 0,
-        clicks: activity.clicks.get(path) ?? 0,
-        sampled: activity.sampled.get(path) ?? 0,
-      }))
+      .map((path): PageRow => {
+        const row: PageRow = {
+          path,
+          pageviews: views[path] ?? 0,
+          clicks: activity.clicks.get(path) ?? 0,
+          sampled: activity.sampled.get(path) ?? 0,
+        };
+        if (snapshots) {
+          row.snapshot = snapshots.get(path) ?? null;
+        }
+        return row;
+      })
       .sort((a, b) =>
         order === "clicks"
           ? b.clicks - a.clicks || b.pageviews - a.pageviews
@@ -298,6 +315,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
       truncated: matching.length > max,
       sampleRate: activity.sampleRate,
       trackerEnabled: getConfig().trackerEnabled,
+      snapshotsEnabled: websiteDoc.snapshotsEnabled,
     };
   }
 
