@@ -1,6 +1,61 @@
 # Changelog
 
 
+## v0.5.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.5.0...v0.5.1)
+
+### 🚀 Enhancements
+
+- **frontend:** The frontend registration as a pure function, declared as dmsFrontend ([#59](https://github.com/AntelopeJS/dms-marketing/pull/59))
+- **dashboard-tracking:** Opt-in page snapshots for the dashboard website ([#58](https://github.com/AntelopeJS/dms-marketing/pull/58))
+- **snapshots:** Findable snapshot switch, dashboard snapshots option, lighter captures ([#48](https://github.com/AntelopeJS/dms-marketing/pull/48))
+- **websites:** List websites in a TableView with settings and create modals ([#50](https://github.com/AntelopeJS/dms-marketing/pull/50))
+- **heatmaps:** Read the dashboard's heatmaps per workspace or across all workspaces (platform owner) ([#52](https://github.com/AntelopeJS/dms-marketing/pull/52))
+- **dashboard-tracking:** Never count the DMS module area ([#53](https://github.com/AntelopeJS/dms-marketing/pull/53))
+- **marketing:** Adopt the DMS page toolbar for the analytics context bar ([#51](https://github.com/AntelopeJS/dms-marketing/pull/51))
+
+### 🩹 Fixes
+
+- **frontend:** Run on @antelopejs/dms-frontend 0.7 ([#55](https://github.com/AntelopeJS/dms-marketing/pull/55))
+- **snapshots:** Lighter captures, scroll-root tracking and capture coverage ([#57](https://github.com/AntelopeJS/dms-marketing/pull/57))
+- **marketing:** Funnel builder window and copy cancel, live state, funnel breadcrumb ([#49](https://github.com/AntelopeJS/dms-marketing/pull/49))
+- **marketing:** Render the module's blocks with the page, skeletons at their content's size ([#54](https://github.com/AntelopeJS/dms-marketing/pull/54))
+- **settings:** Offer the deployment default on the settings form's fields ([#56](https://github.com/AntelopeJS/dms-marketing/pull/56))
+
+### 💅 Refactors
+
+- **content:** Drop the readiness gate ([#63](https://github.com/AntelopeJS/dms-marketing/pull/63))
+- **content:** Write declared websites, funnels and snapshots once ([#64](https://github.com/AntelopeJS/dms-marketing/pull/64))
+- **pages:** Read the hydration from the runtime in the page preview ([#65](https://github.com/AntelopeJS/dms-marketing/pull/65))
+- **playground:** Seed the default tenant at provisioning ([#66](https://github.com/AntelopeJS/dms-marketing/pull/66))
+
+### 📖 Documentation
+
+- Clarify learning paths and illustrate real outcomes ([#47](https://github.com/AntelopeJS/dms-marketing/pull/47))
+
+### 📦 Build
+
+- **marketing:** Align module with interface 0.5 for release ([341ea76](https://github.com/AntelopeJS/dms-marketing/commit/341ea76))
+- Run on @antelopejs/dms 0.10 and @antelopejs/dms-frontend 0.8 ([#62](https://github.com/AntelopeJS/dms-marketing/pull/62))
+- **deps:** Run on dms 0.11, interface-dms 0.9 and dms-frontend 0.9 ([#67](https://github.com/AntelopeJS/dms-marketing/pull/67))
+- **docs:** The interface's docs examples register their hook through interface-dms ([#68](https://github.com/AntelopeJS/dms-marketing/pull/68))
+
+### 🏡 Chore
+
+- **release:** @antelopejs/dms-marketing v0.6.0 ([1259194](https://github.com/AntelopeJS/dms-marketing/commit/1259194))
+- **release:** @antelopejs/dms-marketing v0.6.1 ([aa15fe5](https://github.com/AntelopeJS/dms-marketing/commit/aa15fe5))
+- **release:** @antelopejs/dms-marketing v0.7.0 ([7f904d3](https://github.com/AntelopeJS/dms-marketing/commit/7f904d3))
+
+### ✅ Tests
+
+- Render secret for dms 0.10, api 1.4.0 and core 1.17.0 in the test stack ([#60](https://github.com/AntelopeJS/dms-marketing/pull/60))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+- Maxime Westhoven ([@mwesto](http://github.com/mwesto))
+
 ## v0.5.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.4.1...v0.5.0)
