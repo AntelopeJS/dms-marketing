@@ -390,7 +390,7 @@ const usedIn = computed(() =>
 // holds its place, until the browser hydrating it is mounted. A client
 // navigation draws it with the list, from the first render: mounted later,
 // it would come in after the list, and its skeleton after none.
-const mounted = ref(!import.meta.env.SSR && !isHydratingComponent())
+const mounted = ref(!import.meta.env.SSR && !isDmsHydrating())
 if (mounted.value) {
   selectFirst(inventory.value)
 }
