@@ -5,6 +5,11 @@
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.5.0...v0.5.1)
 
+### Upgrade notes
+
+- **Behavior change (contract):** `MarketingDeclarationStatus` is `"created" | "kept"` ([#64](https://github.com/AntelopeJS/dms-marketing/pull/64)). `EnsureWebsite`, `EnsureFunnel` and `EnsurePageSnapshot` write once: a missing id is created, an existing one (declared, made in the dashboard or captured) is `kept` and nothing is written. The former refresh outcomes are gone; a consumer that tested them must drop those branches. Released as a patch.
+- Call the content functions from a `Hook.TENANT_BEING_PROVISIONED` handler, not from `start()` ([#63](https://github.com/AntelopeJS/dms-marketing/pull/63)): the readiness gate (`whenMarketingReady`) is removed, and the DMS (≥ 0.11) fires the hook for the `default` tenant once `DATABASE_INITIALIZED` has settled.
+
 ### 🚀 Enhancements
 
 - **frontend:** The frontend registration as a pure function, declared as dmsFrontend ([#59](https://github.com/AntelopeJS/dms-marketing/pull/59))
