@@ -42,33 +42,6 @@ export class PageSnapshotsModel extends BasicDataModel(
     await this.table.insert(row, { conflict: "replace" }).run();
   }
 
-  /**
-   * Rewrites a row only while it is still the one read (same capture time,
-   * same declaration): MongoDB evaluates the predicate inside the write, so
-   * a capture landing in between is never overwritten.
-   */
-  async replaceIfUnchanged(
-    expected: PageSnapshot,
-    patch: Partial<PageSnapshot>,
-  ): Promise<boolean> {
-    const count = await this.table
-      .filter((row) =>
-        row
-          .key("_id")
-          .eq(expected._id)
-          .and(row.key("capturedAt").eq(expected.capturedAt))
-          .and(
-            row
-              .key("declaredHash")
-              .default("")
-              .eq(expected.declaredHash ?? ""),
-          ),
-      )
-      .update(PageSnapshotsModel.toDatabase(patch))
-      .run();
-    return count === 1;
-  }
-
   async deleteByWebsite(websiteId: string, url?: string): Promise<number> {
     return this.byWebsite(websiteId, url).delete().run();
   }

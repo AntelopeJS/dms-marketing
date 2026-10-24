@@ -2,50 +2,6 @@ import { BasicDataModel } from "@antelopejs/interface-database-decorators";
 import { Website, websitesTableName } from "../tables/websites.table";
 
 export class WebsitesModel extends BasicDataModel(Website, websitesTableName) {
-  /** MongoDB evaluates this predicate inside the write, not in a prior read. */
-  async compareDeclared(
-    expected: Website,
-    patch: Partial<Website>,
-  ): Promise<boolean> {
-    const count = await this.table
-      .filter((row) =>
-        row
-          .key("_id")
-          .eq(expected._id)
-          .and(row.key("tenantId").eq(expected.tenantId))
-          .and(row.key("name").eq(expected.name))
-          .and(row.key("domain").eq(expected.domain))
-          .and(
-            row
-              .key("extraDomains")
-              .default([])
-              .eq(expected.extraDomains ?? []),
-          )
-          .and(row.key("trackingEnabled").eq(expected.trackingEnabled))
-          .and(
-            row
-              .key("snapshotsEnabled")
-              .default(false)
-              .eq(expected.snapshotsEnabled ?? false),
-          )
-          .and(
-            row
-              .key("snapshotMaskText")
-              .default(false)
-              .eq(expected.snapshotMaskText ?? false),
-          )
-          .and(
-            row
-              .key("declaredHash")
-              .default("")
-              .eq(expected.declaredHash ?? ""),
-          ),
-      )
-      .update(WebsitesModel.toDatabase({ ...patch, updatedAt: new Date() }))
-      .run();
-    return count === 1;
-  }
-
   async getByTenant(tenantId: string): Promise<Website[]> {
     return this.table
       .getAll(tenantId, "tenantId")

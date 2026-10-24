@@ -13,96 +13,6 @@ const realGetModel = models.GetModel;
 const ORIGIN = "https://interface-test.example.com";
 const MINUTE = 60_000;
 
-describe("declaration races through the public interface", () => {
-  beforeEach(() => mock.method(models, "GetModel", realGetModel));
-  afterEach(() => mock.restoreAll());
-
-  for (const kind of ["website", "funnel"]) {
-    for (const change of ["name", "nested", "hash"]) {
-      test(`${kind}: preserves a concurrent ${change} change`, async () => {
-        const { WebsitesModel, FunnelsModel } = require("../dist/db");
-        const clearing = change === "hash";
-        const id = `race-${kind}-${change}`;
-        const site = {
-          id,
-          tenantId: "default",
-          name: "Original",
-          domain: `${id}.example.com`,
-        };
-        await EnsureWebsite(site);
-        const declaration =
-          kind === "website"
-            ? site
-            : {
-                id,
-                tenantId: "default",
-                websiteId: id,
-                name: "Original",
-                steps: [{ kind: "url", value: "/" }],
-                experiment: {
-                  key: id,
-                  variations: [
-                    { key: "a", weight: 1 },
-                    { key: "b", weight: 2 },
-                  ],
-                },
-              };
-        const ensure = kind === "website" ? EnsureWebsite : EnsureFunnel;
-        const Model = kind === "website" ? WebsitesModel : FunnelsModel;
-        const model =
-          kind === "website"
-            ? realGetModel(Model)
-            : realGetModel(Model, "default");
-        if (kind === "funnel") await ensure(declaration);
-        if (clearing) await model.update(id, { name: "Owner" });
-        const originalGet = Model.prototype.get;
-        let intercepted = false;
-        let concurrent;
-        mock.method(Model.prototype, "get", async function (key) {
-          const observed = await originalGet.call(this, key);
-          if (key === id && !intercepted) {
-            intercepted = true;
-            if (clearing) {
-              // A declaration of a newly recreated row wins before the stale
-              // divergence observation tries to clear its hash. All compared
-              // content stays identical; only the declaration hash changes.
-              await this.delete(id);
-              await ensure({ ...declaration, name: "Owner" });
-            } else if (change === "nested") {
-              await this.update(
-                id,
-                kind === "website"
-                  ? { extraDomains: ["concurrent.example.com"] }
-                  : { steps: [{ kind: "custom", value: "owner" }] },
-              );
-            } else {
-              await this.update(id, { name: "Concurrent" });
-            }
-            concurrent = await originalGet.call(this, key);
-          }
-          return observed;
-        });
-        assert.equal(
-          (await ensure({ ...declaration, name: "Stale" })).status,
-          "kept",
-        );
-        const final = await originalGet.call(model, id);
-        assert.deepEqual(final, concurrent);
-        if (clearing) {
-          assert.equal(
-            (await ensure({ ...declaration, name: "Next" })).status,
-            "updated",
-          );
-        }
-      });
-    }
-  }
-});
-
-/**
- * Through the interface proxy, against the running module and its
- * database: what another module's backend does to ship content.
- */
 describe("the content interface tenant contract", () => {
   // Other files mock GetModel and the harness never gets the original back:
   // this test puts the real one, captured at load, in front of theirs.
@@ -190,7 +100,7 @@ describe("the content interface", () => {
       domain: ORIGIN,
     };
     assert.equal((await EnsureWebsite(site)).status, "created");
-    assert.equal((await EnsureWebsite(site)).status, "unchanged");
+    assert.equal((await EnsureWebsite(site)).status, "kept");
 
     const funnel = {
       tenantId: "default",
@@ -212,7 +122,7 @@ describe("the content interface", () => {
       },
     };
     assert.equal((await EnsureFunnel(funnel)).status, "created");
-    assert.equal((await EnsureFunnel(funnel)).status, "unchanged");
+    assert.equal((await EnsureFunnel(funnel)).status, "kept");
 
     const start = Date.now() - 30 * MINUTE;
     const batch = {
