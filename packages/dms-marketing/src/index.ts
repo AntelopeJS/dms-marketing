@@ -12,7 +12,6 @@ import cron, { type ScheduledTask } from "node-cron";
 import { type DmsMarketingConfigInput, setConfig } from "./config";
 import { registerMarketingHookListeners } from "./hooks";
 import { frontendModule } from "./frontend-module";
-import { markMarketingReady } from "./services/readiness";
 import {
   loadGeoipDatabase,
   loadSettings,
@@ -55,10 +54,10 @@ export async function construct(
  */
 async function onDatabaseInitialized(): Promise<void> {
   const settings = GetModel(MarketingSettingsModel);
+  // Before any tenant is provisioned: the DMS fires TENANT_BEING_PROVISIONED
+  // for the default tenant only once this hook has settled, and the content
+  // calls made there (ImportAnalytics…) need the visitor secret.
   await loadSettings(settings);
-  // The interface's content calls (EnsureWebsite, ImportAnalytics…) were
-  // waiting for exactly this: schemas registered, visitor secret loaded.
-  markMarketingReady();
 
   // The settings row is shared by every instance: each reads it again on a
   // short timer, and right before pruning with the retentions it holds.

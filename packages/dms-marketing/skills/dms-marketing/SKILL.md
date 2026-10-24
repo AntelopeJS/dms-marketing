@@ -101,11 +101,11 @@ config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludeP
 
 ## Content from code
 
-Never write the module's tables. From a module's `start()` (await) — or unawaited with a `.catch` in
-`construct()` / a DATABASE_INITIALIZED handler — use `@antelopejs/interface-dms-marketing`:
+Never write the module's tables. From a `Hook.TENANT_BEING_PROVISIONED` handler (once per tenant, the
+`default` one included; never `start()` or DATABASE_INITIALIZED) use `@antelopejs/interface-dms-marketing`:
 
 ```typescript
-const tenantId = "default"; // explicit, never implied
+RegisterHook(Hook.TENANT_BEING_PROVISIONED, async ({ tenantId }) => {
 await EnsureWebsite({ tenantId, id: "shop-site", name: "Shop", domain: "shop.example.com",
   snapshotsEnabled: true }); // id = data-website-id, global
 await EnsureFunnel({ tenantId, id: "shop-quote", websiteId: "shop-site", name: "Quote",
@@ -116,6 +116,7 @@ await EnsurePageSnapshot({ tenantId, websiteId: "shop-site", url: "https://shop.
   html, viewport: { width: 1280, height: 800 }, document: { width: 1280, height: 2600 } });
 await ImportAnalytics({ tenantId, importId: "shop-history", websiteId: "shop-site", sessions: [
   { visitor: "v1", userAgent, country: "BE", events: [{ kind: "pageview", at: "2026-10-01T09:00:00Z", url }] }] });
+});
 ```
 
 - Ensure* answer `created` / `unchanged` / `updated` / `kept`: a record someone changed since the last
