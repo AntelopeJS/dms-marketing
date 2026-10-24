@@ -22,12 +22,16 @@ interface DemoWebsiteRow {
   updatedAt: Date;
 }
 
+/** Writes the demo website once, when DMS provisions its default tenant. */
 export function registerDemoWebsiteSeed(): void {
-  RegisterHook(Hook.DATABASE_INITIALIZED, async () => {
+  RegisterHook(Hook.TENANT_BEING_PROVISIONED, async ({ tenantId }) => {
+    if (tenantId !== DEFAULT_TENANT_ID) {
+      return undefined;
+    }
     const table = Schema.get(CORE_SCHEMA_NAME)
       ?.instance()
       .table(WEBSITES_TABLE) as Table<DemoWebsiteRow> | undefined;
-    if (!table || (await table.get(DEMO_WEBSITE_ID).run())) {
+    if (!table) {
       return undefined;
     }
     const now = new Date();
