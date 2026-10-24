@@ -1,6 +1,30 @@
 # Changelog
 
 
+## v0.7.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.7.0...v0.7.1)
+
+### 💅 Refactors
+
+- **content:** Drop the readiness gate ([#63](https://github.com/AntelopeJS/dms-marketing/pull/63))
+- **content:** Write declared websites, funnels and snapshots once ([#64](https://github.com/AntelopeJS/dms-marketing/pull/64))
+- **pages:** Read the hydration from the runtime in the page preview ([#65](https://github.com/AntelopeJS/dms-marketing/pull/65))
+- **playground:** Seed the default tenant at provisioning ([#66](https://github.com/AntelopeJS/dms-marketing/pull/66))
+
+### 📦 Build
+
+- **deps:** Run on dms 0.11, interface-dms 0.9 and dms-frontend 0.9 ([#67](https://github.com/AntelopeJS/dms-marketing/pull/67))
+- **docs:** The interface's docs examples register their hook through interface-dms ([#68](https://github.com/AntelopeJS/dms-marketing/pull/68))
+
+### 🏡 Chore
+
+- **release:** @antelopejs/interface-dms-marketing v0.5.1 ([478dd3b](https://github.com/AntelopeJS/dms-marketing/commit/478dd3b))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli <rizzitelli.antony@pm.me>
+
 ## v0.7.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.6.1...v0.7.0)
