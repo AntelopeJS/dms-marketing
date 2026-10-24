@@ -5,6 +5,13 @@
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.7.0...v0.7.1)
 
+### Upgrade notes
+
+- Runs on `@antelopejs/dms` `>=0.11.0`, `@antelopejs/interface-dms` `>=0.9.0`, `@antelopejs/dms-frontend` `>=0.9.0 <0.10.0`, `@antelopejs/interface-data-api` `>=0.4.0` ([#67](https://github.com/AntelopeJS/dms-marketing/pull/67)). **Upgrade together with dms 0.11 and dms-frontend 0.9.**
+- **Behavior change:** the readiness gate is removed ([#63](https://github.com/AntelopeJS/dms-marketing/pull/63)). Call `EnsureWebsite`, `EnsureFunnel`, `EnsurePageSnapshot` and `ImportAnalytics` from a `Hook.TENANT_BEING_PROVISIONED` handler instead of `start()`.
+- **Behavior change:** declared websites, funnels and snapshots are written once ([#64](https://github.com/AntelopeJS/dms-marketing/pull/64)): an existing id is `kept` and nothing is written, a deleted one is created again. `declaredHash` and the refresh rule are removed; a funnel split is created in its declared state and the dashboard moves it afterwards. No migration: reset the database.
+- The page preview reads the hydration from the runtime (`isDmsHydrating()`, dms-frontend 0.9) ([#65](https://github.com/AntelopeJS/dms-marketing/pull/65)); the playground seeds the default tenant at provisioning ([#66](https://github.com/AntelopeJS/dms-marketing/pull/66)).
+
 ### 💅 Refactors
 
 - **content:** Drop the readiness gate ([#63](https://github.com/AntelopeJS/dms-marketing/pull/63))
