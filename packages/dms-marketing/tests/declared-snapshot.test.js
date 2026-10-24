@@ -49,14 +49,14 @@ describe("a page snapshot declared from code", () => {
   });
   afterEach(() => mock.restoreAll());
 
-  test("is stored like a capture, and refreshed while untouched", async () => {
+  test("is stored like a capture, once", async () => {
     const first = page("<html><body><h1>Plans</h1><script>x()</script>");
     assert.deepEqual(await EnsurePageSnapshot(first), {
       url: "/pricing",
       layout: "desktop",
       status: "created",
     });
-    assert.equal((await EnsurePageSnapshot(first)).status, "unchanged");
+    assert.equal((await EnsurePageSnapshot(first)).status, "kept");
     const stored = await readPageSnapshot(
       "default",
       "declared-snapshots",
@@ -71,7 +71,18 @@ describe("a page snapshot declared from code", () => {
     assert.doesNotMatch(stored.html, /<script/);
 
     const second = page("<html><body><h1>New plans</h1>");
-    assert.equal((await EnsurePageSnapshot(second)).status, "updated");
+    assert.equal((await EnsurePageSnapshot(second)).status, "kept");
+    assert.match(
+      (
+        await readPageSnapshot(
+          "default",
+          "declared-snapshots",
+          "/pricing",
+          "desktop",
+        )
+      ).html,
+      /<h1>Plans<\/h1>/,
+    );
     const phone = page("<html><body>Phone", {
       viewport: { width: 390, height: 844 },
     });
@@ -83,9 +94,8 @@ describe("a page snapshot declared from code", () => {
     assert.equal((await EnsurePageSnapshot(declared)).status, "created");
     const model = realGetModel(PageSnapshotsModel, "default");
     const [row] = await model.getByPath("declared-snapshots", "/");
-    // What the capture upload does: the whole row, without a declaration.
-    const { declaredHash: _declared, ...captured } = row;
-    await model.upsert({ ...captured, capturedAt: new Date() });
+    // What the capture upload does: the whole row, replaced.
+    await model.upsert(Object.assign(row, { capturedAt: new Date() }));
     const again = page("<html><body>Declared again", {
       url: `https://${HOST}/`,
     });

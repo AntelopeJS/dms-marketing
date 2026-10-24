@@ -7,16 +7,11 @@ import { z } from "zod";
 import { WebsitesModel } from "@/db";
 import type { Website } from "@/db/tables/websites.table";
 import {
-  contentHash,
   declaredTenant,
   describeIssue,
-  isUntouchedSinceDeclared,
   MarketingDeclarationError,
   requireDeclaredId,
 } from "./declarations";
-import { invalidateExperimentDefinitions } from "./experiment-definitions";
-import { forgetAcceptedSources } from "./origin-guard";
-import { deleteSnapshots } from "./snapshots";
 import { invalidateWebsiteCache } from "./website-cache";
 import {
   distinctExtraHosts,
@@ -38,7 +33,7 @@ const declarationSchema = z.object({
   snapshotMaskText: z.boolean().optional(),
 });
 
-/** What a declaration sets, normalized: also what its hash covers. */
+/** What a declaration sets, normalized. */
 interface WebsiteContent {
   name: string;
   domain: string;
@@ -71,18 +66,6 @@ function declaredContent(
   };
 }
 
-/** The same fields read off a stored row, in the same order. */
-function storedContent(website: Website): WebsiteContent {
-  return {
-    name: website.name,
-    domain: website.domain,
-    extraDomains: website.extraDomains ?? [],
-    trackingEnabled: website.trackingEnabled,
-    snapshotsEnabled: website.snapshotsEnabled ?? false,
-    snapshotMaskText: website.snapshotMaskText ?? false,
-  };
-}
-
 async function assertHostsFree(website: Website): Promise<void> {
   const conflict = await tenantHostConflict(website);
   if (conflict) {
@@ -95,61 +78,27 @@ async function assertHostsFree(website: Website): Promise<void> {
 }
 
 /**
- * Brings an existing row to the declaration when it is still the one last
- * declared; leaves it to its owner otherwise. A change to either snapshot
- * option discards the site's captures, as the dashboard's edit does.
+ * A website the id already names: left as it is, since it belongs to its
+ * owner from its creation on. An id of another tenant is refused.
  */
-async function refreshWebsite(
+function keptWebsite(
   existing: Website,
   tenantId: string,
-  content: WebsiteContent,
-): Promise<MarketingDeclarationResult> {
-  const id = existing._id;
+): MarketingDeclarationResult {
   if (existing.tenantId !== tenantId) {
     throw new MarketingDeclarationError(
       OPERATION,
-      id,
+      existing._id,
       "this id already names a website of another tenant",
     );
   }
-  if (
-    !isUntouchedSinceDeclared(existing.declaredHash, storedContent(existing))
-  ) {
-    // Once divergence is observed, restoring the old values must not give
-    // ownership back to code. Change only metadata, never the owner's fields.
-    if (existing.declaredHash) {
-      await GetModel(WebsitesModel).compareDeclared(existing, {
-        declaredHash: "",
-      });
-    }
-    return { id, status: "kept" };
-  }
-  const declaredHash = contentHash(content);
-  if (declaredHash === existing.declaredHash) {
-    return { id, status: "unchanged" };
-  }
-  const before = storedContent(existing);
-  const patch = { ...content, declaredHash, updatedAt: new Date() };
-  const refreshed = Object.assign({}, existing, patch);
-  await assertHostsFree(refreshed);
-  if (!(await GetModel(WebsitesModel).compareDeclared(existing, patch))) {
-    return { id, status: "kept" };
-  }
-  if (
-    before.snapshotsEnabled !== content.snapshotsEnabled ||
-    before.snapshotMaskText !== content.snapshotMaskText
-  ) {
-    await deleteSnapshots(tenantId, id);
-  }
-  invalidateWebsiteCache(id);
-  invalidateExperimentDefinitions(id);
-  forgetAcceptedSources(refreshed);
-  return { id, status: "updated" };
+  return { id: existing._id, status: "kept" };
 }
 
 /**
  * EnsureWebsite: the declared id is the website id itself, so the tag a
- * project ships can name it before the site exists.
+ * project ships can name it before the site exists. Written once, when the
+ * tenant is provisioned: an id that already exists is `kept`.
  */
 export async function ensureWebsite(
   declaration: MarketingWebsiteDeclaration,
@@ -160,14 +109,13 @@ export async function ensureWebsite(
   const model = GetModel(WebsitesModel);
   const existing = await model.get(id);
   if (existing) {
-    return refreshWebsite(existing, tenantId, content);
+    return keptWebsite(existing, tenantId);
   }
   const now = new Date();
   const website = {
     _id: id,
     tenantId,
     ...content,
-    declaredHash: contentHash(content),
     createdAt: now,
     updatedAt: now,
   } as Website;
@@ -175,12 +123,12 @@ export async function ensureWebsite(
   try {
     await model.insert(website);
   } catch (err) {
-    // Another instance booting the same project inserted it first.
+    // A concurrent provisioning inserted it first.
     const raced = await model.get(id);
     if (!raced) {
       throw err;
     }
-    return refreshWebsite(raced, tenantId, content);
+    return keptWebsite(raced, tenantId);
   }
   invalidateWebsiteCache(id);
   return { id, status: "created" };

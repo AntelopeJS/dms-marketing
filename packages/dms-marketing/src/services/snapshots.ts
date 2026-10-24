@@ -90,12 +90,16 @@ async function captureStateOf(
   const state = row
     ? {
         capturedAt: row.capturedAt.getTime(),
-        unmarked:
-          row.scrollRoot === undefined && row.declaredHash === undefined,
+        unmarked: row.scrollRoot === undefined,
       }
     : NO_CAPTURE;
   captureStates.set(id, state);
   return state;
+}
+
+/** Whether a serialized page marks the inner container it scrolls. */
+export function hasScrollRoot(html: string): boolean {
+  return html.includes(SCROLL_ROOT_ATTRIBUTE);
 }
 
 /** What the negotiation reads for a snapshot written outside a capture. */
@@ -441,7 +445,7 @@ export async function storeSnapshot(
     capturedAt: now,
     bytes: stored.bytes,
     html: stored.html,
-    scrollRoot: "html" in input && input.html.includes(SCROLL_ROOT_ATTRIBUTE),
+    scrollRoot: "html" in input && hasScrollRoot(input.html),
   } as PageSnapshot);
   captureStates.set(id, { capturedAt: now.getTime(), unmarked: false });
   noteCollected(website.tenantId, 1);

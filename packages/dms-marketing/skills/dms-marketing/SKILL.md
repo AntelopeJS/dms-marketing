@@ -101,11 +101,11 @@ config: { dashboardTracking: { enabled: true, websiteName: "Dashboard", excludeP
 
 ## Content from code
 
-Never write the module's tables. From a module's `start()` (await) — or unawaited with a `.catch` in
-`construct()` / a DATABASE_INITIALIZED handler — use `@antelopejs/interface-dms-marketing`:
+Never write the module's tables. From a `Hook.TENANT_BEING_PROVISIONED` handler (once per tenant, the
+`default` one included; never `start()` or DATABASE_INITIALIZED) use `@antelopejs/interface-dms-marketing`:
 
 ```typescript
-const tenantId = "default"; // explicit, never implied
+RegisterHook(Hook.TENANT_BEING_PROVISIONED, async ({ tenantId }) => {
 await EnsureWebsite({ tenantId, id: "shop-site", name: "Shop", domain: "shop.example.com",
   snapshotsEnabled: true }); // id = data-website-id, global
 await EnsureFunnel({ tenantId, id: "shop-quote", websiteId: "shop-site", name: "Quote",
@@ -116,11 +116,12 @@ await EnsurePageSnapshot({ tenantId, websiteId: "shop-site", url: "https://shop.
   html, viewport: { width: 1280, height: 800 }, document: { width: 1280, height: 2600 } });
 await ImportAnalytics({ tenantId, importId: "shop-history", websiteId: "shop-site", sessions: [
   { visitor: "v1", userAgent, country: "BE", events: [{ kind: "pageview", at: "2026-10-01T09:00:00Z", url }] }] });
+});
 ```
 
-- Ensure* answer `created` / `unchanged` / `updated` / `kept`: a record someone changed since the last
-  declaration (hash stored on the row) is never overwritten; delete it in the dashboard to re-take it.
-  Dashboard rules apply (hostnames, 1-10 steps, 2-8 arms, draft → running ⇄ stopped, arms frozen out of draft).
+- Ensure* write once, from `Hook.TENANT_BEING_PROVISIONED`: `created`, or `kept` for an id that already exists
+  (no hash, no refresh); delete a record in the dashboard to re-take it. Dashboard rules apply (hostnames,
+  1-10 steps, 2-8 arms); a split is created draft, running (one open run) or stopped (one closed run).
 - ImportAnalytics replays through the live collect pipeline with trusted timestamps (same sessions,
   raw events and daily rows); once per importId + website, later calls `in_progress` (first still replaying, counts not final),
   then `skipped` (or `failed`); ≤ 10,000 sessions and
@@ -128,7 +129,7 @@ await ImportAnalytics({ tenantId, importId: "shop-history", websiteId: "shop-sit
   draft splits. `startedAt` on a running split makes imported exposures count.
 - EnsurePageSnapshot: the heatmap backdrop of a page the tracker cannot capture (not online, imported
   history); keyed by path + layout of `viewport` (desktop ≥ 1024, tablet ≥ 600, phone); sanitized like a
-  capture (a `<style>` with `<` before a letter, `!`, `/` or `?` is dropped: CSS-escape that character); needs `snapshotsEnabled`; a live capture replaces it and is never overwritten (`kept`).
+  capture (a `<style>` with `<` before a letter, `!`, `/` or `?` is dropped: CSS-escape that character); needs `snapshotsEnabled`; a live capture replaces it; an existing snapshot of that page and layout is `kept`.
 - `tenantId` is required on every content call: no default. Full contract: the interface package's
   `docs/1.index.md`.
 
