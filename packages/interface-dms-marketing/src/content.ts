@@ -6,7 +6,7 @@ import { InterfaceFunction } from "@antelopejs/interface-core";
  * imported from elsewhere.
  *
  * Every call is keyed by an id (or, for a snapshot, a page) the caller
- * chooses and is safe to repeat on each boot or hot reload.
+ * chooses: a repeated call writes nothing.
  * Call them from a `Hook.TENANT_BEING_PROVISIONED` handler: the DMS fires it
  * once per tenant, when the tenant is created (the `default` tenant on the
  * start that creates it, once `Hook.DATABASE_INITIALIZED` has settled), so the
@@ -15,23 +15,15 @@ import { InterfaceFunction } from "@antelopejs/interface-core";
  * explicit nonempty tenantId, without surrounding whitespace.
  */
 
-/** How a declaration call left the stored record. */
+/**
+ * How a declaration call left the stored record. Content declared from code
+ * is written once, when the tenant is provisioned, and belongs to its owner
+ * from then on.
+ */
 export type MarketingDeclarationStatus =
   /** No record had this id: it was created from the declaration. */
   | "created"
-  /** The record still matched the previous declaration and was refreshed. */
-  | "updated"
-  /** The record already matches the declaration: nothing was written. */
-  | "unchanged"
-  /**
-   * Someone changed the record since it was last declared (or it was never
-   * declared from code): its content is left as it is, declaration ignored.
-   * Also returned when a concurrent change prevents the conditional write.
-   * Observed divergence conditionally clears the hash so restoring old values
-   * does not return ownership to code. Contention alone does not clear it.
-   * Edits reverted before comparison are invisible. Conditional-write safety
-   * requires an adapter retaining the predicate in the write (verified on MongoDB).
-   */
+  /** A record already has this id: it is left as it is, declaration ignored. */
   | "kept";
 
 export interface MarketingDeclarationResult {
@@ -90,19 +82,18 @@ export interface MarketingExperimentDeclaration {
   /** 2-8 arms with distinct keys, at least one weight above 0. */
   variations: MarketingExperimentVariation[];
   /**
-   * Default `"draft"`. A declaration moves the split the way the dashboard
-   * does (draft → running ⇄ stopped, never back to draft), and the arms
-   * freeze once it has left draft.
+   * Default `"draft"`. `"running"` opens a run, `"stopped"` records one
+   * closed run (a finished test shipped with its history).
    */
   status?: MarketingExperimentStatus;
   /**
-   * When the run this declaration starts began (epoch ms or ISO 8601), not in
-   * the future; defaults to now. Only read when the declaration starts a run
-   * — results are counted from it, so a split declared with an imported
-   * history passes the instant that history starts.
+   * When the run began (epoch ms or ISO 8601), not in the future; defaults
+   * to now. Read when the split is created running or stopped — results are
+   * counted from it, so a split declared with an imported history passes the
+   * instant that history starts.
    */
   startedAt?: number | string;
-  /** When the run this declaration stops ended; defaults to now. */
+  /** When the run of a split created stopped ended; defaults to now. */
   stoppedAt?: number | string;
 }
 
@@ -167,9 +158,9 @@ export interface MarketingPageSnapshotResult {
   url: string;
   layout: MarketingSnapshotLayout;
   /**
-   * As for the other declarations. `"kept"`: a capture of the live page
-   * replaced the declared one since (or there was one already): a capture
-   * always wins over a declaration and is never overwritten.
+   * As for the other declarations. `"kept"`: a snapshot of that page and
+   * layout is already stored, captured or declared. A later capture of the
+   * live page replaces a declared one.
    */
   status: MarketingDeclarationStatus;
 }

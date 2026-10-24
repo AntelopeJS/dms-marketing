@@ -1,13 +1,8 @@
 const assert = require("node:assert/strict");
 const { mock } = require("node:test");
-const { isDeepStrictEqual } = require("node:util");
 const test = it;
 const models = require("@antelopejs/interface-database-decorators/model");
-const {
-  FunnelsModel,
-  PageSnapshotsModel,
-  WebsitesModel,
-} = require("../dist/db");
+const { FunnelsModel, WebsitesModel } = require("../dist/db");
 const { ensureWebsite } = require("../dist/services/declared-website");
 const { ensureFunnel } = require("../dist/services/declared-funnel");
 const { dashboardWebsiteId } = require("../dist/services/dashboard-tracking");
@@ -30,11 +25,6 @@ function table() {
       }
       rows.set(row._id, structuredClone(row));
     },
-    async compareDeclared(expected, patch) {
-      if (!isDeepStrictEqual(rows.get(expected._id), expected)) return false;
-      rows.set(expected._id, { ...expected, ...structuredClone(patch) });
-      return true;
-    },
     async update(row, patch) {
       if (typeof row === "string") {
         rows.set(row, { ...rows.get(row), ...structuredClone(patch) });
@@ -47,7 +37,6 @@ function table() {
 
 let websites;
 let funnelsByTenant;
-let snapshotDeletes;
 
 function funnelsOf(tenantId) {
   if (!funnelsByTenant.has(tenantId)) {
@@ -74,21 +63,12 @@ function useFakeModels() {
     websites.getByTenant = async (tenantId) =>
       [...websites.rows.values()].filter((row) => row.tenantId === tenantId);
     funnelsByTenant = new Map();
-    snapshotDeletes = [];
     mock.method(models, "GetModel", (Model, tenantId) => {
       if (Model === WebsitesModel) {
         return websites;
       }
       if (Model === FunnelsModel) {
         return funnelsOf(tenantId);
-      }
-      if (Model === PageSnapshotsModel) {
-        return {
-          async deleteByWebsite(websiteId) {
-            snapshotDeletes.push(websiteId);
-            return 0;
-          },
-        };
       }
       throw new Error(`unexpected model ${Model.name}`);
     });
@@ -122,48 +102,24 @@ describe("EnsureWebsite", () => {
     assert.equal(row.domain, "shop.example.com");
     assert.equal(row.trackingEnabled, true);
     assert.equal(row.snapshotsEnabled, false);
-    assert.equal(typeof row.declaredHash, "string");
   });
 
-  test("a repeated declaration writes nothing", async () => {
+  // Written once, at provisioning: from then on the site is its owner's,
+  // and a later declaration of the id, changed or not, writes nothing.
+  test("a declared id is kept, whatever is declared next", async () => {
     await ensureWebsite(SITE);
+    userEdits(websites, "shop-site", { trackingEnabled: false });
     const before = websites.rows.get("shop-site");
-    assert.equal((await ensureWebsite(SITE)).status, "unchanged");
+    const result = await ensureWebsite({
+      ...SITE,
+      name: "Renamed by code",
+      snapshotsEnabled: true,
+    });
+    assert.deepEqual(result, { id: "shop-site", status: "kept" });
     assert.deepEqual(websites.rows.get("shop-site"), before);
   });
 
-  test("a new declaration refreshes a site nobody touched", async () => {
-    await ensureWebsite(SITE);
-    const result = await ensureWebsite({
-      ...SITE,
-      name: "Main Shop",
-      extraDomains: ["localhost", "shop.example.com"],
-      snapshotsEnabled: true,
-    });
-    assert.equal(result.status, "updated");
-    const row = websites.rows.get("shop-site");
-    assert.equal(row.name, "Main Shop");
-    assert.deepEqual(row.extraDomains, ["localhost"]);
-    assert.deepEqual(snapshotDeletes, ["shop-site"]);
-  });
-
-  test("a site a user changed is kept, whatever is declared next", async () => {
-    await ensureWebsite(SITE);
-    userEdits(websites, "shop-site", { trackingEnabled: false });
-    const result = await ensureWebsite({ ...SITE, name: "Renamed by code" });
-    assert.equal(result.status, "kept");
-    const row = websites.rows.get("shop-site");
-    assert.equal(row.name, "Shop");
-    assert.equal(row.trackingEnabled, false);
-    userEdits(websites, "shop-site", { trackingEnabled: true });
-    assert.equal(
-      (await ensureWebsite({ ...SITE, name: "New default" })).status,
-      "kept",
-    );
-    assert.equal(websites.rows.get("shop-site").name, "Shop");
-  });
-
-  test("a site never declared from code is never taken over", async () => {
+  test("a site made in the dashboard is never taken over", async () => {
     websites.rows.set("hand-made", {
       _id: "hand-made",
       tenantId: "default",
@@ -252,7 +208,6 @@ describe("EnsureFunnel", () => {
     ]);
     assert.equal(row.conversionWindowMs, 24 * HOUR);
     assert.equal(row.experiment, null);
-    assert.equal((await ensureFunnel(FUNNEL)).status, "unchanged");
   });
 
   test("a running split starts its run at the declared instant", async () => {
@@ -264,56 +219,25 @@ describe("EnsureFunnel", () => {
     const { experiment } = funnelsOf("default").rows.get("quote-request");
     assert.equal(experiment.status, "running");
     assert.deepEqual(experiment.runs, [{ startedAt, stoppedAt: null }]);
-    // The instant is only read by the move that starts the run.
-    const again = await ensureFunnel({
-      ...FUNNEL,
-      experiment: { ...SPLIT, status: "running", startedAt: Date.now() },
-    });
-    assert.equal(again.status, "unchanged");
   });
 
-  test("a split can be declared already finished, then stopped and resumed", async () => {
+  test("a split can be declared already finished", async () => {
     const startedAt = new Date(Date.now() - 20 * DAY).toISOString();
     const stoppedAt = Date.now() - 5 * DAY;
     await ensureFunnel({
       ...FUNNEL,
       experiment: { ...SPLIT, status: "stopped", startedAt, stoppedAt },
     });
-    const runs = () =>
-      funnelsOf("default").rows.get("quote-request").experiment.runs;
-    assert.deepEqual(runs(), [{ startedAt: Date.parse(startedAt), stoppedAt }]);
-    await ensureFunnel({
-      ...FUNNEL,
-      experiment: { ...SPLIT, status: "running" },
-    });
-    assert.equal(runs().length, 2);
-    assert.equal(runs()[1].stoppedAt, null);
+    const { experiment } = funnelsOf("default").rows.get("quote-request");
+    assert.deepEqual(experiment.runs, [
+      { startedAt: Date.parse(startedAt), stoppedAt },
+    ]);
   });
 
-  test("the lifecycle and the frozen arms hold as on the dashboard", async () => {
-    await ensureFunnel({
-      ...FUNNEL,
-      experiment: { ...SPLIT, status: "running" },
-    });
+  test("a run that starts in the future or ends before it starts is refused", async () => {
     await assert.rejects(
       ensureFunnel({
         ...FUNNEL,
-        experiment: {
-          ...SPLIT,
-          status: "running",
-          variations: [...SPLIT.variations, { key: "third", weight: 1 }],
-        },
-      }),
-      /its key, variations and website can no longer change/,
-    );
-    await assert.rejects(
-      ensureFunnel({ ...FUNNEL, experiment: { ...SPLIT, status: "draft" } }),
-      /cannot move from running to draft/,
-    );
-    await assert.rejects(
-      ensureFunnel({
-        ...FUNNEL,
-        id: "fresh",
         experiment: {
           ...SPLIT,
           status: "running",
@@ -321,6 +245,18 @@ describe("EnsureFunnel", () => {
         },
       }),
       /experiment.startedAt: not a past instant/,
+    );
+    await assert.rejects(
+      ensureFunnel({
+        ...FUNNEL,
+        experiment: {
+          ...SPLIT,
+          status: "stopped",
+          startedAt: Date.now() - DAY,
+          stoppedAt: Date.now() - 2 * DAY,
+        },
+      }),
+      /experiment.stoppedAt: before experiment.startedAt/,
     );
   });
 });
@@ -332,35 +268,17 @@ describe("EnsureFunnel on an existing funnel", () => {
     await ensureWebsite(SITE);
   });
 
-  test("a funnel a user changed is kept", async () => {
+  test("a declared id is kept, whatever is declared next", async () => {
     await ensureFunnel(FUNNEL);
     userEdits(funnelsOf("default"), "quote-request", { name: "Edited" });
-    const result = await ensureFunnel({ ...FUNNEL, name: "Declared again" });
-    assert.equal(result.status, "kept");
-    assert.equal(funnelsOf("default").rows.get("quote-request").name, "Edited");
-    userEdits(funnelsOf("default"), "quote-request", { name: FUNNEL.name });
-    assert.equal(
-      (await ensureFunnel({ ...FUNNEL, name: "New default" })).status,
-      "kept",
-    );
-    assert.equal(
-      funnelsOf("default").rows.get("quote-request").name,
-      FUNNEL.name,
-    );
-  });
-
-  test("a changed declaration of an untouched funnel is applied", async () => {
-    await ensureFunnel(FUNNEL);
+    const before = funnelsOf("default").rows.get("quote-request");
     const result = await ensureFunnel({
       ...FUNNEL,
       conversionWindowHours: 72,
-      experiment: SPLIT,
+      experiment: { ...SPLIT, status: "running" },
     });
-    assert.equal(result.status, "updated");
-    const row = funnelsOf("default").rows.get("quote-request");
-    assert.equal(row.conversionWindowMs, 72 * HOUR);
-    assert.equal(row.experiment.status, "draft");
-    assert.deepEqual(row.experiment.runs, []);
+    assert.deepEqual(result, { id: "quote-request", status: "kept" });
+    assert.deepEqual(funnelsOf("default").rows.get("quote-request"), before);
   });
 
   test("unknown websites, foreign websites, taken keys and bad steps are refused", async () => {

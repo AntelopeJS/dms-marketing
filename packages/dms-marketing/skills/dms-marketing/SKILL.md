@@ -119,9 +119,9 @@ await ImportAnalytics({ tenantId, importId: "shop-history", websiteId: "shop-sit
 });
 ```
 
-- Ensure* answer `created` / `unchanged` / `updated` / `kept`: a record someone changed since the last
-  declaration (hash stored on the row) is never overwritten; delete it in the dashboard to re-take it.
-  Dashboard rules apply (hostnames, 1-10 steps, 2-8 arms, draft → running ⇄ stopped, arms frozen out of draft).
+- Ensure* write once, from `Hook.TENANT_BEING_PROVISIONED`: `created`, or `kept` for an id that already exists
+  (no hash, no refresh); delete a record in the dashboard to re-take it. Dashboard rules apply (hostnames,
+  1-10 steps, 2-8 arms); a split is created draft, running (one open run) or stopped (one closed run).
 - ImportAnalytics replays through the live collect pipeline with trusted timestamps (same sessions,
   raw events and daily rows); once per importId + website, later calls `in_progress` (first still replaying, counts not final),
   then `skipped` (or `failed`); ≤ 10,000 sessions and
@@ -129,7 +129,7 @@ await ImportAnalytics({ tenantId, importId: "shop-history", websiteId: "shop-sit
   draft splits. `startedAt` on a running split makes imported exposures count.
 - EnsurePageSnapshot: the heatmap backdrop of a page the tracker cannot capture (not online, imported
   history); keyed by path + layout of `viewport` (desktop ≥ 1024, tablet ≥ 600, phone); sanitized like a
-  capture (a `<style>` with `<` before a letter, `!`, `/` or `?` is dropped: CSS-escape that character); needs `snapshotsEnabled`; a live capture replaces it and is never overwritten (`kept`).
+  capture (a `<style>` with `<` before a letter, `!`, `/` or `?` is dropped: CSS-escape that character); needs `snapshotsEnabled`; a live capture replaces it; an existing snapshot of that page and layout is `kept`.
 - `tenantId` is required on every content call: no default. Full contract: the interface package's
   `docs/1.index.md`.
 

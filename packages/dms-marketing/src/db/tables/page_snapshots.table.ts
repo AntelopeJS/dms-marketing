@@ -60,8 +60,8 @@ export class PageSnapshot extends Table {
   /**
    * Whether the capture marked a scroll root (`data-marketing-scroll-root`).
    * Absent on captures stored before captures recorded it — replaced early
-   * on a page the tracker sees scrolling an inner container — and on
-   * declared snapshots.
+   * on a page the tracker sees scrolling an inner container. A declared
+   * snapshot records it from its document, as a capture does.
    */
   @Field("boolean")
   declare scrollRoot?: boolean;
@@ -69,12 +69,4 @@ export class PageSnapshot extends Table {
   /** Gzipped document, base64. */
   @Field("string")
   declare html: string;
-
-  /**
-   * Fingerprint of the content EnsurePageSnapshot last wrote; absent on a
-   * capture, which replaces the whole row — so a declaration never
-   * overwrites one.
-   */
-  @Field("string")
-  declare declaredHash?: string;
 }

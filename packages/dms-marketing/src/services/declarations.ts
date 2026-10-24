@@ -1,11 +1,10 @@
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import { DECLARED_ID_PATTERN } from "@/types/constants";
 
 /**
  * What the content declarations of the interface (EnsureWebsite,
  * EnsureFunnel, ImportAnalytics) share: the caller's ids, the tenant
- * validation, the error shape and the "declared and untouched since" hash.
+ * validation and the error shape.
  */
 
 /** Thrown on a declaration or import the module refuses. */
@@ -48,31 +47,6 @@ export function declaredTenant(
     );
   }
   return tenantId;
-}
-
-/**
- * The fingerprint of declared content. The callers build `content` with a
- * fixed key order, from normalized values, so the same content always
- * hashes the same whether it comes from a declaration or a stored row.
- */
-export function contentHash(content: unknown): string {
-  return createHash("sha256").update(JSON.stringify(content)).digest("hex");
-}
-
-/**
- * A stored record a declaration may still rewrite: one it created or last
- * refreshed, whose content has not moved since. Anything else — a record a
- * user changed, or one never declared from code — is theirs.
- */
-export function isUntouchedSinceDeclared(
-  declaredHash: string | undefined,
-  currentContent: unknown,
-): declaredHash is string {
-  return (
-    declaredHash !== undefined &&
-    declaredHash !== null &&
-    contentHash(currentContent) === declaredHash
-  );
 }
 
 /** Epoch ms from epoch ms or an ISO 8601 string; undefined when unusable. */
