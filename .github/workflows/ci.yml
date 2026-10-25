@@ -14,59 +14,20 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Two jobs in parallel so the wall clock is the slower of them, not the sum:
-# the backend suite boots a real DMS, everything else is static checks and the
-# layer tests. `ubuntu` gathers them under the name the branch protection
-# knows.
+# the backend suite boots a real DMS, everything else is `pnpm run checks`
+# (static checks and the layer tests). `ubuntu` gathers them under the name
+# the branch protection knows.
 jobs:
-  static:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v4
-
-      # Before setup-node: its pnpm cache resolves the store by running pnpm.
-      # No version input — the root package.json `packageManager` is the pin.
-      - uses: pnpm/action-setup@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-          cache: pnpm
-          # Each workspace project retains its own dependency resolutions.
-          cache-dependency-path: |
-            pnpm-lock.yaml
-            packages/*/pnpm-lock.yaml
-            packages/*/frontend-vue/pnpm-lock.yaml
-
-      # Everything installs from the public npm registry; the module resolves
-      # the interface to the workspace sibling through `link-workspace-packages`.
-      # Includes the Vue development dependencies, but not the playground.
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm --dir packages/interface-dms-marketing lint
-      - run: pnpm --dir packages/interface-dms-marketing typecheck
-      # The module typechecks against the interface's built declarations.
-      - run: pnpm --dir packages/interface-dms-marketing build
-
-      - uses: AntelopeJS/tooling-configs/actions/docs@310e3d861b2da2244902854379176c91e1ebc68e
-        with:
-          files: |
-            README.md
-            packages/dms-marketing/README.md
-            packages/dms-marketing/docs
-            packages/interface-dms-marketing/README.md
-            packages/interface-dms-marketing/docs
-          typescript-project: packages/interface-dms-marketing/docs/tsconfig.json
-
-      - run: pnpm --dir packages/dms-marketing lint
-      # oxlint's type-aware pass degrades to `any` on a broken tsconfig
-      # without failing, so the typecheck is what catches it.
-      - run: pnpm --dir packages/dms-marketing typecheck
-      # Unused dependencies only. `pnpm knip:all` also reports dead files and
-      # exports, which need a human to confirm, so they stay out of the gate.
-      - run: pnpm --dir packages/dms-marketing knip
-      # vitest over the Vue layer; needs neither the build nor a database.
-      - run: pnpm --dir packages/dms-marketing test:layer
+  checks:
+    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
+    with:
+      docs-files: |
+        README.md
+        packages/dms-marketing/README.md
+        packages/dms-marketing/docs
+        packages/interface-dms-marketing/README.md
+        packages/interface-dms-marketing/docs
+      docs-typescript-project: packages/interface-dms-marketing/docs/tsconfig.json
 
   backend:
     runs-on: ubuntu-latest
@@ -117,7 +78,7 @@ jobs:
   # job above passed.
   ubuntu:
     if: always()
-    needs: [static, backend]
+    needs: [checks, backend]
     runs-on: ubuntu-latest
     steps:
       - run: |
