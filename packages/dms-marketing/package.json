@@ -50,7 +50,7 @@
     "test:layer": "cd frontend-vue && pnpm test",
     "dev": "ajs project run -w -p playground",
     "frontend:dev": "cd playground && pnpm frontend:dev",
-    "release": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --dir frontend-vue install --frozen-lockfile && pnpm --dir ../.. run lint && release-it",
+    "release": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --dir frontend-vue install --frozen-lockfile && pnpm --dir ../.. run lint && pnpm --dir ../.. run format:check && release-it",
     "prepack": "pnpm run build",
     "typecheck": "tsc --noEmit",
     "knip": "knip --dependencies",

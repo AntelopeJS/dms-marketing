@@ -2,7 +2,7 @@
 
 ## Layout
 
-A pnpm workspace with two published packages. The root holds the tool configs, the CI workflows and nothing else.
+A pnpm workspace with two published packages. The root holds the tool configs and the CI workflows; no source code.
 
 | Path                                  | What it is                                                                         |
 | ------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -15,14 +15,14 @@ Each package keeps its own `pnpm-lock.yaml` (`shared-workspace-lockfile=false`).
 
 ## Versioning
 
-The module implements the interface, so it depends on it as `>=<interface version> <0.<minor+1>.0`. `release.yml` refuses any other shape, and refuses to release the module until that interface version is on npm: run "Release DMS marketing interface" first.
+The module implements the interface, so it depends on it as `>=<floor> <0.<minor+1>.0`, and the interface version in the tree must satisfy that range. `release.yml` refuses any other shape, and refuses to release the module until the tree's interface version is on npm: run "Release DMS marketing interface" first.
 
 ## Tests
 
 `pnpm run checks` runs only the Vue layer tests (`test:layer`). The backend suite runs in its own CI job. Run it when your change touches the module's backend:
 
 - `pnpm --dir packages/dms-marketing test:backend` builds the interface and the module, then `ajs module test .` boots the module against a real DMS and an in-memory MongoDB replica set (`antelope.test.ts`). Set `DMS_PREBUILT=1` to reuse an existing build.
-- `pnpm --dir packages/dms-marketing knip:all` also reports unused files and exports. Controllers, pages and modules are reached through decorators, so confirm each finding before you remove it.
+- `pnpm --dir packages/dms-marketing knip:all` also reports unused files and exports. The exports of `src/frontend-module.ts` are reached through `dmsFrontend` in `package.json`; confirm every other finding before you remove it.
 
 ## Orb
 
