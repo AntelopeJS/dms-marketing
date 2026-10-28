@@ -105,6 +105,9 @@ Never write the module's tables. From a `Hook.TENANT_BEING_PROVISIONED` handler 
 `default` one included; never `start()` or DATABASE_INITIALIZED) use `@antelopejs/interface-dms-marketing`:
 
 ```typescript
+import { Hook, RegisterHook } from "@antelopejs/interface-dms/hooks";
+import { EnsureFunnel, EnsurePageSnapshot, EnsureWebsite } from "@antelopejs/interface-dms-marketing";
+
 RegisterHook(Hook.TENANT_BEING_PROVISIONED, async ({ tenantId }) => {
 await EnsureWebsite({ tenantId, id: "shop-site", name: "Shop", domain: "shop.example.com",
   snapshotsEnabled: true }); // id = data-website-id, global
