@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "marketing-track-event",
+      "area": "modules",
+      "style": "clean",
+      "prompt": "Track a signup event from our marketing website.",
+      "expect": {
+        "skills": ["dms-marketing"],
+        "acceptable": ["dms"]
+      }
+    },
+    {
+      "id": "dms-marketing-collect-403-casual",
+      "area": "modules",
+      "style": "casual",
+      "prompt": "analytics dashboard is empty and the collect call returns 403, what did i miss",
+      "expect": {
+        "skills": ["dms-marketing"],
+        "acceptable": ["dms"]
+      }
+    },
+    {
+      "id": "dms-marketing-ship-funnel",
+      "area": "modules",
+      "style": "clean",
+      "prompt": "Every new workspace should get a demo shop website and a signup funnel with an A/B test on the hero button, created from my module's code. Which calls, and when do I make them?",
+      "expect": {
+        "skills": ["dms-marketing"],
+        "acceptable": ["dms", "dms-module"],
+        "mustMention": [
+          "EnsureWebsite",
+          "EnsureFunnel",
+          "TENANT_BEING_PROVISIONED"
+        ]
+      }
+    },
+    {
+      "id": "dms-marketing-avoid-email-events",
+      "area": "modules",
+      "style": "clean",
+      "prompt": "We want to see which recipients opened or clicked our welcome e-mail, and stop sending to addresses that hard bounced.",
+      "expect": {
+        "skills": ["dms-mailing"],
+        "acceptable": ["dms"],
+        "mustMention": ["RecordEmailEvent"],
+        "avoid": ["dms-marketing"]
+      }
+    }
+  ]
+}
