@@ -415,21 +415,13 @@ const { overlayItems, layoutItems, layoutSwitch, moreItems, surface, surfaceEmpt
       </div>
 
       <PagePreviewLegend
-
         :filled="filled"
-
         :overlay-mode="overlayMode"
-
         :most-clicked="mostClicked"
-
         :median-depth="medianDepth"
-
         :scroll-fold-ratio="scrollFoldRatio"
-
         :scroll-views="scrollViews"
-
         :used-in="usedIn"
-
       />
     </div>
   </section>

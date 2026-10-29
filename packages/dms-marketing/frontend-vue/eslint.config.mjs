@@ -37,6 +37,7 @@ export default [
     rules: {
       'antelopejs/no-fs-read-in-tests': 'error',
       'antelopejs/no-constant-value-assertion': 'error',
+      'antelopejs/no-typeof-function-only-test': 'error',
       'antelopejs/no-self-import-in-tests': 'error',
       'anti-slop/no-module-mocking': 'error',
     },
