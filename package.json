@@ -18,10 +18,12 @@
     "sync:check": "antelopejs-sync --check",
     "format": "oxfmt . && pnpm --dir packages/dms-marketing/frontend-vue format",
     "format:check": "oxfmt --check .",
-    "lint:fix": "oxlint --fix && pnpm --dir packages/dms-marketing/frontend-vue lint:fix"
+    "lint:fix": "oxlint --fix && pnpm --dir packages/dms-marketing/frontend-vue lint:fix",
+    "suppressions": "antelopejs-suppressions",
+    "suppressions:update": "antelopejs-suppressions --update"
   },
   "devDependencies": {
-    "@antelopejs/tooling-configs": "^0.2.0",
+    "@antelopejs/tooling-configs": "^0.2.11",
     "knip": "^6.34.0",
     "lefthook": "^2.2.2",
     "oxfmt": "^0.66.0",

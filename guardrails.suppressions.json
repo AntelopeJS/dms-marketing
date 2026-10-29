@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "anti-slop/no-chained-type-assertions": 6,
+    "anti-slop/no-object-parameters": 1,
+    "eslint/max-params": 2,
+    "typescript/no-explicit-any": 1,
+    "typescript/no-require-imports": 1,
+    "typescript/unbound-method": 10
+  },
+  "tsExpectError": 0,
+  "tsIgnore": 0,
+  "safety": 0
+}
