@@ -30,7 +30,7 @@ import { PERIOD_SCOPE } from '../constants'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
 import { formatNumber } from '../utils/format'
 import { pageSnapshotBadge } from '../utils/page-snapshot'
-import { measureFillHeight } from '../utils/fill-height'
+import { useFillPanes } from '../build/composables/useFillPanes'
 import { useMarketingNow } from '../composables/useMarketingNow'
 import { normalizePagePath, selectedPageRow } from '../utils/heatmap'
 import {
@@ -39,6 +39,7 @@ import {
   rememberWorkspace,
   WORKSPACE_QUERY,
 } from '../utils/workspace-scope'
+import PagesExplorerList from '../build/components/pages-explorer/PagesExplorerList.vue'
 
 /**
  * Pages & heatmaps: the paths visitors loaded on the selected website, with
@@ -290,54 +291,7 @@ watch(inventory, selectFirst)
 
 const previewWrapper = ref<HTMLElement | null>(null)
 
-/**
- * Side by side, the list and the preview fill the window below the context
- * bar, each scrolling inside itself: the page does not scroll, and the
- * preview's toolbar and legend stay in sight however long the page or the
- * list. Stacked (below xl), nothing is pinned: null.
- */
-const panes = ref<HTMLElement | null>(null)
-const paneHeight = ref<number | null>(null)
-let paneFrame = 0
-
-function measurePanes(): void {
-  cancelAnimationFrame(paneFrame)
-  paneFrame = requestAnimationFrame(() => {
-    const element = panes.value
-    paneHeight.value =
-      element && window.matchMedia(SIDE_BY_SIDE_QUERY).matches
-        ? measureFillHeight(element)
-        : null
-  })
-}
-
-// What sits above or below the panes (a banner, the sampling note) moves
-// them: the body's size says so on a page that scrolls, this block's own on
-// a shell that scrolls a panel. Their own height leaves the answer as is,
-// so the observer settles at once.
-let paneObserver: ResizeObserver | null = null
-onMounted(() => {
-  measurePanes()
-  window.addEventListener('resize', measurePanes)
-  paneObserver = new ResizeObserver(measurePanes)
-  paneObserver.observe(document.body)
-  const block = panes.value?.parentElement
-  if (block) {
-    paneObserver.observe(block)
-  }
-})
-onBeforeUnmount(() => {
-  cancelAnimationFrame(paneFrame)
-  window.removeEventListener('resize', measurePanes)
-  paneObserver?.disconnect()
-})
-
-// The panes come and go with the waiting state.
-watch(panes, (element) => element && measurePanes())
-
-const paneStyle = computed(() =>
-  paneHeight.value === null ? undefined : { height: `${paneHeight.value}px` },
-)
+const { panes, paneHeight, paneStyle } = useFillPanes(SIDE_BY_SIDE_QUERY)
 
 /** Stacked under the list (below xl), the preview is out of sight: bring it in. */
 async function pick(path: string): Promise<void> {
@@ -549,101 +503,17 @@ const sortItems = computed(() => [
             "
             :description="t('page.marketing.pages.no_pages.description')"
           />
-          <ul
+          <PagesExplorerList
             v-else
-            class="flex flex-col gap-1 overflow-y-auto p-2"
-            :class="[
-              loading ? 'opacity-60' : '',
-              paneHeight === null
-                ? 'max-h-[45vh] xl:max-h-[70vh]'
-                : 'min-h-0 flex-1',
-            ]"
-          >
-            <li v-for="page in rows" :key="page.path">
-              <button
-                type="button"
-                class="flex w-full flex-col gap-1 rounded-lg border px-3 py-2 text-left transition-colors"
-                :class="
-                  page.path === selectedPath
-                    ? 'border-primary bg-primary/10'
-                    : 'border-transparent hover:bg-elevated'
-                "
-                :title="page.path"
-                :aria-current="page.path === selectedPath ? 'true' : undefined"
-                @click="pick(page.path)"
-              >
-                <span class="flex items-center gap-2">
-                  <span
-                    class="min-w-0 flex-1 truncate font-mono text-[13px]"
-                    :class="
-                      page.path === selectedPath
-                        ? 'font-medium text-highlighted'
-                        : 'text-highlighted'
-                    "
-                  >
-                    {{ page.path }}
-                  </span>
-                  <span class="font-mono text-xs tabular-nums text-highlighted">
-                    {{ formatNumber(metricOf(page), locale) }}
-                  </span>
-                </span>
-                <span class="flex items-center gap-2">
-                  <span
-                    class="flex flex-1 items-center gap-1 text-[11px]"
-                    :class="
-                      page.path === selectedPath ? 'text-muted' : 'text-dimmed'
-                    "
-                  >
-                    <template v-if="sort === 'views'">
-                      <UIcon name="i-ph-cursor-click" class="size-3" />
-                      {{
-                        t(
-                          'page.marketing.pages.row_clicks',
-                          { count: formatNumber(page.clicks, locale) },
-                          page.clicks,
-                        )
-                      }}
-                    </template>
-                    <template v-else>
-                      <UIcon name="i-ph-eye" class="size-3" />
-                      {{
-                        t(
-                          'page.marketing.pages.row_views',
-                          { count: formatNumber(page.pageviews, locale) },
-                          page.pageviews,
-                        )
-                      }}
-                    </template>
-                  </span>
-                  <span
-                    v-if="page.badge"
-                    class="flex shrink-0 items-center gap-1 text-[11px]"
-                    :class="page.badge.muted ? 'text-dimmed' : 'text-muted'"
-                    :title="page.badge.title"
-                  >
-                    <UIcon
-                      :name="page.badge.icon"
-                      class="size-3"
-                      :class="page.badge.muted ? '' : 'text-success'"
-                    />
-                    <span class="sr-only">{{ page.badge.title }}</span>
-                    <span aria-hidden="true">{{ page.badge.label }}</span>
-                  </span>
-                  <span
-                    class="h-1 w-14 overflow-hidden rounded-full bg-elevated"
-                    aria-hidden="true"
-                  >
-                    <span
-                      class="block h-full rounded-full bg-primary"
-                      :style="{
-                        width: `${(metricOf(page) / maxMetric) * 100}%`,
-                      }"
-                    />
-                  </span>
-                </span>
-              </button>
-            </li>
-          </ul>
+            :rows="rows"
+            :loading="loading"
+            :pane-height="paneHeight"
+            :selected-path="selectedPath"
+            :sort="sort"
+            :max-metric="maxMetric"
+            :metric-of="metricOf"
+            :pick="pick"
+          />
           <footer
             class="flex items-center gap-1.5 border-t border-default px-4 py-2.5 text-xs text-dimmed"
           >
