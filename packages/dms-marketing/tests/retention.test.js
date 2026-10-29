@@ -55,7 +55,6 @@ before(async () => {
   db = client.db("marketing_retention");
   const providerClient = await internal.client;
   providerClient.on("commandStarted", (event) => commands.push(event.command));
-  // Atomic commands use a separate client; observe it without bypassing interface execution.
   GetAtomicCollection(SCHEMA).client.on("commandStarted", (event) =>
     commands.push(event.command),
   );

@@ -63,7 +63,6 @@ function withDeploymentDefaults(
     return {
       ...field,
       defaultValue: value,
-      // The deployment default is the module's: the field offers it back.
       offersDefault: true,
       component: {
         ...field.component,
@@ -77,6 +76,12 @@ function withDeploymentDefaults(
   return { ...options, fields: options.fields.map(withDefault) };
 }
 
+/**
+ * A Form over the given number settings, submitted with PUT rather than POST:
+ * the form then sends only the fields the user changed, so a default left alone
+ * is never saved as an override, and a stale tab does not write back what
+ * another owner changed since.
+ */
 function settingsForm(ids: readonly string[], successMessage: string) {
   return Form({
     fields: NUMBER_SETTINGS.filter((setting) => ids.includes(setting.id)).map(
@@ -84,9 +89,6 @@ function settingsForm(ids: readonly string[], successMessage: string) {
     ),
     fetchUrl: SETTINGS_URL,
     submitUrl: SETTINGS_URL,
-    // Not POST: the form then sends only the fields the user changed, so a
-    // default left alone is never saved as an override, and a stale tab does
-    // not write back what another owner changed since.
     submitUrlMethod: HttpMethod.put,
     successMessage,
   }).onFilter((_permissions, options) =>

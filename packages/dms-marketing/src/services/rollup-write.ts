@@ -95,9 +95,18 @@ function rowFrom(
     bouncedSessions: delta.bouncedSessions,
     sessionDurationMs: delta.sessionDurationMs,
     tops: mergedTops(undefined, delta),
-  } as WebsiteStatistics;
+  };
 }
 
+/**
+ * Adds the delta to the day row of the website, inserting the row on the first
+ * write. Losing the insert race (another instance created the row first) falls
+ * through to the increment, but the database interface exposes no typed
+ * conflict error, and matching driver messages would tie the module to one
+ * backend. So the state is probed, not the error: a row that exists after a
+ * failed insert is the lost race, whatever the driver called it; no row means
+ * the insert failed for real.
+ */
 async function writeDailyStats(
   model: WebsiteStatisticsModel,
   websiteId: string,
@@ -111,12 +120,6 @@ async function writeDailyStats(
       await model.insert(rowFrom(websiteId, day, delta));
       return;
     } catch (error) {
-      // Losing the insert race (another instance created the row first) must
-      // fall through to the increment — but the database interface exposes no
-      // typed conflict error, and matching driver messages would tie the
-      // module to one backend. So probe the state, not the error: a row that
-      // exists after a failed insert IS the lost race, whatever the driver
-      // called it; no row means the insert failed for real.
       existing = await model.get(id);
       if (!existing) {
         throw error;

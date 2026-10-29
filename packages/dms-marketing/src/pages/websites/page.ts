@@ -60,7 +60,6 @@ const websitesTable = TableView(websitesDataAPI, {
   defaultSort: { field: "name", desc: false },
   rowClick: "single",
   searchPlaceholder: `${WEBSITES_PREFIX}search`,
-  // Writes go through /api/marketing/websites, which publish here.
   realtimeTopic: WEBSITES_REALTIME_TOPIC,
   rowActions: {
     add: false,
@@ -134,13 +133,12 @@ export class MarketingWebsitesPage extends PageController(
     ],
   }),
 ) {
-  // The module-wide "collection paused" notice, above the cards.
+  /** The module-wide "collection paused" notice, above the cards. */
   static collection = collectionPausedBanner();
 
   static websites = websitesTable
     .meta(blockMeta("websites_table", "i-ph-globe"))
     .navBadge({
-      // In warning: a grey "Websites 1" reads as one website, not one to check.
       count: async (ctx) => ({
         count: await countWaitingWebsites(getRequestTenantId(ctx)),
         tone: "warning",

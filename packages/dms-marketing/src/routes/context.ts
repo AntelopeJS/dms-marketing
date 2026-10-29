@@ -12,6 +12,7 @@ import { AuthTenantMember } from "@antelopejs/interface-dms/guards";
 import { z } from "zod";
 import { loadMarketingContext, selectContextWebsite } from "@/services/context";
 import { API_BASE_PATH, MAX_WEBSITE_ID_LENGTH } from "@/types/constants";
+import type { JsonBody } from "@/types/json";
 
 const INVALID_CONTEXT_MESSAGE = "$page.marketing.errors.invalid_website";
 
@@ -40,13 +41,11 @@ export class MarketingContextController extends Controller(
   async select(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
   ) {
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       contextSelectionSchema.parse,
       () => INVALID_CONTEXT_MESSAGE,
     );

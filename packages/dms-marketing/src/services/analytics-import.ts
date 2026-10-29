@@ -10,6 +10,7 @@ import { FunnelsModel, MarketingImportsModel, WebsitesModel } from "@/db";
 import type { MarketingImport } from "@/db/tables/marketing_imports.table";
 import type { Website } from "@/db/tables/websites.table";
 import type { DeviceInfo } from "@/types";
+import { isObject } from "@/utils/guards";
 import {
   MAX_COLLECT_BATCH_SIZE,
   MAX_SCREEN_AND_LANGUAGE_CHARS,
@@ -100,7 +101,7 @@ function asTrackedEvent(
   raw: unknown,
   session: ImportSession,
 ): Record<string, unknown> | undefined {
-  if (!raw || typeof raw !== "object") {
+  if (!isObject(raw)) {
     return undefined;
   }
   const event = raw as Record<string, unknown>;
@@ -152,7 +153,7 @@ function acceptedEventsByVisitor(
   websiteId: string,
   sessions: ImportSession[],
   experimentKeys: ReadonlySet<string>,
-): { visitors: Map<string, VisitorEvent[]>; dropped: number } {
+) {
   const now = Date.now();
   const oldest = now - getConfig().statisticsRetention;
   const newest = now + MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS;
@@ -324,6 +325,14 @@ function claimed(row: MarketingImport): MarketingImportResult {
  * same project, the next boot — is not counted twice: it answers
  * `in_progress` while the first is still replaying, `skipped` once it is
  * done, `failed` if it failed (the claim stays, for the same reason).
+ *
+ * The events are prepared before the claim, so a validation failure has written
+ * no analytics. The claim is a row under the empty import id, which no caller
+ * can declare, so it cannot collide with a caller's id; its plain insert gives
+ * one writer per website across instances. An uncertain claim insert is neither
+ * retried nor released. Once the replay starts, an uncertain write or a crash
+ * retains the website claim, and it is never released in a `finally`: other
+ * replay workers may still be writing.
  */
 export async function importAnalytics(
   batch: MarketingAnalyticsImport,
@@ -342,7 +351,6 @@ export async function importAnalytics(
   if (applied) {
     return claimed(applied);
   }
-  // Prepare before claiming: validation failures have written no analytics.
   const { visitors, dropped } = acceptedEventsByVisitor(
     websiteId,
     sessions,
@@ -366,8 +374,6 @@ export async function importAnalytics(
     dropped: 0,
     startedAt: new Date(),
   };
-  // An empty import id cannot be declared, so this row cannot collide with
-  // caller ids. A plain insert gives one writer per website across instances.
   const claimId = importRowId(websiteId, "");
   const claimToken = randomUUID();
   try {
@@ -387,7 +393,6 @@ export async function importAnalytics(
         "another import owns this website; retry after it completes (an interrupted import requires reconciliation)",
       );
     }
-    // An uncertain insert must not be retried or its claim released.
     throw err;
   }
 
@@ -424,8 +429,6 @@ export async function importAnalytics(
     throw err;
   }
 
-  // From this point, an uncertain write or a crash retains the website claim.
-  // Never release in finally: other replay workers may still be writing.
   try {
     await imports.insert(row);
     const counts = await replayAll(website, visitors);

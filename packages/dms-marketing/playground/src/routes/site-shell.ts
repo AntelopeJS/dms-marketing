@@ -76,7 +76,7 @@ export function write(
   html: string,
   framable = true,
 ): void {
-  const response = context.response as unknown as WritableResponse;
+  const response = context.response as WritableResponse;
   if (!framable) {
     response.addHeader("X-Frame-Options", "DENY");
   }

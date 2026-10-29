@@ -36,8 +36,6 @@ function volumeKpi(metric: string, icon: string) {
     variant: "stat",
     valueFormat: "number",
     showSparkline: true,
-    // The trend badge carries the change: the line only draws the days, and
-    // never reads as a fall nobody compared.
     sparklineAccent: "primary",
     fetchUrl: websiteUrl(`${BLOCKS_API}/kpi?metric=${metric}`),
     ...LIVE_SCOPE,
@@ -56,8 +54,6 @@ function trafficChart(metric: "sessions" | "pageviews") {
     valueFormat: "number",
     primaryLabel: `${TRAFFIC_PREFIX}this_period`,
     comparisonLabel: `${TRAFFIC_PREFIX}compared_period`,
-    // Straight: a smoothed line between daily counts draws peaks and dips no
-    // day had.
     chart: ChartArea({
       curve: "straight",
       xaxisType: "datetime",
@@ -138,8 +134,6 @@ export class MarketingOverviewPage extends PageController(
     )
     .child(
       "traffic",
-      // Three 280px tracks fit the content of a 1280px window, so the wide card
-      // keeps its side card on the same row on a laptop.
       Grid({ minColumnWidth: "280px" })
         .child(
           "row",

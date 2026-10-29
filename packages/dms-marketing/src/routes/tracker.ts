@@ -66,7 +66,6 @@ function servedScript(): string {
 export class TrackerController extends Controller(API_BASE_PATH) {
   @Get("tracker.js")
   async tracker(@Context() context: RequestContext) {
-    // Paused: cached briefly, so resuming reaches visitors within a minute.
     const enabled = getConfig().trackerEnabled;
     const maxAge = enabled
       ? TRACKER_CACHE_MAX_AGE_SECONDS

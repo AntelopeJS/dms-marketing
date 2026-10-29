@@ -36,7 +36,7 @@ const NO_STORE_CACHE_CONTROL = "private, no-store";
 
 /** JSON is not quite JS: U+2028/U+2029 are legal in JSON strings but
  * terminate a line inside a script body. */
-function toScriptLiteral(value: unknown): string {
+function toScriptLiteral(value: AssignmentMap): string {
   return JSON.stringify(value)
     .replaceAll("\u2028", "\\u2028")
     .replaceAll("\u2029", "\\u2029");
@@ -61,7 +61,6 @@ export class PublicExperimentsController extends Controller(API_BASE_PATH) {
       throw new HTTPResult(HTTP_BAD_REQUEST, MISSING_WEBSITE_MESSAGE);
     }
     let assignments: AssignmentMap = {};
-    // An over-long id can never match a website: refuse it a cache slot too.
     if (getConfig().trackerEnabled && id.length <= MAX_WEBSITE_ID_LENGTH) {
       const running = await servableExperiments(id);
       if (running.length > 0) {

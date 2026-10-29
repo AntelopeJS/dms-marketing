@@ -334,8 +334,6 @@ describe("combined heatmaps", () => {
     );
     assert.equal(activity.clicks.get("/orders"), 4);
     assert.equal(activity.sampled.get("/orders"), 2);
-    // 10 pageviews at 1 and 10 at 0.5: neither site alone reaches the
-    // 20 pageviews a measured rate needs, together they do.
     assert.equal(activity.sampleRate, 0.75);
   });
 

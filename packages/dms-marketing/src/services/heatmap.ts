@@ -21,6 +21,7 @@ import {
 } from "@/types/constants";
 import { type QueryWindow, resolveQueryWindow } from "./period";
 import { deleteSnapshots } from "./snapshots";
+import { isNumber } from "@/utils/guards";
 
 const CLICK_FIELDS = ["data"] as const;
 
@@ -98,7 +99,7 @@ function anchorOf(data: ClickEventData): MarketingHeatmapAnchor | null {
   if (!data.selector) {
     return null;
   }
-  if (typeof data.ox !== "number" || typeof data.oy !== "number") {
+  if (!isNumber(data.ox) || !isNumber(data.oy)) {
     return null;
   }
   return {
@@ -176,7 +177,7 @@ function bucketClick(
 ): boolean {
   const x = data.dx ?? data.x;
   const y = data.dy ?? data.y;
-  if (typeof x !== "number" || typeof y !== "number") {
+  if (!isNumber(x) || !isNumber(y)) {
     return false;
   }
   const anchor = anchorOf(data);

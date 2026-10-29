@@ -9,7 +9,6 @@ import { FunnelsModel, WebsitesModel } from "@/db";
 import type {
   ExperimentRun,
   ExperimentStatus,
-  Funnel,
   FunnelExperiment,
   FunnelStep,
 } from "@/db/tables/funnels.table";
@@ -121,7 +120,11 @@ function declaredContent(
 }
 
 /** A caller-given instant of a run, never in the future; now by default. */
-function runInstant(id: string, field: string, value: unknown): number {
+function runInstant(
+  id: string,
+  field: string,
+  value: MarketingExperimentDeclaration["startedAt" | "stoppedAt"],
+): number {
   const now = Date.now();
   if (value === undefined) {
     return now;
@@ -225,7 +228,7 @@ export async function ensureFunnel(
     steps: content.steps,
     conversionWindowMs: content.conversionWindowMs,
     experiment,
-  } as Funnel;
+  };
   try {
     await model.insert(funnel);
   } catch (err) {

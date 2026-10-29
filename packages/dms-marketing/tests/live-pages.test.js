@@ -93,7 +93,6 @@ test("each stock block reading data follows the arrivals topic", () => {
       );
     }
   }
-  // Banners, charts, the quality strip, top lists and both tables.
   assert.ok(checked >= 13, `${checked} blocks checked`);
 });
 
@@ -120,7 +119,6 @@ test("the KPI cards follow the arrivals topic themselves", () => {
 });
 
 test("arrivals are published batched per tenant, with their count and nothing else", async () => {
-  // What another suite's beacons left waiting is not this batch.
   stopCollectedNotices();
   const received = [];
   const unsubscribe = SubscribeMessage(MARKETING_EVENTS_TOPIC, (message) =>
@@ -132,7 +130,6 @@ test("arrivals are published batched per tenant, with their count and nothing el
     noteCollected("tenant-a", 0);
     noteCollected("tenant-a", 2);
     await new Promise((resolve) => setTimeout(resolve, 1_500));
-    // One message per tenant: the DMS delivers each to that tenant's pages.
     assert.equal(received.length, 2);
     assert.ok(received.every((message) => message.type === "collected"));
     assert.deepEqual(

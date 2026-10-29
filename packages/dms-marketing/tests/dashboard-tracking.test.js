@@ -28,8 +28,6 @@ const WITH_SNAPSHOTS = { ...ENABLED, snapshots: true };
 
 after(() => setConfig({}));
 
-// --- Configuration -----------------------------------------------------------
-
 test("dashboard tracking is off unless enabled", () => {
   setConfig({});
   assert.deepEqual(getConfig().dashboardTracking, {
@@ -114,8 +112,6 @@ test("the frontend module registers as before while it is off", () => {
     },
   );
 });
-
-// --- Provisioning ------------------------------------------------------------
 
 function fakeStore() {
   const rows = new Map();
@@ -208,7 +204,6 @@ test("a new host the dashboard answers on joins the extra domains", async () => 
   );
   assert.equal(changed, true);
   assert.deepEqual(website.extraDomains, ["admin.example.com"]);
-  // A subdomain of an accepted host is accepted already.
   const sub = await provisionDashboardWebsite(
     store,
     "tenant-a",
@@ -243,7 +238,6 @@ test("two first visits at once end with one website", async () => {
   const store = fakeStore();
   const id = dashboardWebsiteId("tenant-a");
   const get = store.get.bind(store);
-  // The other visit inserts between this one's read and its insert.
   store.get = async (key) => {
     const row = await get(key);
     if (!row && !store.rows.has(key)) {
@@ -267,8 +261,6 @@ test("two first visits at once end with one website", async () => {
   assert.equal(store.rows.size, 1);
 });
 
-// --- Configured snapshots ----------------------------------------------------
-
 test("snapshots: true provisions the website with snapshots on", async () => {
   const store = fakeStore();
   const { website, snapshotsChanged } = await provisionDashboardWebsite(
@@ -279,7 +271,6 @@ test("snapshots: true provisions the website with snapshots on", async () => {
   );
   assert.equal(website.snapshotsEnabled, true);
   assert.equal(website.snapshotsSetBy, "config");
-  // Text stays masked: an admin page shows records.
   assert.equal(website.snapshotMaskText, true);
   assert.equal(snapshotsChanged, false);
 });
@@ -325,7 +316,6 @@ test("an owner's snapshot choice is never overridden by the configuration", asyn
     "localhost",
     WITH_SNAPSHOTS,
   );
-  // The owner turns them off on the Websites page.
   assert.equal(setSnapshotsByOwner(website, false), true);
   assert.equal(website.snapshotsSetBy, "owner");
   await store.update(website);
@@ -342,7 +332,6 @@ test("an owner's snapshot choice is never overridden by the configuration", asyn
   }
   assert.equal(store.rows.get(id).snapshotsEnabled, false);
   assert.equal(store.updates, updates);
-  // Turned back on by the owner, the configuration's "off" does not win either.
   const row = await store.get(id);
   setSnapshotsByOwner(row, true);
   await store.update(row);
@@ -355,8 +344,6 @@ test("re-saving the same snapshot value does not claim the switch", () => {
   assert.equal(setSnapshotsByOwner(website, true), false);
   assert.equal(website.snapshotsSetBy, "config");
 });
-
-// --- The module area ---------------------------------------------------------
 
 const TENANT = "tenant-a";
 const DASHBOARD = { _id: dashboardWebsiteId(TENANT), tenantId: TENANT };

@@ -3,7 +3,7 @@ import {
   MAX_QUERY_PERIOD_DAYS,
   MS_PER_DAY,
 } from "@/types/constants";
-import { queryString } from "./query-param";
+import { queryString, type QueryParameter } from "./query-param";
 import { getUtcMidnight } from "./rollup-write";
 
 /** First UTC midnight of an N-day window ending today. */
@@ -37,17 +37,17 @@ export interface QueryWindow {
 
 /** The query parameters a period-scoped block sends (see the DMS period scope). */
 export interface PeriodQuery {
-  from?: unknown;
-  to?: unknown;
-  compareFrom?: unknown;
-  compareTo?: unknown;
+  from?: QueryParameter;
+  to?: QueryParameter;
+  compareFrom?: QueryParameter;
+  compareTo?: QueryParameter;
   /** The preset the period scope resolved its bounds from (`last-30-days`, `custom`). */
-  preset?: unknown;
+  preset?: QueryParameter;
   /**
    * The DMS period comparison the bounds were resolved from
    * (`previous-period`, `previous-year`, `none`), sent beside them.
    */
-  comparison?: unknown;
+  comparison?: QueryParameter;
 }
 
 /** The period scope's parameters, read off a request URL as the scope sent them. */
@@ -73,7 +73,7 @@ export function comparisonKindOf(query: PeriodQuery): ComparisonKind {
     : "previous-period";
 }
 
-function parseInstant(value: unknown): number | undefined {
+function parseInstant(value: QueryParameter): number | undefined {
   const raw = queryString(value);
   if (!raw) {
     return undefined;

@@ -11,6 +11,30 @@ const HTML_RENDER_SECRET = "test-html-render-secret";
 let mongo: MongoMemoryReplSet;
 let storagePath: string;
 
+/**
+ * The backend suite's project: this module from its own build, a published DMS,
+ * and the api, auth, storage and mail modules it needs, over an in-memory
+ * MongoDB replica set.
+ *
+ * The module is rebuilt with `pnpm build` unless `DMS_PREBUILT` is set: CI
+ * builds once before the suite and sets it, while locally the harness keeps
+ * rebuilding so a run always tests the current sources. No frontend server runs
+ * here, so the DMS `clientBaseUrl` is the API, whose paths the front proxy
+ * serves unchanged; and outside development, which the test run is not, dms
+ * 0.10 refuses to start without a render secret of its own
+ * (`htmlRender.serviceSecret`).
+ *
+ * `mongodb` is deliberately a local source, not a package:
+ * `tests/retention.test.js` reaches into the running adapter through
+ * `@antelopejs/mongodb/dist/connection` to grab the collection the harness
+ * connected. A package source materialises a second copy under
+ * `.antelope/cache`, so the test would require an unconnected instance and fail
+ * with "MongoDB adapter is not connected". The `@antelopejs/mongodb`
+ * devDependency pins the version both sides share. Its locked
+ * `@antelopejs/interface-database` is the canonical copy the harness checks
+ * every module's range against, so it has to meet the floor of the dms release
+ * the `dms` range resolves to.
+ */
 export default defineConfig({
   name: "dms-marketing-test",
   cacheFolder: ".antelope/cache",
@@ -20,8 +44,6 @@ export default defineConfig({
       source: {
         type: "local",
         path: ".",
-        // CI builds once before the suite and sets DMS_PREBUILT; locally the
-        // harness keeps rebuilding so a run always tests the current sources.
         installCommand: process.env.DMS_PREBUILT ? [] : ["pnpm build"],
       },
     },
@@ -32,27 +54,13 @@ export default defineConfig({
         version: ">=0.11.0 <1.0.0",
       },
       config: {
-        // No frontend server runs here: the dashboard URL is the API, whose
-        // paths the front proxy serves unchanged.
         clientBaseUrl: "http://127.0.0.1",
         auth: { jwtSecret: JWT_SECRET },
-        // Outside development, which the test run is not, dms 0.10 refuses
-        // to start without a render secret of its own.
         htmlRender: { serviceSecret: HTML_RENDER_SECRET },
         frontend: { bootstrapSecret: JWT_SECRET },
       },
     },
     mongodb: {
-      // Deliberately a local source, not a package: `tests/retention.test.js`
-      // reaches into the running adapter through
-      // `@antelopejs/mongodb/dist/connection` to grab the collection the
-      // harness connected. A package source materialises a *second* copy under
-      // `.antelope/cache`, so the test would require an unconnected instance
-      // and fail with "MongoDB adapter is not connected". The
-      // `@antelopejs/mongodb` devDependency pins the version both sides share.
-      // Its locked `@antelopejs/interface-database` is the canonical copy the
-      // harness checks every module's range against, so it has to meet the
-      // floor of the dms release the range above resolves to.
       source: { type: "local", path: "node_modules/@antelopejs/mongodb" },
     },
     api: {

@@ -24,7 +24,11 @@ export function inflateIfGzipped(
   try {
     return gunzipSync(body, { maxOutputLength: maxInflatedBytes });
   } catch (err) {
-    if ((err as NodeJS.ErrnoException).code === "ERR_BUFFER_TOO_LARGE") {
+    if (
+      err instanceof Error &&
+      "code" in err &&
+      err.code === "ERR_BUFFER_TOO_LARGE"
+    ) {
       throw new HTTPResult(HTTP_PAYLOAD_TOO_LARGE, TOO_LARGE_MESSAGE);
     }
     throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_BODY_MESSAGE);

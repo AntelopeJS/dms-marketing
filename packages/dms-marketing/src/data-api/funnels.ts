@@ -57,6 +57,7 @@ import { FunnelStepsType, parseFunnelSteps } from "@/utils/funnel-steps-type";
 import { parseBody } from "./body";
 import { HiddenStringFilter } from "./hidden-filter";
 import { websitesDataAPI } from "./websites";
+import { isNumber, isString } from "@/utils/guards";
 
 const INVALID_STEPS_MESSAGE = "$page.marketing.errors.invalid_steps";
 const INVALID_VARIATIONS_MESSAGE = "$page.marketing.errors.invalid_variations";
@@ -253,17 +254,18 @@ function forwardWrite(
 function withNewChecks(base: DataControllerCallback): DataControllerCallback {
   return forwardWrite(base, async function (ctx, params, body, ...rest) {
     const parsed = parseBody(body);
-    const websiteId =
-      typeof parsed.websiteId === "string" ? parsed.websiteId : undefined;
-    await requireTenantWebsite(ctx, websiteId);
+    const { _id: websiteId } = await requireTenantWebsite(
+      ctx,
+      isString(parsed.websiteId) ? parsed.websiteId : undefined,
+    );
     normalizeSteps(parsed);
     const experiment = resolveExperiment(
       parseExperiment(parsed),
       undefined,
-      websiteId as string,
+      websiteId,
     );
     if (experiment) {
-      await assertUniqueKey(ctx, websiteId as string, experiment.key);
+      await assertUniqueKey(ctx, websiteId, experiment.key);
     }
     parsed.experiment = experiment;
     const result = await base.func.call(
@@ -273,7 +275,7 @@ function withNewChecks(base: DataControllerCallback): DataControllerCallback {
       Buffer.from(JSON.stringify(parsed)),
       ...rest,
     );
-    invalidateExperimentDefinitions(websiteId as string);
+    invalidateExperimentDefinitions(websiteId);
     return result;
   });
 }
@@ -285,14 +287,13 @@ function withEditChecks(base: DataControllerCallback): DataControllerCallback {
     if (!current) {
       throw badRequest(NOT_FOUND_MESSAGE);
     }
-    if (typeof parsed.websiteId === "string") {
+    if (isString(parsed.websiteId)) {
       await requireTenantWebsite(ctx, parsed.websiteId);
     }
     normalizeSteps(parsed);
-    const websiteId =
-      typeof parsed.websiteId === "string"
-        ? parsed.websiteId
-        : current.websiteId;
+    const websiteId = isString(parsed.websiteId)
+      ? parsed.websiteId
+      : current.websiteId;
     const experiment = editedExperiment(parsed, current, websiteId);
     if (experiment) {
       await assertUniqueKey(ctx, websiteId, experiment.key, current._id);
@@ -305,7 +306,6 @@ function withEditChecks(base: DataControllerCallback): DataControllerCallback {
       Buffer.from(JSON.stringify(parsed)),
       ...rest,
     );
-    // Both sites when a draft moves: neither may keep serving stale sets.
     invalidateExperimentDefinitions(websiteId);
     if (current.websiteId !== websiteId) {
       invalidateExperimentDefinitions(current.websiteId);
@@ -315,7 +315,11 @@ function withEditChecks(base: DataControllerCallback): DataControllerCallback {
 }
 
 /** Deleting a running experiment is allowed — pages fall back to the control
- * within the definitions TTL — but the cache must not outlive the row. */
+ * within the definitions TTL — but the cache must not outlive the row.
+ *
+ * The websites are read before the delete: after it there is nothing left to
+ * resolve them from.
+ */
 function withDeleteInvalidation(
   base: DataControllerCallback,
 ): DataControllerCallback {
@@ -327,8 +331,6 @@ function withDeleteInvalidation(
       params: Parameters.DeleteParameters,
       ...rest: unknown[]
     ) {
-      // Read the sites BEFORE the delete — after it there is nothing left to
-      // resolve them from.
       const websiteIds = await tenantFunnels(ctx).listWebsiteIdsOf(params.id);
       const result = await base.func.call(this, ctx, params, ...rest);
       for (const websiteId of websiteIds) {
@@ -393,8 +395,10 @@ export class funnelsDataAPI extends DataController(
   @Access(AccessMode.ReadWrite)
   declare name: string;
 
-  // Listable so the definitions list can label rows with their step count
-  // (and edit in place) without one extra get per row.
+  /**
+   * Listable so the definitions list can label rows with their step count (and
+   * edit in place) without one extra get per row.
+   */
   @Select()
   @Listable()
   @Mandatory("new", "edit")
@@ -418,29 +422,27 @@ export class funnelsDataAPI extends DataController(
   })
   @Access(AccessMode.ReadWrite)
   get conversionWindowHours(): number {
-    // `this` is the decorated data-api row instance, whose backing table
-    // the generated type does not expose.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions
-    const row = (this as unknown as { table: Funnel }).table;
+    const row = this.table;
     return Math.round(row.conversionWindowMs / MS_PER_HOUR);
   }
-  // The write path calls every writable setter whether the key is in
-  // the body: an absent/null field must never yield NaN or 0 — keep the
-  // row's current window (edit), or fall back to the default (new).
+  /**
+   * The write path calls every writable setter whether the key is in the body:
+   * an absent/null field must never yield NaN or 0 — keep the row's current
+   * window (edit), or fall back to the default (new).
+   */
   set conversionWindowHours(hours: number) {
-    // `this` is the decorated data-api row instance, whose backing table
-    // the generated type does not expose.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions
-    const row = (this as unknown as { table: Funnel }).table;
-    if (typeof hours === "number" && Number.isFinite(hours) && hours >= 1) {
+    const row = this.table;
+    if (isNumber(hours) && Number.isFinite(hours) && hours >= 1) {
       row.conversionWindowMs = hours * MS_PER_HOUR;
       return;
     }
     row.conversionWindowMs ||= DEFAULT_CONVERSION_WINDOW_HOURS * MS_PER_HOUR;
   }
 
-  // Listable so the list can show the status and arm count of split rows
-  // without one extra get per row.
+  /**
+   * Listable so the list can show the status and arm count of split rows
+   * without one extra get per row.
+   */
   @Select()
   @Listable()
   @Column({

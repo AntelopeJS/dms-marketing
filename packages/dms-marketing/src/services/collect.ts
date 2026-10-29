@@ -104,7 +104,6 @@ export async function processCollectBatch(
   const prepared = await acceptExposures(
     website,
     prepareEvents(website._id, events).filter(
-      // The tag never sends these; an older tag or a crafted beacon may.
       (event) => !hidesDashboardPath(website, event.url.path),
     ),
   );
@@ -167,8 +166,6 @@ export async function ingestPreparedBatch(
   await touchSession(context, resolution, docs);
 
   const rollup = recordRollup(context, resolution, docs, previous);
-  // Once the day's counters hold the batch, or failed to: the raw events
-  // the heatmaps and funnels read are stored either way.
   const notify = () => noteCollected(website.tenantId, docs.length);
   void rollup.then(notify, notify);
   return {
@@ -234,9 +231,7 @@ async function acceptExposures(
   const running = await runningExperimentKeys(website._id);
   return events.filter(
     (event) =>
-      event.input.kind !== EXPOSURE_KIND ||
-      // The schema refuses a nameless exposure; no key is empty.
-      running.has(event.input.name ?? ""),
+      event.input.kind !== EXPOSURE_KIND || running.has(event.input.name ?? ""),
   );
 }
 
@@ -516,9 +511,6 @@ function recordRollup(
     tops: collectTops(batch),
     drops: collectDrops(batch),
   };
-  // The events' own clock, as their `day`: the batch's first event dates it,
-  // the one a new session starts at. Across midnight, an event of 23:59 kept
-  // by its timestamp would otherwise be counted in the next day's row.
   return addDailyMarketingStats(
     GetModel(WebsiteStatisticsModel, context.website.tenantId),
     context.website._id,

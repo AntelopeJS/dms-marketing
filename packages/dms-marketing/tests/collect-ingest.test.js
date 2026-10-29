@@ -167,7 +167,6 @@ describe("a collect batch", () => {
   });
 
   test("an event and its daily row are dated by the same clock", async () => {
-    // Years before the other cases, whose late rollup writes may land here.
     const midnight = Date.UTC(2020, 0, 2);
     mock.timers.enable({ apis: ["Date"], now: midnight + 60_000 });
     await processCollectBatch(
@@ -176,7 +175,6 @@ describe("a collect batch", () => {
       newVisitor(),
     );
     const ownRows = () => store.rows.filter((row) => row.day < midnight + DAY);
-    // The rollup write is fire-and-forget.
     for (let tick = 0; tick < 20 && ownRows().length === 0; tick += 1) {
       await new Promise((resolve) => setImmediate(resolve));
     }
@@ -196,7 +194,6 @@ describe("collect sessions", () => {
     const campaign = `${PAGE}?utm_source=news&utm_medium=email&utm_campaign=spring`;
     await processCollectBatch(WEBSITE, [pageview()], visitor);
     await processCollectBatch(WEBSITE, [pageview(campaign)], visitor);
-    // A reload of the campaign URL and an internal link stay in that session.
     await processCollectBatch(WEBSITE, [pageview(campaign)], visitor);
     await processCollectBatch(
       WEBSITE,
@@ -231,7 +228,6 @@ describe("collect sessions", () => {
     assert.equal(store.sessions.length, 0);
 
     await processCollectBatch(WEBSITE, [pageview()], visitor);
-    // Half an hour later, still on the page: the click joins the old session.
     store.sessions[0].lastSeenAt = new Date(Date.now() - HOUR);
     const late = await processCollectBatch(WEBSITE, [click], visitor);
     assert.deepEqual(late, { accepted: 1, dropped: 0 });
@@ -250,7 +246,6 @@ describe("collect sessions", () => {
     assert.equal(store.sessions[0].eventsCount, 2);
     assert.equal(store.sessions[0].exitUrl, "/landing");
 
-    // The next pageview opens a visit of its own.
     await processCollectBatch(
       WEBSITE,
       [pageview("https://example.com/pricing")],
@@ -316,10 +311,8 @@ test("the client address is the DMS's: X-Forwarded-For needs a trusted proxy", a
       socket: { remoteAddress },
     },
   });
-  // The test DMS trusts no proxy: the socket peer is the client.
   assert.equal(await getClientIp(context("198.51.100.7")), "10.0.0.9");
   assert.equal(await getClientIp(context(undefined)), "10.0.0.9");
-  // An IPv4-mapped peer is written as plain IPv4.
   assert.equal(
     await getClientIp(context(undefined, "::ffff:203.0.113.4")),
     "203.0.113.4",
@@ -399,7 +392,6 @@ test("a sanitized snapshot keeps what renders the page", () => {
 });
 
 test("a stylesheet survives a < that opens no markup, never one that does", () => {
-  // Tailwind v4 writes media ranges with a bare `<`.
   const tailwind =
     "@media (width < 48rem){.a{display:none}}.b:has(> p){margin:0}";
   assert.match(

@@ -4,6 +4,7 @@ import type { Parameters } from "@antelopejs/interface-data-api/components";
 import type { FilterValue } from "@antelopejs/interface-data-api/metadata";
 import { TableViewRoutes } from "@antelopejs/interface-dms/base";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
+import type { Website } from "@/db/tables/websites.table";
 
 /**
  * Column-scoping wrappers for the ONE marketing table that cannot live in the
@@ -13,7 +14,7 @@ import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
  */
 
 /** Ownership gate of one table (row of the caller's tenant, or 404). */
-export type TenantGate = (ctx: RequestContext, id: string) => Promise<unknown>;
+export type TenantGate = (ctx: RequestContext, id: string) => Promise<Website>;
 
 /**
  * Forces the caller's tenant onto the hidden `tenantId` filter of a
@@ -30,16 +31,11 @@ function withTenantScope(base: DataControllerCallback): DataControllerCallback {
       listParams: Parameters.ListParameters,
       ...rest: unknown[]
     ) {
-      // "is" is the compare mode the DMS DataTypes register (and the one the
-      // dms-ui frontend sends); interface-data-api's Comparison type does not
-      // know it, hence the double cast — "eq" would typecheck but resolves to
-      // no registered mode and would match nothing.
       const params: Parameters.ListParameters = {
         ...listParams,
         filters: {
           ...listParams?.filters,
-          // "is" is not in interface-data-api's Comparison type; see above.
-          // oxlint-disable-next-line anti-slop/no-chained-type-assertions
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- "is" is the compare mode the DMS DataTypes register and the dms-ui frontend sends, but interface-data-api's Comparison type does not know it; "eq" would typecheck and match nothing
           tenantId: [getRequestTenantId(ctx), "is"] as unknown as FilterValue,
         },
       };

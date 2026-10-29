@@ -1,15 +1,23 @@
 import { Category, RegisterModule } from "@antelopejs/interface-dms/page";
 import { MARKETING_MODULE_ID, OVERVIEW_PAGE_ID } from "@/types/constants";
 import { moduleReadout, moduleStatus } from "@/services/catalog";
+import { isObject, isString } from "@/utils/guards";
 
 interface PackageManifest {
   version: string;
 }
 
-// Read at runtime: package.json sits outside the compiled sources, one level
-// above `dist` once built.
-// oxlint-disable-next-line typescript/no-require-imports
-const { version } = require("../../package.json") as PackageManifest;
+/** Whether `value` is a manifest carrying a string `version`. */
+function isPackageManifest(value: unknown): value is PackageManifest {
+  return isObject(value) && "version" in value && isString(value.version);
+}
+
+/**
+ * Required at runtime: `package.json` sits outside the compiled sources, one
+ * level above `dist` once built.
+ */
+const manifest: unknown = require("../../package.json");
+const version = isPackageManifest(manifest) ? manifest.version : undefined;
 
 export const marketingModule = RegisterModule({
   id: MARKETING_MODULE_ID,

@@ -33,7 +33,7 @@ export function layoutOfWidth(width: number): SnapshotLayout {
 }
 
 export function isSnapshotLayout(value: unknown): value is SnapshotLayout {
-  return SNAPSHOT_LAYOUTS.includes(value as SnapshotLayout);
+  return SNAPSHOT_LAYOUTS.some((layout) => layout === value);
 }
 
 const SNAPSHOT_COLOR_SCHEMES = ["light", "dark"] as const;

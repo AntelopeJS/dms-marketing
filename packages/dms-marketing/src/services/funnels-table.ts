@@ -7,7 +7,7 @@ import type { ComposedText } from "@antelopejs/interface-dms/base/types/composed
 import type { ConfirmDialog } from "@antelopejs/interface-dms/base/types/confirm-dialog";
 import type { Funnel } from "@/db/tables/funnels.table";
 import { MARKETING_MODULE_PATH } from "@/types/constants";
-import { deltaTone, percentText } from "./composed";
+import { deltaTone, percentOf, percentText } from "./composed";
 import type { ComparisonKind } from "./period";
 import type { FunnelSummaryRow } from "./funnel-report";
 
@@ -51,7 +51,7 @@ function signedPercent(value: number): ComposedText {
     key: `${COMPOSE_PREFIX}signed`,
     params: {
       sign: value > 0 ? "+" : value < 0 ? "−" : "±",
-      value: percentText(Math.abs(value)) as ComposedText,
+      value: percentOf(Math.abs(value)),
     },
   };
 }
@@ -159,8 +159,6 @@ function comparisonOf(
       tone: "dimmed",
     };
   }
-  // No comparison window, none raw events cover, or nobody entered either
-  // time: no line rather than a "New" a funnel scored on history never is.
   if (row.deltaPoints === null) {
     return null;
   }
@@ -190,7 +188,7 @@ export function funnelTablePayload(
   rows: FunnelSummaryRow[],
   kind: string | undefined,
   comparison: ComparisonKind = "previous-period",
-): { results: FunnelTableRow[]; total: number } {
+) {
   const results = rows
     .filter((row) => !kind || row.kind === kind)
     .map((row) => ({
@@ -207,7 +205,10 @@ export function funnelTablePayload(
       comparison: comparisonOf(row, comparison),
       status: row.experiment?.status ?? null,
     }));
-  return { results, total: results.length };
+  return { results, total: results.length } satisfies {
+    results: FunnelTableRow[];
+    total: number;
+  };
 }
 
 /**
@@ -232,7 +233,7 @@ function winnerOf(rows: FunnelSummaryRow[]): BannerContent | null {
       key: `${WINNER_PREFIX}title`,
       params: {
         name: winner.name,
-        lift: percentText(leader.uplift) as ComposedText,
+        lift: percentOf(leader.uplift),
       },
     },
     description: {

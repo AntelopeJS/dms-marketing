@@ -86,7 +86,6 @@ function scaleRow(row: WebsiteStatistics, share: number): WebsiteStatistics {
         ]),
       ) as WebsiteStatistics["tops"])
     : row.tops;
-  // A copy of the stored document (a plain object, whatever its type says).
   return Object.assign({}, row, {
     pageviews: row.pageviews * share,
     sessions: row.sessions * share,

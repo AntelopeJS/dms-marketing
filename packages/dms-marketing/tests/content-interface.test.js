@@ -8,14 +8,17 @@ const {
   ImportAnalytics,
 } = require("@antelopejs/interface-dms-marketing");
 
-/** Read while the files load, before any test has mocked it. */
+/**
+ * Read while the files load, before any test has mocked it.
+ *
+ * Other files mock GetModel and the harness never gets the original back: the
+ * content-interface tests put this one, captured at load, in front of theirs.
+ */
 const realGetModel = models.GetModel;
 const ORIGIN = "https://interface-test.example.com";
 const MINUTE = 60_000;
 
 describe("the content interface tenant contract", () => {
-  // Other files mock GetModel and the harness never gets the original back:
-  // this test puts the real one, captured at load, in front of theirs.
   beforeEach(() => mock.method(models, "GetModel", realGetModel));
   afterEach(() => mock.restoreAll());
 
@@ -179,7 +182,6 @@ describe("the content interface", () => {
       ImportAnalytics({ ...batch, importId: "older-window" }),
       /chronological/,
     );
-    // Exercise the database-backed website claim through the public proxy.
     const next = (importId) => ({
       ...batch,
       importId,

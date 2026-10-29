@@ -6,6 +6,7 @@ on:
       - main
   pull_request:
 
+  workflow_dispatch: null
 permissions:
   contents: read
 
@@ -18,7 +19,7 @@ concurrency:
 # (static checks and the layer tests). `ubuntu` gathers them under the name
 # the branch protection knows.
 jobs:
-  checks:
+  ci:
     uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
     with:
       docs-files: |
@@ -28,6 +29,9 @@ jobs:
         packages/interface-dms-marketing/README.md
         packages/interface-dms-marketing/docs
       docs-typescript-project: packages/interface-dms-marketing/docs/tsconfig.json
+    permissions:
+      contents: write
+      actions: write
 
   backend:
     runs-on: ubuntu-latest
@@ -78,7 +82,7 @@ jobs:
   # job above passed.
   ubuntu:
     if: always()
-    needs: [checks, backend]
+    needs: [ci, backend]
     runs-on: ubuntu-latest
     steps:
       - run: |

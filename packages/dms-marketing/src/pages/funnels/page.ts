@@ -251,7 +251,6 @@ export class MarketingFunnelsPage extends PageController(
     .child(
       "list",
       funnelsTable.meta(blockMeta("funnels_table", "i-ph-funnel")).navBadge({
-        // In the primary tone: tests live, not funnels to count.
         count: async (ctx) => ({
           count: await countRunningTests(getRequestTenantId(ctx)),
           tone: "primary",

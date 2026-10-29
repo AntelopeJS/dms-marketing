@@ -41,7 +41,7 @@ import {
   resolveCompareWindow,
   resolveQueryWindow,
 } from "@/services/period";
-import { queryString } from "@/services/query-param";
+import { queryString, type QueryParameter } from "@/services/query-param";
 import { collectionPausedNotice } from "@/services/settings";
 import {
   mergeDimension,
@@ -71,7 +71,7 @@ interface ScopedRead {
 async function readScope(
   context: RequestContext,
   user: User,
-  website: unknown,
+  website: QueryParameter,
 ): Promise<ScopedRead> {
   const resolved = await resolveContextWebsite(context, user, website);
   const query = periodQueryOf(context.url);
@@ -97,7 +97,7 @@ const TOP_LIST_DIMENSIONS: ReadonlySet<TopDimension> = new Set([
 const DEFAULT_TOP_LIMIT = 5;
 const MAX_TOP_LIMIT = 50;
 
-function topLimit(raw: unknown): number {
+function topLimit(raw: QueryParameter): number {
   const parsed = Number.parseInt(queryString(raw) ?? "", 10);
   return Number.isFinite(parsed) && parsed > 0
     ? Math.min(parsed, MAX_TOP_LIMIT)
@@ -207,7 +207,6 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
         ? mergeDimension(read.compareRows, dimension)
         : undefined;
     const totals = sumRollups(read.rows);
-    // topPages counts pageviews; every other listed dimension, sessions.
     const base = dimension === "topPages" ? totals.pageviews : totals.sessions;
     return {
       items: rankEntries(merged, topLimit(limit)).map(({ key, value }) => ({

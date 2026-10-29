@@ -54,6 +54,7 @@ import {
   MAX_EXTRA_DOMAINS,
   WEBSITES_REALTIME_TOPIC,
 } from "@/types/constants";
+import type { JsonBody } from "@/types/json";
 
 const INVALID_WEBSITE_MESSAGE = "$page.marketing.errors.invalid_website";
 const DUPLICATE_HOST_MESSAGE = "$page.marketing.errors.duplicate_host";
@@ -156,15 +157,13 @@ export class WebsitesController extends Controller(
   async allowHost(
     @AuthTenantOwner() _user: User,
     @Parameter("id") id: string,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       allowHostSchema.parse,
       validationIssues,
     );
@@ -185,18 +184,16 @@ export class WebsitesController extends Controller(
   @Post("")
   async create(
     @AuthTenantOwner() _user: User,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
     @Context() context: RequestContext,
   ) {
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       websiteCreateSchema.parse,
       validationIssues,
     );
-    const website = {
+    const website: Website = {
       _id: randomUUID(),
       tenantId: getRequestTenantId(context),
       name: data.name,
@@ -207,7 +204,7 @@ export class WebsitesController extends Controller(
       snapshotMaskText: data.snapshotMaskText ?? false,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as Website;
+    };
     await assertHostsFree(website);
     await GetModel(WebsitesModel).insert(website);
     publishWebsiteChange("created", website._id);
@@ -226,15 +223,13 @@ export class WebsitesController extends Controller(
   async update(
     @AuthTenantOwner() _user: User,
     @Parameter("id") id: string,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       websiteUpdateSchema.parse,
       validationIssues,
     );
@@ -287,15 +282,13 @@ export class WebsitesController extends Controller(
   async purge(
     @AuthTenantOwner() _user: User,
     @Parameter("id") id: string,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
     const { scope } = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       purgeSchema.parse,
       validationIssues,
     );
@@ -321,7 +314,6 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
-    // The dashboard's own site is kept (409): purge its data instead.
     assertWebsiteDeletable(website);
     await purgeWebsiteTrackingData(website.tenantId, id);
     await GetModel(WebsitesModel).delete(id);

@@ -70,7 +70,6 @@ function advance(ms) {
 describe("the snapshot negotiation", () => {
   beforeEach(() => {
     mock.method(models, "GetModel", realGetModel);
-    // The visit sits on whatever page it uploads (see claimPromise).
     mock.method(sessionize, "findOpenSession", async () => ({
       exitUrl: currentPath,
     }));
@@ -97,7 +96,6 @@ describe("the snapshot negotiation", () => {
   test("notices within its cache TTL a snapshot deleted by another instance", async () => {
     const site = await website();
     await captured(site, "/elsewhere");
-    // Another instance resets the page: this one's cache is not told.
     await snapshots().deleteByWebsite(SITE, "/elsewhere");
     assert.equal(
       await wantsSnapshot(site, "/elsewhere", DESKTOP, "next"),
@@ -134,7 +132,6 @@ describe("the snapshot negotiation", () => {
   test("does not count a refused upload as a capture", async () => {
     const site = await website();
     currentPath = "/refused";
-    // A site at its cap refuses a new key: the spent promise frees it.
     mock.method(
       PageSnapshotsModel.prototype,
       "countByWebsite",
@@ -142,8 +139,6 @@ describe("the snapshot negotiation", () => {
     );
     assert.equal(await capture(site, "/refused"), false);
     assert.ok(await wantsSnapshot(site, "/refused", DESKTOP, "next"));
-    // An upload refused before it reached the store (rate limit, 413) leaves
-    // its promise to expire, no capture time.
     assert.equal(
       await wantsSnapshot(site, "/refused", DESKTOP, "third"),
       undefined,
@@ -171,14 +166,11 @@ describe("the snapshot negotiation", () => {
     });
     await snapshots().upsert(legacy("/legacy"));
     await snapshots().upsert(legacy("/checked", { scrollRoot: false }));
-    // Fresh, so a page the tracker sees scrolling the document keeps it…
     assert.equal(
       await wantsSnapshot(site, "/legacy", DESKTOP, "next"),
       undefined,
     );
-    // …and one scrolling an inner container replaces it.
     assert.ok(await wantsSnapshot(site, "/legacy", DESKTOP, "other", true));
-    // A capture that recorded no mark is not taken again on every visit.
     assert.equal(
       await wantsSnapshot(site, "/checked", DESKTOP, "next", true),
       undefined,
@@ -209,7 +201,6 @@ describe("the pages list's snapshot summary", () => {
     for (const capture of [
       row("/a", "desktop", 1_000),
       row("/a", "phone", 3_000),
-      // An oversize report is no backdrop, and no age either beside one.
       row("/a", "tablet", 9_000, 0),
       row("/heavy", "desktop", 5_000, 0),
     ]) {

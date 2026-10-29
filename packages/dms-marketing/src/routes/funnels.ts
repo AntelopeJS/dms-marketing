@@ -44,7 +44,7 @@ import {
   resolveQueryWindow,
   trailingWindow,
 } from "@/services/period";
-import { queryString } from "@/services/query-param";
+import { queryString, type QueryParameter } from "@/services/query-param";
 import { requireTenantFunnel } from "@/services/tenant-funnel";
 import {
   API_BASE_PATH,
@@ -53,6 +53,7 @@ import {
   MS_PER_HOUR,
 } from "@/types/constants";
 import { parseFunnelSteps } from "@/utils/funnel-steps-type";
+import type { JsonBody } from "@/types/json";
 
 const INVALID_STEPS_MESSAGE = "$page.marketing.errors.invalid_steps";
 /**
@@ -113,7 +114,7 @@ interface WebsiteFunnels {
 async function summarizeWebsiteFunnels(
   context: RequestContext,
   user: User,
-  website: unknown,
+  website: QueryParameter,
 ): Promise<WebsiteFunnels> {
   const site = await resolveContextWebsite(context, user, website);
   const query = periodQueryOf(context.url);
@@ -203,14 +204,12 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
   async preview(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
     @Parameter("website", "query") website?: string,
   ) {
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       previewSchema.parse,
       () => INVALID_STEPS_MESSAGE,
     );

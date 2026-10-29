@@ -12,14 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Context from '../app/components/Context.vue'
 import WebsitePicker from '../app/components/WebsitePicker.vue'
 import type { MarketingContextPayload } from '../app/composables/useMarketingContext'
-
-const route = vi.hoisted(() => ({ query: {} as Record<string, string> }))
-
-vi.mock('#dms/frontend-module', async (importOriginal) => ({
-  ...(await importOriginal<object>()),
-  useDmsRoute: () => ({ query: route.query, path: '/' }),
-  useDmsRouter: () => ({ push: async () => {}, replace: async () => {} }),
-}))
+import { setDmsRouteQuery } from './stubs/frontend-module'
 
 const NOW = Date.UTC(2026, 9, 16, 12)
 
@@ -56,7 +49,7 @@ beforeEach(() => {
   topicHandlers = new Map()
   blockRefreshes = 0
   contextReads = 0
-  route.query = {}
+  setDmsRouteQuery({})
   vi.stubGlobal(
     'useApiData',
     (_url: unknown, options: Record<string, unknown> = {}) => {
@@ -200,7 +193,7 @@ describe('the website picker of the page toolbar', () => {
 
 describe('the context gate', () => {
   it('draws no toolbar of its own: the page declares it', async () => {
-    route.query = { website: 'acme-shop' }
+    setDmsRouteQuery({ website: 'acme-shop' })
     const html = await render(Context)
     expect(html).toContain('blocks')
     expect(html).not.toContain('Acme Shop')
@@ -208,7 +201,7 @@ describe('the context gate', () => {
   })
 
   it('sits 16px under the page toolbar, not 24px as the page stack', async () => {
-    route.query = { website: 'acme-shop' }
+    setDmsRouteQuery({ website: 'acme-shop' })
     const html = await render(Context)
     expect(html).toMatch(/^<div class="-mt-2 flex flex-col gap-4"/)
   })

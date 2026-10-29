@@ -98,12 +98,9 @@ describe("the Today hourly series", () => {
     await events.insertMany([
       event("pageview", at(0), "s1"),
       event("pageview", at(0, 59), "s1"),
-      // On the hour: the hour it opens, not the one it closes.
       event("pageview", at(1), "s1"),
       event("pageview", at(3, 10), "s2"),
       event("pageview", at(5), "s2"),
-      // A session already open before the window counts at its first
-      // pageview inside it.
       event("pageview", since - HOUR, "s3"),
       event("pageview", at(5, 1), "s3"),
       event("custom", at(2), "s1", { name: "signup" }),
@@ -128,11 +125,6 @@ describe("the Today hourly series", () => {
   });
 
   test("a busy day keeps its last hours", async () => {
-    // The series used to read the raw events in ascending order up to a cap
-    // of 200 000, so a busy day lost its latest hours in silence. Proving it
-    // with 200 000 rows took seconds per run; instead the day is busy enough
-    // to dwarf any page of rows, and the reads must be grouped in the
-    // database with no limit stage, whatever the volume.
     const { since, at } = today();
     const busy = 1_000;
     const batch = [];
