@@ -1,4 +1,5 @@
 import type { RequestContext } from "@antelopejs/interface-api";
+import { isString } from "@/utils/guards";
 
 /**
  * The user agent a request names, one of the inputs of the anonymous visitor
@@ -9,5 +10,5 @@ import type { RequestContext } from "@antelopejs/interface-api";
  */
 export function userAgentOf(context: RequestContext): string {
   const header = context.rawRequest.headers["user-agent"];
-  return typeof header === "string" ? header : "";
+  return isString(header) ? header : "";
 }

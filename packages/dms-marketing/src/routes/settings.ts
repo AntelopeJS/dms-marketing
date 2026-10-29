@@ -28,6 +28,7 @@ import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { z } from "zod";
 import { API_BASE_PATH, HTTP_BAD_REQUEST } from "@/types/constants";
 import type { SettingsFormValues } from "@/types/settings";
+import type { JsonBody } from "@/types/json";
 
 const INVALID_SETTINGS_MESSAGE = "$page.marketing.errors.invalid_settings";
 
@@ -59,7 +60,10 @@ export class MarketingSettingsController extends Controller(
    * confirmed by saving it twice (see `confirmRetentionCuts`).
    */
   @Put("")
-  async submitSettings(@AuthOwnerOnly() user: User, @JSONBody() json: unknown) {
+  async submitSettings(
+    @AuthOwnerOnly() user: User,
+    @JSONBody() json: JsonBody,
+  ) {
     // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
     const data = assertValidation(json, settingsSchema.parse);
     return applySettingsForm(
@@ -96,7 +100,7 @@ export class MarketingSettingsController extends Controller(
   async setCollection(
     @AuthOwnerOnly() _user: User,
     @Context() context: RequestContext,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
   ) {
     const data = assertValidation(
       body,

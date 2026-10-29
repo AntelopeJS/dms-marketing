@@ -10,7 +10,7 @@ import {
 } from "@/db";
 import type { Website } from "@/db/tables/websites.table";
 import { HTTP_NOT_FOUND } from "@/types/constants";
-import { queryString } from "./query-param";
+import { queryString, type QueryParameter } from "./query-param";
 import { listTenantWebsites, requireTenantWebsite } from "./tenant-website";
 
 const NO_WEBSITE_MESSAGE = "$page.marketing.errors.no_website";
@@ -126,7 +126,7 @@ async function preferredWebsiteId(
 export async function resolveContextWebsite(
   context: RequestContext,
   user: User,
-  website: unknown,
+  website: QueryParameter,
 ): Promise<Website> {
   const wanted = queryString(website);
   if (wanted) {

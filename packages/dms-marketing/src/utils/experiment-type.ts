@@ -11,6 +11,7 @@ import {
   MAX_EXPERIMENT_VARIATIONS,
   MIN_EXPERIMENT_VARIATIONS,
 } from "@/types/constants";
+import { isString } from "@/utils/guards";
 
 /** Slug shape shared by experiment and variation keys — what page code types
  * into `dmsMarketing.variation(…)`, so no spaces and no case to get wrong. */
@@ -46,7 +47,7 @@ const experimentSchema = z.object({
 export type ExperimentInput = z.output<typeof experimentSchema>;
 
 function isBlankKey(value: unknown): boolean {
-  return typeof value !== "string" || value.trim() === "";
+  return !isString(value) || value.trim() === "";
 }
 
 /**
@@ -57,7 +58,7 @@ function isBlankKey(value: unknown): boolean {
  * value, so the write wrappers must run this before the write.
  */
 export function parseExperimentInput(raw: unknown): ExperimentInput | null {
-  const value = typeof raw === "string" && raw !== "" ? JSON.parse(raw) : raw;
+  const value = isString(raw) && raw !== "" ? JSON.parse(raw) : raw;
   if (value === null || value === undefined || value === "") {
     return null;
   }

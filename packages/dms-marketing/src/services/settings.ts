@@ -35,6 +35,7 @@ import {
   type SettingsConfigKey,
   type SettingsFormValues,
 } from "@/types/settings";
+import { isBoolean, isNumber, isString } from "@/utils/guards";
 
 /**
  * Runtime settings service: the singleton document is pushed into the config
@@ -145,10 +146,9 @@ function buildNextSettings(
   const config = getConfig();
   for (const setting of BOOLEAN_SETTINGS) {
     const submitted = values[setting.id];
-    doc[setting.configKey] =
-      typeof submitted === "boolean"
-        ? submitted
-        : (existing?.[setting.configKey] ?? config[setting.configKey]);
+    doc[setting.configKey] = isBoolean(submitted)
+      ? submitted
+      : (existing?.[setting.configKey] ?? config[setting.configKey]);
   }
   for (const setting of NUMBER_SETTINGS) {
     doc[setting.configKey] = Object.hasOwn(values, setting.id)
@@ -167,7 +167,7 @@ function submittedNumber(
   setting: NumberSetting,
   value: unknown,
 ): number | null {
-  if (typeof value !== "number" || Number.isNaN(value)) {
+  if (!isNumber(value) || Number.isNaN(value)) {
     return null;
   }
   const rounded = Math.round(value);
@@ -432,7 +432,7 @@ const GLANCE_ITEMS = {
 } as const;
 
 export function retentionGlance(item: unknown): RetentionMeter | null {
-  if (typeof item !== "string" || !Object.hasOwn(GLANCE_ITEMS, item)) {
+  if (!isString(item) || !Object.hasOwn(GLANCE_ITEMS, item)) {
     return null;
   }
   const key = GLANCE_ITEMS[item as keyof typeof GLANCE_ITEMS];

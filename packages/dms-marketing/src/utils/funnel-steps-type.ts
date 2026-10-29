@@ -10,6 +10,7 @@ import {
   MAX_FUNNEL_STEPS,
   MIN_FUNNEL_STEPS,
 } from "@/types/constants";
+import { isString } from "@/utils/guards";
 
 /** A page step is stored as the path the collector records: a pasted URL,
  * query string or trailing slash would otherwise match nothing. */
@@ -28,7 +29,7 @@ const stepSchema = z
 const funnelStepsSchema = z
   .union([z.string(), z.array(stepSchema)])
   .transform((value) => {
-    if (typeof value !== "string") {
+    if (!isString(value)) {
       return value;
     }
     if (value === "") {

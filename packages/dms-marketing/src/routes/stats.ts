@@ -34,7 +34,7 @@ import {
   type QueryWindow,
   resolveQueryWindow,
 } from "@/services/period";
-import { queryString } from "@/services/query-param";
+import { queryString, type QueryParameter } from "@/services/query-param";
 import {
   type PageSnapshotSummary,
   readScopedPageSnapshot,
@@ -160,7 +160,7 @@ async function loadDaysInRange(
 
 const PAGES_DIMENSIONS = ["topPages"] as const;
 
-function clampLimit(raw: unknown): number {
+function clampLimit(raw: QueryParameter): number {
   const parsed = Number.parseInt(queryString(raw) ?? "", 10);
   if (!Number.isFinite(parsed) || parsed <= 0) {
     return DEFAULT_PAGES_LIST_LIMIT;
@@ -176,7 +176,7 @@ function clampLimit(raw: unknown): number {
  */
 async function resolveHeatmapScope(
   context: RequestContext,
-  website: unknown,
+  website: QueryParameter,
 ): Promise<{ tenantId: string; websiteIds: string[] }> {
   const tenantId = getRequestTenantId(context);
   const wantedWebsite = queryString(website);
@@ -202,8 +202,8 @@ function viewerOf(context: RequestContext, user: User): WorkspaceViewer {
 async function requestScope(
   context: RequestContext,
   user: User,
-  website: unknown,
-  workspace: unknown,
+  website: QueryParameter,
+  workspace: QueryParameter,
 ): Promise<WorkspaceScope> {
   return resolveWorkspaceScope(
     scopeStores(),
@@ -230,7 +230,7 @@ function requestWindow(context: RequestContext): QueryWindow {
  * it (pathname only, leading slash, no query or fragment) — so a path typed
  * as `demo/pricing` or pasted with its query string finds the page's clicks.
  */
-function requestedPath(path: unknown): string {
+function requestedPath(path: QueryParameter): string {
   const wanted = queryString(path);
   if (!wanted) {
     throw new HTTPResult(HTTP_BAD_REQUEST, MISSING_PATH_MESSAGE);

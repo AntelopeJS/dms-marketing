@@ -9,7 +9,6 @@ import { FunnelsModel, WebsitesModel } from "@/db";
 import type {
   ExperimentRun,
   ExperimentStatus,
-  Funnel,
   FunnelExperiment,
   FunnelStep,
 } from "@/db/tables/funnels.table";
@@ -225,7 +224,7 @@ export async function ensureFunnel(
     steps: content.steps,
     conversionWindowMs: content.conversionWindowMs,
     experiment,
-  } as Funnel;
+  };
   try {
     await model.insert(funnel);
   } catch (err) {

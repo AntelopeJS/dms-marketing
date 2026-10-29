@@ -21,6 +21,7 @@ import {
   sampleRatioCheck,
   twoProportionTest,
 } from "./stats";
+import { isString } from "@/utils/guards";
 
 interface VariationResult {
   key: string;
@@ -80,7 +81,7 @@ function variationBySession(
     }
     const variation = (event.data as Partial<ExposureEventData> | undefined)
       ?.variation;
-    if (typeof variation !== "string" || !armKeys.has(variation)) {
+    if (!isString(variation) || !armKeys.has(variation)) {
       continue;
     }
     const existing = assignments.get(event.sessionId);

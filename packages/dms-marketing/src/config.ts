@@ -10,6 +10,7 @@ import {
   MAX_SNAPSHOT_MAX_BYTES,
   MIN_SNAPSHOT_MAX_BYTES,
 } from "./types/constants";
+import { isNumber, isObject, isString } from "@/utils/guards";
 
 /**
  * Tracking of the dashboard's own pages, for demos, playgrounds and back
@@ -110,14 +111,10 @@ function isDashboardPathPattern(value: unknown): value is string {
  * turns it on, and only `snapshots: true` enables the captures.
  */
 export function parseDashboardTracking(
-  input: unknown,
+  input: DmsMarketingConfigInput["dashboardTracking"],
 ): DashboardTrackingConfig {
-  const value =
-    input && typeof input === "object"
-      ? (input as Partial<Record<keyof DashboardTrackingConfig, unknown>>)
-      : {};
-  const name =
-    typeof value.websiteName === "string" ? value.websiteName.trim() : "";
+  const value = isObject(input) ? input : {};
+  const name = isString(value.websiteName) ? value.websiteName.trim() : "";
   return {
     enabled: value.enabled === true,
     websiteName:
@@ -132,8 +129,10 @@ export function parseDashboardTracking(
 }
 
 /** A number within the bounds, the default for anything else. */
-function parseSnapshotMaxBytes(input: unknown): number {
-  if (typeof input !== "number" || !Number.isFinite(input)) {
+function parseSnapshotMaxBytes(
+  input: DmsMarketingConfigInput["snapshotMaxBytes"],
+): number {
+  if (!isNumber(input) || !Number.isFinite(input)) {
     return MAX_SNAPSHOT_BYTES;
   }
   return Math.min(

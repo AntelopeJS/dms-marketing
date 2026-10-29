@@ -1,11 +1,11 @@
 {
   "rules": {
     "anti-slop/no-known-value-widening": 10,
-    "anti-slop/no-runtime-typeof": 30,
-    "anti-slop/no-unknown-parameters": 47,
+    "anti-slop/no-runtime-typeof": 6,
+    "anti-slop/no-unknown-parameters": 25,
     "anti-slop/no-unknown-returns": 5,
-    "anti-slop/no-unsafe-dictionary-type": 13,
-    "anti-slop/require-safety-comment-for-type-assertion": 64
+    "anti-slop/no-unsafe-dictionary-type": 12,
+    "anti-slop/require-safety-comment-for-type-assertion": 54
   },
   "oversizeFiles": {
     "packages/dms-marketing/frontend-vue/app/components/ExperimentReport.vue": 24456,

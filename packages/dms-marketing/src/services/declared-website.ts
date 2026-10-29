@@ -112,13 +112,13 @@ export async function ensureWebsite(
     return keptWebsite(existing, tenantId);
   }
   const now = new Date();
-  const website = {
+  const website: Website = {
     _id: id,
     tenantId,
     ...content,
     createdAt: now,
     updatedAt: now,
-  } as Website;
+  };
   await assertHostsFree(website);
   try {
     await model.insert(website);

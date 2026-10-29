@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { DECLARED_ID_PATTERN } from "@/types/constants";
+import { isNumber, isString } from "@/utils/guards";
 
 /**
  * What the content declarations of the interface (EnsureWebsite,
@@ -36,7 +37,7 @@ export function declaredTenant(
   tenantId: unknown,
 ): string {
   if (
-    typeof tenantId !== "string" ||
+    !isString(tenantId) ||
     tenantId.trim() === "" ||
     tenantId !== tenantId.trim()
   ) {
@@ -51,12 +52,11 @@ export function declaredTenant(
 
 /** Epoch ms from epoch ms or an ISO 8601 string; undefined when unusable. */
 export function instantOf(value: unknown): number | undefined {
-  const ms =
-    typeof value === "number"
-      ? value
-      : typeof value === "string"
-        ? Date.parse(value)
-        : Number.NaN;
+  const ms = isNumber(value)
+    ? value
+    : isString(value)
+      ? Date.parse(value)
+      : Number.NaN;
   return Number.isFinite(ms) ? ms : undefined;
 }
 

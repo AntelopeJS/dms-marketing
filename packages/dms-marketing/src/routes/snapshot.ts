@@ -24,7 +24,7 @@ import {
   warnRejectedSource,
   websiteAcceptsHostname,
 } from "@/services/origin-guard";
-import { queryString } from "@/services/query-param";
+import { queryString, type QueryParameter } from "@/services/query-param";
 import { inflateIfGzipped, parseJsonOr400 } from "@/services/request-body";
 import { userAgentOf } from "@/services/request-meta";
 import { getVisitorHashSecret } from "@/services/settings";
@@ -69,9 +69,9 @@ interface ServedSnapshotConfig {
 /** The negotiation's query, as received. `root=1`: the tracker sees the page
  * scroll an inner container (see wantsSnapshot). */
 interface NegotiationQuery {
-  website: unknown;
-  pathname: unknown;
-  width: unknown;
+  website: QueryParameter;
+  pathname: QueryParameter;
+  width: QueryParameter;
   scrollRoot: boolean;
 }
 
@@ -98,7 +98,7 @@ function servedScript(website: Website, token: string): string {
 
 /** The tracker sends a bare pathname; it goes through the same reduction as
  * a tracked URL at ingestion, so the key matches the events' one. */
-function trackedPath(raw: unknown): string | undefined {
+function trackedPath(raw: QueryParameter): string | undefined {
   const value = queryString(raw);
   if (!value || !value.startsWith("/") || value.length > MAX_URL_LENGTH) {
     return undefined;

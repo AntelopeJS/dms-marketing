@@ -159,7 +159,7 @@ export async function provisionDashboardWebsite(
     return refreshWebsite(store, existing, hostname, config);
   }
   const now = new Date();
-  const website = {
+  const website: Website = {
     _id: id,
     tenantId,
     name: config.websiteName,
@@ -171,7 +171,7 @@ export async function provisionDashboardWebsite(
     snapshotMaskText: true,
     createdAt: now,
     updatedAt: now,
-  } as Website;
+  };
   try {
     await store.insert(website);
   } catch (err) {

@@ -101,7 +101,7 @@ export async function ensurePageSnapshot(
   const layout = layoutOfWidth(input.viewport.width);
   const html = sanitizeSnapshotHtml(input.html);
   const now = new Date();
-  const row = {
+  const row: PageSnapshot = {
     _id: snapshotId(website._id, layout, url),
     websiteId: website._id,
     url,
@@ -116,7 +116,7 @@ export async function ensurePageSnapshot(
     bytes: Buffer.byteLength(input.html),
     scrollRoot: hasScrollRoot(html),
     html: gzipSync(html).toString("base64"),
-  } as PageSnapshot;
+  };
   const status = await writeSnapshot(tenantId, website, row);
   if (status === "created") {
     rememberCaptureTime(row._id, now.getTime());
