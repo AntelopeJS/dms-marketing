@@ -11,7 +11,7 @@ import {
   MAX_EXPERIMENT_VARIATIONS,
   MIN_EXPERIMENT_VARIATIONS,
 } from "@/types/constants";
-import { isString } from "@/utils/guards";
+import { isNonBlankString, isString } from "@/utils/guards";
 
 /** Slug shape shared by experiment and variation keys — what page code types
  * into `dmsMarketing.variation(…)`, so no spaces and no case to get wrong. */
@@ -46,10 +46,6 @@ const experimentSchema = z.object({
 
 export type ExperimentInput = z.output<typeof experimentSchema>;
 
-function isBlankKey(value: Partial<ExperimentInput>["key"]): boolean {
-  return !isString(value) || value.trim() === "";
-}
-
 /**
  * Normalizes a body-provided experiment (object, JSON string, or nothing)
  * into the validated shape — null for "no experiment", which the form sends
@@ -65,7 +61,7 @@ export function parseExperimentInput(raw: unknown): ExperimentInput | null {
   const candidate = value as Partial<ExperimentInput>;
   const noArms =
     !Array.isArray(candidate.variations) || candidate.variations.length === 0;
-  if (isBlankKey(candidate.key) && noArms) {
+  if (!isNonBlankString(candidate.key) && noArms) {
     return null;
   }
   return experimentSchema.parse(value);

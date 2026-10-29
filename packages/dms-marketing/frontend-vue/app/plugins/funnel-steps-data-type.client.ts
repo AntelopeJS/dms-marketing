@@ -1,4 +1,4 @@
-import { defineComponent, h } from 'vue'
+import { defineComponent, h, type PropType } from 'vue'
 import { defineDmsPlugin } from '#dms/frontend-module'
 import FunnelStepsInput from '../components/FunnelStepsInput.vue'
 import type { FunnelStepDraft } from '../composables/useFunnelSteps'
@@ -21,8 +21,7 @@ const FunnelStepsDisplay = defineComponent({
   name: 'FunnelStepsDisplay',
   props: {
     modelValue: {
-      type: [Array, String] as unknown as () =>
-        FunnelStepDraft[] | string | null,
+      type: [Array, String] as PropType<FunnelStepDraft[] | string | null>,
       default: null,
     },
   },

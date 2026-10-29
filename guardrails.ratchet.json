@@ -5,7 +5,7 @@
     "anti-slop/no-unknown-parameters": 18,
     "anti-slop/no-unknown-returns": 2,
     "anti-slop/no-unsafe-dictionary-type": 11,
-    "anti-slop/require-safety-comment-for-type-assertion": 34
+    "anti-slop/require-safety-comment-for-type-assertion": 32
   },
   "oversizeFiles": {
     "packages/dms-marketing/static/snapshot.js": 33869,

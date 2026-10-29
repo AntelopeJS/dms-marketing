@@ -17,3 +17,8 @@ export function isObject(value: unknown): value is object {
 export function isBoolean(value: unknown): value is boolean {
   return typeof value === "boolean";
 }
+
+/** Whether `value` is a string holding a character other than whitespace. */
+export function isNonBlankString(value: unknown): value is string {
+  return typeof value === "string" && value.trim() !== "";
+}

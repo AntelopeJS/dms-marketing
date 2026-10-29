@@ -236,8 +236,7 @@ export class MarketingEventsModel extends BasicDataModel(
     if (events.length === 0) {
       return 0;
     }
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- DeepPartial cannot traverse the free-form `data: Record<string, unknown>`, and these are full rows, not partials, so widening through unknown is sound
-    const rows = events as unknown as EventInsertInput;
+    const rows = events as EventInsertInput;
     const ids = await this.table.insert(rows).run();
     return ids.length;
   }

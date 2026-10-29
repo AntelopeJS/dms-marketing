@@ -48,7 +48,7 @@ function table(schema: string, name: string, instance?: string): AnyTable {
   if (!found) {
     throw new Error(`[playground] table ${name} is not registered`);
   }
-  return found as unknown as AnyTable;
+  return found as AnyTable;
 }
 
 /** Deterministic: the same dataset on every fresh database. */
