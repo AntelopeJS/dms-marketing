@@ -10,7 +10,7 @@ import {
   MAX_SNAPSHOT_MAX_BYTES,
   MIN_SNAPSHOT_MAX_BYTES,
 } from "./types/constants";
-import { isNumber, isObject, isString } from "@/utils/guards";
+import { isNumber, isObject, isString } from "./utils/guards";
 
 /**
  * Tracking of the dashboard's own pages, for demos, playgrounds and back
