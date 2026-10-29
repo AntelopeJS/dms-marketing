@@ -14,8 +14,6 @@
     "packages/dms-marketing/frontend-vue/app/components/InstallGuide.vue": 25290,
     "packages/dms-marketing/frontend-vue/app/components/PagePreview.vue": 54326,
     "packages/dms-marketing/frontend-vue/app/components/PagesExplorer.vue": 24274,
-    "packages/dms-marketing/playground/src/demo-data.ts": 21188,
-    "packages/dms-marketing/src/services/snapshots.ts": 21418,
     "packages/dms-marketing/static/snapshot.js": 33869,
     "packages/dms-marketing/static/tracker.js": 28274
   }
