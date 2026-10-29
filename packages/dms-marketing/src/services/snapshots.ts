@@ -265,7 +265,7 @@ export async function storeSnapshot(
     bytes: stored.bytes,
     html: stored.html,
     scrollRoot: "html" in input && hasScrollRoot(input.html),
-  } as PageSnapshot);
+  });
   captureStates.set(id, { capturedAt: now.getTime(), unmarked: false });
   noteCollected(website.tenantId, 1);
   return true;

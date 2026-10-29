@@ -120,7 +120,11 @@ function declaredContent(
 }
 
 /** A caller-given instant of a run, never in the future; now by default. */
-function runInstant(id: string, field: string, value: unknown): number {
+function runInstant(
+  id: string,
+  field: string,
+  value: MarketingExperimentDeclaration["startedAt"],
+): number {
   const now = Date.now();
   if (value === undefined) {
     return now;

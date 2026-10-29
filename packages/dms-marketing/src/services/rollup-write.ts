@@ -95,7 +95,7 @@ function rowFrom(
     bouncedSessions: delta.bouncedSessions,
     sessionDurationMs: delta.sessionDurationMs,
     tops: mergedTops(undefined, delta),
-  } as WebsiteStatistics;
+  };
 }
 
 /**

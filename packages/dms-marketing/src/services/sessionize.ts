@@ -200,7 +200,7 @@ async function createSession(
   input: SessionInput,
   isNewVisitor: boolean,
 ): Promise<MarketingSession> {
-  const session = {
+  const session: MarketingSession = {
     _id: randomUUID(),
     websiteId: input.websiteId,
     visitorId: input.visitorId,
@@ -224,7 +224,7 @@ async function createSession(
     screen: input.screen,
     language: input.language,
     country: input.country,
-  } as MarketingSession;
+  };
   await model.insert(session);
   return session;
 }
