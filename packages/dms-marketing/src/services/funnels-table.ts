@@ -159,8 +159,6 @@ function comparisonOf(
       tone: "dimmed",
     };
   }
-  // No comparison window, none raw events cover, or nobody entered either
-  // time: no line rather than a "New" a funnel scored on history never is.
   if (row.deltaPoints === null) {
     return null;
   }

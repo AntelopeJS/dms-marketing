@@ -119,7 +119,6 @@ test("every channel is listed, sorted by sessions, with its share", () => {
   };
   const { items, total, compared } = channelsPayload(read);
   assert.equal(total, 10);
-  // No comparison window: the card leaves the change column out.
   assert.equal(compared, false);
   assert.equal(items.length, 6);
   assert.deepEqual(
@@ -250,7 +249,6 @@ test("tabs and filters narrow every row before the page is cut", () => {
     sortDirection: "desc",
   });
   assert.equal(sorted.results[0].campaign, "e4");
-  // A tab counter asks for one row and reads the total.
   assert.equal(
     campaignTablePayload(report, { offset: 0, limit: 1, channel: "is:email" })
       .total,

@@ -28,6 +28,13 @@ const SETTINGS_RELOAD_MS = 30 * MS_PER_SECOND;
 let pruneTask: ScheduledTask | null = null;
 let settingsReload: NodeJS.Timeout | null = null;
 
+/**
+ * Applies the configuration, loads the GeoIP database, registers the hook
+ * listeners and the database-initialized hook, implements the marketing
+ * interface and adds the frontend module. `ImplementInterface` is not awaited:
+ * both of its arguments are already-resolved namespaces, so the overload that
+ * applies returns the pairing synchronously.
+ */
 export async function construct(
   config?: DmsMarketingConfigInput,
 ): Promise<void> {
@@ -36,8 +43,6 @@ export async function construct(
   registerMarketingHookListeners();
   RegisterHook(Hook.DATABASE_INITIALIZED, onDatabaseInitialized);
 
-  // Not awaited: both arguments are already-resolved namespaces, so the
-  // overload that applies returns the pairing synchronously.
   ImplementInterface(
     await import("@antelopejs/interface-dms-marketing"),
     await import("./implementations/dms-marketing"),
@@ -51,16 +56,17 @@ export async function construct(
  * table lives in (dms-core / dms-tenant) are registered by the dms module's
  * own start, in unspecified order relative to this module.
  * DATABASE_INITIALIZED is the "schemas exist" signal.
+ *
+ * The settings are loaded before any tenant is provisioned: the DMS fires
+ * TENANT_BEING_PROVISIONED for the default tenant only once this hook has
+ * settled, and the content calls made there (ImportAnalytics…) need the visitor
+ * secret. The settings row is shared by every instance: each reads it again on
+ * a short timer, and right before pruning with the retentions it holds.
  */
 async function onDatabaseInitialized(): Promise<void> {
   const settings = GetModel(MarketingSettingsModel);
-  // Before any tenant is provisioned: the DMS fires TENANT_BEING_PROVISIONED
-  // for the default tenant only once this hook has settled, and the content
-  // calls made there (ImportAnalytics…) need the visitor secret.
   await loadSettings(settings);
 
-  // The settings row is shared by every instance: each reads it again on a
-  // short timer, and right before pruning with the retentions it holds.
   settingsReload ??= setInterval(() => {
     void reloadSettings(settings).catch(logReloadError);
   }, SETTINGS_RELOAD_MS);
@@ -82,6 +88,11 @@ function logReloadError(err: unknown): void {
 
 export function destroy(): void {}
 
+/**
+ * Stops the collected notices, the settings reload and the prune task.
+ * node-cron's `stop()` returns `void | Promise<void>`, and this `stop` is
+ * synchronous, so the task is told to stop and not waited on.
+ */
 export function stop(): void {
   stopCollectedNotices();
   if (settingsReload) {
@@ -89,8 +100,6 @@ export function stop(): void {
     settingsReload = null;
   }
   if (pruneTask) {
-    // `stop()` is `void | Promise<void>` in node-cron; this module's own
-    // `stop` is synchronous, so the task is told to stop and not waited on.
     void pruneTask.stop();
     pruneTask = null;
   }

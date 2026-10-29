@@ -154,7 +154,6 @@ export async function loadMarketingContext(
   const tenantId = getRequestTenantId(context);
   const all = await GetModel(WebsitesModel).getByTenant(tenantId);
   const activity = await loadWebsiteActivity(tenantId, all);
-  // listTenantWebsites' order, without reading the activity a second time.
   const { lastActivity } = activity;
   const websites = [...all].sort(
     (a, b) => (lastActivity.get(b._id) ?? 0) - (lastActivity.get(a._id) ?? 0),

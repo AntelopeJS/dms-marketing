@@ -181,7 +181,6 @@ async function hourlyCurves(
       x: since + index * MS_PER_HOUR,
       y: y as number | null,
     }));
-    // Two points at least, or the axis spreads a lone one over days.
     return drawn.length > 1
       ? drawn
       : [...drawn, { x: since + drawn.length * MS_PER_HOUR, y: null }];
@@ -276,8 +275,6 @@ function qualityOf(totals: RollupTotals): SessionQuality {
     };
   }
   return {
-    // Transition-counted bounces can sum below zero on a window cutting a
-    // session in two; a negative rate is never worth showing.
     bounceRate: (Math.max(0, totals.bouncedSessions) / totals.sessions) * 100,
     averageDurationSeconds:
       totals.sessionDurationMs / totals.sessions / MS_PER_SECOND,
@@ -471,7 +468,6 @@ const TOP_GROUPS: Record<string, (read: RollupRead) => TopTabDefinition[]> = {
       labelKind: "channel",
       link: acquisitionLink,
     },
-    // Acquisition lists both in full; its table cannot be opened on a search.
     {
       id: "campaigns",
       label: `${GROUP_PREFIX}acquisition.tabs.campaigns`,

@@ -207,7 +207,6 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
         ? mergeDimension(read.compareRows, dimension)
         : undefined;
     const totals = sumRollups(read.rows);
-    // topPages counts pageviews; every other listed dimension, sessions.
     const base = dimension === "topPages" ? totals.pageviews : totals.sessions;
     return {
       items: rankEntries(merged, topLimit(limit)).map(({ key, value }) => ({

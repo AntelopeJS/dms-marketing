@@ -34,8 +34,6 @@ const variationsSchema = z
     (variations) =>
       new Set(variations.map((v) => v.key)).size === variations.length,
   )
-  // All-zero weights would make normalization fall back to uniform
-  // silently; refuse them instead so the form says why.
   .refine((variations) => variations.some((v) => v.weight > 0));
 
 /** `status` is the transition the caller asks for; absent keeps the row's. */

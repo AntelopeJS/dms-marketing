@@ -28,9 +28,11 @@ const {
 
 const ACTIVITY_SCHEMA = "activity_test";
 const SESSIONS_COLLECTION = `${ACTIVITY_SCHEMA}__${marketingSessionsTableName}`;
-// The driver leads every per-instance index with `_instance` and names it
-// `<index>__i`. Sessions are only read within one tenant instance, so no
-// index of theirs is declared crossInstance.
+/**
+ * The driver leads every per-instance index with `_instance` and names it
+ * `<index>__i`. Sessions are only read within one tenant instance, so no index
+ * of theirs is declared crossInstance.
+ */
 const LAST_ACTIVITY_INDEX = "websiteId_lastSeenAt__i";
 const LAST_SEEN_INDEX = "lastSeenAt__i";
 const TENANT = "tenant-a";

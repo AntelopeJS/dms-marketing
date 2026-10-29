@@ -66,7 +66,6 @@ async function writeSnapshot(
   try {
     await model.insert(row);
   } catch (err) {
-    // A capture or a concurrent provisioning got there first.
     if (!(await model.get(row._id))) {
       throw err;
     }

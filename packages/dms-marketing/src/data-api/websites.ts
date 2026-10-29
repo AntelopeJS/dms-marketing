@@ -157,7 +157,6 @@ export class websitesDataAPI extends DataController(
   @Column({
     name: `${COLUMN_PREFIX}domain`,
     type: new DefaultDataTypes.StringType(),
-    // Under the name already, on the grid; still searched and sorted on.
     isVisible: false,
   })
   @Access(AccessMode.ReadOnly)

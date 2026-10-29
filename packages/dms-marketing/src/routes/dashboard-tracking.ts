@@ -64,7 +64,6 @@ export class DashboardTrackingController extends Controller(
         config,
       );
     if (snapshotsChanged) {
-      // As an owner's change does: captures taken under the other setting go.
       await deleteSnapshots(website.tenantId, website._id);
     }
     if (changed) {

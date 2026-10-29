@@ -61,7 +61,6 @@ export class PublicExperimentsController extends Controller(API_BASE_PATH) {
       throw new HTTPResult(HTTP_BAD_REQUEST, MISSING_WEBSITE_MESSAGE);
     }
     let assignments: AssignmentMap = {};
-    // An over-long id can never match a website: refuse it a cache slot too.
     if (getConfig().trackerEnabled && id.length <= MAX_WEBSITE_ID_LENGTH) {
       const running = await servableExperiments(id);
       if (running.length > 0) {

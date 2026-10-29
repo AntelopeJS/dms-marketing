@@ -303,9 +303,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
    * own tenant and the counts are added up (see resolveWorkspaceScope).
    */
   @Get("pages")
-  // The parameter list of a decorated handler is its HTTP surface, not an
-  // argument list to shorten.
-  // oxlint-disable-next-line eslint/max-params
+  // oxlint-disable-next-line eslint/max-params -- The parameter list of a decorated handler is its HTTP surface, not an argument list to shorten.
   async pages(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
@@ -476,7 +474,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
    * another workspace's records never reach the browser readable.
    */
   @Get("snapshot")
-  // oxlint-disable-next-line eslint/max-params
+  // oxlint-disable-next-line eslint/max-params -- The parameter list of a decorated handler is its HTTP surface, not an argument list to shorten.
   async snapshot(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,

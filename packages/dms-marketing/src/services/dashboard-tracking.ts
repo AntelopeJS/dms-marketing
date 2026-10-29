@@ -175,7 +175,6 @@ export async function provisionDashboardWebsite(
   try {
     await store.insert(website);
   } catch (err) {
-    // Another tab or instance inserted the same id first: theirs stands.
     const raced = await store.get(id);
     if (!raced) {
       throw err;

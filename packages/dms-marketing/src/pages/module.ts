@@ -6,9 +6,7 @@ interface PackageManifest {
   version: string;
 }
 
-// Read at runtime: package.json sits outside the compiled sources, one level
-// above `dist` once built.
-// oxlint-disable-next-line typescript/no-require-imports
+// oxlint-disable-next-line typescript/no-require-imports -- Read at runtime: package.json sits outside the compiled sources, one level above `dist` once built.
 const { version } = require("../../package.json") as PackageManifest;
 
 export const marketingModule = RegisterModule({

@@ -33,12 +33,15 @@ const TENANT_MODELS: ReadonlyArray<Parameters<typeof GetModel>[0]> = [
   MarketingImportsModel,
 ];
 
+/**
+ * Deletes every per-tenant marketing table of the tenant, then its websites
+ * rows. The websites go last: while they exist, a re-run of the hook still
+ * finds the tenant (the prune iterates tenants through that table).
+ */
 async function purgeTenantMarketingData(tenantId: string): Promise<void> {
   for (const modelClass of TENANT_MODELS) {
     await GetModel(modelClass, tenantId).table.delete().run();
   }
-  // Last: while websites rows exist, a re-run of the hook still finds the
-  // tenant (the prune iterates tenants through this very table).
   await GetModel(WebsitesModel).deleteByTenant(tenantId);
 }
 

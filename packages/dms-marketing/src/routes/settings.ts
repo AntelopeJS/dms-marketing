@@ -33,7 +33,7 @@ const INVALID_SETTINGS_MESSAGE = "$page.marketing.errors.invalid_settings";
 
 const collectionSchema = z.object({ enabled: z.boolean() }).strict();
 
-// A key the form does not know is refused rather than silently dropped.
+/** A key the form does not know is refused rather than silently dropped. */
 const settingsSchema = marketingSettingsFormSchema.strict();
 
 /**
@@ -60,9 +60,7 @@ export class MarketingSettingsController extends Controller(
    */
   @Put("")
   async submitSettings(@AuthOwnerOnly() user: User, @JSONBody() json: unknown) {
-    // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-    // reference passed here is not actually unbound.
-    // oxlint-disable-next-line typescript/unbound-method
+    // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
     const data = assertValidation(json, settingsSchema.parse);
     return applySettingsForm(
       GetModel(MarketingSettingsModel),
@@ -102,9 +100,7 @@ export class MarketingSettingsController extends Controller(
   ) {
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       collectionSchema.parse,
       () => INVALID_SETTINGS_MESSAGE,
     );

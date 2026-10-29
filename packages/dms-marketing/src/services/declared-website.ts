@@ -123,7 +123,6 @@ export async function ensureWebsite(
   try {
     await model.insert(website);
   } catch (err) {
-    // A concurrent provisioning inserted it first.
     const raced = await model.get(id);
     if (!raced) {
       throw err;

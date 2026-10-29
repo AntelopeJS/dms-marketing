@@ -162,9 +162,7 @@ export class WebsitesController extends Controller(
     const website = await requireTenantWebsite(context, id);
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       allowHostSchema.parse,
       validationIssues,
     );
@@ -190,9 +188,7 @@ export class WebsitesController extends Controller(
   ) {
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       websiteCreateSchema.parse,
       validationIssues,
     );
@@ -232,9 +228,7 @@ export class WebsitesController extends Controller(
     const website = await requireTenantWebsite(context, id);
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       websiteUpdateSchema.parse,
       validationIssues,
     );
@@ -293,9 +287,7 @@ export class WebsitesController extends Controller(
     const website = await requireTenantWebsite(context, id);
     const { scope } = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       purgeSchema.parse,
       validationIssues,
     );
@@ -321,7 +313,6 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
-    // The dashboard's own site is kept (409): purge its data instead.
     assertWebsiteDeletable(website);
     await purgeWebsiteTrackingData(website.tenantId, id);
     await GetModel(WebsitesModel).delete(id);

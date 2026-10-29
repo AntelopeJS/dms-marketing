@@ -64,7 +64,6 @@ describe("a page snapshot declared from code", () => {
       "desktop",
     );
     assert.equal(stored.origin, `https://${HOST}`);
-    // What the preview says it was taken from: the query string is not kept.
     assert.equal(stored.url, `https://${HOST}/pricing`);
     assert.deepEqual(stored.document, { width: 1280, height: 2400 });
     assert.match(stored.html, /<h1>Plans<\/h1>/);
@@ -94,7 +93,6 @@ describe("a page snapshot declared from code", () => {
     assert.equal((await EnsurePageSnapshot(declared)).status, "created");
     const model = realGetModel(PageSnapshotsModel, "default");
     const [row] = await model.getByPath("declared-snapshots", "/");
-    // What the capture upload does: the whole row, replaced.
     await model.upsert(Object.assign(row, { capturedAt: new Date() }));
     const again = page("<html><body>Declared again", {
       url: `https://${HOST}/`,

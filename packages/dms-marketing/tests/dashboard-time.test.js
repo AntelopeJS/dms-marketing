@@ -104,7 +104,6 @@ test("countries are listed whenever the period has some, GeoIP or not", () => {
   });
   const tabs = (rows) =>
     topGroupPayload(read(rows), "audience").map((tab) => tab.id);
-  // The suite configures no GeoIP database: no lookup stamps a country.
   assert.deepEqual(tabs([row(0, 3), row(1, 2)]), ["languages", "browsers"]);
   const imported = { ...row(1, 2), tops: { topCountries: { BE: 2 } } };
   assert.deepEqual(tabs([row(0, 3), imported]), [

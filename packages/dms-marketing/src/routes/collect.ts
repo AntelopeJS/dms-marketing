@@ -46,9 +46,7 @@ export class CollectController extends Controller(API_BASE_PATH) {
     @RawBody(MAX_COLLECT_BODY_BYTES) body: Buffer,
   ) {
     const json = parseJsonOr400(body);
-    // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-    // reference passed here is not actually unbound.
-    // oxlint-disable-next-line typescript/unbound-method
+    // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
     const data = assertValidation(json, collectRequestSchema.parse);
     const refused = { accepted: 0, dropped: data.events.length };
     if (!getConfig().trackerEnabled) {
@@ -66,8 +64,6 @@ export class CollectController extends Controller(API_BASE_PATH) {
     }
     const userAgent = userAgentOf(context);
     const ip = await getClientIp(context);
-    // Every browser stamps Origin on a POST; a beacon without it (nor a
-    // Referer) was not sent by a page of the site.
     if (
       source === undefined ||
       isAutomatedClient(userAgent) ||

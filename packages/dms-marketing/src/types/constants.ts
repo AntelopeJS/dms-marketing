@@ -1,7 +1,3 @@
-// =============================================================================
-// Module
-// =============================================================================
-
 export const MARKETING_MODULE_ID = "marketing";
 export const OVERVIEW_PAGE_ID = "overview";
 
@@ -14,10 +10,6 @@ export const FRONTEND_MODULE_NAME = "@antelopejs/dms-marketing-frontend-vue";
 /** Where its public options land in the frontend runtime config. */
 export const FRONTEND_CONFIG_KEY = "dmsMarketing";
 
-// =============================================================================
-// Time
-// =============================================================================
-
 export const MS_PER_SECOND = 1_000;
 export const MS_PER_MINUTE = 60 * MS_PER_SECOND;
 export const SECONDS_PER_MINUTE = 60;
@@ -28,10 +20,6 @@ const DAYS_PER_MONTH = 30;
 const DAYS_PER_YEAR = 365;
 export const MAX_QUERY_PERIOD_DAYS = 90;
 export const DEFAULT_QUERY_PERIOD_DAYS = 7;
-
-// =============================================================================
-// Collection Settings
-// =============================================================================
 
 export const DEFAULT_SESSION_IDLE_TIMEOUT_MS = 30 * MS_PER_MINUTE;
 export const DEFAULT_RAW_EVENTS_RETENTION_MS = 90 * MS_PER_DAY;
@@ -46,10 +34,6 @@ export const MAX_STATISTICS_RETENTION_DAYS = 760;
 export const DEFAULT_HEATMAP_SAMPLE_RATIO = 0.1;
 export const MAX_COLLECT_BATCH_SIZE = 25;
 export const MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS = 5 * MS_PER_MINUTE;
-
-// =============================================================================
-// Payload Limits
-// =============================================================================
 
 export const MAX_URL_LENGTH = 500;
 export const MAX_TITLE_LENGTH = 200;
@@ -70,20 +54,12 @@ export const MAX_CLICK_SELECTOR_LENGTH = 120;
 /** A full batch of maximal events fits several times over. */
 export const MAX_COLLECT_BODY_BYTES = 256 * 1024;
 
-// =============================================================================
-// Funnels
-// =============================================================================
-
 /** A single step is a conversion counter — a goal on its own. */
 export const MIN_FUNNEL_STEPS = 1;
 export const MAX_FUNNEL_STEPS = 10;
 export const MAX_FUNNEL_STEP_VALUE_LENGTH = 500;
 export const MAX_CONVERSION_WINDOW_HOURS = 720;
 export const DEFAULT_CONVERSION_WINDOW_HOURS = 24;
-
-// =============================================================================
-// Experiments
-// =============================================================================
 
 export const MIN_EXPERIMENT_VARIATIONS = 2;
 export const MAX_EXPERIMENT_VARIATIONS = 8;
@@ -109,10 +85,6 @@ export const MIN_DECISION_CONVERSIONS = 50;
 export const FUNNEL_SUMMARY_CACHE_TTL_MS = 30_000;
 /** Where a website's raw events start: moves at most once an hour (prune). */
 export const RAW_COVERAGE_CACHE_TTL_MS = 10 * 60_000;
-
-// =============================================================================
-// Aggregation Settings
-// =============================================================================
 
 export const MAX_ENTRIES_PER_TOP_MAP = 50;
 
@@ -149,10 +121,6 @@ export const SCROLL_DEPTH_SCALE = 100;
  */
 export const MAX_ANCHORED_HEATMAP_CELLS = 2000;
 
-// =============================================================================
-// Page snapshots
-// =============================================================================
-
 /**
  * Default cap on one upload as it travels — the whole body, compressed when
  * the browser gzips it. `snapshotMaxBytes` changes it.
@@ -187,26 +155,14 @@ export const SNAPSHOT_CAPTURE_CACHE_TTL_MS = 5 * MS_PER_MINUTE;
 export const SNAPSHOT_PROMISE_TTL_MS = MS_PER_MINUTE;
 export const SNAPSHOT_CACHE_MAX_ENTRIES = 10_000;
 
-// =============================================================================
-// Identity
-// =============================================================================
-
 export const VISITOR_ID_HEX_LENGTH = 32;
 export const VISITOR_SECRET_BYTES = 32;
 export const SESSION_CACHE_MAX_ENTRIES = 10_000;
-
-// =============================================================================
-// Caches
-// =============================================================================
 
 /** Legitimate cache keys number the deployment's websites (see bounded-cache). */
 export const MAX_CACHE_ENTRIES = 1_000;
 export const WEBSITE_CACHE_TTL_MS = 30_000;
 export const EXPERIMENT_DEFINITIONS_CACHE_TTL_MS = 30_000;
-
-// =============================================================================
-// Dashboard tracking
-// =============================================================================
 
 /**
  * The sign-in, sign-up, recovery and account-switcher pages: never counted,
@@ -214,10 +170,6 @@ export const EXPERIMENT_DEFINITIONS_CACHE_TTL_MS = 30_000;
  * this covers the account switcher a signed-in user can open.
  */
 export const DASHBOARD_AUTH_PATHS = ["/auth/**"];
-
-// =============================================================================
-// Ingestion guards
-// =============================================================================
 
 export const COLLECT_RATE_LIMIT_WINDOW_MS = MS_PER_MINUTE;
 /** Per (website, IP); sized for CGNAT — an order of magnitude over one
@@ -228,10 +180,6 @@ export const RATE_LIMIT_MAX_SOURCES = 50_000;
 export const MAX_SNAPSHOTS_PER_WINDOW_PER_SOURCE = 3;
 export const TRACKER_CACHE_MAX_AGE_SECONDS = 3600;
 export const PAUSED_TRACKER_CACHE_MAX_AGE_SECONDS = 60;
-
-// =============================================================================
-// HTTP
-// =============================================================================
 
 export const API_BASE_PATH = "/api/marketing";
 

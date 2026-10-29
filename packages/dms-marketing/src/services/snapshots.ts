@@ -263,10 +263,11 @@ const SANITIZE_OPTIONS: sanitizeHtml.IOptions = {
  * the upload goes through a real HTML parser, scripts, frames, plugins,
  * handlers, script URLs and form values are stripped again before
  * storage, and the policy above goes in front.
+ *
+ * The parser drops the doctype and comments; a meta ahead of `<html>` opens the
+ * head itself, so the policy precedes whatever the document puts there.
  */
 export function sanitizeSnapshotHtml(html: string): string {
-  // The parser drops the doctype and comments; a meta ahead of <html> opens
-  // the head itself, so the policy precedes whatever the document puts there.
   return `<!DOCTYPE html>${SNAPSHOT_CSP_META}${sanitizeHtml(html, SANITIZE_OPTIONS)}`;
 }
 
@@ -512,7 +513,6 @@ export async function summarizeScopedSnapshots(
         url,
         seen
           ? {
-              // A document beats an oversize report, as within one site.
               capturedAt:
                 seen.tooHeavy === summary.tooHeavy
                   ? Math.max(seen.capturedAt, summary.capturedAt)

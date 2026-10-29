@@ -216,9 +216,7 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
     const json = parseJsonOr400(
       inflateIfGzipped(body, MAX_SNAPSHOT_INFLATED_BYTES),
     );
-    // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-    // reference passed here is not actually unbound.
-    // oxlint-disable-next-line typescript/unbound-method
+    // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
     const data = assertValidation(json, snapshotRequestSchema.parse);
     const website = await resolveWebsite(data.website);
     if (!website || !website.trackingEnabled) {

@@ -84,6 +84,9 @@ export class WebsiteStatisticsModel extends BasicDataModel(
    * value write (their merge happened in the caller's read step): last write
    * wins there, bounded by the maps' cap-based eviction being approximate by
    * design.
+   *
+   * `bouncedSessions` and `sessionDurationMs` are defaulted to 0 before the
+   * add: the server-side add of a missing key yields null, not the increment.
    */
   async addDelta(
     id: string,
@@ -97,8 +100,6 @@ export class WebsiteStatisticsModel extends BasicDataModel(
         sessions: doc.key("sessions").add(delta.sessions),
         newVisitors: doc.key("newVisitors").add(delta.newVisitors),
         customEvents: doc.key("customEvents").add(delta.customEvents),
-        // Defaulted: the server-side add of a missing key yields null, not
-        // the increment.
         bouncedSessions: doc
           .key("bouncedSessions")
           .default(0)

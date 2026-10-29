@@ -30,16 +30,11 @@ function withTenantScope(base: DataControllerCallback): DataControllerCallback {
       listParams: Parameters.ListParameters,
       ...rest: unknown[]
     ) {
-      // "is" is the compare mode the DMS DataTypes register (and the one the
-      // dms-ui frontend sends); interface-data-api's Comparison type does not
-      // know it, hence the double cast — "eq" would typecheck but resolves to
-      // no registered mode and would match nothing.
       const params: Parameters.ListParameters = {
         ...listParams,
         filters: {
           ...listParams?.filters,
-          // "is" is not in interface-data-api's Comparison type; see above.
-          // oxlint-disable-next-line anti-slop/no-chained-type-assertions
+          // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- "is" is the compare mode the DMS DataTypes register and the dms-ui frontend sends, but interface-data-api's Comparison type does not know it; "eq" would typecheck and match nothing
           tenantId: [getRequestTenantId(ctx), "is"] as unknown as FilterValue,
         },
       };

@@ -104,7 +104,6 @@ function startsNewCampaign(
   const hasCampaign =
     input.clickIdParam !== undefined ||
     ACQUISITION_FIELDS.some(([, field]) => input.utm[field] !== undefined);
-  // Rows read back carry null where the insert had undefined.
   return (
     hasCampaign &&
     ((session.clickIdParam ?? undefined) !== input.clickIdParam ||

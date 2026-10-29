@@ -66,7 +66,6 @@ describe("the Websites table", () => {
     assert.deepEqual(mergeWebsiteCards(rows, cards), [
       { _id: "b", name: "B", id: "b", state: "waiting", sessions: 0 },
       { _id: "a", name: "A", id: "a", state: "live", sessions: 3 },
-      // Gone between the two reads: listed as it came.
       { _id: "c" },
     ]);
   });
@@ -102,7 +101,6 @@ describe("the Websites table", () => {
     assert.equal(own.sessions, 0);
     assert.equal(own.snapshots, 0);
     assert.deepEqual(own.rejected, []);
-    // Another tenant's id, whatever brought it here, gets no card.
     assert.deepEqual(foreign, { _id: "table-cards-foreign" });
 
     const asOther = await withCardRows(
@@ -144,7 +142,6 @@ describe("the Websites table", () => {
       cards.options.card.component.componentName,
       "DmsMarketingWebsiteCard",
     );
-    // About twice the default width; a dms without the option drops it.
     if ("minWidth" in cards.options.card) {
       assert.equal(cards.options.card.minWidth, "500px");
     }

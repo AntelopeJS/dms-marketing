@@ -208,9 +208,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
   ) {
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
+      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
       previewSchema.parse,
       () => INVALID_STEPS_MESSAGE,
     );

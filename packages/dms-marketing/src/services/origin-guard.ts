@@ -124,7 +124,6 @@ export function forgetAcceptedSources(website: Website): void {
   if (!hosts) {
     return;
   }
-  // Deleting the entry being visited is safe in a Map iteration.
   for (const hostname of hosts.keys()) {
     if (websiteAcceptsHostname(website, hostname)) {
       hosts.delete(hostname);

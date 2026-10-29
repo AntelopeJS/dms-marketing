@@ -49,7 +49,6 @@ function assignVariation(
       return experiment.variations[i].key;
     }
   }
-  // Floating-point sums can land a hair under 1; the last arm absorbs it.
   return experiment.variations[experiment.variations.length - 1].key;
 }
 

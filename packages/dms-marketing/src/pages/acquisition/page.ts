@@ -196,8 +196,6 @@ export class MarketingAcquisitionPage extends PageController(
     )
     .child(
       "channels",
-      // Three 280px tracks fit the content of a 1280px window, so the wide card
-      // keeps its side card on the same row on a laptop.
       Grid({ minColumnWidth: "280px" })
         .child(
           "row",

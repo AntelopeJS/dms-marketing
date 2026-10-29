@@ -3,8 +3,6 @@ const vm = require("node:vm");
 const { TRACKER_SOURCE } = require("./helpers/tracker");
 const test = it;
 
-// --- The tracker on an app shell scrolling an inner panel ------------------
-
 const ORIGIN = "https://dms.example.com";
 const WIDTH = 1440;
 const HEIGHT = 900;
@@ -177,8 +175,6 @@ test("scroll depth is measured on the panel that scrolls the page", () => {
   const page = shell();
   const tracker = loadTracker(page);
   page.panel.scrollTop = (2580 - 809) / 2;
-  // The list scrolling bubbles nowhere: only a capture listener hears it,
-  // and the depth read is still the panel's.
   tracker.scroll(page.list);
   assert.deepEqual(tracker.sent("scroll"), [{ depth: 50 }]);
 });
@@ -189,7 +185,6 @@ test("a click's document fraction is taken in the unrolled content", () => {
   page.panel.scrollTop = 1000;
   tracker.click(page.button, 350, 500);
   const [click] = tracker.sent("click");
-  // 500 px down the window, 1000 px into the panel, out of 899 + 1771.
   assert.equal(click.dy, Number((1500 / 2670).toFixed(4)));
   assert.equal(click.y, Number((500 / HEIGHT).toFixed(4)));
   assert.equal(click.selector, "div>div>button");
@@ -227,7 +222,6 @@ test("a small scroller alone is no scroll root: the document stands", () => {
   const tracker = loadTracker(page);
   page.list.scrollTop = 400;
   tracker.scroll(page.list);
-  // The document does not scroll: all of it shows.
   assert.deepEqual(tracker.sent("scroll"), [{ depth: 100 }]);
 });
 

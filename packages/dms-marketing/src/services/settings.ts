@@ -310,9 +310,6 @@ export async function confirmRetentionCuts(
       continue;
     }
     warnedCuts.set(warning, now + CUT_CONFIRM_WINDOW_MS);
-    // `{ field, message, params }`: the DMS form shows the message under the
-    // field, its `{deleted}` filled from `params` (a figure in parentheses,
-    // which no singular form has to agree with).
     throw new HTTPResult(HTTP_CONFLICT, {
       field: cut.id,
       message: `${CUT_MESSAGE_PREFIX}${deleted.what}`,
@@ -327,13 +324,16 @@ export type SettingsSaveGuard = (
   next: SettingsDocument,
 ) => Promise<void>;
 
+/**
+ * Writes the merged settings onto the singleton row. A caller that saw no row
+ * goes through the fixed-key insert: a concurrent first save collides on the
+ * key and this write lands on the winner's row.
+ */
 async function persistSettings(
   model: MarketingSettingsModel,
   next: SettingsDocument,
   existing: MarketingSettings | undefined,
 ): Promise<void> {
-  // A caller that saw no row goes through the fixed-key insert: a concurrent
-  // first save collides on the key and this write lands on the winner's row.
   const row =
     existing ??
     (await model.getSingleton()) ??
@@ -360,14 +360,15 @@ async function createSingleton(
 /**
  * Creates the singleton (with a fresh secret) on first run so visitor ids
  * stay stable across restarts without an explicit config secret.
+ *
+ * Every instance booting on an empty table races on the insert; all of them end
+ * up caching the one secret that was stored.
  */
 export async function loadSettings(
   model: MarketingSettingsModel,
 ): Promise<void> {
   let doc = await model.getSingleton();
   if (!doc) {
-    // Every instance booting on an empty table races here; all of them end
-    // up caching the one secret that was stored.
     doc = await createSingleton(model, defaultDocument(), generateSecret());
   } else if (!doc.visitorHashSecret) {
     doc.visitorHashSecret = generateSecret();
