@@ -12,7 +12,10 @@ function isPackageManifest(value: unknown): value is PackageManifest {
   return isObject(value) && "version" in value && isString(value.version);
 }
 
-// oxlint-disable-next-line typescript/no-require-imports -- Read at runtime: package.json sits outside the compiled sources, one level above `dist` once built.
+/**
+ * Required at runtime: `package.json` sits outside the compiled sources, one
+ * level above `dist` once built.
+ */
 const manifest: unknown = require("../../package.json");
 const version = isPackageManifest(manifest) ? manifest.version : undefined;
 
