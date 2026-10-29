@@ -7,7 +7,6 @@ import {
   type FunnelEvent,
   groupBySession,
 } from "@/services/funnels/compute";
-import type { ExposureEventData } from "@/types";
 import {
   MIN_DECISION_CONVERSIONS,
   MIN_DECISION_DAYS,
@@ -79,8 +78,7 @@ function variationBySession(
     if (event.kind !== "exposure" || event.name !== experiment.key) {
       continue;
     }
-    const variation = (event.data as Partial<ExposureEventData> | undefined)
-      ?.variation;
+    const variation = event.data?.variation;
     if (!isString(variation) || !armKeys.has(variation)) {
       continue;
     }

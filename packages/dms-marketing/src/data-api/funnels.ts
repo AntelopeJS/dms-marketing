@@ -254,16 +254,18 @@ function forwardWrite(
 function withNewChecks(base: DataControllerCallback): DataControllerCallback {
   return forwardWrite(base, async function (ctx, params, body, ...rest) {
     const parsed = parseBody(body);
-    const websiteId = isString(parsed.websiteId) ? parsed.websiteId : undefined;
-    await requireTenantWebsite(ctx, websiteId);
+    const { _id: websiteId } = await requireTenantWebsite(
+      ctx,
+      isString(parsed.websiteId) ? parsed.websiteId : undefined,
+    );
     normalizeSteps(parsed);
     const experiment = resolveExperiment(
       parseExperiment(parsed),
       undefined,
-      websiteId as string,
+      websiteId,
     );
     if (experiment) {
-      await assertUniqueKey(ctx, websiteId as string, experiment.key);
+      await assertUniqueKey(ctx, websiteId, experiment.key);
     }
     parsed.experiment = experiment;
     const result = await base.func.call(
@@ -273,7 +275,7 @@ function withNewChecks(base: DataControllerCallback): DataControllerCallback {
       Buffer.from(JSON.stringify(parsed)),
       ...rest,
     );
-    invalidateExperimentDefinitions(websiteId as string);
+    invalidateExperimentDefinitions(websiteId);
     return result;
   });
 }

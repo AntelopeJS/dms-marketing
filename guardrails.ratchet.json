@@ -5,7 +5,7 @@
     "anti-slop/no-unknown-parameters": 21,
     "anti-slop/no-unknown-returns": 3,
     "anti-slop/no-unsafe-dictionary-type": 12,
-    "anti-slop/require-safety-comment-for-type-assertion": 45
+    "anti-slop/require-safety-comment-for-type-assertion": 41
   },
   "oversizeFiles": {
     "packages/dms-marketing/frontend-vue/app/components/ExperimentReport.vue": 24456,
