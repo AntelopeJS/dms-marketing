@@ -11,7 +11,7 @@ import {
   MAX_EXPERIMENT_VARIATIONS,
   MIN_EXPERIMENT_VARIATIONS,
 } from "@/types/constants";
-import { isNonBlankString, isString } from "@/utils/guards";
+import { isString } from "@/utils/guards";
 
 /** Slug shape shared by experiment and variation keys — what page code types
  * into `dmsMarketing.variation(…)`, so no spaces and no case to get wrong. */
@@ -61,7 +61,9 @@ export function parseExperimentInput(raw: unknown): ExperimentInput | null {
   const candidate = value as Partial<ExperimentInput>;
   const noArms =
     !Array.isArray(candidate.variations) || candidate.variations.length === 0;
-  if (!isNonBlankString(candidate.key) && noArms) {
+  const key = candidate.key;
+  const blankKey = !isString(key) || key.trim() === "";
+  if (blankKey && noArms) {
     return null;
   }
   return experimentSchema.parse(value);
