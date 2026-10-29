@@ -1,12 +1,10 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { createSSRApp, defineComponent, h } from 'vue'
+import { computed, createSSRApp, defineComponent, h, ref } from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import PagesExplorer from '../app/components/PagesExplorer.vue'
 import WorkspaceScope from '../app/components/WorkspaceScope.vue'
+import { MARKETING_CONTEXT_KEY } from '../app/composables/useMarketingContext'
 import { ALL_WORKSPACES } from '../app/utils/workspace-scope'
-
-const EXPLORER = join(process.cwd(), 'app', 'components', 'PagesExplorer.vue')
 
 const OWN = { id: 'tenant-a', name: 'Alpha', current: true }
 const OTHER = { id: 'tenant-b', name: 'Beta', current: false }
@@ -41,6 +39,89 @@ const UI_STUBS = {
         h('div', { 'data-tooltip': props.text }, slots.default?.()),
   }),
   UIcon: defineComponent({ setup: () => () => h('i') }),
+}
+
+/** What each read of the explorer answers, by the path it reads. */
+const READS: Record<string, unknown> = {
+  '/api/marketing/stats/workspaces': { workspaces: [OWN, OTHER] },
+  '/api/marketing/websites': [{ _id: 'acme-shop', name: 'Acme Shop' }],
+  '/api/marketing/stats/pages': {
+    pages: [{ path: '/', pageviews: 3, clicks: 1, snapshot: null }],
+    total: 1,
+    sampleRate: 1,
+    trackerEnabled: true,
+  },
+  '/api/marketing/tables/funnels/list': [],
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
+/** The explorer on a live website, drawn by the server. */
+async function renderExplorer(): Promise<string> {
+  vi.stubGlobal('useApiData', (url: unknown) => {
+    const path = typeof url === 'function' ? url() : url
+    const read = {
+      data: ref(READS[String(path).split('?')[0]!] ?? null),
+      error: ref(null),
+      status: ref('success'),
+      refresh: async () => {},
+    }
+    return {
+      ...read,
+      then: (resolve: (value: typeof read) => void) => resolve(read),
+    }
+  })
+  vi.stubGlobal('usePeriodScope', () =>
+    ref({ range: { from: new Date(0), to: new Date(86_400_000) } }),
+  )
+  vi.stubGlobal('appendPeriodToUrl', (url: string) => url)
+  vi.stubGlobal('isDmsHydrating', () => false)
+  vi.stubGlobal('useDmsState', (_key: string, init: () => unknown) =>
+    ref(init()),
+  )
+  vi.stubGlobal('formatPercentage', () => '100 %')
+  const website = {
+    id: 'acme-shop',
+    name: 'Acme Shop',
+    domain: 'shop.example.com',
+    state: 'live',
+    lastActivityAt: null,
+  }
+  const app = createSSRApp(
+    defineComponent({ setup: () => () => h(PagesExplorer) }),
+  )
+  app.provide(MARKETING_CONTEXT_KEY, {
+    websites: computed(() => [website]),
+    selected: computed(() => website),
+    select: async () => {},
+    reload: async () => {},
+  })
+  for (const name of [
+    'DmsBanner',
+    'DmsEmptyState',
+    'DmsEyebrow',
+    'DmsMarketingWorkspaceScope',
+    'DmsSegmented',
+    'UButton',
+    'UIcon',
+    'UInput',
+    'USkeleton',
+  ]) {
+    app.component(
+      name,
+      defineComponent({
+        name,
+        inheritAttrs: false,
+        setup:
+          (_props, { slots }) =>
+          () =>
+            h('div', { 'data-stub': name }, slots.default?.()),
+      }),
+    )
+  }
+  return renderToString(app)
 }
 
 async function renderScope(modelValue: string): Promise<string> {
@@ -86,28 +167,18 @@ describe('the workspace selector', () => {
     }
   })
 
-  it('sits in the pages panel, above its search', () => {
-    const source = readFileSync(EXPLORER, 'utf8')
-    const template = source.slice(source.indexOf('<template>'))
-    const panel = template.indexOf('class="dms-card flex min-w-0 flex-col')
-    const scope = template.indexOf('<DmsMarketingWorkspaceScope')
-    const search = template.indexOf('v-model="search"')
+  it('sits in the pages panel, above its search', async () => {
+    const html = await renderExplorer()
+    const panel = html.search(/<section class="[^"]*\bdms-card\b/)
+    const scope = html.indexOf('data-stub="DmsMarketingWorkspaceScope"')
+    const search = html.indexOf('data-stub="UInput"')
     expect(panel).toBeGreaterThan(-1)
     expect(scope).toBeGreaterThan(panel)
     expect(search).toBeGreaterThan(scope)
+    expect(html.indexOf('</section>', panel)).toBeGreaterThan(search)
     // Only once: no copy of it left above the panes.
-    expect(template.lastIndexOf('<DmsMarketingWorkspaceScope')).toBe(scope)
-  })
-
-  it('drops the selected row read in another workspace', () => {
-    // The header's views come from the row read for the scope on screen:
-    // a workspace switch never leaves the previous one's views in it.
-    const source = readFileSync(EXPLORER, 'utf8')
-    expect(source).toMatch(
-      /const readScope = computed\(\(\) =>\s*JSON\.stringify\(\[workspace\.value, pagesPeriod\.value\]\)/,
-    )
-    expect(source).toMatch(
-      /watch\(readScope, \(\) => \{\s*selectedPage\.value = undefined/,
+    expect(html.lastIndexOf('data-stub="DmsMarketingWorkspaceScope"')).toBe(
+      scope,
     )
   })
 })

@@ -1,15 +1,10 @@
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
-const path = require("node:path");
 const vm = require("node:vm");
+const { TRACKER_SOURCE } = require("./helpers/tracker");
 const test = it;
 
 // --- The tracker on an app shell scrolling an inner panel ------------------
 
-const TRACKER_SOURCE = readFileSync(
-  path.join(__dirname, "../static/tracker.js"),
-  "utf8",
-);
 const ORIGIN = "https://dms.example.com";
 const WIDTH = 1440;
 const HEIGHT = 900;

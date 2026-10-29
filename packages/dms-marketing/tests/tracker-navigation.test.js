@@ -1,16 +1,11 @@
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
-const path = require("node:path");
 const vm = require("node:vm");
+const { TRACKER_SOURCE } = require("./helpers/tracker");
 const test = it;
 const { dashboardExcludedPaths } = require("../dist/frontend-module");
 
 // --- The tracker on a single-page site ---------------------------------
 
-const TRACKER_SOURCE = readFileSync(
-  path.join(__dirname, "../static/tracker.js"),
-  "utf8",
-);
 const ORIGIN = "https://dms.example.com";
 
 /**
