@@ -2,7 +2,7 @@ import type { BannerContent } from "@antelopejs/interface-dms/base/banner";
 import type { ComposedText } from "@antelopejs/interface-dms/base/types/composed-text";
 import type { Website } from "@/db/tables/websites.table";
 import { BoundedCache } from "./bounded-cache";
-import { percentText } from "./composed";
+import { percentOf, percentText } from "./composed";
 import { MARKETING_CHANNELS, type MarketingChannel } from "@/types";
 import { splitCampaignKey } from "./acquisition";
 import {
@@ -243,7 +243,7 @@ function byField(key: string): (a: CampaignRow, b: CampaignRow) => number {
 export function campaignTablePayload(
   report: CampaignsReport,
   query: CampaignTableQuery,
-): { results: CampaignTableRow[]; total: number } {
+) {
   const needle = query.search?.trim().toLowerCase() ?? "";
   const inChannel = channelMatcher(query.channel);
   const matching = report.rows.filter(
@@ -265,7 +265,7 @@ export function campaignTablePayload(
       medium: row.medium ?? null,
       channel: row.channel,
       sessions: row.sessions,
-      share: percentText(row.share) as ComposedText,
+      share: percentOf(row.share),
       daily: row.daily,
       missingMedium: row.missingMedium,
     })),

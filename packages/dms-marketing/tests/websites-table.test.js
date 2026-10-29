@@ -127,7 +127,7 @@ describe("the Websites table", () => {
     const row = await route.func(DEFAULT_TENANT_CTX, { id: "table-cards-get" });
     assert.equal(row.id, "table-cards-get");
     assert.equal(row.state, "waiting");
-    assert.equal(typeof row.createdAt, "number");
+    assert.ok(Number.isFinite(row.createdAt));
   });
 
   test("the Websites page lists the sites as cards drawn by the module", () => {

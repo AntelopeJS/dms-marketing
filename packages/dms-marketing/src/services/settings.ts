@@ -36,6 +36,7 @@ import {
   type SettingsFormValues,
 } from "@/types/settings";
 import { isBoolean, isNumber, isString } from "@/utils/guards";
+import type { QueryParameter } from "./query-param";
 
 /**
  * Runtime settings service: the singleton document is pushed into the config
@@ -165,7 +166,7 @@ function buildNextSettings(
  */
 function submittedNumber(
   setting: NumberSetting,
-  value: unknown,
+  value: SettingsFormValues[string] | undefined,
 ): number | null {
   if (!isNumber(value) || Number.isNaN(value)) {
     return null;
@@ -431,11 +432,18 @@ const GLANCE_ITEMS = {
   snapshots: "snapshotRetention",
 } as const;
 
-export function retentionGlance(item: unknown): RetentionMeter | null {
-  if (!isString(item) || !Object.hasOwn(GLANCE_ITEMS, item)) {
+/** Whether `value` names an item of the "At a glance" row, as an own key. */
+function isGlanceItem(
+  value: QueryParameter,
+): value is keyof typeof GLANCE_ITEMS {
+  return isString(value) && Object.hasOwn(GLANCE_ITEMS, value);
+}
+
+export function retentionGlance(item: QueryParameter): RetentionMeter | null {
+  if (!isGlanceItem(item)) {
     return null;
   }
-  const key = GLANCE_ITEMS[item as keyof typeof GLANCE_ITEMS];
+  const key = GLANCE_ITEMS[item];
   const days = Math.round(getConfig()[key] / MS_PER_DAY);
   return {
     value: days,

@@ -152,7 +152,7 @@ function acceptedEventsByVisitor(
   websiteId: string,
   sessions: ImportSession[],
   experimentKeys: ReadonlySet<string>,
-): { visitors: Map<string, VisitorEvent[]>; dropped: number } {
+) {
   const now = Date.now();
   const oldest = now - getConfig().statisticsRetention;
   const newest = now + MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS;

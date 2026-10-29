@@ -19,7 +19,10 @@ export class MarketingDeclarationError extends Error {
 export const declaredIdSchema = z.string().regex(DECLARED_ID_PATTERN);
 
 /** The caller's id, or a clear refusal naming the operation. */
-export function requireDeclaredId(operation: string, value: unknown): string {
+export function requireDeclaredId(
+  operation: string,
+  value: string | undefined,
+): string {
   const parsed = declaredIdSchema.safeParse(value);
   if (!parsed.success) {
     throw new MarketingDeclarationError(
@@ -34,7 +37,7 @@ export function requireDeclaredId(operation: string, value: unknown): string {
 export function declaredTenant(
   operation: string,
   id: string,
-  tenantId: unknown,
+  tenantId: string | undefined,
 ): string {
   if (
     !isString(tenantId) ||

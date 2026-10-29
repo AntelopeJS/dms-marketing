@@ -274,9 +274,7 @@ export interface CampaignKeyParts {
 }
 
 function isChannel(value: string | undefined): value is MarketingChannel {
-  return (MARKETING_CHANNELS as readonly (string | undefined)[]).includes(
-    value,
-  );
+  return MARKETING_CHANNELS.some((channel) => channel === value);
 }
 
 /**

@@ -383,11 +383,7 @@ async function claimPromise(
  * or a document that would not fit a row once stored (`bytes` is then the
  * serialized size).
  */
-export function storedDocument(input: SnapshotRequestInput): {
-  document: { width: number; height: number };
-  bytes: number;
-  html: string;
-} {
+export function storedDocument(input: SnapshotRequestInput) {
   if ("html" in input) {
     const html = gzipSync(sanitizeSnapshotHtml(input.html)).toString("base64");
     const bytes = Buffer.byteLength(input.html);

@@ -50,7 +50,7 @@ export type TopDimension = (typeof TOP_DIMENSIONS)[number];
 export function isTopDimension(value: unknown): value is TopDimension {
   return (
     typeof value === "string" &&
-    (TOP_DIMENSIONS as readonly string[]).includes(value)
+    TOP_DIMENSIONS.some((dimension) => dimension === value)
   );
 }
 

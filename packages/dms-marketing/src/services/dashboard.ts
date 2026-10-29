@@ -177,9 +177,9 @@ async function hourlyCurves(
       : null,
   ]);
   const points = (values: number[]) => {
-    const drawn = values.map((y, index) => ({
+    const drawn = values.map((y: number | null, index) => ({
       x: since + index * MS_PER_HOUR,
-      y: y as number | null,
+      y,
     }));
     return drawn.length > 1
       ? drawn
