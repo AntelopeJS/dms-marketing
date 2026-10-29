@@ -1,7 +1,9 @@
 /**
- * `./module` is imported first so RegisterModule fires before any @RegisterPage
- * decorator in `./all` runs — pages look the module up synchronously when their
- * decorator is invoked at import time.
+ * The module's pages. `./module` is imported first so `RegisterModule` fires
+ * before any `@RegisterPage` decorator in `./all` runs: pages look the module
+ * up synchronously when their decorator is invoked at import time.
+ *
+ * @packageDocumentation
  */
 import "./module";
 import "./all";

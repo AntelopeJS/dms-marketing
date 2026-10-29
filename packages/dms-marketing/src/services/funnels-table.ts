@@ -205,7 +205,10 @@ export function funnelTablePayload(
       comparison: comparisonOf(row, comparison),
       status: row.experiment?.status ?? null,
     }));
-  return { results, total: results.length };
+  return { results, total: results.length } satisfies {
+    results: FunnelTableRow[];
+    total: number;
+  };
 }
 
 /**

@@ -1,11 +1,11 @@
 {
   "rules": {
-    "anti-slop/no-known-value-widening": 4,
-    "anti-slop/no-runtime-typeof": 3,
-    "anti-slop/no-unknown-parameters": 20,
-    "anti-slop/no-unknown-returns": 3,
-    "anti-slop/no-unsafe-dictionary-type": 12,
-    "anti-slop/require-safety-comment-for-type-assertion": 38
+    "anti-slop/no-known-value-widening": 3,
+    "anti-slop/no-runtime-typeof": 2,
+    "anti-slop/no-unknown-parameters": 18,
+    "anti-slop/no-unknown-returns": 2,
+    "anti-slop/no-unsafe-dictionary-type": 11,
+    "anti-slop/require-safety-comment-for-type-assertion": 34
   },
   "oversizeFiles": {
     "packages/dms-marketing/static/snapshot.js": 33869,

@@ -188,7 +188,13 @@ export interface CampaignTableQuery {
   limit?: number;
 }
 
-const SORT_KEYS = new Set(["campaign", "source", "medium", "sessions"]);
+const SORT_KEYS = ["campaign", "source", "medium", "sessions"] as const;
+
+type SortKey = (typeof SORT_KEYS)[number];
+
+function isSortKey(value: string): value is SortKey {
+  return SORT_KEYS.some((key) => key === value);
+}
 
 function matches(row: CampaignRow, needle: string): boolean {
   return [row.source, row.medium, row.campaign].some((part) =>
@@ -224,13 +230,12 @@ function channelMatcher(
   }
 }
 
-function byField(key: string): (a: CampaignRow, b: CampaignRow) => number {
+function byField(key: SortKey): (a: CampaignRow, b: CampaignRow) => number {
   if (key === "sessions") {
     return (a, b) => a.sessions - b.sessions;
   }
-  const field = key as "campaign" | "source" | "medium";
   return (a, b) =>
-    (a[field] ?? "").localeCompare(b[field] ?? "", undefined, {
+    (a[key] ?? "").localeCompare(b[key] ?? "", undefined, {
       numeric: true,
     });
 }
@@ -250,7 +255,7 @@ export function campaignTablePayload(
     (row) => inChannel(row.channel) && (!needle || matches(row, needle)),
   );
   const sortKey =
-    query.sortKey && SORT_KEYS.has(query.sortKey) ? query.sortKey : undefined;
+    query.sortKey && isSortKey(query.sortKey) ? query.sortKey : undefined;
   const direction = query.sortDirection === "desc" ? -1 : 1;
   const sorted = sortKey
     ? [...matching].sort((a, b) => direction * byField(sortKey)(a, b))
@@ -270,7 +275,7 @@ export function campaignTablePayload(
       missingMedium: row.missingMedium,
     })),
     total: matching.length,
-  };
+  } satisfies { results: CampaignTableRow[]; total: number };
 }
 
 const CAMPAIGNS_PREFIX = "$page.marketing.acquisition.campaigns.";

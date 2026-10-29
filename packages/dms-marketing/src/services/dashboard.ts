@@ -439,7 +439,7 @@ function hasCountries(read: RollupRead): boolean {
   return Object.keys(mergeDimension(rows, "topCountries")).length > 0;
 }
 
-const TOP_GROUPS: Record<string, (read: RollupRead) => TopTabDefinition[]> = {
+const TOP_GROUPS = {
   content: () => [
     {
       id: "pages",
@@ -512,15 +512,18 @@ const TOP_GROUPS: Record<string, (read: RollupRead) => TopTabDefinition[]> = {
       link: eventFunnelLink,
     },
   ],
-};
+} satisfies Record<string, (read: RollupRead) => TopTabDefinition[]>;
 
-export function isTopGroup(value: unknown): value is string {
+/** A group of top lists the overview and the acquisition page draw as tabs. */
+export type TopGroup = keyof typeof TOP_GROUPS;
+
+export function isTopGroup(value: unknown): value is TopGroup {
   return typeof value === "string" && Object.hasOwn(TOP_GROUPS, value);
 }
 
 export function topGroupPayload(
   read: RollupRead,
-  group: string,
+  group: TopGroup,
 ): TopTabPayload[] {
   return TOP_GROUPS[group](read).map((tab) => topTab(read, tab));
 }

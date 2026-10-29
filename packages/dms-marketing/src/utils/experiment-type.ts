@@ -46,7 +46,7 @@ const experimentSchema = z.object({
 
 export type ExperimentInput = z.output<typeof experimentSchema>;
 
-function isBlankKey(value: unknown): boolean {
+function isBlankKey(value: Partial<ExperimentInput>["key"]): boolean {
   return !isString(value) || value.trim() === "";
 }
 

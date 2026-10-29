@@ -10,6 +10,7 @@ import { FunnelsModel, MarketingImportsModel, WebsitesModel } from "@/db";
 import type { MarketingImport } from "@/db/tables/marketing_imports.table";
 import type { Website } from "@/db/tables/websites.table";
 import type { DeviceInfo } from "@/types";
+import { isObject } from "@/utils/guards";
 import {
   MAX_COLLECT_BATCH_SIZE,
   MAX_SCREEN_AND_LANGUAGE_CHARS,
@@ -100,7 +101,7 @@ function asTrackedEvent(
   raw: unknown,
   session: ImportSession,
 ): Record<string, unknown> | undefined {
-  if (!raw || typeof raw !== "object") {
+  if (!isObject(raw)) {
     return undefined;
   }
   const event = raw as Record<string, unknown>;

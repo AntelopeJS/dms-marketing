@@ -123,7 +123,7 @@ function declaredContent(
 function runInstant(
   id: string,
   field: string,
-  value: MarketingExperimentDeclaration["startedAt"],
+  value: MarketingExperimentDeclaration["startedAt" | "stoppedAt"],
 ): number {
   const now = Date.now();
   if (value === undefined) {

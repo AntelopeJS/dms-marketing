@@ -36,7 +36,7 @@ const NO_STORE_CACHE_CONTROL = "private, no-store";
 
 /** JSON is not quite JS: U+2028/U+2029 are legal in JSON strings but
  * terminate a line inside a script body. */
-function toScriptLiteral(value: unknown): string {
+function toScriptLiteral(value: AssignmentMap): string {
   return JSON.stringify(value)
     .replaceAll("\u2028", "\\u2028")
     .replaceAll("\u2029", "\\u2029");
