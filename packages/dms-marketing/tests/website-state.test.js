@@ -18,7 +18,18 @@ const realGetModel = models.GetModel;
 const ORIGIN = "https://state-test.example.com";
 const MINUTE = 60_000;
 
+/**
+ * @typedef {import("../dist/db/tables/websites.table").Website} Website
+ * @typedef {import("../dist/services/context").WebsiteActivity} WebsiteActivity
+ */
+
+/**
+ * @param {number} [lastActivity]
+ * @param {number} [importedThrough]
+ * @returns {WebsiteActivity}
+ */
 function activity(lastActivity, importedThrough) {
+  /** @param {number | undefined} at */
   const of = (at) => new Map(at === undefined ? [] : [["site", at]]);
   return {
     lastActivity: of(lastActivity),
@@ -26,6 +37,11 @@ function activity(lastActivity, importedThrough) {
   };
 }
 
+/**
+ * @param {Pick<Website, "trackingEnabled">} website
+ * @param {number} [lastActivity]
+ * @param {number} [importedThrough]
+ */
 function stateOf(website, lastActivity, importedThrough) {
   return toContextWebsite(
     { _id: "site", name: "Site", domain: "a.test", ...website },

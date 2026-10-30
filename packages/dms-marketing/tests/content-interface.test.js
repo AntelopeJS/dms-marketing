@@ -18,6 +18,12 @@ const realGetModel = models.GetModel;
 const ORIGIN = "https://interface-test.example.com";
 const MINUTE = 60_000;
 
+/** @param {unknown} reason */
+function messageOf(reason) {
+  assert.ok(reason instanceof Error, "the import was rejected with an Error");
+  return reason.message;
+}
+
 describe("the content interface tenant contract", () => {
   beforeEach(() => mock.method(models, "GetModel", realGetModel));
   afterEach(() => mock.restoreAll());
@@ -182,6 +188,7 @@ describe("the content interface", () => {
       ImportAnalytics({ ...batch, importId: "older-window" }),
       /chronological/,
     );
+    /** @param {string} importId */
     const next = (importId) => ({
       ...batch,
       importId,
@@ -207,7 +214,7 @@ describe("the content interface", () => {
       1,
     );
     assert.match(
-      raced.find((result) => result.status === "rejected").reason.message,
+      messageOf(raced.find((result) => result.status === "rejected").reason),
       /another import/,
     );
     assert.equal((await ImportAnalytics(next("last"))).events, 1);

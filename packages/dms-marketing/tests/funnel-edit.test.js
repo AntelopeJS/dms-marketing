@@ -6,6 +6,12 @@ const SITE = "site-a";
 const OTHER_SITE = "site-b";
 const LOCKED_MESSAGE = "$page.marketing.errors.experiment_locked";
 
+/** @typedef {import("../dist/db/tables/funnels.table").FunnelExperiment} FunnelExperiment */
+
+/**
+ * @param {FunnelExperiment["status"]} status
+ * @param {FunnelExperiment["runs"]} [runs]
+ */
 function storedExperiment(status, runs = []) {
   return {
     key: "hero",
@@ -18,6 +24,7 @@ function storedExperiment(status, runs = []) {
   };
 }
 
+/** @param {FunnelExperiment | null | undefined} experiment */
 function funnel(experiment) {
   return { _id: "funnel-1", websiteId: SITE, name: "Signup", experiment };
 }

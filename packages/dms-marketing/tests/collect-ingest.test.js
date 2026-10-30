@@ -30,6 +30,19 @@ const WEBSITE = {
 };
 const PAGE = "https://example.com/landing";
 let visitorCount = 0;
+
+/** @typedef {import("../dist/db").NewMarketingEvent} NewMarketingEvent */
+/** @typedef {import("../dist/db").MarketingSession} MarketingSession */
+/** @typedef {import("../dist/db").WebsiteStatistics} WebsiteStatistics */
+
+/**
+ * @typedef {object} Store
+ * @property {NewMarketingEvent[]} events
+ * @property {MarketingSession[]} sessions
+ * @property {WebsiteStatistics[]} rows
+ */
+
+/** @type {Store} */
 let store;
 
 /**
@@ -41,17 +54,23 @@ let store;
 function fakeModels() {
   store = { events: [], sessions: [], rows: [] };
   const sessions = {
+    /**
+     * @param {string} websiteId
+     * @param {string} visitorId
+     */
     async findLatestForVisitor(websiteId, visitorId) {
       return store.sessions
         .filter((s) => s.websiteId === websiteId && s.visitorId === visitorId)
         .sort((a, b) => b.startedAt - a.startedAt)[0];
     },
+    /** @param {MarketingSession} session */
     async insert(session) {
       store.sessions.push(session);
     },
     async recordActivity() {},
   };
   const events = {
+    /** @param {NewMarketingEvent[]} docs */
     async insertMany(docs) {
       store.events.push(...docs);
       return docs.length;
@@ -61,6 +80,7 @@ function fakeModels() {
     async get() {
       return undefined;
     },
+    /** @param {WebsiteStatistics} row */
     async insert(row) {
       store.rows.push(row);
     },
@@ -289,6 +309,7 @@ test("a pageview keeps the sampling rate it declares, and nothing else", () => {
 });
 
 test("every experiment key the builder accepts can be exposed", () => {
+  /** @param {string} key */
   const exposure = (key) => ({
     kind: "exposure",
     url: PAGE,
@@ -305,6 +326,10 @@ test("every experiment key the builder accepts can be exposed", () => {
 });
 
 test("the client address is the DMS's: X-Forwarded-For needs a trusted proxy", async () => {
+  /**
+   * @param {string | undefined} forwarded
+   * @param {string} [remoteAddress]
+   */
   const context = (forwarded, remoteAddress = "10.0.0.9") => ({
     rawRequest: {
       headers: { "x-forwarded-for": forwarded },

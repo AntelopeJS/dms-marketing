@@ -53,6 +53,10 @@ const runningTest = ({ ready = true, uplift = 62, index = 1 } = {}) =>
     },
   });
 
+/**
+ * @param {boolean} period
+ * @param {boolean} previous
+ */
 const coverage = (period, previous) => ({
   since: Date.UTC(2026, 8, 10),
   period,
@@ -90,11 +94,17 @@ test("a step never received replaces the detail with a warning", () => {
   assert.equal(results[0].detail.text.params.step, "order");
 });
 
+/** @param {import("@antelopejs/interface-dms/base/types/composed-text").BlockText} text */
+function keyOf(text) {
+  assert.ok(text instanceof Object);
+  return text.key;
+}
+
 test("the leader is named by its own letter, and only when ahead", () => {
   const ahead = funnelTablePayload([runningTest({ index: 2 })], undefined);
   assert.equal(ahead.results[0].detail.text.params.letter, "C");
   const behind = funnelTablePayload([runningTest({ uplift: -12 })], undefined);
-  assert.match(behind.results[0].detail.text.key, /control_leads$/);
+  assert.match(keyOf(behind.results[0].detail.text), /control_leads$/);
 });
 
 test("a kind filter narrows the table to funnels or tests", () => {

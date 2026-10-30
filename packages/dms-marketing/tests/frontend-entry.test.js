@@ -6,7 +6,7 @@ const test = it;
 const PACKAGE_ROOT = path.join(__dirname, "..");
 
 test("the dmsFrontend entry loads under plain Node, without the AntelopeJS path aliases", () => {
-  const entry = require(path.join(PACKAGE_ROOT, "package.json")).dmsFrontend;
+  const entry = require("../package.json").dmsFrontend;
   const exported = execFileSync(
     process.execPath,
     [

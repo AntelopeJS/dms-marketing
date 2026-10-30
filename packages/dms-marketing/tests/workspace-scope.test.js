@@ -41,25 +41,40 @@ const {
   resolveWorkspaceScope,
 } = require("../dist/services/workspace-scope");
 
+/**
+ * @typedef {import("@antelopejs/interface-api").HTTPResult} HTTPResult
+ * @typedef {import("@antelopejs/interface-dms/db").Tenant} Tenant
+ */
+
 const SCHEMA = "workspace_scope_test";
 const TENANT_A = "tenant-a";
 const TENANT_B = "tenant-b";
 const SITE_A = dashboardWebsiteId(TENANT_A);
 const SITE_B = dashboardWebsiteId(TENANT_B);
 
+/**
+ * @param {string} tenantId
+ * @param {string} [id]
+ */
 function site(tenantId, id = dashboardWebsiteId(tenantId)) {
   return { _id: id, tenantId, name: "Dashboard", snapshotsEnabled: true };
 }
 
-/** The DMS core's tenants and the websites table, as the scope reads them. */
+/**
+ * The DMS core's tenants and the websites table, as the scope reads them.
+ * @param {Pick<Tenant, "_id" | "name">[]} tenants
+ * @param {ReturnType<typeof site>[]} websites
+ */
 function stores(tenants, websites) {
   return {
     tenants: {
-      get: async (id) => tenants.find((tenant) => tenant._id === id),
+      get: async (/** @type {string} */ id) =>
+        tenants.find((tenant) => tenant._id === id),
       getAll: async () => tenants,
     },
     websites: {
-      getMany: async (ids) => websites.filter((row) => ids.includes(row._id)),
+      getMany: async (/** @type {string[]} */ ids) =>
+        websites.filter((row) => ids.includes(row._id)),
     },
   };
 }
@@ -76,6 +91,7 @@ const TWO_WORKSPACES = stores(
 const PLATFORM_OWNER = { owner: true, tenantId: TENANT_A };
 const WORKSPACE_OWNER = { owner: false, tenantId: TENANT_A };
 
+/** @param {HTTPResult} error */
 const notFound = (error) => error.getStatus() === 404;
 
 describe("workspace scope guard", () => {
@@ -201,6 +217,7 @@ describe("workspace scope guard", () => {
   });
 });
 
+/** @param {typeof MarketingEvent} Table */
 function declared(Table) {
   const indexes = Object.fromEntries(
     Object.entries(getMetadata(Table, DatumStaticMetadata).indexes).map(
@@ -210,6 +227,13 @@ function declared(Table) {
   return { fields: {}, indexes };
 }
 
+/**
+ * @param {string} id
+ * @param {string} tenant
+ * @param {MarketingEvent["kind"]} kind
+ * @param {string} url
+ * @param {Record<string, unknown>} [data]
+ */
 function event(id, tenant, kind, url, data = {}) {
   return {
     _id: `${tenant}-${id}`,
@@ -222,6 +246,7 @@ function event(id, tenant, kind, url, data = {}) {
   };
 }
 
+/** @param {number} dy */
 const anchored = (dy) => ({
   x: 0.5,
   y: dy,
@@ -234,8 +259,11 @@ const anchored = (dy) => ({
 });
 
 describe("combined heatmaps", () => {
+  /** @type {MongoClient | undefined} */
   let client;
+  /** @type {ReturnType<MongoClient["db"]>} */
   let db;
+  /** @type {Record<string, ReturnType<Schema["instance"]>>} */
   const instances = {};
 
   before(async () => {
@@ -273,6 +301,10 @@ describe("combined heatmaps", () => {
     mock.method(
       models,
       "GetModel",
+      /**
+       * @param {Parameters<typeof models.GetModel>[0]} Model
+       * @param {string} tenantId
+       */
       (Model, tenantId) => new MarketingEventsModel(instances[tenantId]),
     );
   });
@@ -363,6 +395,11 @@ describe("foreign backdrops", () => {
     );
   });
 
+  /**
+   * @param {string} layout
+   * @param {number} capturedAt
+   * @param {string} html
+   */
   function captureRow(layout, capturedAt, html) {
     return {
       layout,
@@ -379,6 +416,7 @@ describe("foreign backdrops", () => {
   }
 
   test("combined mode sends the newest capture of the asked layout, masked", async () => {
+    /** @type {Record<string, ReturnType<typeof captureRow>[]>} */
     const rows = {
       [TENANT_A]: [captureRow("desktop", 1000, "<p>Alpha secret</p>")],
       [TENANT_B]: [
@@ -386,10 +424,18 @@ describe("foreign backdrops", () => {
         captureRow("phone", 3000, "<p>Beta phone</p>"),
       ],
     };
-    mock.method(models, "GetModel", (Model, tenantId) => {
-      assert.equal(Model, PageSnapshotsModel);
-      return { getByPath: async () => [...rows[tenantId]] };
-    });
+    mock.method(
+      models,
+      "GetModel",
+      /**
+       * @param {Parameters<typeof models.GetModel>[0]} Model
+       * @param {string} tenantId
+       */
+      (Model, tenantId) => {
+        assert.equal(Model, PageSnapshotsModel);
+        return { getByPath: async () => [...rows[tenantId]] };
+      },
+    );
     try {
       const sites = [
         { tenantId: TENANT_A, websiteId: SITE_A },
