@@ -458,7 +458,7 @@ export async function importAnalytics(
       .catch(() => {});
     throw refuse(
       importId,
-      `failed part-way, and will not be replayed under this id: ${describeIssue(err)}`,
+      `failed part-way, and will not be replayed under this id: ${err instanceof Error ? describeIssue(err) : String(err)}`,
     );
   }
 }

@@ -25,6 +25,8 @@ const HOURLY_CRON = "0 * * * *";
 /** How stale another instance's Settings save can be here (switch included). */
 const SETTINGS_RELOAD_MS = 30 * MS_PER_SECOND;
 
+const PRUNE_FAILED_MESSAGE = "[dms-marketing] retention prune failed:";
+
 let pruneTask: ScheduledTask | null = null;
 let settingsReload: NodeJS.Timeout | null = null;
 
@@ -75,13 +77,15 @@ async function onDatabaseInitialized(): Promise<void> {
   settingsReload.unref();
   pruneTask ??= cron.schedule(HOURLY_CRON, () => {
     void reloadSettings(settings)
-      .then(() => pruneAllTenants(logPruneError))
-      .catch(logPruneError);
+      .then(() =>
+        pruneAllTenants((failure) => {
+          Logging.Error(PRUNE_FAILED_MESSAGE, failure);
+        }),
+      )
+      .catch((err: unknown) => {
+        Logging.Error(PRUNE_FAILED_MESSAGE, err);
+      });
   });
-}
-
-function logPruneError(err: unknown): void {
-  Logging.Error("[dms-marketing] retention prune failed:", err);
 }
 
 export function destroy(): void {}

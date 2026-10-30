@@ -6,6 +6,7 @@ import {
 } from "@antelopejs/interface-database-decorators";
 import { TENANT_SCHEMA_NAME } from "@antelopejs/interface-dms/constants";
 import type { EventKind } from "@/types";
+import type { TrackedEventInput } from "@/types/events";
 
 export const marketingEventsTableName = "marketing_events";
 
@@ -68,7 +69,7 @@ export class MarketingEvent extends Table {
 
   /** Kind-specific payload: ClickEventData | ScrollEventData | ExposureEventData | custom. */
   @Field("any")
-  declare data?: Record<string, unknown>;
+  declare data?: TrackedEventInput["data"];
 }
 
 /** An event as built before the database assigns its id. */

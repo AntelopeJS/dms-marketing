@@ -63,7 +63,10 @@ function parseOrRefuse<T>(id: string, field: string, parse: () => T): T {
   try {
     return parse();
   } catch (error) {
-    throw refuse(id, `${field}: ${describeIssue(error)}`);
+    throw refuse(
+      id,
+      `${field}: ${error instanceof Error ? describeIssue(error) : String(error)}`,
+    );
   }
 }
 

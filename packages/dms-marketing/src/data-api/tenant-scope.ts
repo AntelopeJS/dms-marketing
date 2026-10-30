@@ -39,7 +39,8 @@ function withTenantScope(base: DataControllerCallback): DataControllerCallback {
           tenantId: [getRequestTenantId(ctx), "is"] as unknown as FilterValue,
         },
       };
-      return base.func.call(this, ctx, params, ...rest);
+      const answer: unknown = await base.func.call(this, ctx, params, ...rest);
+      return answer;
     },
   };
 }
@@ -61,7 +62,8 @@ function withTenantGate(
       ...rest: unknown[]
     ) {
       await gate(ctx, params.id);
-      return base.func.call(this, ctx, params, ...rest);
+      const answer: unknown = await base.func.call(this, ctx, params, ...rest);
+      return answer;
     },
   });
 }
