@@ -268,7 +268,7 @@ function withNewChecks(base: DataControllerCallback): DataControllerCallback {
     if (experiment) {
       await assertUniqueKey(ctx, websiteId, experiment.key);
     }
-    const result = await base.func.call(
+    const result: unknown = await base.func.call(
       this,
       ctx,
       params,
@@ -298,7 +298,7 @@ function withEditChecks(base: DataControllerCallback): DataControllerCallback {
     if (experiment) {
       await assertUniqueKey(ctx, websiteId, experiment.key, current._id);
     }
-    const result = await base.func.call(
+    const result: unknown = await base.func.call(
       this,
       ctx,
       params,
@@ -331,7 +331,7 @@ function withDeleteInvalidation(
       ...rest: unknown[]
     ) {
       const websiteIds = await tenantFunnels(ctx).listWebsiteIdsOf(params.id);
-      const result = await base.func.call(this, ctx, params, ...rest);
+      const result: unknown = await base.func.call(this, ctx, params, ...rest);
       for (const websiteId of websiteIds) {
         invalidateExperimentDefinitions(websiteId);
       }

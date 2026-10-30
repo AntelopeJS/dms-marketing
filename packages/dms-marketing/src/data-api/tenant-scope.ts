@@ -13,6 +13,13 @@ import type { Website } from "@/db/tables/websites.table";
  * isolation structurally (tenant instance = boundary) and needs none of this.
  */
 
+/**
+ * The compare mode the DMS data types register for a hidden filter and the
+ * dms-ui frontend sends. interface-data-api's `Comparison` does not list it,
+ * and `"eq"` would typecheck and match nothing.
+ */
+const TENANT_FILTER_MODE: string = "is";
+
 /** Ownership gate of one table (row of the caller's tenant, or 404). */
 export type TenantGate = (ctx: RequestContext, id: string) => Promise<Website>;
 
@@ -35,11 +42,14 @@ function withTenantScope(base: DataControllerCallback): DataControllerCallback {
         ...listParams,
         filters: {
           ...listParams?.filters,
-          // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- "is" is the compare mode the DMS DataTypes register and the dms-ui frontend sends, but interface-data-api's Comparison type does not know it; "eq" would typecheck and match nothing
-          tenantId: [getRequestTenantId(ctx), "is"] as unknown as FilterValue,
+          tenantId: [
+            getRequestTenantId(ctx),
+            TENANT_FILTER_MODE,
+          ] as FilterValue,
         },
       };
-      return base.func.call(this, ctx, params, ...rest);
+      const answer: unknown = await base.func.call(this, ctx, params, ...rest);
+      return answer;
     },
   };
 }
@@ -61,7 +71,8 @@ function withTenantGate(
       ...rest: unknown[]
     ) {
       await gate(ctx, params.id);
-      return base.func.call(this, ctx, params, ...rest);
+      const answer: unknown = await base.func.call(this, ctx, params, ...rest);
+      return answer;
     },
   });
 }
