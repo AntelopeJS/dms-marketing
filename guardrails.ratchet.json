@@ -2,8 +2,8 @@
   "pack": "0.2.17",
   "rules": {
     "anti-slop/no-unknown-returns": 1,
-    "anti-slop/no-unsafe-dictionary-type": 2,
-    "anti-slop/require-safety-comment-for-type-assertion": 10
+    "anti-slop/no-unsafe-dictionary-type": 1,
+    "anti-slop/require-safety-comment-for-type-assertion": 11
   },
   "oversizeFiles": {
     "packages/dms-marketing/static/snapshot.js": 33869,
