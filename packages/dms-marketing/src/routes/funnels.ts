@@ -44,6 +44,7 @@ import {
   resolveQueryWindow,
   trailingWindow,
 } from "@/services/period";
+import type { ReadableFunnel } from "@/services/funnels";
 import { queryString, type QueryParameter } from "@/services/query-param";
 import { requireTenantFunnel } from "@/services/tenant-funnel";
 import {
@@ -52,7 +53,7 @@ import {
   MAX_CONVERSION_WINDOW_HOURS,
   MS_PER_HOUR,
 } from "@/types/constants";
-import { parseFunnelSteps } from "@/utils/funnel-steps-type";
+import { funnelStepsSchema } from "@/utils/funnel-steps-type";
 import type { JsonBody } from "@/types/json";
 
 const INVALID_STEPS_MESSAGE = "$page.marketing.errors.invalid_steps";
@@ -69,9 +70,9 @@ const previewSchema = z.object({
 
 /** The draft's steps, or a 400: a step the builder lets through (too long,
  * unknown kind) must not surface as a server error. */
-function previewSteps(raw: unknown): Funnel["steps"] {
+function previewSteps(draft: z.output<typeof previewSchema>): Funnel["steps"] {
   try {
-    return parseFunnelSteps(raw);
+    return funnelStepsSchema.parse(draft.steps);
   } catch {
     throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_STEPS_MESSAGE);
   }
@@ -214,12 +215,12 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
       () => INVALID_STEPS_MESSAGE,
     );
     const site = await resolveContextWebsite(context, user, website);
-    const draft = {
+    const draft: ReadableFunnel = {
       websiteId: site._id,
-      steps: previewSteps(data.steps),
+      steps: previewSteps(data),
       conversionWindowMs: data.conversionWindowHours * MS_PER_HOUR,
       experiment: null,
-    } as Funnel;
+    };
     const results = await funnelResultsIn(
       draft,
       site.tenantId,

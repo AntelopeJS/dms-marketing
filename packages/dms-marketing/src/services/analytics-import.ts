@@ -10,7 +10,7 @@ import { FunnelsModel, MarketingImportsModel, WebsitesModel } from "@/db";
 import type { MarketingImport } from "@/db/tables/marketing_imports.table";
 import type { Website } from "@/db/tables/websites.table";
 import type { DeviceInfo } from "@/types";
-import { isObject } from "@/utils/guards";
+import { isNumber, isString } from "@/utils/guards";
 import {
   MAX_COLLECT_BATCH_SIZE,
   MAX_SCREEN_AND_LANGUAGE_CHARS,
@@ -96,16 +96,23 @@ function importRowId(websiteId: string, importId: string): string {
   return `${websiteId}:${importId}`;
 }
 
+/** An import event as the caller sent it: only the fields read are named. */
+const importedEventSchema = z.object({
+  kind: z.unknown(),
+  at: z.unknown(),
+  url: z.unknown(),
+  referrer: z.unknown(),
+  title: z.unknown(),
+  name: z.unknown(),
+  data: z.unknown(),
+});
+
+type ImportedEvent = z.output<typeof importedEventSchema>;
+
 /** An import event in the tracker's own shape, for the collect schema. */
-function asTrackedEvent(
-  raw: unknown,
-  session: ImportSession,
-): Record<string, unknown> | undefined {
-  if (!isObject(raw)) {
-    return undefined;
-  }
-  const event = raw as Record<string, unknown>;
-  const at = instantOf(event.at);
+function asTrackedEvent(event: ImportedEvent, session: ImportSession) {
+  const at =
+    isNumber(event.at) || isString(event.at) ? instantOf(event.at) : undefined;
   if (at === undefined) {
     return undefined;
   }
@@ -165,9 +172,13 @@ function acceptedEventsByVisitor(
       continue;
     }
     const device = parseDevice(session.userAgent);
-    const tracked = session.events
-      .map((raw) => asTrackedEvent(raw, session))
-      .filter((event) => event !== undefined);
+    const tracked = session.events.flatMap((raw) => {
+      const parsed = importedEventSchema.safeParse(raw);
+      const event = parsed.success
+        ? asTrackedEvent(parsed.data, session)
+        : undefined;
+      return event ? [event] : [];
+    });
     const prepared = prepareEvents(websiteId, tracked).filter((event) => {
       const at = event.input.at ?? 0;
       return (

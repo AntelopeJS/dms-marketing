@@ -432,13 +432,33 @@ test("only browser-stamped hostnames are offered for Allow this host", () => {
 });
 
 test("a capped body that is not JSON is a 400", () => {
-  assert.deepEqual(parseJsonOr400(Buffer.from('{"a":1}')), { a: 1 });
+  const anything = { parse: structuredClone };
+  assert.deepEqual(parseJsonOr400(Buffer.from('{"a":1}'), anything), { a: 1 });
   assert.throws(
-    () => parseJsonOr400(Buffer.from("{not json")),
+    () => {
+      parseJsonOr400(Buffer.from("{not json"), anything);
+    },
     (error) => error.getStatus() === 400 && error.getBody() === "invalid body",
   );
   assert.throws(
-    () => parseJsonOr400(Buffer.from("")),
+    () => {
+      parseJsonOr400(Buffer.from(""), anything);
+    },
     (error) => error.getStatus() === 400 && error.getBody() === "invalid body",
+  );
+});
+
+test("a capped body its schema refuses is a 400", () => {
+  const refusing = {
+    parse() {
+      throw new Error("refused");
+    },
+  };
+  assert.throws(
+    () => {
+      parseJsonOr400(Buffer.from('{"name":1}'), refusing);
+    },
+    (error) =>
+      error.getStatus() === 400 && error.getBody() === "Error: refused",
   );
 });

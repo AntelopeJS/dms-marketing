@@ -18,6 +18,7 @@ import {
   Sortable,
 } from "@antelopejs/interface-data-api/metadata";
 import { GetModel } from "@antelopejs/interface-database-decorators";
+import { z } from "zod";
 import { AuthOwnerOnly } from "@antelopejs/interface-dms/auth";
 import {
   Column,
@@ -51,9 +52,10 @@ import {
   type ExperimentInput,
   ExperimentType,
   experimentIssueField,
-  parseExperimentInput,
+  experimentInputSchema,
 } from "@/utils/experiment-type";
-import { FunnelStepsType, parseFunnelSteps } from "@/utils/funnel-steps-type";
+import { FunnelStepsType, funnelStepsSchema } from "@/utils/funnel-steps-type";
+import type { JsonObject } from "@/types/json";
 import { parseBody } from "./body";
 import { HiddenStringFilter } from "./hidden-filter";
 import { websitesDataAPI } from "./websites";
@@ -100,24 +102,23 @@ function tenantFunnels(ctx: RequestContext): FunnelsModel {
  * value, so a JSON-string steps payload would be stored as a string;
  * normalize it to the validated array before the write.
  */
-function normalizeSteps(parsed: Record<string, unknown>): void {
+function normalizeSteps(parsed: JsonObject): JsonObject {
   if (parsed.steps === undefined) {
-    return;
+    return parsed;
   }
   try {
-    parsed.steps = parseFunnelSteps(parsed.steps);
+    return { ...parsed, steps: funnelStepsSchema.parse(parsed.steps) };
   } catch {
     throw badRequest(INVALID_STEPS_MESSAGE);
   }
 }
 
-function parseExperiment(
-  parsed: Record<string, unknown>,
-): ExperimentInput | null {
+function parseExperiment(parsed: JsonObject): ExperimentInput | null {
   try {
-    return parseExperimentInput(parsed.experiment);
+    return experimentInputSchema.parse(parsed.experiment);
   } catch (error) {
-    const field = experimentIssueField(error);
+    const field =
+      error instanceof z.ZodError ? experimentIssueField(error) : undefined;
     throw badRequest(
       field ? EXPERIMENT_ISSUE_MESSAGES[field] : INVALID_VARIATIONS_MESSAGE,
     );
@@ -209,7 +210,7 @@ function resolveExperiment(
  * @returns The experiment to write, or null for a plain funnel.
  */
 export function editedExperiment(
-  parsed: Record<string, unknown>,
+  parsed: JsonObject,
   current: Funnel,
   websiteId: string,
 ): FunnelExperiment | null {
@@ -258,21 +259,20 @@ function withNewChecks(base: DataControllerCallback): DataControllerCallback {
       ctx,
       isString(parsed.websiteId) ? parsed.websiteId : undefined,
     );
-    normalizeSteps(parsed);
+    const normalized = normalizeSteps(parsed);
     const experiment = resolveExperiment(
-      parseExperiment(parsed),
+      parseExperiment(normalized),
       undefined,
       websiteId,
     );
     if (experiment) {
       await assertUniqueKey(ctx, websiteId, experiment.key);
     }
-    parsed.experiment = experiment;
     const result = await base.func.call(
       this,
       ctx,
       params,
-      Buffer.from(JSON.stringify(parsed)),
+      Buffer.from(JSON.stringify({ ...normalized, experiment })),
       ...rest,
     );
     invalidateExperimentDefinitions(websiteId);
@@ -290,20 +290,19 @@ function withEditChecks(base: DataControllerCallback): DataControllerCallback {
     if (isString(parsed.websiteId)) {
       await requireTenantWebsite(ctx, parsed.websiteId);
     }
-    normalizeSteps(parsed);
-    const websiteId = isString(parsed.websiteId)
-      ? parsed.websiteId
+    const normalized = normalizeSteps(parsed);
+    const websiteId = isString(normalized.websiteId)
+      ? normalized.websiteId
       : current.websiteId;
-    const experiment = editedExperiment(parsed, current, websiteId);
+    const experiment = editedExperiment(normalized, current, websiteId);
     if (experiment) {
       await assertUniqueKey(ctx, websiteId, experiment.key, current._id);
     }
-    parsed.experiment = experiment;
     const result = await base.func.call(
       this,
       ctx,
       params,
-      Buffer.from(JSON.stringify(parsed)),
+      Buffer.from(JSON.stringify({ ...normalized, experiment })),
       ...rest,
     );
     invalidateExperimentDefinitions(websiteId);
