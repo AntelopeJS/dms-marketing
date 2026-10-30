@@ -353,7 +353,7 @@ async function createSingleton(
     ...doc,
     visitorHashSecret,
     updatedAt: new Date(),
-  } as MarketingSettings);
+  });
   cachedSecret = row.visitorHashSecret;
   return row;
 }

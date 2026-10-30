@@ -68,7 +68,9 @@ async function onDatabaseInitialized(): Promise<void> {
   await loadSettings(settings);
 
   settingsReload ??= setInterval(() => {
-    void reloadSettings(settings).catch(logReloadError);
+    void reloadSettings(settings).catch((err: unknown) => {
+      Logging.Error("[dms-marketing] settings reload failed:", err);
+    });
   }, SETTINGS_RELOAD_MS);
   settingsReload.unref();
   pruneTask ??= cron.schedule(HOURLY_CRON, () => {
@@ -80,10 +82,6 @@ async function onDatabaseInitialized(): Promise<void> {
 
 function logPruneError(err: unknown): void {
   Logging.Error("[dms-marketing] retention prune failed:", err);
-}
-
-function logReloadError(err: unknown): void {
-  Logging.Error("[dms-marketing] settings reload failed:", err);
 }
 
 export function destroy(): void {}

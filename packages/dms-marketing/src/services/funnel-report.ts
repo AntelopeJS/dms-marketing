@@ -13,9 +13,9 @@ import {
 import { BoundedCache } from "./bounded-cache";
 import {
   computeFunnelResults,
-  type FunnelEvent,
   type FunnelResults,
   groupBySession,
+  type ReadableFunnel,
 } from "./funnels";
 import type { QueryWindow } from "./period";
 import {
@@ -227,7 +227,7 @@ function experimentSummary(
 }
 
 export async function funnelResultsIn(
-  funnel: Funnel,
+  funnel: ReadableFunnel,
   tenantId: string,
   window: QueryWindow,
 ): Promise<FunnelResults> {
@@ -436,7 +436,7 @@ export async function funnelTemplates(
   website: Website,
   window: QueryWindow,
 ): Promise<FunnelTemplate[]> {
-  const events = (await GetModel(
+  const events = await GetModel(
     MarketingEventsModel,
     website.tenantId,
   ).queryRange({
@@ -446,7 +446,7 @@ export async function funnelTemplates(
     kinds: ["pageview", "custom"],
     limit: MAX_FUNNEL_EVENTS,
     fields: ["sessionId", "kind", "url", "name"],
-  })) as FunnelEvent[];
+  });
   const sessions = [...groupBySession(events).values()];
   const sessionsByEvent = new Map<string, number>();
   const sessionsByPage = new Map<string, number>();

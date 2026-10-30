@@ -11,6 +11,7 @@ import { DefaultDataTypes } from "@antelopejs/interface-dms/base/data-types/defa
 import { HttpMethod } from "@antelopejs/interface-dms/base/types";
 import { defaultInUiUnits } from "@/services/settings";
 import { API_BASE_PATH } from "@/types/constants";
+import { isObject } from "@/utils/guards";
 import {
   BOOLEAN_SETTINGS,
   NUMBER_SETTINGS,
@@ -60,6 +61,7 @@ function withDeploymentDefaults(
       return field;
     }
     const value = defaultInUiUnits(setting);
+    const inputOptions = field.component.options;
     return {
       ...field,
       defaultValue: value,
@@ -67,7 +69,7 @@ function withDeploymentDefaults(
       component: {
         ...field.component,
         options: {
-          ...(field.component.options as object),
+          ...(isObject(inputOptions) ? inputOptions : undefined),
           placeholder: String(value),
         },
       },
@@ -91,9 +93,7 @@ function settingsForm(ids: readonly string[], successMessage: string) {
     submitUrl: SETTINGS_URL,
     submitUrlMethod: HttpMethod.put,
     successMessage,
-  }).onFilter((_permissions, options) =>
-    withDeploymentDefaults(options as FormPropsSerialized),
-  );
+  }).onFilter((_permissions, options) => withDeploymentDefaults(options));
 }
 
 /**

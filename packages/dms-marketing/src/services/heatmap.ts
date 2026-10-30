@@ -375,13 +375,13 @@ async function countByPath(
   window: QueryWindow,
   kind: EventKind,
 ): Promise<Map<string, number>> {
-  const rows = (await GetModel(MarketingEventsModel, tenantId)
+  const rows = await GetModel(MarketingEventsModel, tenantId)
     .table.getAll([websiteId], "websiteId")
     .filter((doc) => doc.key("timestamp").ge(window.since))
     .filter((doc) => doc.key("timestamp").le(window.until))
     .filter((doc) => doc.key("kind").eq(kind))
     .group("url", (stream, url) => ({ url, count: stream.count() }))
-    .run()) as Array<{ url: string; count: number }>;
+    .run();
   return new Map(rows.map((row) => [row.url, row.count]));
 }
 

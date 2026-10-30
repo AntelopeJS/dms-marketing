@@ -74,7 +74,7 @@ export class WebsiteStatisticsModel extends BasicDataModel(
           dimensions.map((dimension) => [dimension, tops.key(dimension)]),
         );
       })
-      .run() as Promise<DayTops[]>;
+      .run();
   }
 
   /**

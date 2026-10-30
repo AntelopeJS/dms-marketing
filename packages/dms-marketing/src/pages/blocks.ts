@@ -1,9 +1,8 @@
-import type {
+import {
   ComponentBuilder,
-  ComponentMetadata,
+  type ComponentMetadata,
 } from "@antelopejs/interface-dms/component";
 import { Banner } from "@antelopejs/interface-dms/base/banner";
-import { CustomComponent } from "@antelopejs/interface-dms/base/custom";
 import {
   type PageToolbarProps,
   pageToolbar,
@@ -103,13 +102,11 @@ export function MarketingBlock<T extends object>(
   icon: string,
   options?: T,
 ): ComponentBuilder<T> {
-  return (CustomComponent(`DmsMarketing${name}`) as ComponentBuilder<T>)
-    .options(options)
-    .meta({
-      name: `$page.marketing.blocks.${key}.name`,
-      description: `$page.marketing.blocks.${key}.description`,
-      icon,
-    });
+  return new ComponentBuilder<T>(`DmsMarketing${name}`).options(options).meta({
+    name: `$page.marketing.blocks.${key}.name`,
+    description: `$page.marketing.blocks.${key}.description`,
+    icon,
+  });
 }
 
 export interface MarketingContextOptions {
