@@ -76,11 +76,13 @@ export function construct() {
 
 Interface 0.5.x targets `@antelopejs/dms-marketing` 0.6.0 or later, which implements `GetClickHeatmap`, `EnsureWebsite`, `EnsureFunnel`, `EnsurePageSnapshot` and `ImportAnalytics`. Module 0.6.0 accepts interface versions `>=0.5.0 <0.6.0`. Older modules do not implement the new content calls; calling them waits for an implementation that never comes. Keep module 0.5.x paired with interface 0.4.x for the older heatmap-only contract. The interface declares this peer dependency:
 
-<!-- docs-compat: ./package.json#peerDependencies -->
+<!-- antelopejs-docs-compat:start -->
 
-| Package | Range |
-| --- | --- |
-| `@antelopejs/interface-core` | `>=0.2.4 <1.0.0` |
+| Package                      | Supported        | Tested with |
+| ---------------------------- | ---------------- | ----------- |
+| `@antelopejs/interface-core` | `>=0.2.4 <1.0.0` | —           |
+
+<!-- antelopejs-docs-compat:end -->
 
 ## Documentation
 

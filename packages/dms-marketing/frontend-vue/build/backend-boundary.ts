@@ -76,15 +76,27 @@ function backendSourceFile(id: string): string | undefined {
 
 /**
  * Fails the build and the dev server when a module of the frontend resolves to
- * a file under `packages/dms-marketing/src`: the browser reaches the backend
- * only through its HTTP interface. It checks what the whole resolution chain
- * returns, an id marked external included, so an alias is seen through and a
- * symlink the resolver returns is followed to its real path, and it runs
- * before the other plugins (`enforce: "pre"`).
+ * a file under the `src` of the backend package: the browser reaches the
+ * backend only through its HTTP interface. It checks what the whole resolution
+ * chain returns, an id marked external included, so an alias is seen through
+ * and a symlink the resolver returns is followed to its real path, and it runs
+ * before the other plugins (`enforce: "pre"`). Vite builds workers with their
+ * own plugin list, so the plugin adds itself there too.
+ *
+ * antelopejs-sync writes this file from `@antelopejs/tooling-configs` and
+ * restores it on every run: change the plugin in the pack, not here.
  */
 export function backendBoundary(): VitePlugin {
   return {
-    name: 'dms-marketing:backend-boundary',
+    ...boundaryCheck(),
+    config: () => ({ worker: { plugins: () => [boundaryCheck()] } }),
+  }
+}
+
+/** The check alone, as a worker build runs it. */
+function boundaryCheck(): VitePlugin {
+  return {
+    name: `${BACKEND_PACKAGE}:backend-boundary`,
     enforce: 'pre',
     async resolveId(source, importer, options) {
       const resolved = await this.resolve(source, importer, {
@@ -103,7 +115,7 @@ export function backendBoundary(): VitePlugin {
           ? 'an entry point'
           : importer.replace(QUERY_OR_HASH, '')
       return this.error(
-        `Backend boundary: ${from} imports ${file}, which is under packages/dms-marketing/src. The frontend reaches the backend only through its HTTP interface.`,
+        `Backend boundary: ${from} imports ${file}, which is under the src of ${BACKEND_PACKAGE}. The frontend reaches the backend only through its HTTP interface.`,
       )
     },
   }
