@@ -6,6 +6,15 @@ const {
   normalizeHostname,
 } = require("../dist/services/website-hosts");
 
+/** @typedef {import("../dist/db/tables/websites.table").Website} Website */
+
+/**
+ * @param {string} _id
+ * @param {string} name
+ * @param {string} domain
+ * @param {string[]} [extraDomains]
+ * @returns {Pick<Website, "_id" | "name" | "domain" | "extraDomains">}
+ */
 function site(_id, name, domain, extraDomains = []) {
   return { _id, name, domain, extraDomains };
 }
