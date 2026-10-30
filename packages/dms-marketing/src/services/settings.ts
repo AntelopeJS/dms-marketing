@@ -105,14 +105,15 @@ export async function reloadSettings(
 
 function defaultDocument(): SettingsDocument {
   const config = getConfig();
-  const doc = {} as SettingsDocument;
-  for (const setting of BOOLEAN_SETTINGS) {
-    doc[setting.configKey] = config[setting.configKey];
-  }
-  for (const setting of NUMBER_SETTINGS) {
-    doc[setting.configKey] = null;
-  }
-  return doc;
+  const [tracker] = BOOLEAN_SETTINGS;
+  const [rawEvents, statistics, heatmap, snapshot] = NUMBER_SETTINGS;
+  return {
+    [tracker.configKey]: config[tracker.configKey],
+    [rawEvents.configKey]: null,
+    [statistics.configKey]: null,
+    [heatmap.configKey]: null,
+    [snapshot.configKey]: null,
+  };
 }
 
 /**
@@ -143,20 +144,28 @@ function buildNextSettings(
   values: SettingsFormValues,
   existing: MarketingSettings | undefined,
 ): SettingsDocument {
-  const doc = {} as SettingsDocument;
   const config = getConfig();
-  for (const setting of BOOLEAN_SETTINGS) {
+  const nextBoolean = (setting: (typeof BOOLEAN_SETTINGS)[number]): boolean => {
     const submitted = values[setting.id];
-    doc[setting.configKey] = isBoolean(submitted)
+    return isBoolean(submitted)
       ? submitted
       : (existing?.[setting.configKey] ?? config[setting.configKey]);
-  }
-  for (const setting of NUMBER_SETTINGS) {
-    doc[setting.configKey] = Object.hasOwn(values, setting.id)
+  };
+  const nextNumber = (
+    setting: (typeof NUMBER_SETTINGS)[number],
+  ): number | null =>
+    Object.hasOwn(values, setting.id)
       ? submittedNumber(setting, values[setting.id])
       : (existing?.[setting.configKey] ?? null);
-  }
-  return doc;
+  const [tracker] = BOOLEAN_SETTINGS;
+  const [rawEvents, statistics, heatmap, snapshot] = NUMBER_SETTINGS;
+  return {
+    [tracker.configKey]: nextBoolean(tracker),
+    [rawEvents.configKey]: nextNumber(rawEvents),
+    [statistics.configKey]: nextNumber(statistics),
+    [heatmap.configKey]: nextNumber(heatmap),
+    [snapshot.configKey]: nextNumber(snapshot),
+  };
 }
 
 /**

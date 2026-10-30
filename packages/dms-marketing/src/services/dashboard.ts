@@ -525,7 +525,8 @@ export function topGroupPayload(
   read: RollupRead,
   group: TopGroup,
 ): TopTabPayload[] {
-  return TOP_GROUPS[group](read).map((tab) => topTab(read, tab));
+  const build = new Map(Object.entries(TOP_GROUPS)).get(group);
+  return (build?.(read) ?? []).map((tab) => topTab(read, tab));
 }
 
 /** Custom events a funnel of the site ends on: the overview tags them "Goal". */

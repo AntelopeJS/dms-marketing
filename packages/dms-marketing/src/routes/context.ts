@@ -45,8 +45,7 @@ export class MarketingContextController extends Controller(
   ) {
     const data = assertValidation(
       body,
-      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
-      contextSelectionSchema.parse,
+      (value) => contextSelectionSchema.parse(value),
       () => INVALID_CONTEXT_MESSAGE,
     );
     await selectContextWebsite(context, user, data.website);

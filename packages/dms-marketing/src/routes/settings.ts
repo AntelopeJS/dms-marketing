@@ -65,8 +65,7 @@ export class MarketingSettingsController extends Controller(
     @AuthOwnerOnly() user: User,
     @JSONBody() json: JsonBody,
   ) {
-    // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
-    const data = assertValidation(json, settingsSchema.parse);
+    const data = assertValidation(json, (value) => settingsSchema.parse(value));
     return applySettingsForm(
       GetModel(MarketingSettingsModel),
       data,
@@ -105,8 +104,7 @@ export class MarketingSettingsController extends Controller(
   ) {
     const data = assertValidation(
       body,
-      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
-      collectionSchema.parse,
+      (value) => collectionSchema.parse(value),
       () => INVALID_SETTINGS_MESSAGE,
     );
     await applySettingsForm(GetModel(MarketingSettingsModel), {

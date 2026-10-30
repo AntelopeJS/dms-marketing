@@ -4,7 +4,7 @@ interface RetentionRow {
   _id: string;
 }
 
-const EPOCH_LOWER_BOUND = new Date(0);
+export const EPOCH_LOWER_BOUND = new Date(0);
 
 /**
  * Equality of the observed date preserves expiry at this fixed cutoff, even
@@ -13,9 +13,9 @@ const EPOCH_LOWER_BOUND = new Date(0);
 export async function deleteExpiredRows<
   F extends string,
   T extends RetentionRow & Record<F, Date>,
->(table: Table<T>, field: F, cutoff: Date): Promise<number> {
+>(table: Table<T>, field: F, lowerBound: T[F], cutoff: T[F]): Promise<number> {
   const candidates = (await table
-    .between(field, EPOCH_LOWER_BOUND as T[F], cutoff as T[F])
+    .between(field, lowerBound, cutoff)
     .pluck("_id", field)
     .run()) as Pick<T, "_id" | F>[];
   let deleted = 0;
