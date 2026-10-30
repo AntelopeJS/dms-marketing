@@ -3,8 +3,8 @@
   "rules": {
     "anti-slop/no-runtime-typeof": 1,
     "anti-slop/no-unknown-returns": 1,
-    "anti-slop/no-unsafe-dictionary-type": 2,
-    "anti-slop/require-safety-comment-for-type-assertion": 10,
+    "anti-slop/no-unsafe-dictionary-type": 1,
+    "anti-slop/require-safety-comment-for-type-assertion": 11,
     "typescript/no-unsafe-argument": 84,
     "typescript/no-unsafe-assignment": 189,
     "typescript/no-unsafe-return": 66

@@ -128,9 +128,9 @@ export class MarketingEventsModel extends BasicDataModel(
    * depth comes back instead of every scroll event of the window.
    *
    * The range predicate is also the type guard, and it has to be. `data` is
-   * stored as an open record — the collect schema types it `z.record(unknown)`
-   * — so `depth` can hold anything a forged beacon puts there, and $round on a
-   * string aborts the WHOLE aggregation. BSON orders numbers below strings,
+   * stored as an untyped field and the collect schema only constrains it for
+   * rows written today, so `depth` can hold anything an older row carries, and
+   * $round on a string aborts the WHOLE aggregation. BSON orders numbers below strings,
    * objects and booleans and above null, so bounding on [0, SCROLL_DEPTH_SCALE]
    * admits exactly the finite numbers in range. Out-of-range depths are
    * dropped rather than clamped: no honest tracker emits them.

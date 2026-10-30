@@ -78,7 +78,10 @@ function variationBySession(
     if (event.kind !== "exposure" || event.name !== experiment.key) {
       continue;
     }
-    const variation = event.data?.variation;
+    const variation =
+      event.data && "variation" in event.data
+        ? event.data.variation
+        : undefined;
     if (!isString(variation) || !armKeys.has(variation)) {
       continue;
     }
