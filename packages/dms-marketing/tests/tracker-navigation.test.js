@@ -1,24 +1,43 @@
 const assert = require("node:assert/strict");
 const vm = require("node:vm");
-const { TRACKER_SOURCE } = require("./helpers/tracker");
+const { TRACKER_SOURCE, parseBeacon } = require("./helpers/tracker");
 const test = it;
 const { dashboardExcludedPaths } = require("../dist/frontend-module");
 
 const ORIGIN = "https://dms.example.com";
 
 /**
+ * @typedef {object} SentEvent
+ * @property {string} website
+ * @property {string} kind
+ * @property {string} path
+ */
+
+/**
+ * @typedef {object} TrackerApi
+ * @property {(name: string) => void} track
+ */
+
+/** @typedef {import("./helpers/tracker").Beacon} Beacon */
+
+/**
  * Runs static/tracker.js against a stand-in browser: History API, beacons
  * and the tag's attributes, enough to follow pageviews across navigations.
  * Heatmap sampling is off, so the beacons carry pageviews and custom events.
+ * @param {Record<string, string>} attributes
+ * @param {string} pathname
  */
 function loadTracker(attributes, pathname) {
   const attrs = new Map(
     Object.entries({ "data-heatmap-sample": "0", ...attributes }),
   );
+  /** @type {Map<string, Array<() => void>>} */
   const listeners = new Map();
+  /** @type {Beacon[]} */
   const beacons = [];
   let observer = () => {};
   const location = { origin: ORIGIN, pathname, search: "" };
+  /** @param {string} url */
   const navigateTo = (url) => {
     location.pathname = url;
   };
@@ -28,21 +47,38 @@ function loadTracker(attributes, pathname) {
     setTimeout: () => 0,
     clearTimeout: () => {},
     location,
+    /** @type {TrackerApi | undefined} */
+    dmsMarketing: undefined,
     history: {
+      /**
+       * @param {unknown} _s
+       * @param {unknown} _t
+       * @param {string} url
+       */
       pushState: (_s, _t, url) => navigateTo(url),
+      /**
+       * @param {unknown} _s
+       * @param {unknown} _t
+       * @param {string} url
+       */
       replaceState: (_s, _t, url) => navigateTo(url),
     },
     screen: { width: 1280, height: 800 },
     navigator: {
       language: "en-GB",
+      /**
+       * @param {string} _url
+       * @param {{ body: string }} blob
+       */
       sendBeacon(_url, blob) {
-        beacons.push(JSON.parse(blob.body));
+        beacons.push(parseBeacon(blob.body));
         return true;
       },
     },
     document: {
       currentScript: {
         src: `${ORIGIN}/api/marketing/tracker.js`,
+        /** @param {string} name */
         getAttribute: (name) => attrs.get(name) ?? null,
       },
       referrer: "",
@@ -52,16 +88,22 @@ function loadTracker(attributes, pathname) {
       addEventListener() {},
     },
     Blob: class {
+      /** @param {string[]} parts */
       constructor(parts) {
         this.body = parts.join("");
       }
     },
     MutationObserver: class {
+      /** @param {() => void} callback */
       constructor(callback) {
         observer = callback;
       }
       observe() {}
     },
+    /**
+     * @param {string} type
+     * @param {() => void} listener
+     */
     addEventListener(type, listener) {
       listeners.set(type, [...(listeners.get(type) ?? []), listener]);
     },
@@ -69,8 +111,11 @@ function loadTracker(attributes, pathname) {
   context.window = context;
   vm.runInNewContext(TRACKER_SOURCE, context);
   return {
+    /** @param {string} url */
     navigate: (url) => context.history.pushState(null, "", url),
+    /** @param {string} name */
     track: (name) => context.dmsMarketing.track(name),
+    /** @param {string | null} id */
     setWebsite(id) {
       if (id === null) {
         attrs.delete("data-website-id");
@@ -79,7 +124,10 @@ function loadTracker(attributes, pathname) {
       }
       queueMicrotask(observer);
     },
-    /** Everything sent so far, flushed as on leaving the page. */
+    /**
+     * Everything sent so far, flushed as on leaving the page.
+     * @returns {SentEvent[]}
+     */
     sent() {
       for (const listener of listeners.get("pagehide") ?? []) {
         listener();
@@ -95,6 +143,10 @@ function loadTracker(attributes, pathname) {
   };
 }
 
+/**
+ * @param {SentEvent[]} events
+ * @returns {string[]}
+ */
 function pageviews(events) {
   return events
     .filter((event) => event.kind === "pageview")

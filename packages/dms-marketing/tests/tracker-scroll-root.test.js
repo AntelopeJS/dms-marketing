@@ -1,18 +1,57 @@
 const assert = require("node:assert/strict");
 const vm = require("node:vm");
-const { TRACKER_SOURCE } = require("./helpers/tracker");
+const { TRACKER_SOURCE, parseBeacon } = require("./helpers/tracker");
 const test = it;
 
 const ORIGIN = "https://dms.example.com";
 const WIDTH = 1440;
 const HEIGHT = 900;
 
+/**
+ * @typedef {object} Box
+ * @property {number} top
+ * @property {number} left
+ * @property {number} right
+ * @property {number} bottom
+ */
+
+/**
+ * @typedef {object} Geometry
+ * @property {string} overflowY
+ * @property {number} scrollTop
+ * @property {number} scrollHeight
+ * @property {number} clientHeight
+ * @property {Box} box
+ */
+
+/**
+ * @typedef {object} FakeEvent
+ * @property {Element} [target]
+ * @property {boolean} [isTrusted]
+ * @property {number} [detail]
+ * @property {number} [clientX]
+ * @property {number} [clientY]
+ * @property {number} [pageX]
+ * @property {number} [pageY]
+ */
+
+/** @typedef {(event?: FakeEvent) => void} Listener */
+
+/** @typedef {import("./helpers/tracker").Beacon} Beacon */
+
 class Element {
+  /**
+   * @param {string} name
+   * @param {Element | null} parent
+   * @param {Partial<Geometry>} [geometry]
+   */
   constructor(name, parent, geometry = {}) {
     this.localName = name;
     this.parentElement = parent;
     this.id = "";
+    /** @type {string[]} */
     this.classList = [];
+    /** @type {Set<string>} */
     this.attributes = new Set();
     this.isConnected = true;
     this.overflowY = "visible";
@@ -23,6 +62,7 @@ class Element {
     Object.assign(this, geometry);
   }
 
+  /** @param {Element | null} node */
   contains(node) {
     for (let current = node; current; current = current.parentElement) {
       if (current === this) {
@@ -32,6 +72,7 @@ class Element {
     return false;
   }
 
+  /** @param {string} name */
   hasAttribute(name) {
     return this.attributes.has(name);
   }
@@ -83,21 +124,29 @@ function shell() {
   return { html, body, app, panel, list, under: list, button, sidebar };
 }
 
+/** @param {ReturnType<typeof shell>} page */
 function loadTracker(page) {
   const attrs = new Map(
     Object.entries({ "data-website-id": "site", "data-heatmap-sample": "1" }),
   );
+  /** @type {Map<string, Listener[]>} */
   const windowListeners = new Map();
+  /** @type {Map<string, Listener[]>} */
   const documentListeners = new Map();
+  /** @type {Beacon[]} */
   const beacons = [];
   const all = Object.values(page).filter((node) => node instanceof Element);
+  /**
+   * @param {Map<string, Listener[]>} listeners
+   * @returns {(type: string, listener: Listener) => Map<string, Listener[]>}
+   */
   const on = (listeners) => (type, listener) =>
     listeners.set(type, [...(listeners.get(type) ?? []), listener]);
   const context = {
     console,
     URL,
     Element,
-    Math: Object.assign(Object.create(Math), { random: () => 0 }),
+    Math: { __proto__: Math, random: () => 0 },
     setTimeout: () => 0,
     clearTimeout: () => {},
     location: { origin: ORIGIN, pathname: "/dashboard", search: "" },
@@ -109,15 +158,21 @@ function loadTracker(page) {
     scrollY: 0,
     navigator: {
       language: "en-GB",
+      /**
+       * @param {string} _url
+       * @param {{ body: string }} blob
+       */
       sendBeacon(_url, blob) {
-        beacons.push(JSON.parse(blob.body));
+        beacons.push(parseBeacon(blob.body));
         return true;
       },
     },
+    /** @param {Element} element */
     getComputedStyle: (element) => ({ overflowY: element.overflowY }),
     document: {
       currentScript: {
         src: `${ORIGIN}/api/marketing/tracker.js`,
+        /** @param {string} name */
         getAttribute: (name) => attrs.get(name) ?? null,
       },
       documentElement: page.html,
@@ -128,6 +183,7 @@ function loadTracker(page) {
       visibilityState: "visible",
       addEventListener: on(documentListeners),
       elementFromPoint: () => page.under,
+      /** @param {string} selector */
       querySelector: (selector) => {
         const name = selector.slice(1, -1);
         return all.find((node) => node.hasAttribute(name)) ?? null;
@@ -135,6 +191,7 @@ function loadTracker(page) {
       querySelectorAll: () => [page.button],
     },
     Blob: class {
+      /** @param {string[]} parts */
       constructor(parts) {
         this.body = parts.join("");
       }
@@ -143,13 +200,24 @@ function loadTracker(page) {
   };
   context.window = context;
   vm.runInNewContext(TRACKER_SOURCE, context);
+  /**
+   * @param {Map<string, Listener[]>} listeners
+   * @param {string} type
+   * @param {FakeEvent} [event]
+   */
   const fire = (listeners, type, event) => {
     for (const listener of listeners.get(type) ?? []) {
       listener(event);
     }
   };
   return {
+    /** @param {Element} target */
     scroll: (target) => fire(documentListeners, "scroll", { target }),
+    /**
+     * @param {Element} target
+     * @param {number} clientX
+     * @param {number} clientY
+     */
     click: (target, clientX, clientY) =>
       fire(documentListeners, "click", {
         isTrusted: true,
@@ -160,7 +228,10 @@ function loadTracker(page) {
         pageX: clientX,
         pageY: clientY,
       }),
-    /** Everything sent so far, flushed as on leaving the page. */
+    /**
+     * Everything sent so far, flushed as on leaving the page.
+     * @param {string} kind
+     */
     sent(kind) {
       fire(windowListeners, "pagehide");
       return beacons
