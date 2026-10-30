@@ -7,11 +7,46 @@ const { ensureWebsite } = require("../dist/services/declared-website");
 const { ensureFunnel } = require("../dist/services/declared-funnel");
 const { dashboardWebsiteId } = require("../dist/services/dashboard-tracking");
 
+/**
+ * @typedef {import("../dist/db/tables/websites.table").Website} Website
+ * @typedef {import("../dist/db/tables/funnels.table").Funnel} Funnel
+ * @typedef {import("@antelopejs/interface-dms-marketing").MarketingFunnelDeclaration} MarketingFunnelDeclaration
+ * @typedef {Pick<Website, "_id" | "tenantId" | "name" | "domain"> & Partial<Website>} WebsiteRow
+ * @typedef {Pick<Funnel, "_id" | "websiteId" | "name" | "steps" | "conversionWindowMs" | "experiment">} FunnelRow
+ */
+
+/**
+ * @template Row
+ * @typedef {{
+ *   rows: Map<string, Row>;
+ *   get(id: string): Promise<Row | undefined>;
+ *   insert(row: Row): Promise<void>;
+ *   update(...args: [row: Row] | [id: string, patch: Partial<Row>]): Promise<void>;
+ * }} FakeTable
+ */
+
+/**
+ * @typedef {FakeTable<WebsiteRow> & {
+ *   getByTenant(tenantId: string): Promise<WebsiteRow[]>;
+ * }} FakeWebsites
+ */
+
+/**
+ * @typedef {FakeTable<FunnelRow> & {
+ *   hasKey(websiteId: string, key: string, excludeId: string): Promise<boolean>;
+ * }} FakeFunnels
+ */
+
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
-/** Rows by id, handed out as copies: the services mutate what they read. */
+/**
+ * Rows by id, handed out as copies: the services mutate what they read.
+ * @template {{ _id: string }} Row
+ * @returns {FakeTable<Row>}
+ */
 function table() {
+  /** @type {Map<string, Row>} */
   const rows = new Map();
   return {
     rows,
@@ -25,21 +60,31 @@ function table() {
       }
       rows.set(row._id, structuredClone(row));
     },
-    async update(row, patch) {
-      if (patch === undefined) {
+    /** @param {[row: Row] | [id: string, patch: Partial<Row>]} args */
+    async update(...args) {
+      if (args.length === 1) {
+        const [row] = args;
         rows.set(row._id, structuredClone(row));
       } else {
-        rows.set(row, { ...rows.get(row), ...structuredClone(patch) });
+        const [id, patch] = args;
+        rows.set(id, { ...rows.get(id), ...structuredClone(patch) });
       }
     },
   };
 }
 
+/** @type {FakeWebsites} */
 let websites;
+/** @type {Map<string, FakeFunnels>} */
 let funnelsByTenant;
 
+/**
+ * @param {string} tenantId
+ * @returns {FakeFunnels}
+ */
 function funnelsOf(tenantId) {
   if (!funnelsByTenant.has(tenantId)) {
+    /** @type {FakeFunnels} */
     const funnels = table();
     funnels.hasKey = async (websiteId, key, excludeId) =>
       [...funnels.rows.values()].some(
@@ -63,15 +108,23 @@ function useFakeModels() {
     websites.getByTenant = async (tenantId) =>
       [...websites.rows.values()].filter((row) => row.tenantId === tenantId);
     funnelsByTenant = new Map();
-    mock.method(models, "GetModel", (Model, tenantId) => {
-      if (Model === WebsitesModel) {
-        return websites;
-      }
-      if (Model === FunnelsModel) {
-        return funnelsOf(tenantId);
-      }
-      throw new Error(`unexpected model ${Model.name}`);
-    });
+    mock.method(
+      models,
+      "GetModel",
+      /**
+       * @param {Parameters<typeof models.GetModel>[0]} Model
+       * @param {string} tenantId
+       */
+      (Model, tenantId) => {
+        if (Model === WebsitesModel) {
+          return websites;
+        }
+        if (Model === FunnelsModel) {
+          return funnelsOf(tenantId);
+        }
+        throw new Error(`unexpected model ${Model.name}`);
+      },
+    );
   });
 
   afterEach(() => mock.restoreAll());
@@ -84,7 +137,13 @@ const SITE = {
   domain: "https://Shop.Example.com/home",
 };
 
-/** What a user does from the dashboard: edit the stored row directly. */
+/**
+ * What a user does from the dashboard: edit the stored row directly.
+ * @template {{ _id: string }} Row
+ * @param {FakeTable<Row>} store
+ * @param {string} id
+ * @param {Partial<Row>} patch
+ */
 function userEdits(store, id, patch) {
   store.rows.set(id, { ...store.rows.get(id), ...patch });
 }
@@ -168,6 +227,7 @@ describe("EnsureWebsite", () => {
   });
 });
 
+/** @type {MarketingFunnelDeclaration} */
 const FUNNEL = {
   tenantId: "default",
   id: "quote-request",

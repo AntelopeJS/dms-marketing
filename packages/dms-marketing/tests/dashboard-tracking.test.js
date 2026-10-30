@@ -113,16 +113,25 @@ test("the frontend module registers as before while it is off", () => {
   );
 });
 
+/** @typedef {import("../dist/db/tables/websites.table").Website} Website */
+/**
+ * The stored copy of a website: `structuredClone` leaves plain data, no class.
+ * @typedef {{ [Field in keyof Website]: Website[Field] }} WebsiteRecord
+ */
+
 function fakeStore() {
+  /** @type {Map<string, WebsiteRecord>} */
   const rows = new Map();
   return {
     rows,
     inserts: 0,
     updates: 0,
+    /** @param {string} id */
     async get(id) {
       const row = rows.get(id);
       return row && structuredClone(row);
     },
+    /** @param {Website} website */
     async insert(website) {
       if (rows.has(website._id)) {
         throw new Error("duplicate key");
@@ -130,6 +139,7 @@ function fakeStore() {
       this.inserts++;
       rows.set(website._id, structuredClone(website));
     },
+    /** @param {Website} website */
     async update(website) {
       this.updates++;
       rows.set(website._id, structuredClone(website));
