@@ -53,7 +53,7 @@ function assignVariation(
 }
 
 export function assignAll(visitorId: string, funnels: Funnel[]): AssignmentMap {
-  const assignments: AssignmentMap = {};
+  const assignments = new Map<string, string>();
   for (const funnel of funnels) {
     const experiment = funnel.experiment;
     if (!experiment) {
@@ -61,8 +61,8 @@ export function assignAll(visitorId: string, funnels: Funnel[]): AssignmentMap {
     }
     const variation = assignVariation(visitorId, experiment);
     if (variation !== undefined) {
-      assignments[experiment.key] = variation;
+      assignments.set(experiment.key, variation);
     }
   }
-  return assignments;
+  return Object.fromEntries(assignments);
 }
