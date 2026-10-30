@@ -5,7 +5,7 @@
     "eslint/max-params": 2,
     "typescript/no-explicit-any": 1,
     "typescript/no-require-imports": 0,
-    "typescript/unbound-method": 10
+    "typescript/unbound-method": 4
   },
   "tsExpectError": 0,
   "tsIgnore": 0,
