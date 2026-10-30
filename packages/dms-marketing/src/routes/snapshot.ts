@@ -11,7 +11,6 @@ import {
   RawBody,
   type RequestContext,
 } from "@antelopejs/interface-api";
-import { assertValidation } from "@antelopejs/interface-api-util";
 import { getConfig } from "@/config";
 import type { Website } from "@/db/tables/websites.table";
 import { hidesDashboardPath } from "@/services/dashboard-tracking";
@@ -213,11 +212,10 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
     if (body.length > config.snapshotMaxBytes) {
       throw new HTTPResult(HTTP_PAYLOAD_TOO_LARGE, TOO_LARGE_MESSAGE);
     }
-    const json = parseJsonOr400(
+    const data = parseJsonOr400(
       inflateIfGzipped(body, MAX_SNAPSHOT_INFLATED_BYTES),
+      snapshotRequestSchema,
     );
-    // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
-    const data = assertValidation(json, snapshotRequestSchema.parse);
     const website = await resolveWebsite(data.website);
     if (!website || !website.trackingEnabled) {
       throw new HTTPResult(HTTP_NOT_FOUND, UNKNOWN_WEBSITE_MESSAGE);

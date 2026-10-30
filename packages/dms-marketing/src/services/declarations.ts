@@ -54,7 +54,7 @@ export function declaredTenant(
 }
 
 /** Epoch ms from epoch ms or an ISO 8601 string; undefined when unusable. */
-export function instantOf(value: unknown): number | undefined {
+export function instantOf(value: number | string): number | undefined {
   const ms = isNumber(value)
     ? value
     : isString(value)
@@ -64,16 +64,19 @@ export function instantOf(value: unknown): number | undefined {
 }
 
 /** The dashboard's translation keys a shared rule may carry, in plain words. */
-const READABLE_MESSAGES: Record<string, string> = {
-  "$page.marketing.errors.invalid_hostname":
+const READABLE_MESSAGES = new Map([
+  [
+    "$page.marketing.errors.invalid_hostname",
     "not a hostname, an IP address or localhost",
-};
+  ],
+]);
 
 /** The first issue of a zod failure, as one readable line. */
 export function describeIssue(error: unknown): string {
   if (error instanceof z.ZodError) {
     const issue = error.issues[0];
-    const message = READABLE_MESSAGES[issue?.message ?? ""] ?? issue?.message;
+    const message =
+      READABLE_MESSAGES.get(issue?.message ?? "") ?? issue?.message;
     const path = issue?.path.join(".");
     return path ? `${path}: ${message}` : (message ?? "invalid");
   }

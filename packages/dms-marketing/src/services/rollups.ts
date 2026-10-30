@@ -2,7 +2,12 @@ import { GetModel } from "@antelopejs/interface-database-decorators";
 import { WebsiteStatisticsModel } from "@/db";
 import type { WebsiteStatistics } from "@/db/tables/website_statistics.table";
 import type { Website } from "@/db/tables/websites.table";
-import type { MarketingDayCounters, TopDimension, TopEntries } from "@/types";
+import {
+  byDimension,
+  type MarketingDayCounters,
+  type TopDimension,
+  type TopEntries,
+} from "@/types";
 import { elapsedShare, type QueryWindow, windowDays } from "./period";
 
 export type RollupTotals = Omit<MarketingDayCounters, "day">;
@@ -78,14 +83,13 @@ function scaleEntries(entries: TopEntries, share: number): TopEntries {
 
 /** A day's counts cut to `share` of it, as if read that far into the day. */
 function scaleRow(row: WebsiteStatistics, share: number): WebsiteStatistics {
-  const tops = row.tops
-    ? (Object.fromEntries(
-        Object.entries(row.tops).map(([dimension, entries]) => [
-          dimension,
-          entries ? scaleEntries(entries, share) : entries,
-        ]),
-      ) as WebsiteStatistics["tops"])
-    : row.tops;
+  const stored = row.tops;
+  const tops = stored
+    ? byDimension((dimension) => {
+        const entries = stored[dimension];
+        return entries ? scaleEntries(entries, share) : entries;
+      })
+    : stored;
   return Object.assign({}, row, {
     pageviews: row.pageviews * share,
     sessions: row.sessions * share,

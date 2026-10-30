@@ -525,7 +525,8 @@ export function topGroupPayload(
   read: RollupRead,
   group: TopGroup,
 ): TopTabPayload[] {
-  return TOP_GROUPS[group](read).map((tab) => topTab(read, tab));
+  const build = new Map(Object.entries(TOP_GROUPS)).get(group);
+  return (build?.(read) ?? []).map((tab) => topTab(read, tab));
 }
 
 /** Custom events a funnel of the site ends on: the overview tags them "Goal". */
@@ -543,11 +544,11 @@ export async function goalEventNames(website: Website): Promise<Set<string>> {
   return goals;
 }
 
-const DEVICE_ICONS: Record<string, string> = {
-  desktop: "i-ph-desktop",
-  mobile: "i-ph-device-mobile",
-  tablet: "i-ph-device-tablet",
-};
+const DEVICE_ICONS = new Map([
+  ["desktop", "i-ph-desktop"],
+  ["mobile", "i-ph-device-mobile"],
+  ["tablet", "i-ph-device-tablet"],
+]);
 
 const DEFAULT_DEVICE_ICON = "i-ph-devices";
 
@@ -567,6 +568,6 @@ export function devicesPayload(read: RollupRead): TopRow[] {
     share: shareOf(value, total),
     description: percentText(shareOf(value, total)),
     delta: previous ? percentChange(value, previous[key]) : null,
-    icon: DEVICE_ICONS[key] ?? DEFAULT_DEVICE_ICON,
+    icon: DEVICE_ICONS.get(key) ?? DEFAULT_DEVICE_ICON,
   }));
 }

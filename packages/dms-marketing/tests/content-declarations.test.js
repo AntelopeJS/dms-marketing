@@ -26,10 +26,10 @@ function table() {
       rows.set(row._id, structuredClone(row));
     },
     async update(row, patch) {
-      if (typeof row === "string") {
-        rows.set(row, { ...rows.get(row), ...structuredClone(patch) });
-      } else {
+      if (patch === undefined) {
         rows.set(row._id, structuredClone(row));
+      } else {
+        rows.set(row, { ...rows.get(row), ...structuredClone(patch) });
       }
     },
   };

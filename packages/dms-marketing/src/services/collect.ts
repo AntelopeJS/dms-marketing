@@ -6,7 +6,7 @@ import {
   MarketingSessionsModel,
   WebsiteStatisticsModel,
 } from "@/db";
-import type { MarketingEvent } from "@/db/tables/marketing_events.table";
+import type { NewMarketingEvent } from "@/db/tables/marketing_events.table";
 import type { MarketingSession } from "@/db/tables/marketing_sessions.table";
 import type { Website } from "@/db/tables/websites.table";
 import {
@@ -126,7 +126,7 @@ export async function processCollectBatch(
   if (!outcome) {
     return refused;
   }
-  void outcome.rollup.catch((err) => {
+  void outcome.rollup.catch((err: unknown) => {
     Logging.Error("[dms-marketing] daily rollup write failed:", err);
   });
   return {
@@ -304,7 +304,7 @@ function buildEventDoc(
   context: BatchContext,
   session: MarketingSession,
   event: PreparedEvent,
-): MarketingEvent {
+): NewMarketingEvent {
   const timestamp = eventTimestamp(context, event.input);
   return {
     timestamp,
@@ -320,7 +320,7 @@ function buildEventDoc(
     ),
     name: event.input.name,
     data: event.input.data,
-  } as MarketingEvent;
+  };
 }
 
 /**
@@ -352,7 +352,7 @@ function snapshotSession(session: MarketingSession): SessionSnapshot {
 async function touchSession(
   context: BatchContext,
   resolution: SessionResolution,
-  docs: MarketingEvent[],
+  docs: NewMarketingEvent[],
 ): Promise<void> {
   const { session, extendsSession } = resolution;
   const pageviews = docs.filter((doc) => doc.kind === "pageview");
@@ -379,8 +379,8 @@ async function touchSession(
 }
 
 interface RollupBatch {
-  pageviews: MarketingEvent[];
-  customEvents: MarketingEvent[];
+  pageviews: NewMarketingEvent[];
+  customEvents: NewMarketingEvent[];
   session: MarketingSession;
   previous: SessionSnapshot;
   isNewSession: boolean;
@@ -490,7 +490,7 @@ function durationDelta(batch: RollupBatch, now: Date): number {
 function recordRollup(
   context: BatchContext,
   resolution: SessionResolution,
-  docs: MarketingEvent[],
+  docs: NewMarketingEvent[],
   previous: SessionSnapshot,
 ): Promise<void> {
   const batch: RollupBatch = {

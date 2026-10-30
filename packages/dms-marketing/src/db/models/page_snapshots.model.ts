@@ -3,7 +3,7 @@ import {
   PageSnapshot,
   pageSnapshotsTableName,
 } from "../tables/page_snapshots.table";
-import { deleteExpiredRows } from "./retention";
+import { deleteExpiredRows, EPOCH_LOWER_BOUND } from "./retention";
 
 export type PageSnapshotCapture = Pick<
   PageSnapshot,
@@ -47,7 +47,12 @@ export class PageSnapshotsModel extends BasicDataModel(
   }
 
   async deleteOlderThan(cutoff: Date): Promise<number> {
-    return deleteExpiredRows(this.table, "capturedAt", cutoff);
+    return deleteExpiredRows(
+      this.table,
+      "capturedAt",
+      EPOCH_LOWER_BOUND,
+      cutoff,
+    );
   }
 
   /** One query for count and delete, so the two agree. */

@@ -13,6 +13,7 @@ import {
 import {
   MarketingEvent,
   marketingEventsTableName,
+  type NewMarketingEvent,
 } from "../tables/marketing_events.table";
 
 /** Input type of Table.insert; DeepPartial itself is not exported. */
@@ -232,7 +233,7 @@ export class MarketingEventsModel extends BasicDataModel(
    * Documents are built server-side from an already zod-validated payload,
    * so skipping the per-document wrapper validation is safe.
    */
-  async insertMany(events: MarketingEvent[]): Promise<number> {
+  async insertMany(events: NewMarketingEvent[]): Promise<number> {
     if (events.length === 0) {
       return 0;
     }

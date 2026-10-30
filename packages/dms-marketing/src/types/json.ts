@@ -5,7 +5,10 @@ export type JsonValue =
   | boolean
   | null
   | JsonValue[]
-  | { [key: string]: JsonValue };
+  | JsonObject;
+
+/** A JSON object: string keys, JSON values. */
+export type JsonObject = { [key: string]: JsonValue };
 
 /**
  * A request body as `@JSONBody()` hands it over: the parsed JSON, or

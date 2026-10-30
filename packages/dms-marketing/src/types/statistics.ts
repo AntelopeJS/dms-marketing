@@ -56,15 +56,31 @@ export function isTopDimension(value: unknown): value is TopDimension {
 
 /**
  * One value per dimension, keyed by dimension. The rollup maps, the collect
- * delta and the overview read each build exactly this record, cast included —
- * `Object.fromEntries` cannot know the keys cover the union.
+ * delta and the overview read each build exactly this record. The literal's
+ * keys are checked against `TopDimension` both ways; their order is that of
+ * `TOP_DIMENSIONS`.
  */
 export function byDimension<T>(
   make: (dimension: TopDimension) => T,
 ): Record<TopDimension, T> {
-  return Object.fromEntries(
-    TOP_DIMENSIONS.map((dimension) => [dimension, make(dimension)]),
-  ) as Record<TopDimension, T>;
+  return {
+    topPages: make("topPages"),
+    topEntryPages: make("topEntryPages"),
+    topExitPages: make("topExitPages"),
+    topReferrers: make("topReferrers"),
+    topUtmSources: make("topUtmSources"),
+    topUtmMediums: make("topUtmMediums"),
+    topUtmCampaigns: make("topUtmCampaigns"),
+    topUtmTerms: make("topUtmTerms"),
+    topUtmContents: make("topUtmContents"),
+    topCampaigns: make("topCampaigns"),
+    topChannels: make("topChannels"),
+    topDevices: make("topDevices"),
+    topBrowsers: make("topBrowsers"),
+    topCountries: make("topCountries"),
+    topEvents: make("topEvents"),
+    topLanguages: make("topLanguages"),
+  };
 }
 
 export type TopEntries = Record<string, number>;

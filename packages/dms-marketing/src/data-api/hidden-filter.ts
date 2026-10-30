@@ -8,7 +8,6 @@ const STRING_TYPE = new DefaultDataTypes.StringType();
  * the data-api drops any filter (e.g. the forced tenantId) whose field is not
  * in its filter map.
  */
-export function HiddenStringFilter(): PropertyDecorator {
-  const filter = STRING_TYPE.filter.bind(STRING_TYPE);
-  return Filter(filter) as PropertyDecorator;
+export function HiddenStringFilter() {
+  return Filter((...args) => STRING_TYPE.filter(...args));
 }

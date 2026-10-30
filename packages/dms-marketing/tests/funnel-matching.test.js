@@ -11,7 +11,7 @@ const {
   twoProportionTest,
 } = require("../dist/services/experiments/stats");
 const { computeExperimentResults } = require("../dist/services/experiments");
-const { parseFunnelSteps } = require("../dist/utils/funnel-steps-type");
+const { funnelStepsSchema } = require("../dist/utils/funnel-steps-type");
 
 const DAY = 86_400_000;
 
@@ -37,7 +37,7 @@ test("page steps match whatever the case, and a final * as a prefix", () => {
 });
 
 test("saved page steps are stored as the path", () => {
-  const [step] = parseFunnelSteps([
+  const [step] = funnelStepsSchema.parse([
     { kind: "url", value: "https://shop.acme.test/Pricing/?ref=x" },
   ]);
   assert.equal(step.value, "/Pricing");

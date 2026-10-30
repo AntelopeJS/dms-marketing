@@ -3,7 +3,7 @@ import {
   MarketingSession,
   marketingSessionsTableName,
 } from "../tables/marketing_sessions.table";
-import { deleteExpiredRows } from "./retention";
+import { deleteExpiredRows, EPOCH_LOWER_BOUND } from "./retention";
 
 export interface SessionActivityDelta {
   pageviews: number;
@@ -97,7 +97,12 @@ export class MarketingSessionsModel extends BasicDataModel(
   }
 
   async deleteOlderThan(cutoff: Date): Promise<number> {
-    return deleteExpiredRows(this.table, "lastSeenAt", cutoff);
+    return deleteExpiredRows(
+      this.table,
+      "lastSeenAt",
+      EPOCH_LOWER_BOUND,
+      cutoff,
+    );
   }
 
   async deleteByWebsite(websiteId: string): Promise<number> {

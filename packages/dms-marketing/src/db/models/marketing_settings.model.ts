@@ -31,11 +31,13 @@ export class MarketingSettingsModel extends BasicDataModel(
    * conflict error: a row present after a failed insert IS the lost race.
    * Stamps the fixed key on `doc`.
    */
-  async insertSingleton(doc: MarketingSettings): Promise<MarketingSettings> {
-    doc._id = MARKETING_SETTINGS_ID;
+  async insertSingleton(
+    doc: Omit<MarketingSettings, "_id">,
+  ): Promise<MarketingSettings> {
+    const row = Object.assign(doc, { _id: MARKETING_SETTINGS_ID });
     try {
-      await this.insert(doc);
-      return doc;
+      await this.insert(row);
+      return row;
     } catch (error) {
       const winner = await this.getSingleton();
       if (!winner) {

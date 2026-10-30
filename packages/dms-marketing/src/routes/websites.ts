@@ -11,7 +11,6 @@ import {
   Put,
   type RequestContext,
 } from "@antelopejs/interface-api";
-import { assertValidation } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import {
@@ -80,9 +79,22 @@ const websiteUpdateSchema = z.object({
   snapshotMaskText: z.boolean().optional(),
 });
 
-/** Field-tied zod issues, for the forms to show under their field. */
-function validationIssues(error: unknown) {
-  return error instanceof z.ZodError ? error.issues : INVALID_WEBSITE_MESSAGE;
+/**
+ * The body parsed by `schema`, or a 400 carrying the field-tied zod issues
+ * for the forms to show under their field.
+ */
+function validated<Output>(
+  body: JsonBody,
+  schema: z.ZodType<Output, z.ZodTypeDef, unknown>,
+): Output {
+  try {
+    return schema.parse(body);
+  } catch (error) {
+    throw new HTTPResult(
+      HTTP_BAD_REQUEST,
+      error instanceof z.ZodError ? error.issues : INVALID_WEBSITE_MESSAGE,
+    );
+  }
 }
 
 /**
@@ -161,12 +173,7 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
-    const data = assertValidation(
-      body,
-      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
-      allowHostSchema.parse,
-      validationIssues,
-    );
+    const data = validated(body, allowHostSchema);
     const hosts = new Set(website.extraDomains ?? []);
     if (!hosts.has(data.hostname) && hosts.size >= MAX_EXTRA_DOMAINS) {
       throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_WEBSITE_MESSAGE);
@@ -187,12 +194,7 @@ export class WebsitesController extends Controller(
     @JSONBody() body: JsonBody,
     @Context() context: RequestContext,
   ) {
-    const data = assertValidation(
-      body,
-      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
-      websiteCreateSchema.parse,
-      validationIssues,
-    );
+    const data = validated(body, websiteCreateSchema);
     const website: Website = {
       _id: randomUUID(),
       tenantId: getRequestTenantId(context),
@@ -227,12 +229,7 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
-    const data = assertValidation(
-      body,
-      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
-      websiteUpdateSchema.parse,
-      validationIssues,
-    );
+    const data = validated(body, websiteUpdateSchema);
     if (data.name !== undefined) {
       website.name = data.name;
     }
@@ -286,12 +283,7 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
-    const { scope } = assertValidation(
-      body,
-      // oxlint-disable-next-line typescript/unbound-method -- zod v3 binds `parse` to its schema in the ZodType constructor, so the reference passed here is not actually unbound.
-      purgeSchema.parse,
-      validationIssues,
-    );
+    const { scope } = validated(body, purgeSchema);
     const deleted = await purgeWebsiteCollectedData(
       website.tenantId,
       id,
