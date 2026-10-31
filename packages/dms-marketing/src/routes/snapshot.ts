@@ -1,6 +1,4 @@
 import { getClientIp } from "@antelopejs/interface-dms/client-ip";
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import {
   Context,
   Controller,
@@ -27,6 +25,7 @@ import { queryString, type QueryParameter } from "@/services/query-param";
 import { inflateIfGzipped, parseJsonOr400 } from "@/services/request-body";
 import { userAgentOf } from "@/services/request-meta";
 import { getVisitorHashSecret } from "@/services/settings";
+import { staticScript } from "@/services/static-script";
 import { storeSnapshot, wantsSnapshot } from "@/services/snapshots";
 import { parseTrackedUrl } from "@/services/url";
 import { computeVisitorId } from "@/services/visitor-id";
@@ -42,8 +41,6 @@ import {
   MAX_URL_LENGTH,
 } from "@/types/constants";
 
-/** dist/routes → package root; `static` ships in the published files list. */
-const SNAPSHOT_SCRIPT_RELATIVE_PATH = "../../static/snapshot.js";
 const SCRIPT_CONTENT_TYPE = "application/javascript; charset=utf-8";
 /** Global the served capture script reads its settings from. */
 const SNAPSHOT_CONFIG_GLOBAL = "__dmsMarketingSnapshotConfig";
@@ -74,25 +71,13 @@ interface NegotiationQuery {
   scrollRoot: boolean;
 }
 
-let cachedScript: string | null = null;
-
-function loadScript(): string {
-  if (cachedScript === null) {
-    cachedScript = readFileSync(
-      path.join(__dirname, SNAPSHOT_SCRIPT_RELATIVE_PATH),
-      "utf8",
-    );
-  }
-  return cachedScript;
-}
-
 function servedScript(website: Website, token: string): string {
   const config: ServedSnapshotConfig = {
     maskText: website.snapshotMaskText === true,
     maxBytes: getConfig().snapshotMaxBytes,
     token,
   };
-  return `window.${SNAPSHOT_CONFIG_GLOBAL}=${JSON.stringify(config)};\n${loadScript()}`;
+  return `window.${SNAPSHOT_CONFIG_GLOBAL}=${JSON.stringify(config)};\n${staticScript("snapshot")}`;
 }
 
 /** The tracker sends a bare pathname; it goes through the same reduction as

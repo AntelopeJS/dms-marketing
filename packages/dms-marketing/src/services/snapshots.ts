@@ -32,7 +32,7 @@ export { maskSnapshotHtml, sanitizeSnapshotHtml } from "./snapshot-html";
 
 const PAGE_PROTOCOLS = ["http:", "https:"];
 
-/** Marks the container a capture unrolled (static/snapshot.js). */
+/** Marks the container a capture unrolled (static/snapshot/). */
 const SCROLL_ROOT_ATTRIBUTE = "data-marketing-scroll-root";
 
 /** What the negotiation knows of one key's row. */

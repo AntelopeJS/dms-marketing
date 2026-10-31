@@ -56,7 +56,7 @@ const snapshotPageSchema = z.object({
   token: z.string().min(1).max(SNAPSHOT_TOKEN_MAX_LENGTH),
 });
 
-/** Wire contract of the public snapshot upload (static/snapshot.js). */
+/** Wire contract of the public snapshot upload (static/snapshot/). */
 export const snapshotRequestSchema = z.union([
   snapshotPageSchema.extend({
     document: dimensionSchema(MAX_SNAPSHOT_DOCUMENT_PX),
