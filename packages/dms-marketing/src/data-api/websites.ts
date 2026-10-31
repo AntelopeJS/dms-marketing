@@ -1,7 +1,6 @@
 import type { RequestContext } from "@antelopejs/interface-api";
 import type { Parameters } from "@antelopejs/interface-data-api/components";
 import { Controller } from "@antelopejs/interface-api";
-import { assert } from "@antelopejs/interface-api-util";
 import {
   DataController,
   type DataControllerCallback,
@@ -28,7 +27,6 @@ import {
 } from "@/services/tenant-website";
 import { mergeWebsiteCards, websitesSummary } from "@/services/website-report";
 import { API_BASE_PATH } from "@/types/constants";
-import { isObject, isString } from "@/utils/guards";
 import { HiddenStringFilter } from "./hidden-filter";
 import { tenantScopedReadRoutes } from "./tenant-scope";
 
@@ -36,21 +34,6 @@ const COLUMN_PREFIX = "$page.marketing.websites.column.";
 
 interface ListedWebsite {
   _id: string;
-}
-
-function isListedWebsite(row: unknown): row is ListedWebsite {
-  return isObject(row) && "_id" in row && isString(row._id);
-}
-
-function isWebsitePage(
-  answer: unknown,
-): answer is { results: ListedWebsite[] } {
-  return (
-    isObject(answer) &&
-    "results" in answer &&
-    Array.isArray(answer.results) &&
-    answer.results.every(isListedWebsite)
-  );
 }
 
 /** The listed rows, each with the figures of its Websites page card. */
@@ -85,13 +68,9 @@ export function withCardRows(
       listParams: Parameters.ListParameters,
       ...rest: unknown[]
     ) {
-      const answer: unknown = await base.func.call(
-        this,
-        ctx,
-        listParams,
-        ...rest,
-      );
-      assert(isWebsitePage(answer), 500, "The list route answered no page.");
+      const answer = (await base.func.call(this, ctx, listParams, ...rest)) as {
+        results: ListedWebsite[];
+      };
       return { ...answer, results: await withCards(ctx, answer.results) };
     },
   };
@@ -109,8 +88,12 @@ export function withCardRow(
       params: Parameters.GetParameters,
       ...rest: unknown[]
     ) {
-      const row: unknown = await base.func.call(this, ctx, params, ...rest);
-      assert(isListedWebsite(row), 500, "The get route answered no website.");
+      const row = (await base.func.call(
+        this,
+        ctx,
+        params,
+        ...rest,
+      )) as ListedWebsite;
       const [withCard] = await withCards(ctx, [row]);
       return withCard;
     },
