@@ -1,11 +1,7 @@
-const { readFileSync } = require("node:fs");
-const path = require("node:path");
+const { staticScript } = require("../../dist/services/static-script");
 
-/** The source of `static/tracker.js`, for the suites that run it in a VM. */
-const TRACKER_SOURCE = readFileSync(
-  path.join(__dirname, "../../static/tracker.js"),
-  "utf8",
-);
+/** The source of the tracker, for the suites that run it in a VM. */
+const TRACKER_SOURCE = staticScript("tracker");
 
 /**
  * @typedef {object} BeaconEvent

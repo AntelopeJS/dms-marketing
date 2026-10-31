@@ -8,5 +8,5 @@
     "noEmit": true,
     "lib": ["esnext"]
   },
-  "include": ["./*.mjs"]
+  "include": ["./*.mjs", "./*.mts"]
 }
