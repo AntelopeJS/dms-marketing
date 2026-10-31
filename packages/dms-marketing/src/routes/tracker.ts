@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import {
   Context,
   Controller,
@@ -7,18 +5,16 @@ import {
   type RequestContext,
 } from "@antelopejs/interface-api";
 import { getConfig } from "@/config";
+import { staticScript } from "@/services/static-script";
 import {
   API_BASE_PATH,
   PAUSED_TRACKER_CACHE_MAX_AGE_SECONDS,
   TRACKER_CACHE_MAX_AGE_SECONDS,
 } from "@/types/constants";
 
-/** dist/routes → package root; `static` ships in the published files list. */
-const TRACKER_RELATIVE_PATH = "../../static/tracker.js";
-
 const TRACKER_CONTENT_TYPE = "application/javascript; charset=utf-8";
 
-/** Global the served script reads its settings from (see static/tracker.js). */
+/** Global the served script reads its settings from (see static/tracker/). */
 const TRACKER_CONFIG_GLOBAL = "__dmsMarketingTrackerConfig";
 
 /** Settings the tracker honors client-side. Numbers and booleans only — the
@@ -32,18 +28,6 @@ interface ServedTrackerConfig {
   paused: boolean;
 }
 
-let cachedScript: string | null = null;
-
-function loadScript(): string {
-  if (cachedScript === null) {
-    cachedScript = readFileSync(
-      path.join(__dirname, TRACKER_RELATIVE_PATH),
-      "utf8",
-    );
-  }
-  return cachedScript;
-}
-
 /**
  * The script file is static, its configuration is not: the effective settings
  * are prepended per request so the Settings page drives the tracker instead of
@@ -55,7 +39,7 @@ function servedScript(): string {
     heatmapSampleRate: getConfig().heatmapSampleRate,
     paused: !getConfig().trackerEnabled,
   };
-  return `window.${TRACKER_CONFIG_GLOBAL}=${JSON.stringify(config)};\n${loadScript()}`;
+  return `window.${TRACKER_CONFIG_GLOBAL}=${JSON.stringify(config)};\n${staticScript("tracker")}`;
 }
 
 /**

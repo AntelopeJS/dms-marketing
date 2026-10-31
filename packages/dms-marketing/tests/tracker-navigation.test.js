@@ -21,7 +21,7 @@ const ORIGIN = "https://dms.example.com";
 /** @typedef {import("./helpers/tracker").Beacon} Beacon */
 
 /**
- * Runs static/tracker.js against a stand-in browser: History API, beacons
+ * Runs the static/tracker script against a stand-in browser: History API, beacons
  * and the tag's attributes, enough to follow pageviews across navigations.
  * Heatmap sampling is off, so the beacons carry pageviews and custom events.
  * @param {Record<string, string>} attributes

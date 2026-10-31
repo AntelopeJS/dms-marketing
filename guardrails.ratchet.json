@@ -5,8 +5,5 @@
     "anti-slop/no-unsafe-dictionary-type": 1,
     "anti-slop/require-safety-comment-for-type-assertion": 11
   },
-  "oversizeFiles": {
-    "packages/dms-marketing/static/snapshot.js": 33869,
-    "packages/dms-marketing/static/tracker.js": 28274
-  }
+  "oversizeFiles": {}
 }

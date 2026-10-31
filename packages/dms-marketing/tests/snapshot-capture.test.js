@@ -1,13 +1,14 @@
 const assert = require("node:assert/strict");
 const { gzipSync } = require("node:zlib");
 const test = it;
+const { loadSnapshotModule } = require("./helpers/snapshot-module");
 const {
   contentSize,
   createStyleCollector,
   splitSelectorList,
   styleText,
   testedSelector,
-} = require("../static/snapshot.js");
+} = loadSnapshotModule();
 const { getConfig, setConfig } = require("../dist/config");
 const { inflateIfGzipped } = require("../dist/services/request-body");
 const { storedDocument } = require("../dist/services/snapshots");
@@ -407,7 +408,7 @@ test("a capture records the whole content of an inner scroll root", () => {
 });
 
 describe("transient overlays at capture", () => {
-  const { isTransientOverlay } = require("../static/snapshot.js");
+  const { isTransientOverlay } = loadSnapshotModule();
 
   /**
    * @typedef {object} FakeElement
