@@ -30,7 +30,7 @@ export class PageSnapshotsModel extends BasicDataModel(
     return this.table
       .getAll([websiteId], "websiteId")
       .pluck("url", "layout", "capturedAt", "documentWidth")
-      .run() as Promise<PageSnapshotCapture[]>;
+      .run();
   }
 
   /** Captures of one site, or of one path when `url` is given. */

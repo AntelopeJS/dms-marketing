@@ -134,6 +134,6 @@ export class WebsiteStatisticsModel extends BasicDataModel(
     return this.table
       .getAll(websiteId, "websiteId")
       .pluck("day", "sessions", "pageviews")
-      .run() as Promise<DayCounters[]>;
+      .run();
   }
 }

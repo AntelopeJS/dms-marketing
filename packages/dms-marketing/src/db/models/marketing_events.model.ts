@@ -1,4 +1,4 @@
-import { type Table, ValueProxy } from "@antelopejs/interface-database";
+import { ValueProxy } from "@antelopejs/interface-database";
 import { BasicDataModel } from "@antelopejs/interface-database-decorators";
 import {
   type EventKind,
@@ -15,9 +15,6 @@ import {
   marketingEventsTableName,
   type NewMarketingEvent,
 } from "../tables/marketing_events.table";
-
-/** Input type of Table.insert; DeepPartial itself is not exported. */
-type EventInsertInput = Parameters<Table<MarketingEvent>["insert"]>[0];
 
 const EPOCH_LOWER_BOUND = new Date(0);
 const SCROLL_KIND: EventKind = "scroll";
@@ -119,8 +116,8 @@ export class MarketingEventsModel extends BasicDataModel(
     return q
       .orderBy("timestamp", "asc")
       .slice(0, query.limit)
-      .pluck("timestamp", ...query.fields)
-      .run() as Promise<Pick<MarketingEvent, F | "timestamp">[]>;
+      .pluck<"timestamp" | F>("timestamp", ...query.fields)
+      .run();
   }
 
   /**
@@ -237,8 +234,7 @@ export class MarketingEventsModel extends BasicDataModel(
     if (events.length === 0) {
       return 0;
     }
-    const rows = events as EventInsertInput;
-    const ids = await this.table.insert(rows).run();
+    const ids = await this.table.insert(events).run();
     return ids.length;
   }
 
@@ -284,14 +280,14 @@ export class MarketingEventsModel extends BasicDataModel(
     websiteId: string,
     since: Date,
   ): Promise<PageviewRow | undefined> {
-    const rows = (await this.table
+    const rows = await this.table
       .getAll([websiteId], "websiteId")
       .filter((doc) => doc.key("timestamp").ge(since))
       .filter((doc) => doc.key("kind").eq(PAGEVIEW_KIND))
       .orderBy("timestamp", "desc")
       .slice(0, 1)
       .pluck("timestamp", "url", "sessionId")
-      .run()) as PageviewRow[];
+      .run();
     return rows[0];
   }
 }
