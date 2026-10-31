@@ -7,7 +7,7 @@
 <a href="https://discord.gg/sjK28QHrA7"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
 <a href="https://dms.antelopejs.com/docs/modules/marketing"><img alt="Documentation" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 
-First-party marketing analytics for the AntelopeJS DMS: traffic, funnels, A/B splits and heatmaps.
+First-party marketing analytics for the [AntelopeJS DMS](https://github.com/AntelopeJS/dms): traffic, funnels, A/B splits and heatmaps.
 
 </div>
 
@@ -45,7 +45,7 @@ Behind a reverse proxy, set the DMS `auth.trustedProxies` option: see [Installat
 | --- | --- |
 | `@antelopejs/dms` | `>=0.11.0 <1.0.0` |
 | `@antelopejs/interface-dms` | `>=0.9.0 <1.0.0` |
-| `@antelopejs/dms-frontend` (renderer) | `>=0.6.0 <0.7.0` |
+| `@antelopejs/dms-frontend` (renderer) | `>=0.9.1 <0.10.0` |
 | `@antelopejs/interface-dms-marketing` | `>=0.5.0 <0.6.0` |
 | `@antelopejs/core` (development dependency) | `>=1.16.0 <2` |
 | Database (development dependency) | `@antelopejs/mongodb` `1.4.3` |
