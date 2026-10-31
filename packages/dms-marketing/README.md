@@ -56,16 +56,7 @@ Behind a reverse proxy, set the DMS `auth.trustedProxies` option: see [Installat
 
 <!-- antelopejs-docs-compat:end -->
 
-| Package | Version |
-| --- | --- |
-| `@antelopejs/dms` | `>=0.11.0 <1.0.0` |
-| `@antelopejs/interface-dms` | `>=0.9.0 <1.0.0` |
-| `@antelopejs/dms-frontend` (renderer) | `>=0.6.0 <0.7.0` |
-| `@antelopejs/interface-dms-marketing` | `>=0.5.0 <0.6.0` |
-| `@antelopejs/core` (development dependency) | `>=1.16.0 <2` |
-| Database (development dependency) | `@antelopejs/mongodb` `1.4.3` |
-
-On DMS 0.8, use `@antelopejs/dms-marketing` 0.4.
+The module also needs a DMS backend in a release that implements the `@antelopejs/interface-dms` range in the table above, and the `@antelopejs/dms-frontend` renderer in the range its frontend module declares in `engines["@antelopejs/dms-frontend"]` of `frontend-vue/package.json`; the `ajs dms` CLI refuses to build it with a renderer outside that range.
 
 ## Documentation
 
