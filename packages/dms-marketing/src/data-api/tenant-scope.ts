@@ -1,7 +1,6 @@
 import type { RequestContext } from "@antelopejs/interface-api";
 import type { DataControllerCallback } from "@antelopejs/interface-data-api";
 import type { Parameters } from "@antelopejs/interface-data-api/components";
-import type { FilterValue } from "@antelopejs/interface-data-api/metadata";
 import { TableViewRoutes } from "@antelopejs/interface-dms/base";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import type { Website } from "@/db/tables/websites.table";
@@ -35,8 +34,7 @@ function withTenantScope(base: DataControllerCallback): DataControllerCallback {
         ...listParams,
         filters: {
           ...listParams?.filters,
-          // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- "is" is the compare mode the DMS DataTypes register and the dms-ui frontend sends, but interface-data-api's Comparison type does not know it; "eq" would typecheck and match nothing
-          tenantId: [getRequestTenantId(ctx), "is"] as unknown as FilterValue,
+          tenantId: [getRequestTenantId(ctx), "is"],
         },
       };
       const answer: unknown = await base.func.call(this, ctx, params, ...rest);
