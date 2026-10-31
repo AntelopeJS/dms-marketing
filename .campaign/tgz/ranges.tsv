@@ -8,3 +8,33 @@
 @antelopejs/mongodb>@antelopejs/interface-core	packages/dms-marketing/package.json	pnpm.overrides	
 @antelopejs/interface-data-api	packages/dms-marketing/package.json	dependencies	>=0.4.0 <1.0.0
 @antelopejs/interface-data-api	packages/dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-api	packages/dms-marketing/package.json	dependencies	>=0.0.15 <1.0.0
+@antelopejs/interface-api	packages/dms-marketing/playground/package.json	dependencies	>=0.0.15 <1.0.0
+@antelopejs/interface-api	packages/interface-dms-marketing/package.json	devDependencies	>=0.0.15 <1.0.0
+@antelopejs/interface-api	packages/dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-api	packages/interface-dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-api-util	packages/dms-marketing/package.json	dependencies	>=0.1.3 <1.0.0
+@antelopejs/interface-api-util	packages/interface-dms-marketing/package.json	devDependencies	>=0.1.3 <1.0.0
+@antelopejs/interface-api-util	packages/dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-api-util	packages/interface-dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-database-decorators	packages/dms-marketing/package.json	dependencies	>=0.1.10 <1.0.0
+@antelopejs/interface-database-decorators	packages/dms-marketing/playground/package.json	dependencies	>=0.1.10 <1.0.0
+@antelopejs/interface-database-decorators	packages/interface-dms-marketing/package.json	devDependencies	>=0.1.10 <1.0.0
+@antelopejs/interface-database-decorators	packages/dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-database-decorators	packages/interface-dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-data-api	packages/interface-dms-marketing/package.json	devDependencies	>=0.5.0 <1.0.0
+@antelopejs/interface-data-api	packages/interface-dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-dms	packages/dms-marketing/package.json	dependencies	>=0.9.0 <1.0.0
+@antelopejs/interface-dms	packages/dms-marketing/playground/package.json	dependencies	>=0.9.0 <1.0.0
+@antelopejs/interface-dms	packages/interface-dms-marketing/package.json	devDependencies	>=0.9.0 <1.0.0
+@antelopejs/interface-dms	packages/dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-dms	packages/interface-dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-api-util	packages/dms-marketing/playground/package.json	dependencies	>=0.1.3 <1.0.0
+@antelopejs/interface-data-api	packages/dms-marketing/playground/package.json	dependencies	>=0.5.0 <1.0.0
+@antelopejs/interface-api	packages/dms-marketing/playground/package.json	pnpm.overrides	
+@antelopejs/interface-api-util	packages/dms-marketing/playground/package.json	pnpm.overrides	
+@antelopejs/interface-database	packages/dms-marketing/playground/package.json	pnpm.overrides	
+@antelopejs/interface-database-decorators	packages/dms-marketing/playground/package.json	pnpm.overrides	
+@antelopejs/interface-data-api	packages/dms-marketing/playground/package.json	pnpm.overrides	
+@antelopejs/interface-dms	packages/dms-marketing/playground/package.json	pnpm.overrides	
+@antelopejs/dms	packages/dms-marketing/playground/package.json	pnpm.overrides	
