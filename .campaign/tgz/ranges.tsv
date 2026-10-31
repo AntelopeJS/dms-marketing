@@ -6,3 +6,5 @@
 @antelopejs/interface-database	packages/interface-dms-marketing/package.json	pnpm.overrides	
 @antelopejs/mongodb	packages/dms-marketing/package.json	pnpm.overrides	
 @antelopejs/mongodb>@antelopejs/interface-core	packages/dms-marketing/package.json	pnpm.overrides	
+@antelopejs/interface-data-api	packages/dms-marketing/package.json	dependencies	>=0.4.0 <1.0.0
+@antelopejs/interface-data-api	packages/dms-marketing/package.json	pnpm.overrides	

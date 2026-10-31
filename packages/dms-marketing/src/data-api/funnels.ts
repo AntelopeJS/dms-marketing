@@ -232,18 +232,18 @@ async function assertUniqueKey(
   }
 }
 
-type WriteFunc = (
+type WriteFunc<Answer> = (
   this: unknown,
   ctx: RequestContext,
   params: Parameters.EditParameters,
   body: Buffer | string,
   ...rest: unknown[]
-) => Promise<unknown>;
+) => Promise<Answer>;
 
-function forwardWrite(
-  base: DataControllerCallback,
-  func: WriteFunc,
-): DataControllerCallback {
+function forwardWrite<Answer>(
+  base: DataControllerCallback<Parameters.EditParameters, Answer>,
+  func: WriteFunc<Answer>,
+): DataControllerCallback<Parameters.EditParameters, Answer> {
   return { ...base, func };
 }
 
@@ -252,7 +252,9 @@ function forwardWrite(
  * the GLOBAL websites table, so the target site must belong to the caller's
  * tenant, plus the steps and experiment normalization above.
  */
-function withNewChecks(base: DataControllerCallback): DataControllerCallback {
+function withNewChecks<Answer>(
+  base: DataControllerCallback<Parameters.EditParameters, Answer>,
+) {
   return forwardWrite(base, async function (ctx, params, body, ...rest) {
     const parsed = parseBody(body);
     const { _id: websiteId } = await requireTenantWebsite(
@@ -268,7 +270,7 @@ function withNewChecks(base: DataControllerCallback): DataControllerCallback {
     if (experiment) {
       await assertUniqueKey(ctx, websiteId, experiment.key);
     }
-    const result: unknown = await base.func.call(
+    const result = await base.func.call(
       this,
       ctx,
       params,
@@ -280,7 +282,9 @@ function withNewChecks(base: DataControllerCallback): DataControllerCallback {
   });
 }
 
-function withEditChecks(base: DataControllerCallback): DataControllerCallback {
+function withEditChecks<Answer>(
+  base: DataControllerCallback<Parameters.EditParameters, Answer>,
+) {
   return forwardWrite(base, async function (ctx, params, body, ...rest) {
     const parsed = parseBody(body);
     const current = await tenantFunnels(ctx).get(params.id);
@@ -298,7 +302,7 @@ function withEditChecks(base: DataControllerCallback): DataControllerCallback {
     if (experiment) {
       await assertUniqueKey(ctx, websiteId, experiment.key, current._id);
     }
-    const result: unknown = await base.func.call(
+    const result = await base.func.call(
       this,
       ctx,
       params,
