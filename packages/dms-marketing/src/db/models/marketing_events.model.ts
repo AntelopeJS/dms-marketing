@@ -16,7 +16,6 @@ import {
   type NewMarketingEvent,
 } from "../tables/marketing_events.table";
 
-/** Input type of Table.insert; DeepPartial itself is not exported. */
 const EPOCH_LOWER_BOUND = new Date(0);
 const SCROLL_KIND: EventKind = "scroll";
 const PAGEVIEW_KIND: EventKind = "pageview";
