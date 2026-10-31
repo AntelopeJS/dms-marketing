@@ -11,7 +11,6 @@ overrides:
   '@antelopejs/interface-database-decorators': file:../../../.campaign/tgz/antelopejs-interface-database-decorators-fcb0a29.tgz
   '@antelopejs/interface-data-api': file:../../../.campaign/tgz/antelopejs-interface-data-api-4352b2c.tgz
   '@antelopejs/interface-dms': file:../../../.campaign/tgz/antelopejs-interface-dms-50e3adc.tgz
-  '@antelopejs/dms': file:../../../.campaign/tgz/antelopejs-dms-50e3adc.tgz
 
 importers:
 
