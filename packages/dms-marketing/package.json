@@ -75,7 +75,7 @@
   "devDependencies": {
     "@antelopejs/core": ">=1.17.1 <2",
     "@antelopejs/interface-mongodb": ">=0.0.6 <1.0.0",
-    "@antelopejs/mongodb": "file:../../.campaign/tgz/antelopejs-mongodb-07203a7.tgz",
+    "@antelopejs/mongodb": "file:../../.campaign/tgz/antelopejs-mongodb-db4b449.tgz",
     "@antelopejs/tooling-configs": "^0.2.11",
     "@types/node": "^22.19.15",
     "@types/sanitize-html": "^2.16.2",
@@ -91,7 +91,7 @@
   "pnpm": {
     "overrides": {
       "@antelopejs/interface-database": "file:../../.campaign/tgz/antelopejs-interface-database-6bef278.tgz",
-      "@antelopejs/mongodb": "file:../../.campaign/tgz/antelopejs-mongodb-07203a7.tgz",
+      "@antelopejs/mongodb": "file:../../.campaign/tgz/antelopejs-mongodb-db4b449.tgz",
       "@antelopejs/mongodb>@antelopejs/interface-core": "0.2.4"
     }
   },
