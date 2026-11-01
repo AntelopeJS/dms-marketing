@@ -21,14 +21,24 @@ export type TenantGate = (ctx: RequestContext, id: string) => Promise<Website>;
  * the server, whatever filters the client sends. The scoped table must carry
  * a `tenantId` field registered with HiddenStringFilter.
  */
-function withTenantScope(base: DataControllerCallback): DataControllerCallback {
+function withTenantScope<Answer, Rest extends unknown[]>(
+  base: DataControllerCallback<
+    Parameters.ListParameters,
+    Answer,
+    [RequestContext, Parameters.ListParameters, ...Rest]
+  >,
+): DataControllerCallback<
+  Parameters.ListParameters,
+  Answer,
+  [RequestContext, Parameters.ListParameters, ...Rest]
+> {
   return {
     ...base,
-    func: async function (
+    func: function (
       this: unknown,
       ctx: RequestContext,
       listParams: Parameters.ListParameters,
-      ...rest: unknown[]
+      ...rest: Rest
     ) {
       const params: Parameters.ListParameters = {
         ...listParams,
@@ -37,8 +47,7 @@ function withTenantScope(base: DataControllerCallback): DataControllerCallback {
           tenantId: [getRequestTenantId(ctx), "is"],
         },
       };
-      const answer: unknown = await base.func.call(this, ctx, params, ...rest);
-      return answer;
+      return base.func.call(this, ctx, params, ...rest);
     },
   };
 }
@@ -50,18 +59,16 @@ function withTenantScope(base: DataControllerCallback): DataControllerCallback {
  */
 function withTenantGate(
   gate: TenantGate,
-): (base: DataControllerCallback) => DataControllerCallback {
+): (base: typeof TableViewRoutes.Get) => typeof TableViewRoutes.Get {
   return (base) => ({
     ...base,
     func: async function (
       this: unknown,
-      ctx: RequestContext,
-      params: Parameters.GetParameters,
-      ...rest: unknown[]
+      ...args: Parameters<(typeof TableViewRoutes.Get)["func"]>
     ) {
+      const [ctx, params] = args;
       await gate(ctx, params.id);
-      const answer: unknown = await base.func.call(this, ctx, params, ...rest);
-      return answer;
+      return base.func.call(this, ...args);
     },
   });
 }
