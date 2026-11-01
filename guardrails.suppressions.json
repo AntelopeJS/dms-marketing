@@ -9,7 +9,7 @@
   },
   "tsExpectError": 0,
   "tsIgnore": 0,
-  "safety": 1,
+  "safety": 0,
   "config": {
     "typescript/restrict-template-expressions for packages/dms-marketing/tests/**/*.js": 1,
     "vue/multi-word-component-names for packages/dms-marketing/frontend-vue/**/*.ts": 1,
