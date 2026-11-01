@@ -165,6 +165,18 @@ export interface MarketingPageSnapshotResult {
   status: MarketingDeclarationStatus;
 }
 
+/** A value as JSON carries it. */
+export type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | JsonObject;
+
+/** A JSON object: string keys, JSON values. */
+export type JsonObject = { [key: string]: JsonValue };
+
 /** The kinds of events an import replays, as the tracker sends them. */
 export type MarketingImportEventKind =
   | "pageview"
@@ -192,7 +204,7 @@ export interface MarketingImportEvent {
    * Custom: any object up to 4 KiB. Exposure: `{ experiment, variation }`.
    * Click: `{ x, y, … }` (0-1). Scroll: `{ depth }` (0-100).
    */
-  data?: Record<string, unknown>;
+  data?: JsonObject;
 }
 
 /** The events of one visitor, as one visit or several. */

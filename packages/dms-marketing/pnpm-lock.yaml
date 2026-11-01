@@ -13,6 +13,7 @@ overrides:
   '@antelopejs/interface-api-util': file:../../.campaign/tgz/antelopejs-interface-api-util-cc740f8.tgz
   '@antelopejs/interface-database-decorators': file:../../.campaign/tgz/antelopejs-interface-database-decorators-fcb0a29.tgz
   '@antelopejs/interface-dms': file:../../.campaign/tgz/antelopejs-interface-dms-50e3adc.tgz
+  '@antelopejs/interface-dms-marketing': file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz
 
 importers:
 
@@ -40,8 +41,8 @@ importers:
         specifier: file:../../.campaign/tgz/antelopejs-interface-dms-50e3adc.tgz
         version: file:../../.campaign/tgz/antelopejs-interface-dms-50e3adc.tgz(b756e407158c8308d2e67fbb90ba2f1d)
       '@antelopejs/interface-dms-marketing':
-        specifier: '>=0.5.0 <0.6.0'
-        version: 0.5.0(@antelopejs/interface-core@0.2.4)
+        specifier: file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz
+        version: file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz(@antelopejs/interface-core@0.2.4)
       defu:
         specifier: ^6.1.4
         version: 6.1.7
@@ -156,8 +157,9 @@ packages:
     peerDependencies:
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
-  '@antelopejs/interface-dms-marketing@0.5.0':
-    resolution: {integrity: sha512-m3J8M6b7zjeXKUZgaHALjQlaiOZyyw4ZTHw+nkBvRtHWynAwb8MTu6W9cumjJL0lS2xWjCpcqIyDTGOTwWrpNg==}
+  '@antelopejs/interface-dms-marketing@file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz':
+    resolution: {integrity: sha512-/JxX5X8BXJAdLrpgJ8wlb0i1j1HPXNYCsYkjZmEn7RCSHawIMcK5WBY9+tJnM0nvJ8M22fgMR5O0DPLRPMY11g==, tarball: file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz}
+    version: 0.6.0
     peerDependencies:
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
@@ -2689,7 +2691,7 @@ snapshots:
     dependencies:
       '@antelopejs/interface-core': 0.2.4
 
-  '@antelopejs/interface-dms-marketing@0.5.0(@antelopejs/interface-core@0.2.4)':
+  '@antelopejs/interface-dms-marketing@file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz(@antelopejs/interface-core@0.2.4)':
     dependencies:
       '@antelopejs/interface-core': 0.2.4
 

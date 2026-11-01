@@ -1,14 +1,9 @@
-/** A value as JSON carries it. */
-export type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | JsonValue[]
-  | JsonObject;
+import type { JsonValue } from "@antelopejs/interface-dms-marketing";
 
-/** A JSON object: string keys, JSON values. */
-export type JsonObject = { [key: string]: JsonValue };
+export type {
+  JsonObject,
+  JsonValue,
+} from "@antelopejs/interface-dms-marketing";
 
 /**
  * A request body as `@JSONBody()` hands it over: the parsed JSON, or
