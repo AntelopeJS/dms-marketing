@@ -67,6 +67,7 @@ beforeEach(() => {
   )
   vi.stubGlobal('useAuthFetch', () => ({ $authFetch: async () => ({}) }))
   vi.stubGlobal('useToast', () => ({ add: () => {} }))
+  vi.stubGlobal('useReadOnlyRefusal', () => () => false)
   vi.stubGlobal('useDmsState', (_key: string, init: () => unknown) =>
     ref(init()),
   )

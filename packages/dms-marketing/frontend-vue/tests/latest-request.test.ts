@@ -1,6 +1,8 @@
 import { nextTick } from 'vue'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { useLatestRequest } from '../app/composables/useLatestRequest'
+
+vi.stubGlobal('useReadOnlyRefusal', () => () => false)
 
 describe('useLatestRequest loading states', () => {
   it('is unsettled immediately and settles with the fetched path inventory', async () => {
