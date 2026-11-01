@@ -18,6 +18,7 @@ const {
   PageSnapshotsModel,
 } = require("../dist/db/models/page_snapshots.model");
 const {
+  computeClickHeatmap,
   computePageActivity,
   countHeatmapData,
   resetHeatmap,
@@ -179,4 +180,25 @@ test("page activity counts clicks and sampled views per path, and reads the decl
   await collection("marketing_events").insertMany(more);
   const busy = await computePageActivity(TENANT, SITE, trailingWindow(7));
   assert.equal(busy.sampleRate, (30 + 10 * 0.5) / 40);
+});
+
+test("the click heatmap skips stored rows that are not click-shaped", async () => {
+  await collection("marketing_events").insertMany([
+    event("valid", "click", "/a", { data: { x: 0.5, y: 0.5 } }),
+    event("legacy", "click", "/a", {
+      data: { x: 0.2, y: 0.3, ox: 0.1, oy: 0.1, selector: 42, nth: "two" },
+    }),
+  ]);
+
+  const heatmap = await computeClickHeatmap(
+    TENANT,
+    [SITE],
+    "/a",
+    trailingWindow(7),
+  );
+
+  assert.equal(heatmap.totalClicks, 1);
+  assert.equal(heatmap.points.length, 1);
+  assert.equal(heatmap.points[0].weight, 1);
+  assert.equal(heatmap.points[0].anchor, undefined);
 });
