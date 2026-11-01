@@ -49,8 +49,10 @@ jobs:
             pnpm-lock.yaml
             packages/*/pnpm-lock.yaml
 
-      # Backend-only job: do not install the Vue layer or playground.
-      - run: pnpm install --filter @antelopejs/dms-marketing... --frozen-lockfile
+      # Backend-only job: do not install the Vue layer or playground. The
+      # module reaches the interface package through a tarball, which pnpm's
+      # filter graph does not follow, so the interface is selected by name.
+      - run: pnpm install --filter @antelopejs/dms-marketing... --filter @antelopejs/interface-dms-marketing --frozen-lockfile
 
       # `ajs module test` packs and installs the package-sourced modules
       # (dms, api, auth-jwt...) into `.antelope/cache`, and mongodb-memory-server
