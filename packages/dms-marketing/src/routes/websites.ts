@@ -54,7 +54,7 @@ import {
   WEBSITES_REALTIME_TOPIC,
 } from "@/types/constants";
 import type { JsonBody } from "@/types/json";
-import { zodIssuesJson } from "@/utils/zod-json";
+import { zodIssuesJson } from "@antelopejs/interface-api-util";
 
 const INVALID_WEBSITE_MESSAGE = "$page.marketing.errors.invalid_website";
 const DUPLICATE_HOST_MESSAGE = "$page.marketing.errors.duplicate_host";
