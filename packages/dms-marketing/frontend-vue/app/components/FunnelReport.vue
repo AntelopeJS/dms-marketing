@@ -44,6 +44,7 @@ const router = useDmsRouter()
 const api = useMarketingApi()
 const context = useMarketingContext()
 const toast = useToast()
+const { presentError } = useApiErrorPresenter()
 const { confirm } = useConfirm()
 const { confirmFrom } = useConfirmFrom()
 
@@ -181,10 +182,9 @@ async function writeStatus(target: MarketingExperimentStatus): Promise<void> {
       title: t(`page.marketing.funnel.lifecycle.${target}_done`),
     })
     reloadToken.value++
-  } catch {
-    toast.add({
-      color: 'error',
-      title: t('page.marketing.funnel.lifecycle.error'),
+  } catch (error) {
+    presentError(error, {
+      fallbackKey: 'page.marketing.funnel.lifecycle.error',
     })
   } finally {
     changing.value = false

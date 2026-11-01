@@ -43,6 +43,7 @@ beforeEach(() => {
   }))
   vi.stubGlobal('useAuthFetch', () => ({ $authFetch: async () => ({}) }))
   vi.stubGlobal('useToast', () => ({ add: () => {} }))
+  vi.stubGlobal('useApiErrorPresenter', () => ({ presentError: vi.fn() }))
   vi.stubGlobal('useConfirm', () => ({ confirm: async () => false }))
   vi.stubGlobal('useFieldErrors', () => ({
     aria: () => ({}),

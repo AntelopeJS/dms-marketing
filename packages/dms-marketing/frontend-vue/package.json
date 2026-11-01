@@ -12,7 +12,7 @@
   "scripts": {
     "dev": "pnpm --dir ../playground frontend:dev",
     "format": "prettier --write .",
-    "lint": "eslint .",
+    "lint": "eslint . && node --input-type=module -e \"import { assertApiErrorPresentation } from '@antelopejs/dms/checks/api-error-presentation'; assertApiErrorPresentation(['app'])\"",
     "lint:fix": "eslint . --fix",
     "test": "vitest run"
   },

@@ -103,6 +103,7 @@ async function mountExplorer(): Promise<HTMLElement> {
     formatDateTime: () => '',
     useAuthFetch: () => ({ $authFetch: async () => ({}) }),
     useToast: () => ({ add: () => {} }),
+    useApiErrorPresenter: () => ({ presentError: vi.fn() }),
     useConfirm: () => ({ confirm: async () => false }),
     ResizeObserver: class {
       observe() {}

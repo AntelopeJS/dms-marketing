@@ -178,7 +178,6 @@ it('snapshot options present the JSON refusal once without changing the website'
     (key) => key,
     emit,
     useMarketingApi(),
-    { add },
   )
   await preview.updateSnapshotOptions({ snapshotsEnabled: true })
   expect(preview.savingOptions.value).toBe(false)
