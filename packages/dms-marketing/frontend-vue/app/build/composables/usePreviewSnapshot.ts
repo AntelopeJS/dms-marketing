@@ -30,6 +30,7 @@ export function usePreviewSnapshot(
   api: ReturnType<typeof useMarketingApi>,
   toast: ReturnType<typeof usePreviewReset>['toast'],
 ) {
+  const consumeRefusal = useReadOnlyRefusal()
   // --- Snapshot ---------------------------------------------------------------
 
   const layoutWidth = ref(DEFAULT_LAYOUT_WIDTH)
@@ -140,7 +141,10 @@ export function usePreviewSnapshot(
     savingOptions.value = true
     try {
       emit('website-updated', await api.updateWebsite(website._id, patch))
-    } catch {
+    } catch (error) {
+      if (consumeRefusal(error)) {
+        return
+      }
       toast.add({
         color: 'error',
         title: t('page.marketing.pages.preview.options_error'),

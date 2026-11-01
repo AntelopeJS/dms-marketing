@@ -566,7 +566,7 @@ export function useMarketingApi() {
     dashboardTracking: () =>
       $authFetch<MarketingDashboardTracking>(
         '/api/marketing/dashboard-tracking',
-        { method: 'POST' },
+        { method: 'POST', onResponseError: () => undefined },
       ),
   }
 }

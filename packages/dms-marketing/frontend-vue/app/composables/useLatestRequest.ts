@@ -35,6 +35,7 @@ export interface LatestRequest<T> {
 export function useLatestRequest<T>(
   fetcher: () => Promise<T> | null,
 ): LatestRequest<T> {
+  const consumeRefusal = useReadOnlyRefusal()
   const data = ref(null) as Ref<T | null>
   const loading = ref(false)
   const failed = ref(false)
@@ -71,7 +72,7 @@ export function useLatestRequest<T>(
       if (request !== latest) {
         return
       }
-      failed.value = true
+      failed.value = !consumeRefusal(cause)
       error.value = cause
       data.value = null
     } finally {

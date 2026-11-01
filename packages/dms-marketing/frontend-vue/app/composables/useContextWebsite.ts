@@ -38,6 +38,7 @@ export function useContextWebsite(): ContextWebsiteState {
   const { t } = useI18n()
   const api = useMarketingApi()
   const toast = useToast()
+  const consumeRefusal = useReadOnlyRefusal()
   const route = useDmsRoute()
   const router = useDmsRouter()
 
@@ -79,11 +80,13 @@ export function useContextWebsite(): ContextWebsiteState {
       // Back takes it back.
       context.value = await api.selectContextWebsite(id)
       await router.push({ query: { ...route.query, website: id } })
-    } catch {
-      toast.add({
-        color: 'error',
-        title: t('page.marketing.context.switch_error'),
-      })
+    } catch (error) {
+      if (!consumeRefusal(error)) {
+        toast.add({
+          color: 'error',
+          title: t('page.marketing.context.switch_error'),
+        })
+      }
       await reload()
     } finally {
       switching.value = false

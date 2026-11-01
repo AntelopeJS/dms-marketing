@@ -44,6 +44,7 @@ const router = useDmsRouter()
 const api = useMarketingApi()
 const context = useMarketingContext()
 const toast = useToast()
+const consumeRefusal = useReadOnlyRefusal()
 const { confirm } = useConfirm()
 const { confirmFrom } = useConfirmFrom()
 
@@ -181,7 +182,10 @@ async function writeStatus(target: MarketingExperimentStatus): Promise<void> {
       title: t(`page.marketing.funnel.lifecycle.${target}_done`),
     })
     reloadToken.value++
-  } catch {
+  } catch (error) {
+    if (consumeRefusal(error)) {
+      return
+    }
     toast.add({
       color: 'error',
       title: t('page.marketing.funnel.lifecycle.error'),

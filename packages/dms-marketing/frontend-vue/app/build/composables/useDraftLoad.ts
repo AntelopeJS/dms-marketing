@@ -39,6 +39,7 @@ export function useDraftLoad(
   markClean: () => void,
   HTTP_NOT_FOUND: number,
 ) {
+  const consumeRefusal = useReadOnlyRefusal()
   // --- Loading -------------------------------------------------------------------
 
   // The definition edited, or the one a Duplicate copies.
@@ -133,6 +134,9 @@ export function useDraftLoad(
         await loadCopy()
       }
     } catch (error) {
+      if (consumeRefusal(error)) {
+        return
+      }
       loadFailed.value =
         apiErrorStatus(error) === HTTP_NOT_FOUND ? 'not_found' : 'error'
     } finally {
