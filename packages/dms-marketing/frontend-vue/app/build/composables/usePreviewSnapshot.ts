@@ -28,8 +28,8 @@ export function usePreviewSnapshot(
   t: ReturnType<typeof useI18n>['t'],
   emit: (event: 'website-updated', website: MarketingWebsite) => void,
   api: ReturnType<typeof useMarketingApi>,
-  toast: ReturnType<typeof usePreviewReset>['toast'],
 ) {
+  const { presentError } = useApiErrorPresenter()
   // --- Snapshot ---------------------------------------------------------------
 
   const layoutWidth = ref(DEFAULT_LAYOUT_WIDTH)
@@ -140,10 +140,9 @@ export function usePreviewSnapshot(
     savingOptions.value = true
     try {
       emit('website-updated', await api.updateWebsite(website._id, patch))
-    } catch {
-      toast.add({
-        color: 'error',
-        title: t('page.marketing.pages.preview.options_error'),
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: 'page.marketing.pages.preview.options_error',
       })
     } finally {
       savingOptions.value = false

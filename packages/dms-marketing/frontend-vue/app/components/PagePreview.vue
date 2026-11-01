@@ -114,9 +114,9 @@ const scrollFoldRatio = computed(() =>
     : 1,
 )
 
-const { confirm, toast, resetting, resetPageHeatmap } = usePreviewReset(props, t, locale, api)
+const { confirm, resetting, resetPageHeatmap } = usePreviewReset(props, t, locale, api)
 
-const { layoutWidth, layout, snapshotsEnabled, snapshotSettled, snapshot, backdrop, frameDocument, noSnapshotYet, tooHeavy, snapshotScheme, mebibytes, savingOptions, updateSnapshotOptions } = usePreviewSnapshot(DEFAULT_LAYOUT_WIDTH, LAYOUT_PRESETS, foreign, props, locale, confirm, t, emit, api, toast)
+const { layoutWidth, layout, snapshotsEnabled, snapshotSettled, snapshot, backdrop, frameDocument, noSnapshotYet, tooHeavy, snapshotScheme, mebibytes, savingOptions, updateSnapshotOptions } = usePreviewSnapshot(DEFAULT_LAYOUT_WIDTH, LAYOUT_PRESETS, foreign, props, locale, confirm, t, emit, api)
 
 const { frame, measuredWidth, frameKey, probeHeight, renderHeight, frameHeight, overlayWidth, anchorBoxes, anchorKey, drawnPoints, drift, oversized, overflowing } = usePreviewFrame(props, snapshot, layoutWidth, PROBE_VIEWPORT_HEIGHT, points, OVERFLOW_TOLERANCE)
 
