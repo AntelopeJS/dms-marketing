@@ -51,7 +51,7 @@ Behind a reverse proxy, set the DMS `auth.trustedProxies` option: see [Installat
 | `@antelopejs/interface-data-api`            | `file:../../.campaign/tgz/antelopejs-interface-data-api-26c36e9.tgz`            | —           |
 | `@antelopejs/interface-database`            | `file:../../.campaign/tgz/antelopejs-interface-database-02e0360.tgz`            | —           |
 | `@antelopejs/interface-database-decorators` | `file:../../.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz` | —           |
-| `@antelopejs/interface-dms`                 | `file:../../.campaign/tgz/antelopejs-interface-dms-3eb021e.tgz`                 | —           |
+| `@antelopejs/interface-dms`                 | `file:../../.campaign/tgz/antelopejs-interface-dms-e0787e6.tgz`                 | —           |
 | `@antelopejs/interface-dms-marketing`       | `file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz`       | —           |
 
 <!-- antelopejs-docs-compat:end -->
