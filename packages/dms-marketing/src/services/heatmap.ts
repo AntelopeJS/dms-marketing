@@ -214,6 +214,7 @@ function bucketClicks(
   const cells = new Map<string, MarketingHeatmapPoint>();
   let totalClicks = 0;
   for (const payload of payloads) {
+    // SAFETY: computeClickHeatmap reads only kind "click" events, and collect ingestion stores a click event's data validated against the click schema (ClickEventData shape) or absent, so the stored union holds the click member here.
     const data = payload.data as ClickEventData | undefined;
     if (data && bucketClick(cells, data)) {
       totalClicks++;
