@@ -54,6 +54,7 @@ import {
   WEBSITES_REALTIME_TOPIC,
 } from "@/types/constants";
 import type { JsonBody } from "@/types/json";
+import { zodIssuesJson } from "@/utils/zod-json";
 
 const INVALID_WEBSITE_MESSAGE = "$page.marketing.errors.invalid_website";
 const DUPLICATE_HOST_MESSAGE = "$page.marketing.errors.duplicate_host";
@@ -92,7 +93,9 @@ function validated<Output>(
   } catch (error) {
     throw new HTTPResult(
       HTTP_BAD_REQUEST,
-      error instanceof z.ZodError ? error.issues : INVALID_WEBSITE_MESSAGE,
+      error instanceof z.ZodError
+        ? zodIssuesJson(error.issues)
+        : INVALID_WEBSITE_MESSAGE,
     );
   }
 }
