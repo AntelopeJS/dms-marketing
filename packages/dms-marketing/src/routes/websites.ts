@@ -11,7 +11,6 @@ import {
   Put,
   type RequestContext,
 } from "@antelopejs/interface-api";
-import { assertValidation } from "@antelopejs/interface-api-util";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type { User } from "@antelopejs/interface-dms/auth/db";
 import {
@@ -54,6 +53,7 @@ import {
   MAX_EXTRA_DOMAINS,
   WEBSITES_REALTIME_TOPIC,
 } from "@/types/constants";
+import type { JsonBody } from "@/types/json";
 
 const INVALID_WEBSITE_MESSAGE = "$page.marketing.errors.invalid_website";
 const DUPLICATE_HOST_MESSAGE = "$page.marketing.errors.duplicate_host";
@@ -79,9 +79,22 @@ const websiteUpdateSchema = z.object({
   snapshotMaskText: z.boolean().optional(),
 });
 
-/** Field-tied zod issues, for the forms to show under their field. */
-function validationIssues(error: unknown) {
-  return error instanceof z.ZodError ? error.issues : INVALID_WEBSITE_MESSAGE;
+/**
+ * The body parsed by `schema`, or a 400 carrying the field-tied zod issues
+ * for the forms to show under their field.
+ */
+function validated<Output>(
+  body: JsonBody,
+  schema: z.ZodType<Output, z.ZodTypeDef, unknown>,
+): Output {
+  try {
+    return schema.parse(body);
+  } catch (error) {
+    throw new HTTPResult(
+      HTTP_BAD_REQUEST,
+      error instanceof z.ZodError ? error.issues : INVALID_WEBSITE_MESSAGE,
+    );
+  }
 }
 
 /**
@@ -156,18 +169,11 @@ export class WebsitesController extends Controller(
   async allowHost(
     @AuthTenantOwner() _user: User,
     @Parameter("id") id: string,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
-    const data = assertValidation(
-      body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
-      allowHostSchema.parse,
-      validationIssues,
-    );
+    const data = validated(body, allowHostSchema);
     const hosts = new Set(website.extraDomains ?? []);
     if (!hosts.has(data.hostname) && hosts.size >= MAX_EXTRA_DOMAINS) {
       throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_WEBSITE_MESSAGE);
@@ -185,18 +191,11 @@ export class WebsitesController extends Controller(
   @Post("")
   async create(
     @AuthTenantOwner() _user: User,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
     @Context() context: RequestContext,
   ) {
-    const data = assertValidation(
-      body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
-      websiteCreateSchema.parse,
-      validationIssues,
-    );
-    const website = {
+    const data = validated(body, websiteCreateSchema);
+    const website: Website = {
       _id: randomUUID(),
       tenantId: getRequestTenantId(context),
       name: data.name,
@@ -207,7 +206,7 @@ export class WebsitesController extends Controller(
       snapshotMaskText: data.snapshotMaskText ?? false,
       createdAt: new Date(),
       updatedAt: new Date(),
-    } as Website;
+    };
     await assertHostsFree(website);
     await GetModel(WebsitesModel).insert(website);
     publishWebsiteChange("created", website._id);
@@ -226,18 +225,11 @@ export class WebsitesController extends Controller(
   async update(
     @AuthTenantOwner() _user: User,
     @Parameter("id") id: string,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
-    const data = assertValidation(
-      body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
-      websiteUpdateSchema.parse,
-      validationIssues,
-    );
+    const data = validated(body, websiteUpdateSchema);
     if (data.name !== undefined) {
       website.name = data.name;
     }
@@ -287,18 +279,11 @@ export class WebsitesController extends Controller(
   async purge(
     @AuthTenantOwner() _user: User,
     @Parameter("id") id: string,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
-    const { scope } = assertValidation(
-      body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
-      purgeSchema.parse,
-      validationIssues,
-    );
+    const { scope } = validated(body, purgeSchema);
     const deleted = await purgeWebsiteCollectedData(
       website.tenantId,
       id,
@@ -321,7 +306,6 @@ export class WebsitesController extends Controller(
     @Context() context: RequestContext,
   ) {
     const website = await requireTenantWebsite(context, id);
-    // The dashboard's own site is kept (409): purge its data instead.
     assertWebsiteDeletable(website);
     await purgeWebsiteTrackingData(website.tenantId, id);
     await GetModel(WebsitesModel).delete(id);

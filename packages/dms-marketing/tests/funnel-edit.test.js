@@ -76,3 +76,60 @@ test("an explicit null experiment still clears a draft", () => {
     null,
   );
 });
+
+const INVALID_BODY = "$page.marketing.errors.invalid_body";
+
+function isInvalidBody(error) {
+  return (
+    error.getStatus() === 400 && error.getBody().toString() === INVALID_BODY
+  );
+}
+
+test("a write body is the JSON object sent, keys in the order sent", () => {
+  const text = '{"name":"Signup","steps":[{"kind":"url","value":"/a"}],"a":1}';
+  assert.equal(
+    JSON.stringify(require("../dist/data-api/body").parseBody(text)),
+    text,
+  );
+  assert.equal(
+    JSON.stringify(
+      require("../dist/data-api/body").parseBody(Buffer.from(text)),
+    ),
+    text,
+  );
+});
+
+test("a write body that is not a JSON object is a 400, not a server error", () => {
+  for (const body of ["{not json", "", "null", "[]", "5", '"x"', "true"]) {
+    assert.throws(
+      () => {
+        require("../dist/data-api/body").parseBody(body);
+      },
+      isInvalidBody,
+      body,
+    );
+  }
+});
+
+test("only data JSON can carry is a JSON value", () => {
+  const loop = { a: [] };
+  loop.a.push(loop);
+  const shared = { n: 1 };
+  const cases = [
+    [{ a: [1, "b", null, true, { c: {} }] }, true],
+    [{ x: shared, y: shared }, true],
+    [JSON.parse(`${"[".repeat(200_000)}${"]".repeat(200_000)}`), true],
+    [undefined, false],
+    [{ a: undefined }, false],
+    [{ at: new Date() }, false],
+    [{ m: new Map() }, false],
+    [[() => 1], false],
+    [new (class Row {})(), false],
+    [loop, false],
+  ];
+  for (const [value, expected] of cases) {
+    assert.equal(require("../dist/utils/guards").isJsonValue(value), expected);
+  }
+  assert.equal(require("../dist/utils/guards").isJsonObject([]), false);
+  assert.equal(require("../dist/utils/guards").isJsonObject(null), false);
+});

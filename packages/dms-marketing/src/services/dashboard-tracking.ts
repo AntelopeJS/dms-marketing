@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { MODULE_URL_PREFIX } from "@antelopejs/interface-dms/page";
+import type { WebsitesModel } from "@/db/models/websites.model";
 import type { Website } from "@/db/tables/websites.table";
 import { MAX_EXTRA_DOMAINS } from "@/types/constants";
 import type { DashboardTrackingConfig } from "@/config";
@@ -13,8 +14,8 @@ const DASHBOARD_ID_HEX_CHARS = 32;
 /** What provisioning needs of the websites model. */
 export interface DashboardWebsiteStore {
   get(id: string): PromiseLike<Website | undefined>;
-  insert(website: Website): Promise<unknown>;
-  update(website: Website): Promise<unknown>;
+  insert(website: Website): ReturnType<WebsitesModel["insert"]>;
+  update(website: Website): ReturnType<WebsitesModel["update"]>;
 }
 
 /**
@@ -159,7 +160,7 @@ export async function provisionDashboardWebsite(
     return refreshWebsite(store, existing, hostname, config);
   }
   const now = new Date();
-  const website = {
+  const website: Website = {
     _id: id,
     tenantId,
     name: config.websiteName,
@@ -171,11 +172,10 @@ export async function provisionDashboardWebsite(
     snapshotMaskText: true,
     createdAt: now,
     updatedAt: now,
-  } as Website;
+  };
   try {
     await store.insert(website);
   } catch (err) {
-    // Another tab or instance inserted the same id first: theirs stands.
     const raced = await store.get(id);
     if (!raced) {
       throw err;

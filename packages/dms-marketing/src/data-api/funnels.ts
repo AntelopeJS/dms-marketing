@@ -18,6 +18,7 @@ import {
   Sortable,
 } from "@antelopejs/interface-data-api/metadata";
 import { GetModel } from "@antelopejs/interface-database-decorators";
+import { z } from "zod";
 import { AuthOwnerOnly } from "@antelopejs/interface-dms/auth";
 import {
   Column,
@@ -51,12 +52,14 @@ import {
   type ExperimentInput,
   ExperimentType,
   experimentIssueField,
-  parseExperimentInput,
+  experimentInputSchema,
 } from "@/utils/experiment-type";
-import { FunnelStepsType, parseFunnelSteps } from "@/utils/funnel-steps-type";
+import { FunnelStepsType, funnelStepsSchema } from "@/utils/funnel-steps-type";
+import type { JsonObject } from "@/types/json";
 import { parseBody } from "./body";
 import { HiddenStringFilter } from "./hidden-filter";
 import { websitesDataAPI } from "./websites";
+import { isNumber, isString } from "@/utils/guards";
 
 const INVALID_STEPS_MESSAGE = "$page.marketing.errors.invalid_steps";
 const INVALID_VARIATIONS_MESSAGE = "$page.marketing.errors.invalid_variations";
@@ -99,24 +102,23 @@ function tenantFunnels(ctx: RequestContext): FunnelsModel {
  * value, so a JSON-string steps payload would be stored as a string;
  * normalize it to the validated array before the write.
  */
-function normalizeSteps(parsed: Record<string, unknown>): void {
+function normalizeSteps(parsed: JsonObject): JsonObject {
   if (parsed.steps === undefined) {
-    return;
+    return parsed;
   }
   try {
-    parsed.steps = parseFunnelSteps(parsed.steps);
+    return { ...parsed, steps: funnelStepsSchema.parse(parsed.steps) };
   } catch {
     throw badRequest(INVALID_STEPS_MESSAGE);
   }
 }
 
-function parseExperiment(
-  parsed: Record<string, unknown>,
-): ExperimentInput | null {
+function parseExperiment(parsed: JsonObject): ExperimentInput | null {
   try {
-    return parseExperimentInput(parsed.experiment);
+    return experimentInputSchema.parse(parsed.experiment);
   } catch (error) {
-    const field = experimentIssueField(error);
+    const field =
+      error instanceof z.ZodError ? experimentIssueField(error) : undefined;
     throw badRequest(
       field ? EXPERIMENT_ISSUE_MESSAGES[field] : INVALID_VARIATIONS_MESSAGE,
     );
@@ -208,7 +210,7 @@ function resolveExperiment(
  * @returns The experiment to write, or null for a plain funnel.
  */
 export function editedExperiment(
-  parsed: Record<string, unknown>,
+  parsed: JsonObject,
   current: Funnel,
   websiteId: string,
 ): FunnelExperiment | null {
@@ -253,27 +255,27 @@ function forwardWrite(
 function withNewChecks(base: DataControllerCallback): DataControllerCallback {
   return forwardWrite(base, async function (ctx, params, body, ...rest) {
     const parsed = parseBody(body);
-    const websiteId =
-      typeof parsed.websiteId === "string" ? parsed.websiteId : undefined;
-    await requireTenantWebsite(ctx, websiteId);
-    normalizeSteps(parsed);
+    const { _id: websiteId } = await requireTenantWebsite(
+      ctx,
+      isString(parsed.websiteId) ? parsed.websiteId : undefined,
+    );
+    const normalized = normalizeSteps(parsed);
     const experiment = resolveExperiment(
-      parseExperiment(parsed),
+      parseExperiment(normalized),
       undefined,
-      websiteId as string,
+      websiteId,
     );
     if (experiment) {
-      await assertUniqueKey(ctx, websiteId as string, experiment.key);
+      await assertUniqueKey(ctx, websiteId, experiment.key);
     }
-    parsed.experiment = experiment;
     const result = await base.func.call(
       this,
       ctx,
       params,
-      Buffer.from(JSON.stringify(parsed)),
+      Buffer.from(JSON.stringify({ ...normalized, experiment })),
       ...rest,
     );
-    invalidateExperimentDefinitions(websiteId as string);
+    invalidateExperimentDefinitions(websiteId);
     return result;
   });
 }
@@ -285,27 +287,24 @@ function withEditChecks(base: DataControllerCallback): DataControllerCallback {
     if (!current) {
       throw badRequest(NOT_FOUND_MESSAGE);
     }
-    if (typeof parsed.websiteId === "string") {
+    if (isString(parsed.websiteId)) {
       await requireTenantWebsite(ctx, parsed.websiteId);
     }
-    normalizeSteps(parsed);
-    const websiteId =
-      typeof parsed.websiteId === "string"
-        ? parsed.websiteId
-        : current.websiteId;
-    const experiment = editedExperiment(parsed, current, websiteId);
+    const normalized = normalizeSteps(parsed);
+    const websiteId = isString(normalized.websiteId)
+      ? normalized.websiteId
+      : current.websiteId;
+    const experiment = editedExperiment(normalized, current, websiteId);
     if (experiment) {
       await assertUniqueKey(ctx, websiteId, experiment.key, current._id);
     }
-    parsed.experiment = experiment;
     const result = await base.func.call(
       this,
       ctx,
       params,
-      Buffer.from(JSON.stringify(parsed)),
+      Buffer.from(JSON.stringify({ ...normalized, experiment })),
       ...rest,
     );
-    // Both sites when a draft moves: neither may keep serving stale sets.
     invalidateExperimentDefinitions(websiteId);
     if (current.websiteId !== websiteId) {
       invalidateExperimentDefinitions(current.websiteId);
@@ -315,7 +314,11 @@ function withEditChecks(base: DataControllerCallback): DataControllerCallback {
 }
 
 /** Deleting a running experiment is allowed — pages fall back to the control
- * within the definitions TTL — but the cache must not outlive the row. */
+ * within the definitions TTL — but the cache must not outlive the row.
+ *
+ * The websites are read before the delete: after it there is nothing left to
+ * resolve them from.
+ */
 function withDeleteInvalidation(
   base: DataControllerCallback,
 ): DataControllerCallback {
@@ -327,8 +330,6 @@ function withDeleteInvalidation(
       params: Parameters.DeleteParameters,
       ...rest: unknown[]
     ) {
-      // Read the sites BEFORE the delete — after it there is nothing left to
-      // resolve them from.
       const websiteIds = await tenantFunnels(ctx).listWebsiteIdsOf(params.id);
       const result = await base.func.call(this, ctx, params, ...rest);
       for (const websiteId of websiteIds) {
@@ -393,8 +394,10 @@ export class funnelsDataAPI extends DataController(
   @Access(AccessMode.ReadWrite)
   declare name: string;
 
-  // Listable so the definitions list can label rows with their step count
-  // (and edit in place) without one extra get per row.
+  /**
+   * Listable so the definitions list can label rows with their step count (and
+   * edit in place) without one extra get per row.
+   */
   @Select()
   @Listable()
   @Mandatory("new", "edit")
@@ -418,29 +421,27 @@ export class funnelsDataAPI extends DataController(
   })
   @Access(AccessMode.ReadWrite)
   get conversionWindowHours(): number {
-    // `this` is the decorated data-api row instance, whose backing table
-    // the generated type does not expose.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions
-    const row = (this as unknown as { table: Funnel }).table;
+    const row = this.table;
     return Math.round(row.conversionWindowMs / MS_PER_HOUR);
   }
-  // The write path calls every writable setter whether the key is in
-  // the body: an absent/null field must never yield NaN or 0 — keep the
-  // row's current window (edit), or fall back to the default (new).
+  /**
+   * The write path calls every writable setter whether the key is in the body:
+   * an absent/null field must never yield NaN or 0 — keep the row's current
+   * window (edit), or fall back to the default (new).
+   */
   set conversionWindowHours(hours: number) {
-    // `this` is the decorated data-api row instance, whose backing table
-    // the generated type does not expose.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions
-    const row = (this as unknown as { table: Funnel }).table;
-    if (typeof hours === "number" && Number.isFinite(hours) && hours >= 1) {
+    const row = this.table;
+    if (isNumber(hours) && Number.isFinite(hours) && hours >= 1) {
       row.conversionWindowMs = hours * MS_PER_HOUR;
       return;
     }
     row.conversionWindowMs ||= DEFAULT_CONVERSION_WINDOW_HOURS * MS_PER_HOUR;
   }
 
-  // Listable so the list can show the status and arm count of split rows
-  // without one extra get per row.
+  /**
+   * Listable so the list can show the status and arm count of split rows
+   * without one extra get per row.
+   */
   @Select()
   @Listable()
   @Column({

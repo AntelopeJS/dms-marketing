@@ -234,8 +234,8 @@ describe("the settings form", () => {
     for (const field of fields) {
       const options = field.component.options;
       assert.equal(options.clamp, false);
-      assert.equal(typeof options.min, "number");
-      assert.equal(typeof options.max, "number");
+      assert.ok(Number.isFinite(options.min));
+      assert.ok(Number.isFinite(options.max));
     }
   });
 });

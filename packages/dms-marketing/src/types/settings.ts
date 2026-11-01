@@ -65,8 +65,6 @@ export const NUMBER_SETTINGS = [
     descriptionKey: "$page.marketing.settings.stats_retention_description",
     unit: MS_PER_DAY,
     min: 1,
-    // The 25-month ceiling applies to the stored rollup, so it is a bound on
-    // the field, not a convention.
     max: MAX_STATISTICS_RETENTION_DAYS,
     placeholder: String(DEFAULT_STATISTICS_RETENTION_MS / MS_PER_DAY),
   },

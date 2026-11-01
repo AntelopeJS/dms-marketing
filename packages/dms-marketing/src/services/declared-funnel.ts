@@ -9,7 +9,6 @@ import { FunnelsModel, WebsitesModel } from "@/db";
 import type {
   ExperimentRun,
   ExperimentStatus,
-  Funnel,
   FunnelExperiment,
   FunnelStep,
 } from "@/db/tables/funnels.table";
@@ -18,8 +17,8 @@ import {
   MAX_CONVERSION_WINDOW_HOURS,
   MS_PER_HOUR,
 } from "@/types/constants";
-import { parseExperimentInput } from "@/utils/experiment-type";
-import { parseFunnelSteps } from "@/utils/funnel-steps-type";
+import { experimentInputSchema } from "@/utils/experiment-type";
+import { funnelStepsSchema } from "@/utils/funnel-steps-type";
 import {
   declaredIdSchema,
   declaredTenant,
@@ -73,7 +72,7 @@ function declaredExperiment(
   experiment: MarketingExperimentDeclaration | null | undefined,
 ): DeclaredExperiment | null {
   const parsed = parseOrRefuse(id, "experiment", () =>
-    parseExperimentInput(
+    experimentInputSchema.parse(
       experiment
         ? {
             key: experiment.key,
@@ -112,7 +111,7 @@ function declaredContent(
     ),
     name,
     steps: parseOrRefuse(id, "steps", () =>
-      parseFunnelSteps(declaration.steps),
+      funnelStepsSchema.parse(declaration.steps),
     ).map((step) => ({ kind: step.kind, value: step.value })),
     conversionWindowMs:
       (hours ?? DEFAULT_CONVERSION_WINDOW_HOURS) * MS_PER_HOUR,
@@ -121,7 +120,11 @@ function declaredContent(
 }
 
 /** A caller-given instant of a run, never in the future; now by default. */
-function runInstant(id: string, field: string, value: unknown): number {
+function runInstant(
+  id: string,
+  field: string,
+  value: MarketingExperimentDeclaration["startedAt" | "stoppedAt"],
+): number {
   const now = Date.now();
   if (value === undefined) {
     return now;
@@ -225,7 +228,7 @@ export async function ensureFunnel(
     steps: content.steps,
     conversionWindowMs: content.conversionWindowMs,
     experiment,
-  } as Funnel;
+  };
   try {
     await model.insert(funnel);
   } catch (err) {

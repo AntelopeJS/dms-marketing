@@ -70,3 +70,6 @@ export class MarketingEvent extends Table {
   @Field("any")
   declare data?: Record<string, unknown>;
 }
+
+/** An event as built before the database assigns its id. */
+export type NewMarketingEvent = Omit<MarketingEvent, "_id">;

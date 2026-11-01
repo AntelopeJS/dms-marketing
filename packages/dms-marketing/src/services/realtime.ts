@@ -62,9 +62,11 @@ function flushCollected(): void {
  * The module's one publish, scoped to the tenant whose websites collected
  * (AntelopeJS/dms#353): only that tenant's analytics pages wake or count it
  * in their paused "N new". The payload names no website or event.
+ *
+ * The publish runs inside a promise chain: a DMS not answering yet throws
+ * rather than rejects.
  */
 function publishCollected(tenantId: string, count: number): void {
-  // Through a promise: a DMS not answering yet throws rather than rejects.
   Promise.resolve()
     .then(() =>
       PublishMessage(MARKETING_EVENTS_TOPIC, COLLECTED_TYPE, {

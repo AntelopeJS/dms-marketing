@@ -276,7 +276,6 @@ describe("an analytics import", () => {
     assert.deepEqual(rows, dayRows(live._id));
     assert.equal(rows[0].sessions, 4);
     assert.equal(rows[0].tops.topCampaigns !== undefined, true);
-    // Raw events keep their own timestamps, not the import's clock.
     const ownEvents = store.events.filter((e) => e.websiteId === imported._id);
     assert.deepEqual(
       ownEvents.map((e) => e.timestamp.getTime()).sort((x, y) => x - y),
@@ -323,7 +322,6 @@ describe("an analytics import's chronology", () => {
       },
       before,
     );
-    // A preflight refusal does not consume the import id; equal instants are allowed.
     assert.equal((await importAnalytics(batch("earlier", 12))).events, 1);
     assert.equal((await importAnalytics(batch("next", 14))).sessions, 1);
   });
@@ -342,7 +340,6 @@ describe("an analytics import's chronology", () => {
       ],
     });
     await importAnalytics(batch("first", 0));
-    // Another instance has completed a pageview at 10:20 in this visit.
     Object.assign(store.sessions[0], {
       lastSeenAt: new Date(at(0, 10, 20)),
       pageviewsCount: 2,

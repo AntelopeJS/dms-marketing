@@ -15,6 +15,8 @@ import {
 } from '../composables/useMarketingRoutes'
 import { allowHostConfirmation, hostConflictOf } from '../utils/host-conflict'
 import { trackerSnippet } from '../utils/snippet'
+import InstallGuideTag from '../build/components/install-guide/InstallGuideTag.vue'
+import InstallGuideVisit from '../build/components/install-guide/InstallGuideVisit.vue'
 
 /**
  * The guided install (`?website=` once the site exists): add the website,
@@ -443,87 +445,13 @@ const stepTwoState = computed(() =>
           </div>
         </li>
 
-        <li class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3 pb-6">
-          <span class="flex flex-col items-center">
-            <span
-              class="grid size-8 place-items-center rounded-full border font-mono text-xs"
-              :class="
-                stepTwoState === 'done'
-                  ? 'border-primary/40 text-primary'
-                  : stepTwoState === 'current'
-                    ? 'border-primary bg-primary text-inverted ring-4 ring-primary/20'
-                    : 'border-default text-dimmed'
-              "
-            >
-              <UIcon
-                v-if="stepTwoState === 'done'"
-                name="i-ph-check"
-                class="size-4"
-              />
-              <template v-else>2</template>
-            </span>
-            <span class="mt-2 w-px flex-1 bg-(--ui-border)" />
-          </span>
-          <div class="flex min-w-0 flex-col gap-3">
-            <h2
-              class="font-semibold"
-              :class="website ? 'text-highlighted' : 'text-muted'"
-            >
-              {{ t('page.marketing.install.step2') }}
-            </h2>
-            <p class="text-sm text-muted">
-              {{ t('page.marketing.install.step2_description') }}
-            </p>
-            <DmsMarketingTrackerSnippet
-              v-if="website"
-              :website-id="website.id"
-            />
-            <UCollapsible
-              v-if="website"
-              class="rounded-lg border border-default"
-            >
-              <UButton
-                color="neutral"
-                variant="ghost"
-                block
-                class="justify-start"
-                icon="i-ph-sliders-horizontal"
-                trailing-icon="i-ph-caret-down"
-              >
-                <span class="font-medium">
-                  {{ t('page.marketing.install.options') }}
-                </span>
-                <span class="text-xs text-dimmed">
-                  {{ t('page.marketing.install.options_hint') }}
-                </span>
-              </UButton>
-              <template #content>
-                <dl
-                  class="grid grid-cols-[12rem_minmax(0,1fr)] gap-x-4 gap-y-2 px-4 pb-4 text-sm"
-                >
-                  <dt class="font-mono text-xs text-highlighted">
-                    data-heatmap-sample
-                  </dt>
-                  <dd class="text-muted">
-                    {{ t('page.marketing.install.option_sample') }}
-                  </dd>
-                  <dt class="font-mono text-xs text-highlighted">
-                    data-do-not-track
-                  </dt>
-                  <dd class="text-muted">
-                    {{ t('page.marketing.install.option_dnt') }}
-                  </dd>
-                  <dt class="font-mono text-xs text-highlighted">
-                    data-host-url
-                  </dt>
-                  <dd class="text-muted">
-                    {{ t('page.marketing.install.option_host') }}
-                  </dd>
-                </dl>
-              </template>
-            </UCollapsible>
-          </div>
-        </li>
+        <InstallGuideTag
+
+          :step-two-state="stepTwoState"
+
+          :website="website"
+
+        />
 
         <li class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3">
           <span class="flex flex-col items-center">
@@ -571,86 +499,16 @@ const stepTwoState = computed(() =>
                   />
                 </template>
               </DmsBanner>
-              <div
-                v-if="visit"
-                class="flex flex-wrap items-center gap-4 rounded-lg border border-success/40 bg-success/10 p-4"
-              >
-                <DmsIconWell icon="i-ph-check" tone="success" />
-                <span class="min-w-0 flex-1">
-                  <span class="block font-semibold text-highlighted">
-                    {{
-                      t('page.marketing.install.connected', {
-                        when: when(visit.at),
-                      })
-                    }}
-                  </span>
-                  <span class="block font-mono text-xs break-all text-muted">
-                    {{ visit.host ?? '' }}{{ visit.url }} ·
-                    {{ visit.browser ?? '—' }} · {{ visit.deviceType }}
-                  </span>
-                </span>
-                <span class="flex flex-wrap items-center gap-2">
-                  <UButton
-                    icon="i-ph-arrow-clockwise"
-                    color="neutral"
-                    variant="outline"
-                    :label="t('page.marketing.install.check_again')"
-                    @click="checkAgain"
-                  />
-                  <UButton
-                    trailing-icon="i-ph-arrow-right"
-                    :label="t('page.marketing.install.open_overview')"
-                    @click="openOverview"
-                  />
-                </span>
-              </div>
-              <div
-                v-else
-                class="flex flex-wrap items-center gap-4 rounded-lg border border-dashed border-primary/50 bg-primary/5 p-4"
-              >
-                <span
-                  class="relative grid size-10 place-items-center rounded-full border border-primary/40 text-primary"
-                >
-                  <UIcon name="i-ph-broadcast" class="size-5" />
-                  <span
-                    class="absolute inset-0 animate-ping rounded-full border border-primary/30"
-                  />
-                </span>
-                <span class="min-w-0 flex-1">
-                  <span
-                    class="block font-semibold break-words text-highlighted"
-                  >
-                    {{
-                      t(
-                        recheckSince === null
-                          ? 'page.marketing.install.listening'
-                          : 'page.marketing.install.listening_again',
-                        { domain: website.domain },
-                      )
-                    }}
-                  </span>
-                  <span class="block text-xs text-muted">
-                    {{
-                      recheckSince === null
-                        ? t('page.marketing.install.listening_since', {
-                            when: when(status.createdAt),
-                          })
-                        : t('page.marketing.install.listening_again_since', {
-                            when: when(recheckSince),
-                          })
-                    }}
-                  </span>
-                </span>
-                <UButton
-                  v-if="siteUrl"
-                  icon="i-ph-arrow-square-out"
-                  color="neutral"
-                  variant="outline"
-                  :to="siteUrl"
-                  target="_blank"
-                  :label="t('page.marketing.install.open_site')"
-                />
-              </div>
+              <InstallGuideVisit
+                :visit="visit"
+                :website="website"
+                :status="status"
+                :recheck-since="recheckSince"
+                :site-url="siteUrl"
+                :when="when"
+                :check-again="checkAgain"
+                :open-overview="openOverview"
+              />
               <div
                 v-for="refused in status.rejected"
                 :key="refused.hostname"

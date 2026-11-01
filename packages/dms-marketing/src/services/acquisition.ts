@@ -13,28 +13,31 @@ import { CAMPAIGN_KEY_SEPARATOR } from "@/types/constants";
  * own proof it was bought. Worth reading because auto-tagged campaigns carry
  * no utm_medium at all — an auto-tagged Google Ads click keeps google.com as
  * its referrer and would otherwise classify as organic.
+ *
+ * `gclid`, `gbraid` (iOS app-to-web) and `wbraid` (iOS web-to-app) are Google
+ * Ads', `dclid` Google Display & Video 360's, `msclkid` Microsoft
+ * Advertising's, `ttclid` TikTok Ads', `twclid` X Ads' and `li_fat_id`
+ * LinkedIn Ads'.
  */
 const PAID_CLICK_IDS = new Set([
-  "gclid", // Google Ads
-  "gbraid", // Google Ads, iOS app-to-web
-  "wbraid", // Google Ads, iOS web-to-app
-  "dclid", // Google Display & Video 360
-  "msclkid", // Microsoft Advertising
-  "ttclid", // TikTok Ads
-  "twclid", // X Ads
-  "li_fat_id", // LinkedIn Ads
+  "gclid",
+  "gbraid",
+  "wbraid",
+  "dclid",
+  "msclkid",
+  "ttclid",
+  "twclid",
+  "li_fat_id",
 ]);
 
 /**
  * Meta stamps these on every outbound link, ad or not, so they attest the
  * platform and never the spend — reading them as paid would book organic
  * shares as ad clicks. Their worth is the in-app browser, which sends no
- * referrer.
+ * referrer. `fbclid` comes from Facebook and Instagram, `igshid` from
+ * Instagram shares.
  */
-const SOCIAL_CLICK_IDS = new Set([
-  "fbclid", // Facebook, Instagram
-  "igshid", // Instagram shares
-]);
+const SOCIAL_CLICK_IDS = new Set(["fbclid", "igshid"]);
 
 /** Probed in order against an entry URL; first hit wins. */
 export const CLICK_ID_PARAMS: readonly string[] = [
@@ -271,9 +274,7 @@ export interface CampaignKeyParts {
 }
 
 function isChannel(value: string | undefined): value is MarketingChannel {
-  return (MARKETING_CHANNELS as readonly (string | undefined)[]).includes(
-    value,
-  );
+  return MARKETING_CHANNELS.some((channel) => channel === value);
 }
 
 /**

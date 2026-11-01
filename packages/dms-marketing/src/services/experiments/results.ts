@@ -7,7 +7,6 @@ import {
   type FunnelEvent,
   groupBySession,
 } from "@/services/funnels/compute";
-import type { ExposureEventData } from "@/types";
 import {
   MIN_DECISION_CONVERSIONS,
   MIN_DECISION_DAYS,
@@ -21,6 +20,7 @@ import {
   sampleRatioCheck,
   twoProportionTest,
 } from "./stats";
+import { isString } from "@/utils/guards";
 
 interface VariationResult {
   key: string;
@@ -78,9 +78,8 @@ function variationBySession(
     if (event.kind !== "exposure" || event.name !== experiment.key) {
       continue;
     }
-    const variation = (event.data as Partial<ExposureEventData> | undefined)
-      ?.variation;
-    if (typeof variation !== "string" || !armKeys.has(variation)) {
+    const variation = event.data?.variation;
+    if (!isString(variation) || !armKeys.has(variation)) {
       continue;
     }
     const existing = assignments.get(event.sessionId);

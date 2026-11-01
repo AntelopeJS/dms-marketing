@@ -4,7 +4,7 @@
 
 <a href="https://www.npmjs.com/package/@antelopejs/interface-dms-marketing"><img alt="npm" src="https://img.shields.io/npm/v/@antelopejs/interface-dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
 <a href="./LICENSE"><img alt="License" src="https://img.shields.io/npm/l/@antelopejs/interface-dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
-<a href="https://discord.gg/sjK28QHrA7"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://discord.gg/g4pFt6eXqu"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
 <a href="https://dms.antelopejs.com/docs/modules/marketing/extending"><img alt="Documentation" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 
 The AntelopeJS interface to read aggregated first-party analytics of the DMS marketing module from any module, and to ship marketing content as code.
@@ -76,11 +76,13 @@ export function construct() {
 
 Interface 0.5.x targets `@antelopejs/dms-marketing` 0.6.0 or later, which implements `GetClickHeatmap`, `EnsureWebsite`, `EnsureFunnel`, `EnsurePageSnapshot` and `ImportAnalytics`. Module 0.6.0 accepts interface versions `>=0.5.0 <0.6.0`. Older modules do not implement the new content calls; calling them waits for an implementation that never comes. Keep module 0.5.x paired with interface 0.4.x for the older heatmap-only contract. The interface declares this peer dependency:
 
-<!-- docs-compat: ./package.json#peerDependencies -->
+<!-- antelopejs-docs-compat:start -->
 
-| Package | Range |
-| --- | --- |
-| `@antelopejs/interface-core` | `>=0.2.4 <1.0.0` |
+| Package                      | Supported        | Tested with |
+| ---------------------------- | ---------------- | ----------- |
+| `@antelopejs/interface-core` | `>=0.2.4 <1.0.0` | —           |
+
+<!-- antelopejs-docs-compat:end -->
 
 ## Documentation
 

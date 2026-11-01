@@ -35,6 +35,8 @@ import {
   type SettingsConfigKey,
   type SettingsFormValues,
 } from "@/types/settings";
+import { isBoolean, isNumber, isString } from "@/utils/guards";
+import type { QueryParameter } from "./query-param";
 
 /**
  * Runtime settings service: the singleton document is pushed into the config
@@ -103,14 +105,15 @@ export async function reloadSettings(
 
 function defaultDocument(): SettingsDocument {
   const config = getConfig();
-  const doc = {} as SettingsDocument;
-  for (const setting of BOOLEAN_SETTINGS) {
-    doc[setting.configKey] = config[setting.configKey];
-  }
-  for (const setting of NUMBER_SETTINGS) {
-    doc[setting.configKey] = null;
-  }
-  return doc;
+  const [tracker] = BOOLEAN_SETTINGS;
+  const [rawEvents, statistics, heatmap, snapshot] = NUMBER_SETTINGS;
+  return {
+    [tracker.configKey]: config[tracker.configKey],
+    [rawEvents.configKey]: null,
+    [statistics.configKey]: null,
+    [heatmap.configKey]: null,
+    [snapshot.configKey]: null,
+  };
 }
 
 /**
@@ -141,21 +144,28 @@ function buildNextSettings(
   values: SettingsFormValues,
   existing: MarketingSettings | undefined,
 ): SettingsDocument {
-  const doc = {} as SettingsDocument;
   const config = getConfig();
-  for (const setting of BOOLEAN_SETTINGS) {
+  const nextBoolean = (setting: (typeof BOOLEAN_SETTINGS)[number]): boolean => {
     const submitted = values[setting.id];
-    doc[setting.configKey] =
-      typeof submitted === "boolean"
-        ? submitted
-        : (existing?.[setting.configKey] ?? config[setting.configKey]);
-  }
-  for (const setting of NUMBER_SETTINGS) {
-    doc[setting.configKey] = Object.hasOwn(values, setting.id)
+    return isBoolean(submitted)
+      ? submitted
+      : (existing?.[setting.configKey] ?? config[setting.configKey]);
+  };
+  const nextNumber = (
+    setting: (typeof NUMBER_SETTINGS)[number],
+  ): number | null =>
+    Object.hasOwn(values, setting.id)
       ? submittedNumber(setting, values[setting.id])
       : (existing?.[setting.configKey] ?? null);
-  }
-  return doc;
+  const [tracker] = BOOLEAN_SETTINGS;
+  const [rawEvents, statistics, heatmap, snapshot] = NUMBER_SETTINGS;
+  return {
+    [tracker.configKey]: nextBoolean(tracker),
+    [rawEvents.configKey]: nextNumber(rawEvents),
+    [statistics.configKey]: nextNumber(statistics),
+    [heatmap.configKey]: nextNumber(heatmap),
+    [snapshot.configKey]: nextNumber(snapshot),
+  };
 }
 
 /**
@@ -165,9 +175,9 @@ function buildNextSettings(
  */
 function submittedNumber(
   setting: NumberSetting,
-  value: unknown,
+  value: SettingsFormValues[string] | undefined,
 ): number | null {
-  if (typeof value !== "number" || Number.isNaN(value)) {
+  if (!isNumber(value) || Number.isNaN(value)) {
     return null;
   }
   const rounded = Math.round(value);
@@ -310,9 +320,6 @@ export async function confirmRetentionCuts(
       continue;
     }
     warnedCuts.set(warning, now + CUT_CONFIRM_WINDOW_MS);
-    // `{ field, message, params }`: the DMS form shows the message under the
-    // field, its `{deleted}` filled from `params` (a figure in parentheses,
-    // which no singular form has to agree with).
     throw new HTTPResult(HTTP_CONFLICT, {
       field: cut.id,
       message: `${CUT_MESSAGE_PREFIX}${deleted.what}`,
@@ -327,13 +334,16 @@ export type SettingsSaveGuard = (
   next: SettingsDocument,
 ) => Promise<void>;
 
+/**
+ * Writes the merged settings onto the singleton row. A caller that saw no row
+ * goes through the fixed-key insert: a concurrent first save collides on the
+ * key and this write lands on the winner's row.
+ */
 async function persistSettings(
   model: MarketingSettingsModel,
   next: SettingsDocument,
   existing: MarketingSettings | undefined,
 ): Promise<void> {
-  // A caller that saw no row goes through the fixed-key insert: a concurrent
-  // first save collides on the key and this write lands on the winner's row.
   const row =
     existing ??
     (await model.getSingleton()) ??
@@ -352,7 +362,7 @@ async function createSingleton(
     ...doc,
     visitorHashSecret,
     updatedAt: new Date(),
-  } as MarketingSettings);
+  });
   cachedSecret = row.visitorHashSecret;
   return row;
 }
@@ -360,14 +370,15 @@ async function createSingleton(
 /**
  * Creates the singleton (with a fresh secret) on first run so visitor ids
  * stay stable across restarts without an explicit config secret.
+ *
+ * Every instance booting on an empty table races on the insert; all of them end
+ * up caching the one secret that was stored.
  */
 export async function loadSettings(
   model: MarketingSettingsModel,
 ): Promise<void> {
   let doc = await model.getSingleton();
   if (!doc) {
-    // Every instance booting on an empty table races here; all of them end
-    // up caching the one secret that was stored.
     doc = await createSingleton(model, defaultDocument(), generateSecret());
   } else if (!doc.visitorHashSecret) {
     doc.visitorHashSecret = generateSecret();
@@ -430,11 +441,18 @@ const GLANCE_ITEMS = {
   snapshots: "snapshotRetention",
 } as const;
 
-export function retentionGlance(item: unknown): RetentionMeter | null {
-  if (typeof item !== "string" || !Object.hasOwn(GLANCE_ITEMS, item)) {
+/** Whether `value` names an item of the "At a glance" row, as an own key. */
+function isGlanceItem(
+  value: QueryParameter,
+): value is keyof typeof GLANCE_ITEMS {
+  return isString(value) && Object.hasOwn(GLANCE_ITEMS, value);
+}
+
+export function retentionGlance(item: QueryParameter): RetentionMeter | null {
+  if (!isGlanceItem(item)) {
     return null;
   }
-  const key = GLANCE_ITEMS[item as keyof typeof GLANCE_ITEMS];
+  const key = GLANCE_ITEMS[item];
   const days = Math.round(getConfig()[key] / MS_PER_DAY);
   return {
     value: days,

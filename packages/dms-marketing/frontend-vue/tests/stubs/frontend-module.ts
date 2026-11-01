@@ -46,8 +46,15 @@ export function useI18n(): {
   return { t: (key: string) => key, te: () => false, locale: { value: 'en' } }
 }
 
+let routeQuery: Record<string, string> = {}
+
+/** Sets the query `useDmsRoute` answers from now on, as a navigation would. */
+export function setDmsRouteQuery(query: Record<string, string>): void {
+  routeQuery = query
+}
+
 export function useDmsRoute(): { query: Record<string, string>; path: string } {
-  return { query: {}, path: '/' }
+  return { query: routeQuery, path: '/' }
 }
 
 export function useDmsRouter(): {

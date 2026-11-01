@@ -104,7 +104,6 @@ function startsNewCampaign(
   const hasCampaign =
     input.clickIdParam !== undefined ||
     ACQUISITION_FIELDS.some(([, field]) => input.utm[field] !== undefined);
-  // Rows read back carry null where the insert had undefined.
   return (
     hasCampaign &&
     ((session.clickIdParam ?? undefined) !== input.clickIdParam ||
@@ -201,7 +200,7 @@ async function createSession(
   input: SessionInput,
   isNewVisitor: boolean,
 ): Promise<MarketingSession> {
-  const session = {
+  const session: MarketingSession = {
     _id: randomUUID(),
     websiteId: input.websiteId,
     visitorId: input.visitorId,
@@ -225,7 +224,7 @@ async function createSession(
     screen: input.screen,
     language: input.language,
     country: input.country,
-  } as MarketingSession;
+  };
   await model.insert(session);
   return session;
 }

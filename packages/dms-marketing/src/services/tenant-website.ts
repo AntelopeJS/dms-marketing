@@ -92,13 +92,11 @@ export async function purgeWebsiteCollectedData(
     MarketingSessionsModel,
     tenantId,
   ).deleteByWebsite(websiteId);
-  // A cached session would keep counting visitors as returning ones.
   forgetWebsiteSessions(websiteId);
   const days = await GetModel(WebsiteStatisticsModel, tenantId).deleteByWebsite(
     websiteId,
   );
   const snapshots = await deleteSnapshots(tenantId, websiteId);
-  // Gone with the history it brought: the history may be imported again.
   const imports = await GetModel(
     MarketingImportsModel,
     tenantId,
@@ -134,7 +132,6 @@ export async function listTenantWebsites(tenantId: string): Promise<Website[]> {
     MarketingSessionsModel,
     tenantId,
   ).getLastActivityByWebsites(websites.map((site) => site._id));
-  // Stable sort: sites without activity keep the model's createdAt ordering.
   return [...websites].sort(
     (a, b) => (activity.get(b._id) ?? 0) - (activity.get(a._id) ?? 0),
   );

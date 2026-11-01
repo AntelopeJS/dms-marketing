@@ -44,8 +44,6 @@ const controller = Object.create(WebsitesController.prototype);
 /** The status an HTTPResult rejection carries. */
 const status = (code) => (error) => error.getStatus() === code;
 
-// --- Guards ------------------------------------------------------------------
-
 /** A websites table of three sites over fake tenant tables. */
 function fakeStore() {
   const rows = { events: 5, funnels: 2 };
@@ -162,7 +160,6 @@ describe("the purge route", () => {
   for (const handler of ["purge", "remove"]) {
     test(`${handler} takes a tenant owner, and refuses an anonymous call`, async () => {
       const provider = callerProvider(handler);
-      // The owner variant of the tenant guard, the one `update` takes.
       assert.match(String(provider), /requireOwner: true/);
       assert.equal(String(provider), String(callerProvider("update")));
       await assert.rejects(provider(tenantRequest()), (error) =>
@@ -171,8 +168,6 @@ describe("the purge route", () => {
     });
   }
 });
-
-// --- Scope, over the database --------------------------------------------------
 
 const DAY_MS = 86_400_000;
 
@@ -291,7 +286,6 @@ describe("purging a website's data", () => {
       HEATMAPS,
       tenantRequest(),
     );
-    // Three clicks and two scrolls.
     assert.deepEqual(deleted, {
       events: 5,
       snapshots: 1,
@@ -341,7 +335,6 @@ describe("purging a website's data", () => {
       [],
     );
 
-    // Idempotent: nothing more to delete.
     const again = await controller.purge(
       OWNER,
       "purge-all",

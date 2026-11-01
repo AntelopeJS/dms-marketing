@@ -177,11 +177,10 @@ async function hourlyCurves(
       : null,
   ]);
   const points = (values: number[]) => {
-    const drawn = values.map((y, index) => ({
+    const drawn = values.map((y: number | null, index) => ({
       x: since + index * MS_PER_HOUR,
-      y: y as number | null,
+      y,
     }));
-    // Two points at least, or the axis spreads a lone one over days.
     return drawn.length > 1
       ? drawn
       : [...drawn, { x: since + drawn.length * MS_PER_HOUR, y: null }];
@@ -276,8 +275,6 @@ function qualityOf(totals: RollupTotals): SessionQuality {
     };
   }
   return {
-    // Transition-counted bounces can sum below zero on a window cutting a
-    // session in two; a negative rate is never worth showing.
     bounceRate: (Math.max(0, totals.bouncedSessions) / totals.sessions) * 100,
     averageDurationSeconds:
       totals.sessionDurationMs / totals.sessions / MS_PER_SECOND,
@@ -442,7 +439,7 @@ function hasCountries(read: RollupRead): boolean {
   return Object.keys(mergeDimension(rows, "topCountries")).length > 0;
 }
 
-const TOP_GROUPS: Record<string, (read: RollupRead) => TopTabDefinition[]> = {
+const TOP_GROUPS = {
   content: () => [
     {
       id: "pages",
@@ -471,7 +468,6 @@ const TOP_GROUPS: Record<string, (read: RollupRead) => TopTabDefinition[]> = {
       labelKind: "channel",
       link: acquisitionLink,
     },
-    // Acquisition lists both in full; its table cannot be opened on a search.
     {
       id: "campaigns",
       label: `${GROUP_PREFIX}acquisition.tabs.campaigns`,
@@ -516,17 +512,21 @@ const TOP_GROUPS: Record<string, (read: RollupRead) => TopTabDefinition[]> = {
       link: eventFunnelLink,
     },
   ],
-};
+} satisfies Record<string, (read: RollupRead) => TopTabDefinition[]>;
 
-export function isTopGroup(value: unknown): value is string {
+/** A group of top lists the overview and the acquisition page draw as tabs. */
+export type TopGroup = keyof typeof TOP_GROUPS;
+
+export function isTopGroup(value: unknown): value is TopGroup {
   return typeof value === "string" && Object.hasOwn(TOP_GROUPS, value);
 }
 
 export function topGroupPayload(
   read: RollupRead,
-  group: string,
+  group: TopGroup,
 ): TopTabPayload[] {
-  return TOP_GROUPS[group](read).map((tab) => topTab(read, tab));
+  const build = new Map(Object.entries(TOP_GROUPS)).get(group);
+  return (build?.(read) ?? []).map((tab) => topTab(read, tab));
 }
 
 /** Custom events a funnel of the site ends on: the overview tags them "Goal". */
@@ -544,11 +544,11 @@ export async function goalEventNames(website: Website): Promise<Set<string>> {
   return goals;
 }
 
-const DEVICE_ICONS: Record<string, string> = {
-  desktop: "i-ph-desktop",
-  mobile: "i-ph-device-mobile",
-  tablet: "i-ph-device-tablet",
-};
+const DEVICE_ICONS = new Map([
+  ["desktop", "i-ph-desktop"],
+  ["mobile", "i-ph-device-mobile"],
+  ["tablet", "i-ph-device-tablet"],
+]);
 
 const DEFAULT_DEVICE_ICON = "i-ph-devices";
 
@@ -568,6 +568,6 @@ export function devicesPayload(read: RollupRead): TopRow[] {
     share: shareOf(value, total),
     description: percentText(shareOf(value, total)),
     delta: previous ? percentChange(value, previous[key]) : null,
-    icon: DEVICE_ICONS[key] ?? DEFAULT_DEVICE_ICON,
+    icon: DEVICE_ICONS.get(key) ?? DEFAULT_DEVICE_ICON,
   }));
 }

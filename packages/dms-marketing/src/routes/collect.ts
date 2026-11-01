@@ -7,7 +7,6 @@ import {
   RawBody,
   type RequestContext,
 } from "@antelopejs/interface-api";
-import { assertValidation } from "@antelopejs/interface-api-util";
 import { getConfig } from "@/config";
 import { processCollectBatch } from "@/services/collect";
 import { collectRateLimiter, isAutomatedClient } from "@/services/ingest-guard";
@@ -45,11 +44,7 @@ export class CollectController extends Controller(API_BASE_PATH) {
     @Context() context: RequestContext,
     @RawBody(MAX_COLLECT_BODY_BYTES) body: Buffer,
   ) {
-    const json = parseJsonOr400(body);
-    // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-    // reference passed here is not actually unbound.
-    // oxlint-disable-next-line typescript/unbound-method
-    const data = assertValidation(json, collectRequestSchema.parse);
+    const data = parseJsonOr400(body, collectRequestSchema);
     const refused = { accepted: 0, dropped: data.events.length };
     if (!getConfig().trackerEnabled) {
       return refused;
@@ -66,8 +61,6 @@ export class CollectController extends Controller(API_BASE_PATH) {
     }
     const userAgent = userAgentOf(context);
     const ip = await getClientIp(context);
-    // Every browser stamps Origin on a POST; a beacon without it (nor a
-    // Referer) was not sent by a page of the site.
     if (
       source === undefined ||
       isAutomatedClient(userAgent) ||

@@ -11,6 +11,7 @@ import { DefaultDataTypes } from "@antelopejs/interface-dms/base/data-types/defa
 import { HttpMethod } from "@antelopejs/interface-dms/base/types";
 import { defaultInUiUnits } from "@/services/settings";
 import { API_BASE_PATH } from "@/types/constants";
+import { isObject } from "@/utils/guards";
 import {
   BOOLEAN_SETTINGS,
   NUMBER_SETTINGS,
@@ -60,15 +61,15 @@ function withDeploymentDefaults(
       return field;
     }
     const value = defaultInUiUnits(setting);
+    const inputOptions = field.component.options;
     return {
       ...field,
       defaultValue: value,
-      // The deployment default is the module's: the field offers it back.
       offersDefault: true,
       component: {
         ...field.component,
         options: {
-          ...(field.component.options as object),
+          ...(isObject(inputOptions) ? inputOptions : undefined),
           placeholder: String(value),
         },
       },
@@ -77,6 +78,12 @@ function withDeploymentDefaults(
   return { ...options, fields: options.fields.map(withDefault) };
 }
 
+/**
+ * A Form over the given number settings, submitted with PUT rather than POST:
+ * the form then sends only the fields the user changed, so a default left alone
+ * is never saved as an override, and a stale tab does not write back what
+ * another owner changed since.
+ */
 function settingsForm(ids: readonly string[], successMessage: string) {
   return Form({
     fields: NUMBER_SETTINGS.filter((setting) => ids.includes(setting.id)).map(
@@ -84,14 +91,9 @@ function settingsForm(ids: readonly string[], successMessage: string) {
     ),
     fetchUrl: SETTINGS_URL,
     submitUrl: SETTINGS_URL,
-    // Not POST: the form then sends only the fields the user changed, so a
-    // default left alone is never saved as an override, and a stale tab does
-    // not write back what another owner changed since.
     submitUrlMethod: HttpMethod.put,
     successMessage,
-  }).onFilter((_permissions, options) =>
-    withDeploymentDefaults(options as FormPropsSerialized),
-  );
+  }).onFilter((_permissions, options) => withDeploymentDefaults(options));
 }
 
 /**

@@ -29,6 +29,12 @@ export interface FunnelResults {
   window: { since: number; until: number };
 }
 
+/** What a result read needs of a funnel, so a draft that is not saved reads too. */
+export type ReadableFunnel = Pick<
+  Funnel,
+  "websiteId" | "steps" | "conversionWindowMs" | "experiment"
+>;
+
 interface EventWindow {
   since: Date;
   until: Date;
@@ -82,7 +88,7 @@ function runWindows(
  */
 function readWindow(
   runs: EventWindow[],
-  funnel: Funnel,
+  funnel: ReadableFunnel,
   until: Date,
 ): EventWindow {
   const since = Math.min(...runs.map((run) => run.since.getTime()));
@@ -135,21 +141,21 @@ function servedMs(runs: EventWindow[]): number {
  */
 export async function computeFunnelResults(
   eventsModel: MarketingEventsModel,
-  funnel: Funnel,
+  funnel: ReadableFunnel,
   since: Date,
   until: Date,
 ): Promise<FunnelResults> {
   const experiment = funnel.experiment;
   const runs = experiment ? runWindows(experiment, until) : null;
   const read = runs ? readWindow(runs, funnel, until) : { since, until };
-  const events = (await eventsModel.queryRange({
+  const events = await eventsModel.queryRange({
     websiteIds: [funnel.websiteId],
     since: read.since,
     until: read.until,
     kinds: runs ? EXPERIMENT_EVENT_KINDS : FUNNEL_EVENT_KINDS,
     limit: MAX_FUNNEL_EVENTS,
     fields: runs ? EXPERIMENT_FIELDS : FUNNEL_FIELDS,
-  })) as ResultEvent[];
+  });
   const truncated = events.length >= MAX_FUNNEL_EVENTS;
   const usable = runs ? withinRuns(events, runs) : events;
   const reported = runs ? coveredWindow(runs) : read;

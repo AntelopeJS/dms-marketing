@@ -26,10 +26,10 @@ function table() {
       rows.set(row._id, structuredClone(row));
     },
     async update(row, patch) {
-      if (typeof row === "string") {
-        rows.set(row, { ...rows.get(row), ...structuredClone(patch) });
-      } else {
+      if (patch === undefined) {
         rows.set(row._id, structuredClone(row));
+      } else {
+        rows.set(row, { ...rows.get(row), ...structuredClone(patch) });
       }
     },
   };
@@ -104,8 +104,6 @@ describe("EnsureWebsite", () => {
     assert.equal(row.snapshotsEnabled, false);
   });
 
-  // Written once, at provisioning: from then on the site is its owner's,
-  // and a later declaration of the id, changed or not, writes nothing.
   test("a declared id is kept, whatever is declared next", async () => {
     await ensureWebsite(SITE);
     userEdits(websites, "shop-site", { trackingEnabled: false });

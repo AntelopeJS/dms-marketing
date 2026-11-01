@@ -107,7 +107,6 @@ test("a page reset deletes exactly what its dialog counted", async () => {
     event("p1", "pageview", "/a"),
     event("c3", "click", "/b"),
     event("c4", "click", "/a", { websiteId: OTHER_SITE }),
-    // Outside any window: a reset ignores periods.
     event("old", "scroll", "/a", { timestamp: new Date(0) }),
   ]);
   await collection("marketing_page_snapshots").insertMany([
@@ -149,8 +148,6 @@ test("page activity counts clicks and sampled views per path, and reads the decl
   assert.equal(quiet.clicks.get("/a"), 2);
   assert.equal(quiet.sampled.get("/a"), 1);
   assert.equal(quiet.sampled.get("/b"), 1);
-  // Pageviews that declare no rate (stored before the trackers did) say
-  // nothing about it.
   assert.equal(quiet.sampleRate, null);
 
   const more = [event("forged", "pageview", "/b", { data: { sample: "1" } })];
@@ -159,8 +156,6 @@ test("page activity counts clicks and sampled views per path, and reads the decl
     more.push(event(`p${index}`, "pageview", "/b", { data: { sample } }));
   }
   await collection("marketing_events").insertMany(more);
-  // A window ends at the instant it is resolved: resolve a fresh one.
   const busy = await computePageActivity(TENANT, SITE, trailingWindow(7));
-  // Declared, not measured: 2 scroll events over 49 pageviews would say 4 %.
   assert.equal(busy.sampleRate, (30 + 10 * 0.5) / 40);
 });

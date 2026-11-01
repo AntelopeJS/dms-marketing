@@ -1,16 +1,9 @@
 const assert = require("node:assert/strict");
-const { readFileSync } = require("node:fs");
-const path = require("node:path");
 const vm = require("node:vm");
+const { TRACKER_SOURCE } = require("./helpers/tracker");
 const test = it;
 const { dashboardExcludedPaths } = require("../dist/frontend-module");
 
-// --- The tracker on a single-page site ---------------------------------
-
-const TRACKER_SOURCE = readFileSync(
-  path.join(__dirname, "../static/tracker.js"),
-  "utf8",
-);
 const ORIGIN = "https://dms.example.com";
 
 /**
@@ -84,7 +77,6 @@ function loadTracker(attributes, pathname) {
       } else {
         attrs.set("data-website-id", id);
       }
-      // Browsers deliver MutationObserver notifications after synchronous code.
       queueMicrotask(observer);
     },
     /** Everything sent so far, flushed as on leaving the page. */
@@ -115,7 +107,7 @@ test("SPA navigations are counted as pageviews", () => {
     "/modules/marketing/overview",
   );
   tracker.navigate("/modules/crm/customers");
-  tracker.navigate("/modules/crm/customers"); // a query update, same page
+  tracker.navigate("/modules/crm/customers");
   tracker.navigate("/modules/marketing/overview");
   assert.deepEqual(pageviews(tracker.sent()), [
     "site /modules/marketing/overview",
@@ -181,11 +173,11 @@ test("the dashboard's tag sends nothing from the module area", () => {
 test("the tag's website id is followed: paused, then retargeted", async () => {
   const tracker = loadTracker({ "data-website-id": "site-a" }, "/a");
   tracker.track("before-sign-out");
-  tracker.setWebsite(null); // signed out
+  tracker.setWebsite(null);
   tracker.navigate("/auth");
   tracker.navigate("/b");
   tracker.track("while-paused");
-  tracker.setWebsite("site-b"); // signed into another workspace
+  tracker.setWebsite("site-b");
   await Promise.resolve();
   tracker.navigate("/c");
   const sent = tracker.sent();

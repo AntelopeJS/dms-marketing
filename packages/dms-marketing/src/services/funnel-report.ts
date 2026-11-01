@@ -13,9 +13,9 @@ import {
 import { BoundedCache } from "./bounded-cache";
 import {
   computeFunnelResults,
-  type FunnelEvent,
   type FunnelResults,
   groupBySession,
+  type ReadableFunnel,
 } from "./funnels";
 import type { QueryWindow } from "./period";
 import {
@@ -219,7 +219,6 @@ function experimentSummary(
     until: experiment.status === "stopped" ? results.window.until : null,
     leader,
     exposed: arms.reduce((sum, arm) => sum + arm.exposedSessions, 0),
-    // A winner is significant, ahead, past the decision rule and unvoided.
     ready: verdict?.kind === "winner",
     upliftLow: percentOrNull(best?.upliftLow),
     upliftHigh: percentOrNull(best?.upliftHigh),
@@ -228,7 +227,7 @@ function experimentSummary(
 }
 
 export async function funnelResultsIn(
-  funnel: Funnel,
+  funnel: ReadableFunnel,
   tenantId: string,
   window: QueryWindow,
 ): Promise<FunnelResults> {
@@ -245,8 +244,6 @@ export async function funnelResultsIn(
 export function readsPeriod(funnel: Funnel): boolean {
   return !funnel.experiment || funnel.experiment.status === "draft";
 }
-
-// --- Raw-event coverage ------------------------------------------------------
 
 const coverageCache = new BoundedCache<number | null>(
   RAW_COVERAGE_CACHE_TTL_MS,
@@ -291,8 +288,6 @@ export function coversWindow(
 ): boolean {
   return coverage !== null && window.since.getTime() + MS_PER_DAY > coverage;
 }
-
-// --- Summaries ---------------------------------------------------------------
 
 /**
  * Per funnel and window, the promise itself: the list's rows, its tab
@@ -376,8 +371,6 @@ async function computeSummary(
   };
 }
 
-// --- Suggestions and templates -------------------------------------------------
-
 export interface FunnelSuggestion {
   value: string;
   count: number;
@@ -443,7 +436,7 @@ export async function funnelTemplates(
   website: Website,
   window: QueryWindow,
 ): Promise<FunnelTemplate[]> {
-  const events = (await GetModel(
+  const events = await GetModel(
     MarketingEventsModel,
     website.tenantId,
   ).queryRange({
@@ -453,7 +446,7 @@ export async function funnelTemplates(
     kinds: ["pageview", "custom"],
     limit: MAX_FUNNEL_EVENTS,
     fields: ["sessionId", "kind", "url", "name"],
-  })) as FunnelEvent[];
+  });
   const sessions = [...groupBySession(events).values()];
   const sessionsByEvent = new Map<string, number>();
   const sessionsByPage = new Map<string, number>();

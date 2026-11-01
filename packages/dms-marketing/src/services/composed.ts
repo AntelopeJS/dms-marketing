@@ -28,11 +28,14 @@ function compose(
 
 /** "42.3%" — a value already in percent, not a ratio. */
 export function percentText(value: number | null): BlockText {
-  return value === null
-    ? NO_VALUE
-    : compose("percent", {
-        value: { type: "number", value: oneDecimal(value) },
-      });
+  return value === null ? NO_VALUE : percentOf(value);
+}
+
+/** "42.3%" of a known value: `percentText` without its no-value case. */
+export function percentOf(value: number): ComposedText {
+  return compose("percent", {
+    value: { type: "number", value: oneDecimal(value) },
+  });
 }
 
 /** "2m 48s", "1h 5m" or "12s": a visit length, the way analytics tools write it. */

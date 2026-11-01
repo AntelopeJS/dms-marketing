@@ -27,14 +27,16 @@ import {
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { z } from "zod";
 import { API_BASE_PATH, HTTP_BAD_REQUEST } from "@/types/constants";
-import type { SettingsFormValues } from "@/types/settings";
+import type { JsonBody } from "@/types/json";
 
 const INVALID_SETTINGS_MESSAGE = "$page.marketing.errors.invalid_settings";
 
 const collectionSchema = z.object({ enabled: z.boolean() }).strict();
 
-// A key the form does not know is refused rather than silently dropped.
-const settingsSchema = marketingSettingsFormSchema.strict();
+/** A key the form does not know is refused rather than silently dropped. */
+const settingsSchema = marketingSettingsFormSchema
+  .strict()
+  .pipe(z.record(z.union([z.number(), z.boolean(), z.null()])));
 
 /**
  * Fetch/submit endpoints for the declarative Settings form. The wire format
@@ -59,14 +61,14 @@ export class MarketingSettingsController extends Controller(
    * confirmed by saving it twice (see `confirmRetentionCuts`).
    */
   @Put("")
-  async submitSettings(@AuthOwnerOnly() user: User, @JSONBody() json: unknown) {
-    // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-    // reference passed here is not actually unbound.
-    // oxlint-disable-next-line typescript/unbound-method
-    const data = assertValidation(json, settingsSchema.parse);
+  async submitSettings(
+    @AuthOwnerOnly() user: User,
+    @JSONBody() json: JsonBody,
+  ) {
+    const data = assertValidation(json, (value) => settingsSchema.parse(value));
     return applySettingsForm(
       GetModel(MarketingSettingsModel),
-      data as SettingsFormValues,
+      data,
       (current, next) => confirmRetentionCuts(user._id, current, next),
     );
   }
@@ -98,14 +100,11 @@ export class MarketingSettingsController extends Controller(
   async setCollection(
     @AuthOwnerOnly() _user: User,
     @Context() context: RequestContext,
-    @JSONBody() body: unknown,
+    @JSONBody() body: JsonBody,
   ) {
     const data = assertValidation(
       body,
-      // zod v3 binds `parse` to its schema in the ZodType constructor, so the
-      // reference passed here is not actually unbound.
-      // oxlint-disable-next-line typescript/unbound-method
-      collectionSchema.parse,
+      (value) => collectionSchema.parse(value),
       () => INVALID_SETTINGS_MESSAGE,
     );
     await applySettingsForm(GetModel(MarketingSettingsModel), {

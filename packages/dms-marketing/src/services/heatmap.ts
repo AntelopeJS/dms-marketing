@@ -21,6 +21,7 @@ import {
 } from "@/types/constants";
 import { type QueryWindow, resolveQueryWindow } from "./period";
 import { deleteSnapshots } from "./snapshots";
+import { isNumber } from "@/utils/guards";
 
 const CLICK_FIELDS = ["data"] as const;
 
@@ -98,7 +99,7 @@ function anchorOf(data: ClickEventData): MarketingHeatmapAnchor | null {
   if (!data.selector) {
     return null;
   }
-  if (typeof data.ox !== "number" || typeof data.oy !== "number") {
+  if (!isNumber(data.ox) || !isNumber(data.oy)) {
     return null;
   }
   return {
@@ -176,7 +177,7 @@ function bucketClick(
 ): boolean {
   const x = data.dx ?? data.x;
   const y = data.dy ?? data.y;
-  if (typeof x !== "number" || typeof y !== "number") {
+  if (!isNumber(x) || !isNumber(y)) {
     return false;
   }
   const anchor = anchorOf(data);
@@ -374,13 +375,13 @@ async function countByPath(
   window: QueryWindow,
   kind: EventKind,
 ): Promise<Map<string, number>> {
-  const rows = (await GetModel(MarketingEventsModel, tenantId)
+  const rows = await GetModel(MarketingEventsModel, tenantId)
     .table.getAll([websiteId], "websiteId")
     .filter((doc) => doc.key("timestamp").ge(window.since))
     .filter((doc) => doc.key("timestamp").le(window.until))
     .filter((doc) => doc.key("kind").eq(kind))
     .group("url", (stream, url) => ({ url, count: stream.count() }))
-    .run()) as Array<{ url: string; count: number }>;
+    .run();
   return new Map(rows.map((row) => [row.url, row.count]));
 }
 

@@ -22,8 +22,6 @@ const BASE = "https://shop.example.com/";
 
 after(() => setConfig({}));
 
-// --- A CSSOM small enough to write by hand ----------------------------------
-
 /** A style rule; custom properties come from its declarations. */
 function styleRule(selectorText, declarations = "", nested) {
   const names = [...declarations.matchAll(/(--[\w-]+):\s*([^;]*);/g)];
@@ -82,8 +80,6 @@ function capture(sheets, present, throws) {
   return { styles, finish: () => styles.finish(segments) };
 }
 
-// --- Selectors ---------------------------------------------------------------
-
 test("a state or a pseudo-element is tested on its element", () => {
   assert.equal(testedSelector(".a:hover::before"), ".a");
   assert.equal(testedSelector(".b:focus-visible > .c"), ".b>.c");
@@ -91,7 +87,6 @@ test("a state or a pseudo-element is tested on its element", () => {
   assert.equal(testedSelector("::selection"), "*");
   assert.equal(testedSelector(".a:not(:hover)"), ".a");
   assert.equal(testedSelector("details:open > summary"), "details>summary");
-  // Untouched when there is nothing to strip.
   assert.equal(testedSelector("li:nth-child(2n + 1)"), "li:nth-child(2n + 1)");
 });
 
@@ -120,8 +115,6 @@ test("a selector list splits on its top-level commas only", () => {
     "e",
   ]);
 });
-
-// --- Pruning -----------------------------------------------------------------
 
 test("only the rules matching the document are kept", () => {
   const { finish } = capture(
@@ -191,7 +184,6 @@ test("wrappers stay around the rules they still hold, layers even empty", () => 
   const [css] = finish();
   assert.match(css, /@layer theme, base, utilities;/);
   assert.match(css, /@layer utilities \{\n\}/);
-  // Every layout's media query, not only the visitor's.
   assert.match(css, /@media \(min-width: 40rem\) \{\n\.used/);
   assert.doesNotMatch(css, /display: grid/);
   assert.doesNotMatch(css, /@media print/);
@@ -265,8 +257,6 @@ test("a sheet the browser refuses to read is reported, not guessed", () => {
   assert.equal(styles.sheetSegments(refused, BASE, scope([])), null);
 });
 
-// --- Upload ------------------------------------------------------------------
-
 test("a serialized stylesheet opens no markup and is stored whole", () => {
   const css =
     '@media (width < 48rem){.a{display:none}}.b::after{content:"</style><b>"}' +
@@ -327,7 +317,6 @@ test("snapshotMaxBytes defaults to 1 MiB and stays within its bounds", () => {
 });
 
 test("a stored document stays within a MongoDB row", function () {
-  // Sanitizes and compresses a 16 MiB document.
   this.timeout(60_000);
   const page = {
     website: "w",
@@ -339,25 +328,18 @@ test("a stored document stays within a MongoDB row", function () {
   const small = storedDocument({ ...page, html: "<p>hello</p>" });
   assert.ok(small.html.length > 0);
   assert.deepEqual(small.document, page.document);
-  // Random text barely compresses: past the stored cap it becomes an
-  // oversize report instead of a row MongoDB would refuse.
   const noise = require("node:crypto")
     .randomBytes(MAX_STORED_SNAPSHOT_CHARS)
     .toString("base64");
   const huge = storedDocument({ ...page, html: `<p>${noise}</p>` });
   assert.equal(huge.html, "");
   assert.ok(huge.bytes > MAX_STORED_SNAPSHOT_CHARS);
-  // The bound leaves room under 16 MiB for the row's other fields.
   assert.ok(MAX_STORED_SNAPSHOT_CHARS < 16 * 1024 * 1024 - 64 * 1024);
 });
 
-// --- Inner scroll root --------------------------------------------------------
-
 test("a capture records the whole content of an inner scroll root", () => {
   const root = { scrollWidth: 1440, scrollHeight: 899 };
-  // The document alone: what it measures.
   assert.deepEqual(contentSize(root, null), { width: 1440, height: 899 });
-  // A panel showing 809 px of 2580: the 1771 it hides are added.
   assert.deepEqual(
     contentSize(root, { scrollHeight: 2580, clientHeight: 809 }),
     { width: 1440, height: 2670 },
@@ -426,11 +408,9 @@ describe("transient overlays at capture", () => {
   test("drops toasts and toast viewports", () => {
     const toast = el("div", { attrs: { role: "status" }, position: "fixed" });
     assert.equal(mount(toast).dropped(toast), true);
-    // Reka / Nuxt UI: a region holding the fixed list of toasts.
     const list = el("ol", { position: "fixed", children: [el("li")] });
     const region = el("div", { attrs: { role: "region" }, children: [list] });
     assert.equal(mount(region).dropped(region), true);
-    // Sonner: a polite section around the fixed list.
     const sonner = el("section", {
       attrs: { "aria-live": "polite" },
       children: [el("ol", { position: "fixed" })],
@@ -444,7 +424,6 @@ describe("transient overlays at capture", () => {
       attrs: { role: "status" },
       position: "absolute",
     });
-    // A menu of the page's own navigation, inside a fixed header of the app.
     const nav = el("ul", { attrs: { role: "menu" } });
     const header = el("header", {
       position: "fixed",
@@ -462,7 +441,6 @@ describe("transient overlays at capture", () => {
       mount(el("form", { children: [listbox] })).dropped(listbox),
       false,
     );
-    // A region that is just a page section.
     const section = el("section", {
       attrs: { role: "region" },
       children: [el("ul")],

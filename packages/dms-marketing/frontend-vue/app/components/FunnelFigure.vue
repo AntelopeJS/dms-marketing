@@ -14,6 +14,8 @@ import {
   formatSignedDelta,
 } from '../utils/format'
 import { fractionDigits } from '../constants'
+import FunnelDefinitionCard from '../build/components/funnel-figure/FunnelDefinitionCard.vue'
+import FunnelNextSteps from '../build/components/funnel-figure/FunnelNextSteps.vue'
 
 /**
  * The report of a plain funnel: KPIs (entered, completed, end to end, the
@@ -517,137 +519,25 @@ const coverageDate = computed(() =>
     </section>
 
     <div class="grid gap-4 lg:grid-cols-2">
-      <section v-if="!noTraffic" class="dms-card p-0">
-        <header class="border-b border-default px-4 py-3">
-          <DmsEyebrow :label="t('page.marketing.funnel.next.title')" />
-        </header>
-        <ul class="divide-y divide-default">
-          <li v-if="worst" class="flex items-start gap-3 px-4 py-3">
-            <DmsIconWell icon="i-ph-browser" tone="error" size="sm" />
-            <span class="min-w-0 flex-1">
-              <span class="block text-sm font-medium text-highlighted">
-                {{
-                  t('page.marketing.funnel.next.worst', {
-                    rate: formatPercentage(
-                      worst.rate / 100,
-                      locale,
-                      fractionDigits(1),
-                    ),
-                    step: stepLabel(worst.index),
-                  })
-                }}
-              </span>
-              <span class="block text-xs text-muted">
-                {{ t('page.marketing.funnel.next.worst_hint') }}
-              </span>
-            </span>
-            <DmsAutoLink
-              v-if="steps[worst.index]?.step.kind === 'url'"
-              :to="inContext(pagesLink(stepLabel(worst.index)))"
-              class="font-mono text-xs text-primary hover:underline"
-            >
-              {{ t('page.marketing.funnel.next.heatmap') }}
-            </DmsAutoLink>
-          </li>
-          <li v-if="firstDrop" class="flex items-start gap-3 px-4 py-3">
-            <DmsIconWell icon="i-ph-flask" tone="warning" size="sm" />
-            <span class="min-w-0 flex-1">
-              <span class="block text-sm font-medium text-highlighted">
-                {{
-                  t('page.marketing.funnel.next.first', {
-                    rate: formatPercentage(
-                      firstDrop.rate / 100,
-                      locale,
-                      fractionDigits(1),
-                    ),
-                    step: stepLabel(1),
-                  })
-                }}
-              </span>
-              <span class="block text-xs text-muted">
-                {{
-                  t('page.marketing.funnel.next.first_hint', {
-                    step: stepLabel(0),
-                  })
-                }}
-              </span>
-            </span>
-            <DmsAutoLink
-              :to="
-                inContext(funnelBuilderLink(definition._id, { split: true }))
-              "
-              class="font-mono text-xs text-primary hover:underline"
-            >
-              {{ t('page.marketing.funnel.next.split') }}
-            </DmsAutoLink>
-          </li>
-          <li v-if="!worst" class="px-4 py-6 text-center text-sm text-muted">
-            {{
-              t(
-                unseen.length > 0
-                  ? 'page.marketing.funnel.next.unseen'
-                  : entered === 0
-                    ? 'page.marketing.funnel.next.nobody'
-                    : 'page.marketing.funnel.next.none',
-              )
-            }}
-          </li>
-        </ul>
-      </section>
+      <FunnelNextSteps
+        :no-traffic="noTraffic"
+        :worst="worst"
+        :first-drop="firstDrop"
+        :steps="steps"
+        :unseen="unseen"
+        :entered="entered"
+        :definition="definition"
+        :step-label="stepLabel"
+        :in-context="inContext"
+      />
 
-      <section class="dms-card p-0" :class="noTraffic ? 'lg:col-span-2' : ''">
-        <header
-          class="flex items-center justify-between border-b border-default px-4 py-3"
-        >
-          <DmsEyebrow :label="t('page.marketing.funnel.definition.title')" />
-          <DmsAutoLink
-            :to="inContext(funnelBuilderLink(definition._id))"
-            class="text-xs font-medium text-primary hover:underline"
-          >
-            {{ t('page.marketing.common.edit') }}
-          </DmsAutoLink>
-        </header>
-        <dl
-          class="grid grid-cols-[6rem_minmax(0,1fr)] gap-x-4 gap-y-3 px-4 py-3 text-sm sm:grid-cols-[8rem_minmax(0,1fr)]"
-        >
-          <dt class="text-muted">
-            {{ t('page.marketing.funnel.definition.website') }}
-          </dt>
-          <dd class="text-highlighted">{{ websiteName || '—' }}</dd>
-          <dt class="text-muted">
-            {{ t('page.marketing.funnel.definition.steps') }}
-          </dt>
-          <dd class="flex flex-wrap items-center gap-1">
-            <template v-for="(step, index) in definition.steps" :key="index">
-              <UIcon
-                v-if="index > 0"
-                name="i-ph-caret-right"
-                class="size-3 text-dimmed"
-              />
-              <span
-                class="max-w-full truncate rounded border px-1.5 py-0.5 font-mono text-[11px]"
-                :class="
-                  step.kind === 'custom'
-                    ? 'border-primary/40 text-primary'
-                    : 'border-default text-toned'
-                "
-              >
-                {{ step.value }}
-              </span>
-            </template>
-          </dd>
-          <dt class="text-muted">
-            {{ t('page.marketing.funnel.definition.window') }}
-          </dt>
-          <dd class="text-highlighted">
-            {{
-              t('page.marketing.funnel.definition.window_value', {
-                hours: windowHours,
-              })
-            }}
-          </dd>
-        </dl>
-      </section>
+      <FunnelDefinitionCard
+        :no-traffic="noTraffic"
+        :definition="definition"
+        :website-name="websiteName"
+        :window-hours="windowHours"
+        :in-context="inContext"
+      />
     </div>
   </div>
 </template>

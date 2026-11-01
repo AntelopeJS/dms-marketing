@@ -17,7 +17,6 @@ function utcMidnight(iso) {
 }
 
 test("local day bounds east of UTC map on the same calendar days", () => {
-  // Sep 8 00:00 → Oct 7 23:59:59.999 in UTC+2
   const window = resolveQueryWindow({
     from: "2026-09-07T22:00:00.000Z",
     to: "2026-10-07T21:59:59.999Z",
@@ -28,7 +27,6 @@ test("local day bounds east of UTC map on the same calendar days", () => {
 });
 
 test("local day bounds west of UTC map on the same calendar days", () => {
-  // Sep 8 00:00 → Sep 14 23:59:59.999 in UTC-5
   const window = resolveQueryWindow({
     from: "2026-09-08T05:00:00.000Z",
     to: "2026-09-15T04:59:59.999Z",
@@ -94,7 +92,6 @@ test("a previous-year comparison reads the same days a year before", () => {
     previousWindow(resolveQueryWindow(query)).lastDay,
   );
   assert.equal(comparisonKindOf(query), "previous-year");
-  // "No comparison": the scope sends no comparison bounds.
   assert.equal(
     resolveCompareWindow({
       from: query.from,
@@ -129,7 +126,6 @@ const start = (day) => `${day}T00:00:00.000Z`;
 const end = (day) => `${day}T23:59:59.999Z`;
 
 test("a window ending on a UTC day not begun yet ends on the current one", () => {
-  // Past local midnight east of UTC, "today" names tomorrow's UTC date.
   const window = resolveQueryWindow({
     from: start(utcDay(-6)),
     to: end(utcDay(1)),

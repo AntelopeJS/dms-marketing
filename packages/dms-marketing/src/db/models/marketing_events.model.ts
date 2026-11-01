@@ -13,6 +13,7 @@ import {
 import {
   MarketingEvent,
   marketingEventsTableName,
+  type NewMarketingEvent,
 } from "../tables/marketing_events.table";
 
 /** Input type of Table.insert; DeepPartial itself is not exported. */
@@ -82,14 +83,25 @@ export class MarketingEventsModel extends BasicDataModel(
   MarketingEvent,
   marketingEventsTableName,
 ) {
+  /**
+   * Events of the websites inside the window, of the asked URL and kinds when
+   * given, sorted by timestamp and cut at `limit`, each with its `timestamp`
+   * and the asked fields.
+   *
+   * The websites are read through `getAll`, AQL's indexed lookup: the same
+   * disjunction through `filter()` compiles to an expression no index can
+   * serve. The projection comes after the sort, never before: sorting is not
+   * stable, and rows sharing a timestamp (one collect batch stamps its whole
+   * event list with the same instant) come back in whatever order the plan
+   * produces. Narrowing the documents first changes that plan, and the funnel
+   * walk reads the sequence, so its counts would move with it.
+   */
   async queryRange<F extends keyof MarketingEvent>(
     query: EventRangeQuery<F>,
   ): Promise<Pick<MarketingEvent, F | "timestamp">[]> {
     if (query.websiteIds.length === 0) {
       return [];
     }
-    // getAll is AQL's indexed lookup; the same disjunction through filter()
-    // compiles to an expression no index can serve.
     let q = this.table
       .getAll(query.websiteIds, "websiteId")
       .filter((doc) => doc.key("timestamp").ge(query.since))
@@ -104,11 +116,6 @@ export class MarketingEventsModel extends BasicDataModel(
         ValueProxy.constant(kinds).includes(doc.key("kind")),
       );
     }
-    // Project AFTER the sort, never before. Sorting is not stable and rows
-    // sharing a timestamp — routine here, one collect batch stamps its whole
-    // event list with the same instant — come back in whatever order the plan
-    // produces. Narrowing the documents first changes that plan, and the
-    // funnel walk reads the sequence, so the counts would move with it.
     return q
       .orderBy("timestamp", "asc")
       .slice(0, query.limit)
@@ -188,6 +195,10 @@ export class MarketingEventsModel extends BasicDataModel(
    * Events of one kind per hour of the window, counted where the rows live:
    * one row per hour that saw any comes back, whatever the traffic. A
    * session-wise count first folds each session to its earliest hour.
+   *
+   * The hour is computed from the epoch brought back to whole milliseconds
+   * before dividing: epochs in seconds carry float noise that would floor an
+   * event on the hour into the previous one.
    */
   async countHourly(query: HourlyCountQuery): Promise<HourlyCountBucket[]> {
     if (query.websiteIds.length === 0) {
@@ -201,9 +212,6 @@ export class MarketingEventsModel extends BasicDataModel(
       .filter((doc) => doc.key("kind").eq(query.kind))
       .map((doc) => ({
         sessionId: doc.key("sessionId"),
-        // Back to whole milliseconds before dividing: epochs in seconds
-        // carry float noise that would floor an event on the hour into the
-        // previous one.
         hour: doc
           .key("timestamp")
           .epoch()
@@ -225,15 +233,11 @@ export class MarketingEventsModel extends BasicDataModel(
    * Documents are built server-side from an already zod-validated payload,
    * so skipping the per-document wrapper validation is safe.
    */
-  async insertMany(events: MarketingEvent[]): Promise<number> {
+  async insertMany(events: NewMarketingEvent[]): Promise<number> {
     if (events.length === 0) {
       return 0;
     }
-    // DeepPartial cannot traverse `data: Record<string, unknown>`; these are
-    // full rows, not partials, so widening through unknown is sound.
-    // DeepPartial cannot traverse the free-form `data` record; see above.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions
-    const rows = events as unknown as EventInsertInput;
+    const rows = events as EventInsertInput;
     const ids = await this.table.insert(rows).run();
     return ids.length;
   }

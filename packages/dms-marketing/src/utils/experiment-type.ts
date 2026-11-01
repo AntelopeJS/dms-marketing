@@ -11,6 +11,7 @@ import {
   MAX_EXPERIMENT_VARIATIONS,
   MIN_EXPERIMENT_VARIATIONS,
 } from "@/types/constants";
+import { isString } from "@/utils/guards";
 
 /** Slug shape shared by experiment and variation keys — what page code types
  * into `dmsMarketing.variation(…)`, so no spaces and no case to get wrong. */
@@ -34,8 +35,6 @@ const variationsSchema = z
     (variations) =>
       new Set(variations.map((v) => v.key)).size === variations.length,
   )
-  // All-zero weights would make normalization fall back to uniform
-  // silently; refuse them instead so the form says why.
   .refine((variations) => variations.some((v) => v.weight > 0));
 
 /** `status` is the transition the caller asks for; absent keeps the row's. */
@@ -47,9 +46,10 @@ const experimentSchema = z.object({
 
 export type ExperimentInput = z.output<typeof experimentSchema>;
 
-function isBlankKey(value: unknown): boolean {
-  return typeof value !== "string" || value.trim() === "";
-}
+/** The two fields that tell a blank experiment apart; anything else reads as blank. */
+const blankProbe = z
+  .object({ key: z.unknown(), variations: z.unknown() })
+  .catch({});
 
 /**
  * Normalizes a body-provided experiment (object, JSON string, or nothing)
@@ -58,27 +58,26 @@ function isBlankKey(value: unknown): boolean {
  * input; the data-api Validator only checks validity and keeps the RAW body
  * value, so the write wrappers must run this before the write.
  */
-export function parseExperimentInput(raw: unknown): ExperimentInput | null {
-  const value = typeof raw === "string" && raw !== "" ? JSON.parse(raw) : raw;
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-  const candidate = value as Partial<ExperimentInput>;
-  const noArms =
-    !Array.isArray(candidate.variations) || candidate.variations.length === 0;
-  if (isBlankKey(candidate.key) && noArms) {
-    return null;
-  }
-  return experimentSchema.parse(value);
-}
+export const experimentInputSchema = z
+  .unknown()
+  .transform((raw): ExperimentInput | null => {
+    const value: unknown = isString(raw) && raw !== "" ? JSON.parse(raw) : raw;
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+    const { key, variations } = blankProbe.parse(value);
+    const noArms = !Array.isArray(variations) || variations.length === 0;
+    const blankKey = !isString(key) || key.trim() === "";
+    if (blankKey && noArms) {
+      return null;
+    }
+    return experimentSchema.parse(value);
+  });
 
 /** Which part of the input a parse failure names, for the error message. */
 export function experimentIssueField(
-  error: unknown,
+  error: z.ZodError,
 ): "key" | "variations" | "status" | undefined {
-  if (!(error instanceof z.ZodError)) {
-    return undefined;
-  }
   const field = error.issues[0]?.path[0];
   return field === "key" || field === "variations" || field === "status"
     ? field
@@ -87,7 +86,7 @@ export function experimentIssueField(
 
 const experimentValueSchema = z.unknown().refine((value) => {
   try {
-    parseExperimentInput(value);
+    experimentInputSchema.parse(value);
     return true;
   } catch {
     return false;
@@ -100,7 +99,7 @@ const experimentValueSchema = z.unknown().refine((value) => {
  */
 @RegisterDataType("marketing_experiment")
 export class ExperimentType extends DataType {
-  constructor(public readonly options: Record<string, unknown> = {}) {
+  constructor(options: DataType["options"] = {}) {
     super([], undefined, options);
   }
 

@@ -1,9 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  anchorDrift,
-  DRIFT_MIN_CLICKS,
-  DRIFT_MIN_SHARE,
-} from '../app/utils/anchor-drift'
+import { anchorDrift } from '../app/utils/anchor-drift'
 
 const anchor = (selector: string, nth = 0) => ({ selector, nth })
 const gone = new Set(['#old-cta\u00000', '.card\u00002'])
@@ -33,8 +29,6 @@ describe('anchor drift', () => {
   })
 
   it('warns from 10 % and 5 clicks, not below either', () => {
-    expect(DRIFT_MIN_SHARE).toBe(0.1)
-    expect(DRIFT_MIN_CLICKS).toBe(5)
     const at = (missing: number, kept: number) =>
       anchorDrift(
         [

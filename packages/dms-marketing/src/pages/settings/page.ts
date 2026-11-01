@@ -10,8 +10,10 @@ import { retentionForm, samplingForm } from "./form";
 
 const SETTINGS_PREFIX = "$page.marketing.settings.";
 
-// The meter carries its own label: it names the bar for a screen reader too,
-// which the label of the FieldRow does not. The row only gives it its padding.
+/**
+ * The meter carries its own label: it names the bar for a screen reader too,
+ * which the label of the FieldRow does not. The row only gives it its padding.
+ */
 function retentionMeter(item: string, tone: "primary" | "secondary") {
   return FieldRow({ layout: "stack" })
     .child(
