@@ -252,8 +252,8 @@ export interface MarketingImportResult {
    *   failed or its process died, is resumed by a later call, which answers
    *   `"imported"` with the counts of the whole import.
    * - `"skipped"`: it was applied by an earlier call, whose counts these are.
-   * - `"failed"`: an import started before imports could resume stopped
-   *   part-way; it is never replayed and its counts are not authoritative.
+   * - `"failed"`: an import without a rollup ledger stopped part-way; it is
+   *   never replayed and its counts are not authoritative.
    */
   status: MarketingImportStatus;
   /** Visits the replay opened, which can differ from the sessions sent. */

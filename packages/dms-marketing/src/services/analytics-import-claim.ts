@@ -6,7 +6,7 @@ import type { MarketingImport } from "@/db/tables/marketing_imports.table";
 
 const CLAIM_RENEW_MS = 5000;
 const CLAIM_POLL_MS = 1000;
-/** How many reads must find the token unchanged before a takeover: 30 s. */
+/** How many reads must find the token unchanged before a takeover. */
 const CLAIM_STALE_POLLS = 30;
 
 /** The website claim, renewed in the background for as long as a replay runs. */

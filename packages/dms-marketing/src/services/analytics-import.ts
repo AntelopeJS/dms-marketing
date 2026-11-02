@@ -205,7 +205,7 @@ function claimed(row: MarketingImport): MarketingImportResult {
   };
 }
 
-/** A stopped attempt of this import can be resumed from its ledger. */
+/** An unfinished import that writes through the rollup ledger. */
 function isResumable(row: MarketingImport): boolean {
   return row.status !== "done" && row.ledgered === true;
 }

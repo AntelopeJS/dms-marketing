@@ -13,9 +13,9 @@ export type ImportStatus = "running" | "done" | "failed";
 /**
  * One analytics import (`ImportAnalytics`) applied to a website, keyed by
  * website and import id: the row is claimed before the first event is
- * written, so an import id is replayed once even across instances. An import
- * that stopped part-way is resumed by the next call with its id, from the days
- * the rollup ledger does not name (`WebsiteStatistics.appliedImports`).
+ * written, and a completed import id is never replayed, even across instances.
+ * An import that stopped part-way is resumed by the next call with its id, from
+ * the days the rollup ledger does not name (`WebsiteStatistics.appliedImports`).
  */
 @RegisterTable(marketingImportsTableName, TENANT_SCHEMA_NAME)
 export class MarketingImport extends Table {
