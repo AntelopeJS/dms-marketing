@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { BasicDataModel } from "@antelopejs/interface-database-decorators";
 import {
   MarketingImport,
@@ -34,6 +35,29 @@ export class MarketingImportsModel extends BasicDataModel(
       }
     }
     return through;
+  }
+
+  /**
+   * Replaces the token of a claim still holding `token`: how its holder renews
+   * it and how another instance takes over a claim whose holder stopped.
+   *
+   * @returns The new token, or undefined when the claim moved on
+   */
+  async swapClaim(id: string, token: string): Promise<string | undefined> {
+    const next = randomUUID();
+    const outcome = await this.table
+      .atomicMutation(id, {
+        type: "update",
+        revisionField: "claimToken",
+        expectedRevision: token,
+        nextRevision: next,
+        patch: {},
+      })
+      .run();
+    if (outcome === "applied") return next;
+    if (outcome === "not-applied") return undefined;
+    const stored = await this.get(id);
+    return stored?.claimToken === next ? next : undefined;
   }
 
   /** Never release an acquisition owned by another instance. */

@@ -1,5 +1,5 @@
 import { computed, type ComputedRef, type Ref } from 'vue'
-import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
+import { useDmsRoute, useDmsRouter } from '#dms/frontend-module'
 import type {
   ContextWebsite,
   MarketingContextPayload,
@@ -35,9 +35,8 @@ export interface ContextWebsiteState {
  * the context gate both call it; they share the context read.
  */
 export function useContextWebsite(): ContextWebsiteState {
-  const { t } = useI18n()
   const api = useMarketingApi()
-  const toast = useToast()
+  const { presentError } = useApiErrorPresenter()
   const route = useDmsRoute()
   const router = useDmsRouter()
 
@@ -79,10 +78,9 @@ export function useContextWebsite(): ContextWebsiteState {
       // Back takes it back.
       context.value = await api.selectContextWebsite(id)
       await router.push({ query: { ...route.query, website: id } })
-    } catch {
-      toast.add({
-        color: 'error',
-        title: t('page.marketing.context.switch_error'),
+    } catch (error) {
+      presentError(error, {
+        fallbackKey: 'page.marketing.context.switch_error',
       })
       await reload()
     } finally {

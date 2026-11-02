@@ -45,6 +45,7 @@ const router = useDmsRouter()
 const config = useDmsRuntimeConfig()
 const api = useMarketingApi()
 const toast = useToast()
+const { presentError } = useApiErrorPresenter()
 const { confirm } = useConfirm()
 // A field-tied error from the creation shows under its field, the rest as a toast.
 const fieldErrors = useFieldErrors({
@@ -185,19 +186,12 @@ async function allow(hostname: string): Promise<void> {
     await refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)
-    if (conflict) {
-      toast.add({
-        color: 'error',
-        title: t('page.marketing.install.allow_error'),
-        description: t('page.marketing.errors.duplicate_host_named', {
-          ...conflict,
-        }),
-      })
-    } else {
-      fieldErrors.toastError(error, {
-        toastTitle: 'page.marketing.install.allow_error',
-      })
-    }
+    presentError(error, {
+      fallbackKey: conflict
+        ? 'page.marketing.errors.duplicate_host_named'
+        : 'page.marketing.install.allow_error',
+      params: conflict ? { host: conflict.host, site: conflict.site } : undefined,
+    })
   } finally {
     allowing.value = null
   }

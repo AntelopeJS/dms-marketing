@@ -1,282 +1,32 @@
 const assert = require("node:assert/strict");
 const { mock } = require("node:test");
 const test = it;
-const models = require("@antelopejs/interface-database-decorators/model");
-const { setConfig } = require("../dist/config");
-const {
-  FunnelsModel,
-  MarketingEventsModel,
-  MarketingImportsModel,
-  MarketingSessionsModel,
-  WebsiteStatisticsModel,
-  WebsitesModel,
-} = require("../dist/db");
 const { importAnalytics } = require("../dist/services/analytics-import");
 const { processCollectBatch } = require("../dist/services/collect");
-
 const MINUTE = 60_000;
-const DAY = 24 * 60 * MINUTE;
-const CHROME =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
-const IPHONE =
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
-const ORIGIN = "https://shop.example.com";
-/** Three days ago at midnight UTC: well inside every retention. */
-const DAY_ONE = Math.floor((Date.now() - 3 * DAY) / DAY) * DAY;
-let runCount = 0;
-
-/** @typedef {import("../dist/db").Website} Website */
-/** @typedef {import("../dist/db").FunnelExperiment} FunnelExperiment */
-/** @typedef {Pick<Website, "_id" | "tenantId" | "name" | "domain" | "trackingEnabled">} TrackedSite The fields the fake websites carry. */
-/** @typedef {Pick<import("../dist/db").Funnel, "websiteId"> & { experiment: Pick<FunnelExperiment, "key" | "status"> }} ExperimentFunnel The fields the fake funnels carry. */
-/** @typedef {import("../dist/db").NewMarketingEvent} NewMarketingEvent */
-/** @typedef {import("../dist/db").MarketingSession} MarketingSession */
-/** @typedef {import("../dist/db").WebsiteStatistics} WebsiteStatistics */
-/** @typedef {import("../dist/db").MarketingImport} MarketingImport */
-/** @typedef {Pick<MarketingImport, keyof MarketingImport>} ImportRow A stored claim: plain data, not a model instance. */
-/** @typedef {InstanceType<typeof import("../dist/db").MarketingSessionsModel>} SessionsModel */
-/** @typedef {InstanceType<typeof import("../dist/db").MarketingEventsModel>} EventsModel */
-/** @typedef {InstanceType<typeof import("../dist/db").WebsiteStatisticsModel>} StatisticsModel */
-
-/**
- * @typedef {object} Store
- * @property {Map<string, TrackedSite>} websites
- * @property {ExperimentFunnel[]} funnels
- * @property {NewMarketingEvent[]} events
- * @property {MarketingSession[]} sessions
- * @property {Map<string, WebsiteStatistics>} stats
- * @property {Map<string, ImportRow>} imports
- */
-
-/** @type {Store} */
-let store;
-
-/** @type {Array<Exclude<keyof Parameters<StatisticsModel["addDelta"]>[1], "tops" | "drops">>} */
-const COUNTER_FIELDS = [
-  "pageviews",
-  "sessions",
-  "newVisitors",
-  "customEvents",
-  "bouncedSessions",
-  "sessionDurationMs",
-];
-
-/**
- * In-memory stand-ins for every model collect and the import touch. The
- * statistics fake applies deltas as the database's increments do, so two
- * runs can be compared row for row.
- */
-function fakeModels() {
-  store = {
-    websites: new Map(),
-    funnels: [],
-    events: [],
-    sessions: [],
-    stats: new Map(),
-    imports: new Map(),
-  };
-  const sessions = {
-    /**
-     * @param {string} websiteId
-     * @param {string} visitorId
-     */
-    async findLatestForVisitor(websiteId, visitorId) {
-      const row = store.sessions
-        .filter((s) => s.websiteId === websiteId && s.visitorId === visitorId)
-        .sort((a, b) => b.startedAt - a.startedAt)[0];
-      return row && structuredClone(row);
-    },
-    /** @param {MarketingSession} session */
-    async insert(session) {
-      store.sessions.push(structuredClone(session));
-    },
-    /**
-     * @param {string} id
-     * @param {Parameters<SessionsModel["recordActivity"]>[1]} delta
-     */
-    async recordActivity(id, delta) {
-      const session = store.sessions.find((s) => s._id === id);
-      session.pageviewsCount += delta.pageviews;
-      session.eventsCount += delta.events;
-      if (delta.lastSeenAt !== undefined) session.lastSeenAt = delta.lastSeenAt;
-      if (delta.exitUrl !== undefined) session.exitUrl = delta.exitUrl;
-    },
-  };
-  const events = {
-    /** @param {NewMarketingEvent[]} docs */
-    async insertMany(docs) {
-      store.events.push(...docs);
-      return docs.length;
-    },
-  };
-  const statistics = {
-    /** @param {string} id */
-    async get(id) {
-      const row = store.stats.get(id);
-      return row && structuredClone(row);
-    },
-    /** @param {WebsiteStatistics} row */
-    async insert(row) {
-      store.stats.set(row._id, structuredClone(row));
-    },
-    /**
-     * @param {string} id
-     * @param {Parameters<StatisticsModel["addDelta"]>[1]} delta
-     * @param {Parameters<StatisticsModel["addDelta"]>[2]} tops
-     */
-    async addDelta(id, delta, tops) {
-      const row = store.stats.get(id);
-      for (const field of COUNTER_FIELDS) {
-        row[field] = (row[field] ?? 0) + delta[field];
-      }
-      row.tops = structuredClone(tops);
-    },
-  };
-  const imports = {
-    /** @param {string} id */
-    async get(id) {
-      const row = store.imports.get(id);
-      return row && { ...row };
-    },
-    /** @param {ImportRow} row */
-    async insert(row) {
-      if (store.imports.has(row._id)) throw new Error("duplicate key");
-      store.imports.set(row._id, { ...row });
-    },
-    /**
-     * @param {string} id
-     * @param {Partial<ImportRow>} patch
-     */
-    async update(id, patch) {
-      store.imports.set(id, { ...store.imports.get(id), ...patch });
-    },
-    /** @param {string} websiteId */
-    async listByWebsite(websiteId) {
-      return [...store.imports.values()].filter(
-        (row) => row.websiteId === websiteId,
-      );
-    },
-    /**
-     * @param {string} id
-     * @param {string} token
-     */
-    async releaseClaim(id, token) {
-      if (store.imports.get(id)?.claimToken === token) {
-        store.imports.delete(id);
-      }
-    },
-  };
-  const websites = {
-    /** @param {string} id */
-    async get(id) {
-      return store.websites.get(id);
-    },
-  };
-  const funnels = {
-    /** @param {string} websiteId */
-    async listByWebsite(websiteId) {
-      return store.funnels.filter((funnel) => funnel.websiteId === websiteId);
-    },
-  };
-  /** @type {Map<unknown, object>} */
-  const byModel = new Map([
-    [MarketingSessionsModel, sessions],
-    [MarketingEventsModel, events],
-    [WebsiteStatisticsModel, statistics],
-    [MarketingImportsModel, imports],
-    [WebsitesModel, websites],
-    [FunnelsModel, funnels],
-  ]);
-  mock.method(models, "GetModel", (Model) => byModel.get(Model));
-}
-
-/**
- * A website id per test: the session cache outlives each case.
- * @param {string} name
- * @returns {TrackedSite}
- */
-function website(name) {
-  runCount += 1;
-  const site = {
-    _id: `${name}-${runCount}`,
-    tenantId: "default",
-    name,
-    domain: "shop.example.com",
-    trackingEnabled: true,
-  };
-  store.websites.set(site._id, site);
-  return site;
-}
-
-function at(day, hours, minutes, seconds = 0) {
-  return DAY_ONE + day * DAY + ((hours * 60 + minutes) * 60 + seconds) * 1000;
-}
-
-/**
- * Two visitors over two days: a campaign landing mid-visit, an idle gap, a
- * custom event, a visit across midnight and a scroll depth.
- */
-const HISTORY = [
-  {
-    visitor: "a",
-    userAgent: CHROME,
-    events: [
-      {
-        kind: "pageview",
-        at: at(0, 10, 0),
-        url: `${ORIGIN}/`,
-        referrer: "https://www.google.com/",
-      },
-      { kind: "custom", at: at(0, 10, 0, 3), url: `${ORIGIN}/`, name: "cta" },
-      { kind: "pageview", at: at(0, 10, 2), url: `${ORIGIN}/pricing` },
-      {
-        kind: "pageview",
-        at: at(0, 10, 12),
-        url: `${ORIGIN}/pricing?utm_source=news&utm_medium=email&utm_campaign=spring`,
-      },
-      {
-        kind: "custom",
-        at: at(0, 10, 13),
-        url: `${ORIGIN}/pricing`,
-        name: "quote_submitted",
-      },
-      { kind: "pageview", at: at(0, 11, 30), url: `${ORIGIN}/` },
-      { kind: "pageview", at: at(1, 9, 0), url: `${ORIGIN}/blog` },
-    ],
-  },
-  {
-    visitor: "b",
-    userAgent: IPHONE,
-    events: [
-      { kind: "pageview", at: at(0, 23, 59, 58), url: `${ORIGIN}/` },
-      { kind: "pageview", at: at(1, 0, 0, 30), url: `${ORIGIN}/pricing` },
-      {
-        kind: "scroll",
-        at: at(1, 0, 1),
-        url: `${ORIGIN}/pricing`,
-        data: { depth: 80 },
-      },
-    ],
-  },
-];
-
-/** Lets the fire-and-forget rollups of the live path land. */
-async function drain() {
-  for (let tick = 0; tick < 20; tick += 1) {
-    await new Promise((resolve) => setImmediate(resolve));
-  }
-}
+const {
+  DAY,
+  HISTORY,
+  ORIGIN,
+  at,
+  dayRows,
+  drain,
+  runCount,
+  store,
+  useFakeModels,
+  website,
+} = require("./helpers/analytics-import-fakes");
 
 /**
  * The tracker's way: one beacon per event, sent when it happened.
- * @param {TrackedSite} site
+ * @param {import("./helpers/analytics-import-fakes").TrackedSite} site
  */
 async function collectLive(site) {
   const beacons = HISTORY.flatMap((session, index) =>
     session.events.map((event) => ({
       event,
       meta: {
-        ip: `198.51.100.${runCount * 10 + index}`,
+        ip: `198.51.100.${runCount() * 10 + index}`,
         userAgent: session.userAgent,
       },
     })),
@@ -288,31 +38,6 @@ async function collectLive(site) {
     await drain();
   }
   mock.timers.reset();
-}
-
-/**
- * The rows of a site, without what names the site.
- * @param {string} siteId
- */
-function dayRows(siteId) {
-  return [...store.stats.values()]
-    .filter((row) => row.websiteId === siteId)
-    .sort((x, y) => x.day - y.day)
-    .map(({ _id, websiteId, ...row }) => row);
-}
-
-/** Fresh fakes and a known secret per case. */
-function useFakeModels() {
-  beforeEach(() => {
-    setConfig({ visitorHashSecret: "import-test" });
-    fakeModels();
-  });
-
-  afterEach(() => {
-    mock.restoreAll();
-    mock.timers.reset();
-    setConfig();
-  });
 }
 
 describe("an analytics import", () => {
@@ -328,7 +53,7 @@ describe("an analytics import", () => {
       websiteId: imported._id,
       sessions: HISTORY.map((session) => ({
         ...session,
-        visitor: `${session.visitor}-${runCount}`,
+        visitor: `${session.visitor}-${runCount()}`,
       })),
     });
     assert.deepEqual(result, {
@@ -343,7 +68,9 @@ describe("an analytics import", () => {
     assert.deepEqual(rows, dayRows(live._id));
     assert.equal(rows[0].sessions, 4);
     assert.equal(rows[0].tops.topCampaigns !== undefined, true);
-    const ownEvents = store.events.filter((e) => e.websiteId === imported._id);
+    const ownEvents = store().events.filter(
+      (e) => e.websiteId === imported._id,
+    );
     assert.deepEqual(
       ownEvents.map((e) => e.timestamp.getTime()).sort((x, y) => x - y),
       HISTORY.flatMap((s) => s.events.map((e) => e.at)).sort((x, y) => x - y),
@@ -374,9 +101,9 @@ describe("an analytics import's chronology", () => {
     });
     await importAnalytics(batch("later", 12));
     const before = structuredClone({
-      events: store.events,
-      sessions: store.sessions,
-      stats: [...store.stats],
+      events: store().events,
+      sessions: store().sessions,
+      stats: [...store().stats],
     });
     await assert.rejects(
       importAnalytics(batch("earlier", 10)),
@@ -388,9 +115,9 @@ describe("an analytics import's chronology", () => {
     );
     assert.deepEqual(
       {
-        events: store.events,
-        sessions: store.sessions,
-        stats: [...store.stats],
+        events: store().events,
+        sessions: store().sessions,
+        stats: [...store().stats],
       },
       before,
     );
@@ -416,112 +143,21 @@ describe("an analytics import's chronology", () => {
       ],
     });
     await importAnalytics(batch("first", 0));
-    Object.assign(store.sessions[0], {
+    Object.assign(store().sessions[0], {
       lastSeenAt: new Date(at(0, 10, 20)),
       pageviewsCount: 2,
       eventsCount: 2,
     });
-    const stats = [...store.stats.values()][0];
+    const stats = [...store().stats.values()][0];
     Object.assign(stats, {
       pageviews: 2,
       bouncedSessions: 0,
       sessionDurationMs: 20 * MINUTE,
     });
     assert.equal((await importAnalytics(batch("next", 25))).sessions, 0);
-    assert.equal(store.sessions[0].pageviewsCount, 3);
+    assert.equal(store().sessions[0].pageviewsCount, 3);
     assert.equal(dayRows(site._id)[0].sessionDurationMs, 25 * MINUTE);
     assert.equal(dayRows(site._id)[0].bouncedSessions, 0);
-  });
-});
-
-describe("an analytics import's claims", () => {
-  useFakeModels();
-
-  test("a failed replay blocks later imports", async () => {
-    const site = website("failed");
-    /** @param {string} importId */
-    const batch = (importId) => ({
-      tenantId: "default",
-      importId,
-      websiteId: site._id,
-      sessions: HISTORY,
-    });
-    const events = models.GetModel(MarketingEventsModel);
-    mock.method(events, "insertMany", async () => {
-      throw new Error("storage failed");
-    });
-    await assert.rejects(importAnalytics(batch("first")), /failed part-way/);
-    assert.equal((await importAnalytics(batch("first"))).status, "failed");
-    await assert.rejects(importAnalytics(batch("next")), /another import/);
-    assert.equal(store.events.length, 0);
-  });
-
-  test("legacy claims without a chronology boundary require reconciliation", async () => {
-    const site = website("legacy");
-    store.imports.set(`${site._id}:old`, {
-      _id: `${site._id}:old`,
-      websiteId: site._id,
-      importId: "old",
-      status: "done",
-      events: 1,
-    });
-    await assert.rejects(
-      importAnalytics({
-        tenantId: "default",
-        importId: "new",
-        websiteId: site._id,
-        sessions: HISTORY,
-      }),
-      /reconciliation/,
-    );
-    assert.equal(store.events.length, 0);
-    assert.equal(store.imports.has(`${site._id}:new`), false);
-  });
-
-  test("different import ids cannot replay the same website concurrently", async () => {
-    const site = website("exclusive");
-    /** @param {string} importId */
-    const batch = (importId) => ({
-      tenantId: "default",
-      importId,
-      websiteId: site._id,
-      sessions: HISTORY,
-    });
-    const results = await Promise.allSettled([
-      importAnalytics(batch("a")),
-      importAnalytics(batch("b")),
-    ]);
-    assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
-    const rejected = results.find((r) => r.status === "rejected");
-    assert.ok(rejected?.reason instanceof Error);
-    assert.match(rejected.reason.message, /another import/);
-    assert.equal(store.events.length, 10);
-  });
-
-  test("an import id is applied once; a racing call sees it in progress", async () => {
-    const site = website("once");
-    const batch = {
-      tenantId: "default",
-      importId: "seed",
-      websiteId: site._id,
-      sessions: [{ ...HISTORY[1], visitor: `b-${runCount}` }],
-    };
-    const [first, second] = await Promise.all([
-      importAnalytics(batch),
-      importAnalytics(batch),
-    ]);
-    const statuses = [first, second].map((r) => `${r.status}:${r.events}`);
-    assert.deepEqual(
-      statuses.sort((x, y) => x.localeCompare(y)),
-      ["imported:3", "in_progress:0"],
-    );
-    const again = await importAnalytics({ ...batch, sessions: HISTORY });
-    assert.deepEqual([again.status, again.events], ["skipped", 3]);
-    assert.equal(
-      store.events.filter((e) => e.websiteId === site._id).length,
-      3,
-    );
-    assert.equal(store.imports.get(`${site._id}:seed`).status, "done");
   });
 });
 
@@ -530,7 +166,7 @@ describe("an analytics import's guards", () => {
 
   test("what live collection would refuse, or nothing could read, is dropped", async () => {
     const site = website("drops");
-    store.funnels.push(
+    store().funnels.push(
       {
         websiteId: site._id,
         experiment: { key: "live-split", status: "stopped" },
@@ -554,7 +190,7 @@ describe("an analytics import's guards", () => {
       websiteId: site._id,
       sessions: [
         {
-          visitor: `c-${runCount}`,
+          visitor: `c-${runCount()}`,
           country: "be",
           events: [
             { kind: "pageview", at: at(0, 9, 0), url: `${ORIGIN}/` },
@@ -571,12 +207,12 @@ describe("an analytics import's guards", () => {
           ],
         },
         {
-          visitor: `bot-${runCount}`,
+          visitor: `bot-${runCount()}`,
           userAgent: "Googlebot/2.1 (+http://www.google.com/bot.html)",
           events: [{ kind: "pageview", at: at(0, 9, 0), url: `${ORIGIN}/` }],
         },
         {
-          visitor: `orphan-${runCount}`,
+          visitor: `orphan-${runCount()}`,
           events: [{ kind: "custom", name: "buy", at: at(0, 10, 0), url: "/" }],
         },
       ],
@@ -585,7 +221,7 @@ describe("an analytics import's guards", () => {
       { events: result.events, dropped: result.dropped },
       { events: 2, dropped: 7 },
     );
-    const session = store.sessions.find((s) => s.websiteId === site._id);
+    const session = store().sessions.find((s) => s.websiteId === site._id);
     assert.equal(session.country, "BE");
   });
 
