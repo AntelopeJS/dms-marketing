@@ -66,6 +66,10 @@ export class MarketingEvent extends Table {
   @Field("string")
   declare name?: string;
 
+  /** The import that wrote this event; absent on live traffic. */
+  @Field("string")
+  declare importId?: string;
+
   /** Kind-specific payload: ClickEventData | ScrollEventData | ExposureEventData | custom. */
   @Field("any")
   declare data?: Record<string, unknown>;
