@@ -89,9 +89,12 @@ describe("resuming an analytics import", () => {
     const failing = interceptWrites(() => {
       throw new Error("storage failed");
     });
-    await assert.rejects(importAnalytics(batchFor(site)), /failed part-way/);
     await assert.rejects(
-      importAnalytics(batchFor(site, "next")),
+      () => importAnalytics(batchFor(site)),
+      /failed part-way/,
+    );
+    await assert.rejects(
+      () => importAnalytics(batchFor(site, "next")),
       /did not finish/,
     );
     assert.equal(store().events.length, 0);
@@ -113,7 +116,10 @@ describe("resuming an analytics import", () => {
       writesOnLastDay += 1;
       if (writesOnLastDay > 1) throw new Error("storage failed");
     });
-    await assert.rejects(importAnalytics(batchFor(site)), /failed part-way/);
+    await assert.rejects(
+      () => importAnalytics(batchFor(site)),
+      /failed part-way/,
+    );
     assert.ok(writesOnLastDay > 1);
     assert.ok(eventsOf(site).length > 0);
 
@@ -212,7 +218,7 @@ describe("an analytics import's claims", () => {
       events: 1,
     });
     await assert.rejects(
-      importAnalytics(batchFor(site, "new")),
+      () => importAnalytics(batchFor(site, "new")),
       /reconciliation/,
     );
     assert.equal(store().events.length, 0);
