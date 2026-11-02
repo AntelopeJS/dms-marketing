@@ -73,6 +73,14 @@ export interface IngestIdentity {
    * MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS of the server's.
    */
   trustTimestamps?: boolean;
+  /**
+   * An imported batch: its rows name the import, and its rollup waits for the
+   * import to commit the day instead of landing on the day row.
+   */
+  imported?: {
+    importId: string;
+    holdRollup: (delta: MarketingStatsDelta) => void;
+  };
 }
 
 /** What one ingested batch did; `rollup` settles once the day row is written. */
@@ -284,6 +292,7 @@ async function openSession(
       language: first.input.language,
       country: context.identity.country,
       bypassCache: context.identity.trustTimestamps,
+      importId: context.identity.imported?.importId,
     },
   );
 }
@@ -319,6 +328,7 @@ function buildEventDoc(
       context.ownHostnames,
     ),
     name: event.input.name,
+    importId: context.identity.imported?.importId,
     data: event.input.data,
   };
 }
@@ -511,6 +521,10 @@ function recordRollup(
     tops: collectTops(batch),
     drops: collectDrops(batch),
   };
+  if (context.identity.imported) {
+    context.identity.imported.holdRollup(delta);
+    return Promise.resolve();
+  }
   return addDailyMarketingStats(
     GetModel(WebsiteStatisticsModel, context.website.tenantId),
     context.website._id,

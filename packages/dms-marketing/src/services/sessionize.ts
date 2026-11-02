@@ -27,6 +27,8 @@ export interface SessionInput {
   /** Imports hold the website claim, but another instance may have changed
    * the last session since this process cached it. Read durable state. */
   bypassCache?: boolean;
+  /** The import opening the session, so a stopped one can take it back. */
+  importId?: string;
 }
 
 export interface SessionResolution {
@@ -224,6 +226,7 @@ async function createSession(
     screen: input.screen,
     language: input.language,
     country: input.country,
+    importId: input.importId,
   };
   await model.insert(session);
   return session;

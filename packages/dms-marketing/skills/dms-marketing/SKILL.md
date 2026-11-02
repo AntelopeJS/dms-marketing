@@ -127,7 +127,7 @@ await ImportAnalytics({ tenantId, importId: "shop-history", websiteId: "shop-sit
   1-10 steps, 2-8 arms); a split is created draft, running (one open run) or stopped (one closed run).
 - ImportAnalytics replays through the live collect pipeline with trusted timestamps (same sessions,
   raw events and daily rows); once per importId + website, later calls `in_progress` (first still replaying, counts not final),
-  then `skipped` (or `failed`); ≤ 10,000 sessions and
+  then `skipped`; a call after a failure or a dead process resumes it, each UTC day counted once; ≤ 10,000 sessions and
   1,000 events/session per call; drops future, past-retention, invalid and bot events and exposures of
   draft splits. `startedAt` on a running split makes imported exposures count.
 - EnsurePageSnapshot: the heatmap backdrop of a page the tracker cannot capture (not online, imported
