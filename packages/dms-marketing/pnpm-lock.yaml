@@ -30,8 +30,8 @@ importers:
         specifier: '>=0.9.0 <1.0.0'
         version: 0.9.0(79cb6de5c70b87190199875a7f37920d)
       '@antelopejs/interface-dms-marketing':
-        specifier: '>=0.5.0 <0.6.0'
-        version: 0.5.0(@antelopejs/interface-core@0.2.4)
+        specifier: '>=0.5.2 <0.6.0'
+        version: 0.5.2(@antelopejs/interface-core@0.2.4)
       defu:
         specifier: ^6.1.4
         version: 6.1.7
@@ -165,8 +165,8 @@ packages:
     peerDependencies:
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
-  '@antelopejs/interface-dms-marketing@0.5.0':
-    resolution: {integrity: sha512-m3J8M6b7zjeXKUZgaHALjQlaiOZyyw4ZTHw+nkBvRtHWynAwb8MTu6W9cumjJL0lS2xWjCpcqIyDTGOTwWrpNg==}
+  '@antelopejs/interface-dms-marketing@0.5.2':
+    resolution: {integrity: sha512-YCGbziQIeaZclyODyE8qAKndl7o5hVG8ZG0AkBq4JjemWfQ9I9anheFu9xS8G1qhZmoTtZwgioXDZ3Z3m4VqUg==}
     peerDependencies:
       '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
@@ -2794,7 +2794,7 @@ snapshots:
       '@antelopejs/interface-data-api': 0.5.0(@antelopejs/interface-api-util@0.1.3(@antelopejs/interface-api@0.0.15(@antelopejs/interface-core@0.2.4))(@antelopejs/interface-core@0.2.4))(@antelopejs/interface-api@0.0.15(@antelopejs/interface-core@0.2.4))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database-decorators@0.1.10(@antelopejs/interface-api@0.0.15(@antelopejs/interface-core@0.2.4))(@antelopejs/interface-core@0.2.4)(@antelopejs/interface-database@0.1.11(@antelopejs/interface-core@0.2.4)))(@antelopejs/interface-database@0.1.11(@antelopejs/interface-core@0.2.4))
       '@antelopejs/interface-database': 0.1.11(@antelopejs/interface-core@0.2.6)
       '@antelopejs/interface-database-decorators': 0.1.10(@antelopejs/interface-api@0.0.15(@antelopejs/interface-core@0.2.4))(@antelopejs/interface-core@0.2.6)(@antelopejs/interface-database@0.1.11(@antelopejs/interface-core@0.2.4))
-      '@antelopejs/interface-dms': 0.10.2(9ebc7635fdc3621a31e7577a67586f27)
+      '@antelopejs/interface-dms': 0.10.2(69728e327a475f5e332eacafa7a9e5da)
       '@antelopejs/interface-email': 0.1.0(@antelopejs/interface-core@0.2.6)
       '@antelopejs/interface-file-storage': 0.1.6(@antelopejs/interface-core@0.2.6)
       archiver: 7.0.1
@@ -2889,11 +2889,11 @@ snapshots:
       '@antelopejs/interface-core': 0.2.6
     optional: true
 
-  '@antelopejs/interface-dms-marketing@0.5.0(@antelopejs/interface-core@0.2.4)':
+  '@antelopejs/interface-dms-marketing@0.5.2(@antelopejs/interface-core@0.2.4)':
     dependencies:
       '@antelopejs/interface-core': 0.2.4
 
-  '@antelopejs/interface-dms@0.10.2(9ebc7635fdc3621a31e7577a67586f27)':
+  '@antelopejs/interface-dms@0.10.2(69728e327a475f5e332eacafa7a9e5da)':
     dependencies:
       '@antelopejs/interface-api': 0.0.15(@antelopejs/interface-core@0.2.4)
       '@antelopejs/interface-api-util': 0.1.3(@antelopejs/interface-api@0.0.15(@antelopejs/interface-core@0.2.4))(@antelopejs/interface-core@0.2.4)
