@@ -50,6 +50,10 @@
 @antelopejs/core	packages/dms-marketing/playground/package.json	devDependencies	>=1.17.1 <2
 @antelopejs/core	packages/dms-marketing/playground/package.json	pnpm.overrides	
 @antelopejs/core	packages/dms-marketing/package.json	pnpm.overrides	
+@antelopejs/dms	packages/dms-marketing/package.json	devDependencies	>=0.13.1 <1.0.0
+@antelopejs/dms	packages/dms-marketing/playground/package.json	dependencies	>=0.13.1 <1.0.0
+@antelopejs/dms	packages/dms-marketing/playground/package.json	pnpm.overrides	
+@antelopejs/dms	packages/dms-marketing/package.json	pnpm.overrides	
 @antelopejs/tooling-configs	package.json	devDependencies	^0.2.17
 @antelopejs/tooling-configs	packages/dms-marketing/package.json	devDependencies	^0.2.11
 @antelopejs/tooling-configs	packages/dms-marketing/frontend-vue/package.json	pnpm.overrides	

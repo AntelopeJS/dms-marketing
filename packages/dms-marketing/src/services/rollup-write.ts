@@ -2,7 +2,10 @@ import {
   dayRowId,
   type WebsiteStatisticsModel,
 } from "@/db/models/website_statistics.model";
-import type { WebsiteStatistics } from "@/db/tables/website_statistics.table";
+import type {
+  AppliedImport,
+  WebsiteStatistics,
+} from "@/db/tables/website_statistics.table";
 import {
   byDimension,
   type MarketingStatsDelta,
@@ -79,45 +82,63 @@ function mergedTops(
   });
 }
 
-function rowFrom(
-  websiteId: string,
-  day: number,
-  delta: MarketingStatsDelta,
-): WebsiteStatistics {
+function foldedTops(
+  current: Record<TopDimension, TopEntries> | undefined,
+  deltas: MarketingStatsDelta[],
+): Record<TopDimension, TopEntries> {
+  let tops = current ?? byDimension<TopEntries>(() => ({}));
+  for (const delta of deltas) {
+    tops = mergedTops(tops, delta);
+  }
+  return tops;
+}
+
+function summedCounters(deltas: MarketingStatsDelta[]) {
+  const sum = (pick: (delta: MarketingStatsDelta) => number) =>
+    deltas.reduce((total, delta) => total + pick(delta), 0);
   return {
-    _id: dayRowId(websiteId, day),
-    websiteId,
-    day,
-    pageviews: delta.pageviews,
-    sessions: delta.sessions,
-    newVisitors: delta.newVisitors,
-    customEvents: delta.customEvents,
-    bouncedSessions: delta.bouncedSessions,
-    sessionDurationMs: delta.sessionDurationMs,
-    tops: mergedTops(undefined, delta),
+    pageviews: sum((delta) => delta.pageviews),
+    sessions: sum((delta) => delta.sessions),
+    newVisitors: sum((delta) => delta.newVisitors),
+    customEvents: sum((delta) => delta.customEvents),
+    bouncedSessions: sum((delta) => delta.bouncedSessions),
+    sessionDurationMs: sum((delta) => delta.sessionDurationMs),
   };
 }
 
 /**
- * Adds the delta to the day row of the website, inserting the row on the first
+ * Adds the deltas to the day row of the website, inserting the row on the first
  * write. Losing the insert race (another instance created the row first) falls
  * through to the increment, but the database interface exposes no typed
  * conflict error, and matching driver messages would tie the module to one
  * backend. So the state is probed, not the error: a row that exists after a
  * failed insert is the lost race, whatever the driver called it; no row means
  * the insert failed for real.
+ *
+ * `applied` lands in the same single-row write as the counters: a day is either
+ * counted and named in the ledger, or neither.
  */
 async function writeDailyStats(
   model: WebsiteStatisticsModel,
   websiteId: string,
   day: number,
-  delta: MarketingStatsDelta,
+  deltas: MarketingStatsDelta[],
+  applied?: AppliedImport,
 ): Promise<void> {
   const id = dayRowId(websiteId, day);
+  const counters = summedCounters(deltas);
   let existing = await model.get(id);
   if (!existing) {
+    const row: WebsiteStatistics = {
+      _id: id,
+      websiteId,
+      day,
+      ...counters,
+      tops: foldedTops(undefined, deltas),
+      ...(applied && { appliedImports: [applied] }),
+    };
     try {
-      await model.insert(rowFrom(websiteId, day, delta));
+      await model.insert(row);
       return;
     } catch (error) {
       existing = await model.get(id);
@@ -126,7 +147,12 @@ async function writeDailyStats(
       }
     }
   }
-  await model.addDelta(id, delta, mergedTops(existing.tops, delta));
+  await model.addDelta(
+    id,
+    counters,
+    foldedTops(existing.tops, deltas),
+    applied && [...(existing.appliedImports ?? []), applied],
+  );
 }
 
 /**
@@ -146,6 +172,22 @@ export function addDailyMarketingStats(
   delta: MarketingStatsDelta,
 ): Promise<void> {
   return pendingBySite.run(websiteId, () =>
-    writeDailyStats(model, websiteId, day, delta),
+    writeDailyStats(model, websiteId, day, [delta]),
+  );
+}
+
+/**
+ * Counts an imported day: all its held deltas and its ledger entry, in one
+ * write to its day row.
+ */
+export function commitImportedDay(
+  model: WebsiteStatisticsModel,
+  websiteId: string,
+  day: number,
+  deltas: MarketingStatsDelta[],
+  applied: AppliedImport,
+): Promise<void> {
+  return pendingBySite.run(websiteId, () =>
+    writeDailyStats(model, websiteId, day, deltas, applied),
   );
 }

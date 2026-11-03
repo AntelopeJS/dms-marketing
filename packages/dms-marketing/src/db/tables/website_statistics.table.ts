@@ -9,6 +9,14 @@ import type { TopDimension, TopEntries } from "@/types";
 
 export const websiteStatisticsTableName = "marketing_website_statistics";
 
+/** An import counted in a day row, and what it counted there. */
+export interface AppliedImport {
+  importId: string;
+  sessions: number;
+  events: number;
+  dropped: number;
+}
+
 /**
  * Daily rollup: one row per website and UTC day, addressed by primary key
  * (`_id` = `websiteId:day`) so the scalar counters can be native server-side
@@ -54,4 +62,11 @@ export class WebsiteStatistics extends Table {
    * by the retention prune; the scalars above keep the full retention. */
   @Field("any")
   declare tops: Record<TopDimension, TopEntries>;
+
+  /**
+   * The imports already counted in this row. Written in the same write as their
+   * counters, so a day is counted once wherever an import stopped.
+   */
+  @Field("any")
+  declare appliedImports?: AppliedImport[];
 }

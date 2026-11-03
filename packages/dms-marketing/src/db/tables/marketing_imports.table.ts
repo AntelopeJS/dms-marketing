@@ -13,9 +13,9 @@ export type ImportStatus = "running" | "done" | "failed";
 /**
  * One analytics import (`ImportAnalytics`) applied to a website, keyed by
  * website and import id: the row is claimed before the first event is
- * written, so an import id is replayed once even across instances. A failed
- * import keeps its row — what it wrote stays counted, and replaying it would
- * count it twice.
+ * written, and a completed import id is never replayed, even across instances.
+ * An import that stopped part-way is resumed by the next call with its id, from
+ * the days the rollup ledger does not name (`WebsiteStatistics.appliedImports`).
  */
 @RegisterTable(marketingImportsTableName, TENANT_SCHEMA_NAME)
 export class MarketingImport extends Table {
@@ -48,7 +48,18 @@ export class MarketingImport extends Table {
   @Field("date")
   declare importedThrough?: Date;
 
-  /** Only the reserved per-website mutex row carries this acquisition token. */
+  /**
+   * Only the reserved per-website mutex row carries this token. Its holder
+   * replaces it while the replay runs, so a holder that stopped is one whose
+   * token stopped changing.
+   */
   @Field("string")
   declare claimToken?: string;
+
+  /**
+   * The import writes through the rollup ledger, which is what lets it resume.
+   * Rows older than the ledger have partial writes nothing can tell apart.
+   */
+  @Field("boolean")
+  declare ledgered?: boolean;
 }

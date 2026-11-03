@@ -3,6 +3,7 @@ import {
   MarketingSession,
   marketingSessionsTableName,
 } from "../tables/marketing_sessions.table";
+import type { MarketingEvent } from "../tables/marketing_events.table";
 import { deleteExpiredRows, EPOCH_LOWER_BOUND } from "./retention";
 
 export interface SessionActivityDelta {
@@ -107,5 +108,42 @@ export class MarketingSessionsModel extends BasicDataModel(
 
   async deleteByWebsite(websiteId: string): Promise<number> {
     return this.table.getAll([websiteId], "websiteId").delete().run();
+  }
+
+  /**
+   * Sets a session's counters to what `events` add up to. No events left to
+   * count from, as past the raw events' retention, leaves it unchanged.
+   */
+  async restoreActivity(
+    sessionId: string,
+    events: Pick<MarketingEvent, "kind" | "url" | "timestamp">[],
+  ): Promise<void> {
+    const last = events[events.length - 1];
+    if (!last) return;
+    const pageviews = events.filter((event) => event.kind === "pageview");
+    await this.update(sessionId, {
+      pageviewsCount: pageviews.length,
+      eventsCount: events.length,
+      lastSeenAt: last.timestamp,
+      ...(pageviews.length > 0 && {
+        exitUrl: pageviews[pageviews.length - 1]!.url,
+      }),
+    });
+  }
+
+  /** The sessions an import opened. Only read to resume a stopped import. */
+  async listImported(
+    websiteId: string,
+    importId: string,
+  ): Promise<MarketingSession[]> {
+    return this.table
+      .getAll([websiteId], "websiteId")
+      .filter((doc) => doc.key("importId").eq(importId))
+      .run();
+  }
+
+  async deleteMany(sessionIds: string[]): Promise<number> {
+    if (sessionIds.length === 0) return 0;
+    return this.table.getAll(sessionIds).delete().run();
   }
 }

@@ -4,10 +4,10 @@
 
 <a href="https://www.npmjs.com/package/@antelopejs/dms-marketing"><img data-illustration alt="npm" src="https://img.shields.io/npm/v/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
 <a href="./LICENSE"><img data-illustration alt="License" src="https://img.shields.io/npm/l/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
-<a href="https://discord.gg/sjK28QHrA7"><img data-illustration alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://discord.gg/g4pFt6eXqu"><img data-illustration alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
 <a href="https://dms.antelopejs.com/docs/modules/marketing"><img data-illustration alt="Documentation" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 
-First-party marketing analytics for the AntelopeJS DMS: traffic, funnels, A/B splits and heatmaps.
+First-party marketing analytics for the [AntelopeJS DMS](https://github.com/AntelopeJS/dms): traffic, funnels, A/B splits and heatmaps.
 
 </div>
 

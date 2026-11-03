@@ -6,6 +6,7 @@ import {
   type MarketingStatsDelta,
 } from "@/types";
 import {
+  type AppliedImport,
   WebsiteStatistics,
   websiteStatisticsTableName,
 } from "../tables/website_statistics.table";
@@ -90,8 +91,9 @@ export class WebsiteStatisticsModel extends BasicDataModel(
    */
   async addDelta(
     id: string,
-    delta: MarketingStatsDelta,
+    delta: Omit<MarketingStatsDelta, "tops" | "drops">,
     tops: Record<TopDimension, TopEntries>,
+    appliedImports?: AppliedImport[],
   ): Promise<number> {
     return this.table
       .get(id)
@@ -109,6 +111,7 @@ export class WebsiteStatisticsModel extends BasicDataModel(
           .default(0)
           .add(delta.sessionDurationMs),
         tops,
+        ...(appliedImports && { appliedImports }),
       }))
       .run();
   }

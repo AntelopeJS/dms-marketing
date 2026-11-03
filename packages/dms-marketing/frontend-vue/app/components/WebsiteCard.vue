@@ -44,8 +44,8 @@ const { t, locale } = useI18n()
 const router = useDmsRouter()
 const api = useMarketingApi()
 const toast = useToast()
+const { presentError } = useApiErrorPresenter()
 const { confirm } = useConfirm()
-const fieldErrors = useFieldErrors({ fields: {} })
 
 const card = computed(() => websiteCardOf(props.row))
 
@@ -100,17 +100,12 @@ async function runCardAction(
     await refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)
-    if (conflict) {
-      toast.add({
-        color: 'error',
-        title: t(errorTitle),
-        description: t('page.marketing.errors.duplicate_host_named', {
-          ...conflict,
-        }),
-      })
-    } else {
-      fieldErrors.toastError(error, { toastTitle: errorTitle })
-    }
+    presentError(error, {
+      fallbackKey: conflict
+        ? 'page.marketing.errors.duplicate_host_named'
+        : errorTitle,
+      params: conflict ? { host: conflict.host, site: conflict.site } : undefined,
+    })
   } finally {
     busy.value = null
   }

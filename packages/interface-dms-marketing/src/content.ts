@@ -230,14 +230,15 @@ export interface MarketingImportSession {
  * Send chronological windows for the whole website: eligible timestamps may
  * equal, but never precede, the previous completed import's latest timestamp.
  * Different import ids cannot write the same website concurrently. Retry a
- * busy refusal after completion; an interrupted replay requires reconciliation.
+ * busy refusal after completion; a replay that stopped resumes when its import
+ * id is called again.
  */
 export interface MarketingAnalyticsImport {
   /**
    * Stable id of this import, chosen by the caller: an import id is applied
-   * once per website, and every later call with it is not replayed whatever
-   * its payload (see {@link MarketingImportResult.status}). History cannot be
-   * imported twice or replaced.
+   * once per website, and once it completed every later call with it is not
+   * replayed whatever its payload (see {@link MarketingImportResult.status}).
+   * History cannot be imported twice or replaced.
    */
   importId: string;
   /** Explicit authorized tenant of the website, nonempty without surrounding whitespace. */
@@ -259,11 +260,12 @@ export interface MarketingImportResult {
    * - `"imported"`: this call replayed the history.
    * - `"in_progress"`: another call (this instance or another) claimed it and
    *   is still replaying: nothing was written, the counts are not final yet.
-   *   Call again later to read them; a call that never moves past it was
-   *   interrupted and needs reconciliation.
+   *   Call again later to read them. A call that stopped part-way, because it
+   *   failed or its process died, is resumed by a later call, which answers
+   *   `"imported"` with the counts of the whole import.
    * - `"skipped"`: it was applied by an earlier call, whose counts these are.
-   * - `"failed"`: an earlier call failed part-way; it is never replayed and
-   *   its counts are not authoritative.
+   * - `"failed"`: an import without a rollup ledger stopped part-way; it is
+   *   never replayed and its counts are not authoritative.
    */
   status: MarketingImportStatus;
   /** Visits the replay opened, which can differ from the sessions sent. */

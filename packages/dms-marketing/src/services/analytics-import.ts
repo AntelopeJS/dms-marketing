@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type {
   MarketingAnalyticsImport,
@@ -9,19 +8,14 @@ import { getConfig } from "@/config";
 import { FunnelsModel, MarketingImportsModel, WebsitesModel } from "@/db";
 import type { MarketingImport } from "@/db/tables/marketing_imports.table";
 import type { Website } from "@/db/tables/websites.table";
-import type { DeviceInfo } from "@/types";
 import { isNumber, isString } from "@/utils/guards";
 import {
-  MAX_COLLECT_BATCH_SIZE,
   MAX_SCREEN_AND_LANGUAGE_CHARS,
   MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS,
 } from "@/types/constants";
-import {
-  ingestPreparedBatch,
-  type IngestOutcome,
-  type PreparedEvent,
-  prepareEvents,
-} from "./collect";
+import { acquireClaim } from "./analytics-import-claim";
+import { replayAll, type VisitorEvent } from "./analytics-import-replay";
+import { prepareEvents } from "./collect";
 import {
   declaredTenant,
   describeIssue,
@@ -30,28 +24,15 @@ import {
   requireDeclaredId,
 } from "./declarations";
 import { isAutomatedClient } from "./ingest-guard";
-import { getVisitorHashSecret } from "./settings";
-import { getUtcMidnight } from "./rollup-write";
 import { parseDevice } from "./user-agent";
-import { computeVisitorId } from "./visitor-id";
 
 const OPERATION = "ImportAnalytics";
 
-/**
- * How long the tracker holds events before it sends them: an imported batch
- * spans no more, so sessions are timed against the same clock as live ones.
- */
-const TRACKER_FLUSH_INTERVAL_MS = 5000;
 /** One call carries a bounded slice of history; split a larger one. */
 const MAX_IMPORT_SESSIONS = 10_000;
 const MAX_IMPORT_EVENTS_PER_SESSION = 1000;
 const MAX_VISITOR_KEY_LENGTH = 200;
 const MAX_USER_AGENT_LENGTH = 1000;
-/** Visitors replayed side by side; one visitor's events stay in order. */
-const IMPORT_CONCURRENCY = 4;
-/** Imported visitors hash apart from live ones: never the same visitor id. */
-const IMPORTED_VISITOR_PREFIX = "import:";
-const PAGEVIEW_KIND = "pageview";
 const EXPOSURE_KIND = "exposure";
 
 const sessionSchema = z.object({
@@ -73,20 +54,6 @@ const batchSchema = z.object({
 });
 
 type ImportSession = z.output<typeof sessionSchema>;
-
-/** One accepted event of a visitor, with what its session says about them. */
-interface VisitorEvent {
-  event: PreparedEvent;
-  at: number;
-  device: DeviceInfo;
-  country?: string;
-}
-
-interface ReplayCounts {
-  sessions: number;
-  events: number;
-  dropped: number;
-}
 
 function refuse(id: string, reason: string): MarketingDeclarationError {
   return new MarketingDeclarationError(OPERATION, id, reason);
@@ -206,98 +173,6 @@ function acceptedEventsByVisitor(
   return { visitors, dropped };
 }
 
-/**
- * Cuts one visitor's history into the batches the tracker would have sent:
- * a page load starts one (each pageview is treated as a load, so a campaign
- * landing opens its own visit as it does live), and a batch holds at most
- * the tracker's flush interval and batch size, on one UTC day, from one
- * device.
- */
-function trackerBatches(events: VisitorEvent[]): VisitorEvent[][] {
-  const batches: VisitorEvent[][] = [];
-  let current: VisitorEvent[] = [];
-  for (const entry of events) {
-    const first = current[0];
-    const startsBatch =
-      first === undefined ||
-      entry.event.input.kind === PAGEVIEW_KIND ||
-      current.length >= MAX_COLLECT_BATCH_SIZE ||
-      entry.at - first.at > TRACKER_FLUSH_INTERVAL_MS ||
-      getUtcMidnight(new Date(entry.at)) !==
-        getUtcMidnight(new Date(first.at)) ||
-      entry.device !== first.device ||
-      entry.country !== first.country;
-    if (startsBatch && current.length > 0) {
-      batches.push(current);
-      current = [];
-    }
-    current.push(entry);
-  }
-  if (current.length > 0) {
-    batches.push(current);
-  }
-  return batches;
-}
-
-/**
- * Replays one visitor's batches through live ingestion, each on the clock
- * of its last event — the instant the tracker would have sent it.
- */
-async function replayVisitor(
-  website: Website,
-  visitor: string,
-  events: VisitorEvent[],
-): Promise<ReplayCounts> {
-  const counts: ReplayCounts = { sessions: 0, events: 0, dropped: 0 };
-  for (const batch of trackerBatches(events)) {
-    const first = batch[0]!;
-    const last = batch[batch.length - 1]!;
-    const outcome: IngestOutcome | undefined = await ingestPreparedBatch(
-      website,
-      batch.map((entry) => entry.event),
-      {
-        visitorId: computeVisitorId(
-          getVisitorHashSecret(),
-          website._id,
-          IMPORTED_VISITOR_PREFIX + visitor,
-          "",
-          new Date(first.at),
-        ),
-        now: new Date(last.at),
-        device: first.device,
-        country: first.country,
-        trustTimestamps: true,
-      },
-    );
-    if (!outcome) {
-      counts.dropped += batch.length;
-      continue;
-    }
-    counts.events += outcome.accepted;
-    counts.sessions += outcome.isNewSession ? 1 : 0;
-    await outcome.rollup;
-  }
-  return counts;
-}
-
-async function replayAll(
-  website: Website,
-  visitors: Map<string, VisitorEvent[]>,
-): Promise<ReplayCounts> {
-  const queue = [...visitors.entries()];
-  const total: ReplayCounts = { sessions: 0, events: 0, dropped: 0 };
-  const worker = async () => {
-    for (let next = queue.shift(); next; next = queue.shift()) {
-      const counts = await replayVisitor(website, next[0], next[1]);
-      total.sessions += counts.sessions;
-      total.events += counts.events;
-      total.dropped += counts.dropped;
-    }
-  };
-  await Promise.all(Array.from({ length: IMPORT_CONCURRENCY }, worker));
-  return total;
-}
-
 async function requireWebsite(
   importId: string,
   websiteId: string,
@@ -330,20 +205,57 @@ function claimed(row: MarketingImport): MarketingImportResult {
   };
 }
 
+/** An unfinished import that writes through the rollup ledger. */
+function isResumable(row: MarketingImport): boolean {
+  return row.status !== "done" && row.ledgered === true;
+}
+
 /**
- * ImportAnalytics: claims the import id for the website, then replays the
+ * The newest instant the website's other imports filled. Refuses while one of
+ * them is unfinished, or when this import would write before that instant.
+ */
+function chronologyBoundary(
+  importId: string,
+  others: MarketingImport[],
+  earliest: number,
+): number {
+  let importedThrough = 0;
+  for (const previous of others) {
+    if (previous.status !== "done" || previous.importedThrough == null) {
+      throw refuse(
+        importId,
+        previous.ledgered
+          ? `the import "${previous.importId}" did not finish; call it again before importing more history`
+          : "previous import needs reconciliation before more history can be imported",
+      );
+    }
+    importedThrough = Math.max(
+      importedThrough,
+      previous.importedThrough.getTime(),
+    );
+  }
+  if (earliest < importedThrough) {
+    throw refuse(
+      importId,
+      "imports must use chronological, non-overlapping windows for the entire website",
+    );
+  }
+  return importedThrough;
+}
+
+/**
+ * ImportAnalytics: claims the website for the import id, then replays the
  * history. Claimed first, so a second call — another instance booting the
  * same project, the next boot — is not counted twice: it answers
- * `in_progress` while the first is still replaying, `skipped` once it is
- * done, `failed` if it failed (the claim stays, for the same reason).
+ * `in_progress` while the first is still replaying and `skipped` once it is
+ * done. A call that finds the import stopped part-way, because it failed or its
+ * process died, resumes it: raw rows on days the ledger does not name are taken
+ * back, and those days are replayed.
  *
  * The events are prepared before the claim, so a validation failure has written
  * no analytics. The claim is a row under the empty import id, which no caller
  * can declare, so it cannot collide with a caller's id; its plain insert gives
- * one writer per website across instances. An uncertain claim insert is neither
- * retried nor released. Once the replay starts, an uncertain write or a crash
- * retains the website claim, and it is never released in a `finally`: other
- * replay workers may still be writing.
+ * one writer per website across instances.
  */
 export async function importAnalytics(
   batch: MarketingAnalyticsImport,
@@ -359,7 +271,7 @@ export async function importAnalytics(
   const imports = GetModel(MarketingImportsModel, tenantId);
   const rowId = importRowId(websiteId, importId);
   const applied = await imports.get(rowId);
-  if (applied) {
+  if (applied && !isResumable(applied)) {
     return claimed(applied);
   }
   const { visitors, dropped } = acceptedEventsByVisitor(
@@ -384,65 +296,55 @@ export async function importAnalytics(
     events: 0,
     dropped: 0,
     startedAt: new Date(),
+    ledgered: true,
   };
   const claimId = importRowId(websiteId, "");
-  const claimToken = randomUUID();
-  try {
-    await imports.insert({ ...row, _id: claimId, claimToken });
-  } catch (err) {
-    const raced = await imports.get(rowId);
-    if (raced) {
-      return claimed(raced);
+  const attempt = await acquireClaim(imports, { ...row, _id: claimId });
+  if (attempt.kind === "owned") {
+    if (attempt.owner.importId === importId) {
+      return claimed(attempt.owner);
     }
-    const owner = await imports.get(claimId);
-    if (owner && owner.claimToken !== claimToken) {
-      if (owner.importId === importId) {
-        return claimed(owner);
-      }
-      throw refuse(
-        importId,
-        "another import owns this website; retry after it completes (an interrupted import requires reconciliation)",
-      );
-    }
-    throw err;
+    throw refuse(
+      importId,
+      `another import ("${attempt.owner.importId}") owns this website; retry after it completes, or call it again if it stopped`,
+    );
   }
+  const { claim } = attempt;
 
-  let importedThrough = 0;
+  let importedThrough: number;
+  let resuming: boolean;
   try {
-    const raced = await imports.get(rowId);
-    if (raced) {
-      await imports.releaseClaim(claimId, claimToken);
-      return claimed(raced);
+    const current = await imports.get(rowId);
+    resuming = current !== undefined;
+    if (current && !isResumable(current)) {
+      await claim.release();
+      return claimed(current);
     }
-    for (const previous of await imports.listByWebsite(websiteId)) {
-      if (previous._id === claimId) {
-        continue;
-      }
-      if (previous.status !== "done" || previous.importedThrough == null) {
-        throw refuse(
-          importId,
-          "previous import needs reconciliation before more history can be imported",
-        );
-      }
-      importedThrough = Math.max(
-        importedThrough,
-        previous.importedThrough.getTime(),
-      );
-    }
-    if (earliest < importedThrough) {
-      throw refuse(
-        importId,
-        "imports must use chronological, non-overlapping windows for the entire website",
-      );
+    importedThrough = chronologyBoundary(
+      importId,
+      (await imports.listByWebsite(websiteId)).filter(
+        (previous) => previous._id !== claimId && previous._id !== rowId,
+      ),
+      earliest,
+    );
+    if (current) {
+      await imports.update(rowId, { status: "running" });
+    } else {
+      await imports.insert(row);
     }
   } catch (err) {
-    await imports.releaseClaim(claimId, claimToken);
+    await claim.release();
     throw err;
   }
 
   try {
-    await imports.insert(row);
-    const counts = await replayAll(website, visitors);
+    const counts = await replayAll(
+      website,
+      importId,
+      visitors,
+      claim,
+      resuming,
+    );
     counts.dropped += dropped;
     await imports.update(rowId, {
       status: "done",
@@ -450,15 +352,16 @@ export async function importAnalytics(
       importedThrough: new Date(Math.max(importedThrough, latest)),
       finishedAt: new Date(),
     });
-    await imports.releaseClaim(claimId, claimToken);
+    await claim.release();
     return { importId, status: "imported", ...counts };
   } catch (err) {
     await imports
       .update(rowId, { status: "failed", dropped, finishedAt: new Date() })
       .catch(() => {});
+    await claim.release().catch(() => {});
     throw refuse(
       importId,
-      `failed part-way, and will not be replayed under this id: ${err instanceof Error ? describeIssue(err) : String(err)}`,
+      `failed part-way; call it again to resume: ${err instanceof Error ? describeIssue(err) : String(err)}`,
     );
   }
 }

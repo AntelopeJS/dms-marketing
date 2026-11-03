@@ -275,6 +275,42 @@ export class MarketingEventsModel extends BasicDataModel(
     return this.table.getAll([websiteId], "websiteId").delete().run();
   }
 
+  /** Every event an import wrote. Only read to resume a stopped import. */
+  async listImported(
+    websiteId: string,
+    importId: string,
+  ): Promise<MarketingEvent[]> {
+    return this.table
+      .getAll([websiteId], "websiteId")
+      .filter((doc) => doc.key("importId").eq(importId))
+      .run();
+  }
+
+  /** The events of one session, oldest first: what its counters derive from. */
+  async listBySession(
+    websiteId: string,
+    sessionId: string,
+  ): Promise<MarketingEvent[]> {
+    return this.table
+      .getAll([websiteId], "websiteId")
+      .filter((doc) => doc.key("sessionId").eq(sessionId))
+      .orderBy("timestamp", "asc")
+      .run();
+  }
+
+  async deleteImportedOnDay(
+    websiteId: string,
+    importId: string,
+    day: number,
+  ): Promise<number> {
+    return this.table
+      .getAll([websiteId], "websiteId")
+      .filter((doc) => doc.key("importId").eq(importId))
+      .filter((doc) => doc.key("day").eq(day))
+      .delete()
+      .run();
+  }
+
   /** The install check: the newest pageview stored at or after `since`. */
   async getLatestPageview(
     websiteId: string,

@@ -4,7 +4,7 @@
 
 <a href="https://www.npmjs.com/package/@antelopejs/dms-marketing"><img data-illustration alt="npm" src="https://img.shields.io/npm/v/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
 <a href="./LICENSE"><img data-illustration alt="License" src="https://img.shields.io/npm/l/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
-<a href="https://discord.gg/sjK28QHrA7"><img data-illustration alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://discord.gg/g4pFt6eXqu"><img data-illustration alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
 <a href="https://dms.antelopejs.com/docs/modules/marketing"><img data-illustration alt="Documentation" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 
 First-party marketing analytics for the AntelopeJS DMS: traffic, funnels, A/B splits and heatmaps.
@@ -51,7 +51,7 @@ Behind a reverse proxy, set the DMS `auth.trustedProxies` option. See [Installat
 | `@antelopejs/interface-data-api`            | `file:../../.campaign/tgz/antelopejs-interface-data-api-d8a868f.tgz`            | `file:../../.campaign/tgz/antelopejs-interface-data-api-d8a868f.tgz`            |
 | `@antelopejs/interface-database`            | `file:../../.campaign/tgz/antelopejs-interface-database-02e0360.tgz`            | `file:../../.campaign/tgz/antelopejs-interface-database-02e0360.tgz`            |
 | `@antelopejs/interface-database-decorators` | `file:../../.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz` | `file:../../.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz` |
-| `@antelopejs/interface-dms`                 | `file:../../.campaign/tgz/antelopejs-interface-dms-e0787e6.tgz`                 | `file:../../.campaign/tgz/antelopejs-interface-dms-e0787e6.tgz`                 |
+| `@antelopejs/interface-dms`                 | `file:../../.campaign/tgz/antelopejs-interface-dms-14e671d.tgz`                 | `file:../../.campaign/tgz/antelopejs-interface-dms-14e671d.tgz`                 |
 | `@antelopejs/interface-dms-marketing`       | `file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz`       | `file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz`       |
 
 <!-- antelopejs-docs-compat:end -->

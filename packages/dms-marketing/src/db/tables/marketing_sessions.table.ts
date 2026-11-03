@@ -109,6 +109,10 @@ export class MarketingSession extends Table {
   @Field("string")
   declare language?: string;
 
+  /** The import that opened this session; absent on live traffic. */
+  @Field("string")
+  declare importId?: string;
+
   /** ISO 3166-1 alpha-2, derived from the collect IP (never stored) against
    * the operator-supplied GeoIP database; absent when none is configured. */
   @Field("string")
