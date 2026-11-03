@@ -223,3 +223,24 @@ export async function raw(ctx, label, request) {
 export function recordRaw(ctx, answer, checks) {
   return ctx.record(answer.folder, checks);
 }
+
+/**
+ * Clicks until what the click opens shows: every dashboard page renders on the server and hydrates after `load`,
+ * and a click that lands first does nothing.
+ *
+ * @param {Tab} tab The tab
+ * @param {{ role: string, name: string, exact?: boolean }} target What to click
+ * @param {{ role: string, name: string, exact?: boolean }} opens What must appear
+ * @param {number} [attempts] How many clicks to try
+ * @returns {Promise<Check>} Whether it appeared
+ */
+export async function clickUntil(tab, target, opens, attempts = 12) {
+  /** @type {Check} */
+  let last = { name: `${opens.name} opens`, pass: false, detail: "never clicked" };
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    await tab.click(target);
+    last = await tab.visible(opens, { timeoutMs: 2500 });
+    if (last.pass) return last;
+  }
+  return last;
+}

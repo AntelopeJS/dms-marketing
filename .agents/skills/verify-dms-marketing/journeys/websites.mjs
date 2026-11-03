@@ -3,6 +3,7 @@ import { guarded } from "../guard.mjs";
 import { check, list, mkt, num, pick, same, text } from "../marketing.mjs";
 import { collect, collected, createSite, custom, eventually, pageview } from "../site.mjs";
 import { rows } from "../store.mjs";
+import { journeys as browser } from "./parts/websites-ui.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
@@ -38,6 +39,7 @@ function postWithoutFetchMetadata(ctx, origin, body) {
 
 /** Websites: registration, rules, state, purges and deletion (4.usage/7.websites.md, 7.architecture/3.http-api.md). */
 export const journeys = guarded([
+  ...browser,
   {
     id: "a-website-is-registered-with-normalised-hosts",
     title: "a website keeps a name of up to 100 characters, stores bare lowercase hosts, takes localhost and addresses, and starts with tracking on and snapshots off",
