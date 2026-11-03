@@ -25,8 +25,8 @@ export class VerifySiteController extends Controller("/verify-marketing/site") {
   private render(context: RequestContext) {
     const url = new URL(context.rawRequest.url ?? "/", "http://placeholder");
     const website = url.searchParams.get("w") ?? "";
-    const attrs: Record<string, string> = JSON.parse(url.searchParams.get("attrs") ?? "{}");
-    const attributes = Object.entries(attrs).map(([name, value]) => ` ${name}="${escapeAttribute(String(value))}"`).join("");
+    const attrs: unknown = JSON.parse(url.searchParams.get("attrs") ?? "{}");
+    const attributes = Object.entries(attrs instanceof Object ? attrs : {}).map(([name, value]) => ` ${name}="${escapeAttribute(String(value))}"`).join("");
     const tag = `<script defer ${url.searchParams.get("module") ? 'type="module" ' : ""}src="${SCRIPT_PATH}" data-website-id="${escapeAttribute(website)}"${attributes}></script>`;
     const body = `<!doctype html><html lang="fr-FR"><head><meta charset="utf-8"><title>${escapeAttribute(url.pathname)}</title></head><body style="margin:0"><main id="app" style="min-height:2400px"><h1>${escapeAttribute(url.pathname)}</h1><button id="buy" style="margin:40px;width:160px;height:48px">Buy</button><a id="next" href="/verify-marketing/site/second?w=${escapeAttribute(website)}">next</a></main>${tag}${url.searchParams.get("twice") ? tag : ""}<script>${url.searchParams.get("js") ?? ""}</script></body></html>`;
     context.response.setStatus(200);

@@ -1,7 +1,9 @@
-import { check, same, text } from "../../marketing.mjs";
+import { check, same } from "../../marketing.mjs";
 import { collect, custom, pageview } from "../../site.mjs";
-import { rows } from "../../store.mjs";
 import { storedEvents, storedSessions, site } from "./collect-helpers.mjs";
+
+/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../site.mjs").Site} Site */
 
 /** The journeys of part 1. */
 export const journeys = [
@@ -26,7 +28,7 @@ export const journeys = [
         same("kinds in order", events.map((event) => event.kind), ["pageview", "custom"]),
         same("paths without the query string or the fragment", events.map((event) => event.url), ["/pricing", "/pricing"]),
         same("the custom event keeps its name and data", [events[1]?.name, events[1]?.data], ["signup_submitted", { plan: "pro" }]),
-        check("both events belong to one session", typeof events[0]?.sessionId === "string" && events[0]?.sessionId === events[1]?.sessionId, events.map((event) => event.sessionId)),
+        check("both events belong to one session", Boolean(events[0]?.sessionId) && events[0]?.sessionId === events[1]?.sessionId, events.map((event) => event.sessionId)),
         check("no row holds an address, an agent or a header", events.every((event) => Object.keys(event).every((key) => !/^(ip|ua|userAgent|headers?|address)$/i.test(key))) && sessions.every((session) => Object.keys(session).every((key) => !/^(ip|ua|userAgent|headers?|address)$/i.test(key))), events.map((event) => Object.keys(event).join(","))),
       ]);
       await ctx.verify("the session holds the campaign parameters, not the events", [
@@ -45,6 +47,7 @@ export const journeys = [
       const shop = await site(ctx);
       const good = pageview(shop, "/ok");
       const base = `https://${shop.domain}`;
+      /** @type {[string, Record<string, unknown>][]} */
       const cases = [
         ["a url that is neither http(s) nor a path", { kind: "pageview", url: "ftp://files.example.com/x" }],
         ["an empty url", { kind: "pageview", url: "" }],

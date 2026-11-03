@@ -19,7 +19,7 @@ export const journeys = guarded([
       await ctx.verify("one pageview of the landing page", [
         same("pageviews and their path", [events.length, events[0]?.url], [1, "/verify-marketing/site/landing"]),
         same("no cookie, nothing in the storages", [cookies.length, keys], [0, [0, 0]]),
-        check("the API exposes the page API", await tab.page.evaluate(() => typeof window.dmsMarketing?.track === "function" && typeof window.dmsMarketing?.variation === "function" && typeof window.dmsMarketing?.exposure === "function"), "dmsMarketing"),
+        check("the API exposes the page API", await tab.page.evaluate(() => window.dmsMarketing?.track instanceof Function && window.dmsMarketing?.variation instanceof Function && window.dmsMarketing?.exposure instanceof Function), "dmsMarketing"),
       ]);
       const sessions = await (await import("../store.mjs")).rows(ctx, "marketing_sessions", { websiteId: site.id });
       await ctx.verify("the session context", [same("language", sessions[0]?.language, "en-US"), check("screen is width x height", /^\d+x\d+$/.test(String(sessions[0]?.screen)), sessions[0]?.screen)]);
@@ -64,7 +64,7 @@ export const journeys = guarded([
       const dnt = await open(ctx, site, "dnt", { init: "Object.defineProperty(navigator, 'doNotTrack', { value: '1', configurable: true })", js: "window.dmsMarketing?.track('while-dnt')" });
       await open(ctx, site, "gpc", { init: "Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true })", js: "window.dmsMarketing?.track('while-gpc')" });
       const still = await settled(ctx, site, undefined, 0);
-      const noop = await dnt.page.evaluate(() => typeof window.dmsMarketing?.track === "function");
+      const noop = await dnt.page.evaluate(() => window.dmsMarketing?.track instanceof Function);
       const variation = await dnt.page.evaluate(() => window.dmsMarketing?.variation("hero"));
       await ctx.verify("DNT and GPC are respected", [still, same("the API stays callable", noop, true), same("variation() answers null", variation, null)]);
       await open(ctx, site, "dnt-optout", { init: "Object.defineProperty(navigator, 'doNotTrack', { value: '1', configurable: true })", attrs: { "data-do-not-track": "false", "data-heatmap-sample": "0" } });
@@ -120,7 +120,7 @@ export const journeys = guarded([
       await tab.page.evaluate(() => document.querySelector("script[data-website-id]")?.removeAttribute("data-website-id"));
       await tab.page.evaluate(() => window.dmsMarketing?.track("without-id"));
       const none = await settled(ctx, site, "custom", 0);
-      await tab.page.evaluate((id) => document.querySelector("script[src*='tracker.js']")?.setAttribute("data-website-id", id), site.id);
+      await tab.page.evaluate(`document.querySelector("script[src*='tracker.js']")?.setAttribute("data-website-id", ${JSON.stringify(site.id)})`);
       await tab.page.evaluate(() => window.dmsMarketing?.track("with-id"));
       const events = await waitFor(ctx, site, "custom", (found) => found.length >= 1);
       await ctx.verify("the id can disappear and come back", [none, same("events once it is set again", events.map((event) => event.name), ["with-id"])]);
@@ -152,7 +152,7 @@ export const journeys = guarded([
       const nothing = await settled(ctx, site, undefined, 0);
       await mkt(ctx, "resume the collection", "POST", "/settings/collection", { body: { enabled: true } });
       const moduleTab = await open(ctx, site, "module", { module: true });
-      const absent = await moduleTab.page.evaluate(() => typeof window.dmsMarketing);
+      const absent = await moduleTab.page.evaluate(() => (window.dmsMarketing === undefined ? "undefined" : "defined"));
       await ctx.verify("paused sites send nothing, a module script has no API", [nothing, same("window.dmsMarketing", absent, "undefined")]);
     },
   },

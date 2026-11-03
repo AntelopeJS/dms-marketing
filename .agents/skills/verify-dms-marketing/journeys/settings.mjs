@@ -51,6 +51,7 @@ export const journeys = guarded([
     title: "every documented bound is refused just outside and saved on the bound, a decimal is rounded, an unknown key or a body that is not JSON is a 400",
     entryPoint: "PUT /api/marketing/settings",
     async run(/** @type {Ctx} */ ctx) {
+      /** @type {[string, Record<string, unknown>, string][]} */
       const refused = [
         ["raw 0", { rawEventsRetentionDays: 0 }, "rawEventsRetentionDays"],
         ["raw 367", { rawEventsRetentionDays: 367 }, "rawEventsRetentionDays"],
@@ -62,8 +63,8 @@ export const journeys = guarded([
         ["sampling 101", { heatmapSamplePercent: 101 }, "heatmapSamplePercent"],
       ];
       for (const [label, body, field] of refused) {
-        const answer = await save(ctx, String(label), /** @type {Record<string, unknown>} */ (body));
-        await ctx.verify(`${label} is refused under its field`, [same("status and field", [answer.status, fieldsOf(answer).includes(String(field))], [400, true])]);
+        const answer = await save(ctx, label, body);
+        await ctx.verify(`${label} is refused under its field`, [same("status and field", [answer.status, fieldsOf(answer).includes(field)], [400, true])]);
       }
       const unknown = await save(ctx, "an unknown key", { foo: 1 });
       const notJson = await mkt(ctx, "a body that is not JSON", "PUT", SETTINGS, { body: "not json" });

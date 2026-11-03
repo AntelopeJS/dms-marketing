@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 
-/** @typedef {import("./media.mjs").Ctx} Ctx */
-/** @typedef {import("./media.mjs").Tab} Tab */
+/** @typedef {import("./marketing.mjs").Ctx} Ctx */
+/** @typedef {import("./marketing.mjs").Tab} Tab */
 
 const GONE = /signs in and leaves \/auth|ECONNREFUSED|ECONNRESET|fetch failed|socket hang up|Target closed|has been closed|browser has disconnected|terminated|UND_ERR/i;
 

@@ -21,13 +21,14 @@ export async function split(ctx, site, spec) {
   const id = spec.id ?? ctx.unique("split").replace(/\W+/g, "-");
   const key = spec.key ?? "hero";
   const keys = Object.keys(spec.arms);
+  /** @type {{ key: string, status: string, startedAt: number, stoppedAt?: number, variations: { key: string, weight: number }[] }} */
   const experiment = {
     key,
     status: spec.status ?? "running",
     startedAt: Date.now() - (spec.startedDaysAgo ?? 10) * DAY_MS,
-    ...(spec.status === "stopped" ? { stoppedAt: Date.now() - (spec.stoppedMinutesAgo ?? 5) * 60_000 } : {}),
     variations: keys.map((name) => ({ key: name, weight: spec.weights?.[name] ?? 1 })),
   };
+  if (spec.status === "stopped") experiment.stoppedAt = Date.now() - (spec.stoppedMinutesAgo ?? 5) * 60_000;
   const declared = await declare(ctx, site, { id, name: "Hero", steps: STEPS, experiment });
   await ctx.verify("the split is declared", [same("answer", pick(declared.body, "result", "status"), "created")], { critical: true });
   const start = Date.now() - 3_600_000;

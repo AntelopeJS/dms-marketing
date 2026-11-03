@@ -45,6 +45,7 @@ export const journeys = guarded([
     entryPoint: "GET /api/marketing/funnels/:id/results",
     async run(/** @type {Ctx} */ ctx) {
       const readyData = { a: { n: 120, conv: 50 }, b: { n: 120, conv: 90 } };
+      /** @type {[string, Parameters<typeof split>[2], string, boolean][]} */
       const cases = [
         ["a full week and 50 conversions per arm", { startedDaysAgo: 10, arms: readyData }, "winner", true],
         ["6 days served", { startedDaysAgo: 6, arms: readyData }, "early", false],
@@ -52,7 +53,7 @@ export const journeys = guarded([
       ];
       for (const [label, spec, kind, ready] of cases) {
         const site = await shop(ctx);
-        const id = await split(ctx, site, /** @type {Parameters<typeof split>[2]} */ (spec));
+        const id = await split(ctx, site, spec);
         const read = await results(ctx, site, id);
         const verdict = pick(read.answer.body, "verdict", "kind");
         await ctx.verify(`${label}: ${kind}`, [same("verdict", verdict, kind), same("ready", pick(read.answer.body, "experiment", "decision", "ready"), ready), same("the thresholds", [pick(read.answer.body, "experiment", "decision", "minDays"), pick(read.answer.body, "experiment", "decision", "minConversions")], [7, 50])]);
@@ -64,6 +65,7 @@ export const journeys = guarded([
     title: "a significantly worse challenger is a loser, no difference is flat, and under 5 converted or 5 not converted in an arm the verdict is withheld with the counts",
     entryPoint: "GET /api/marketing/funnels/:id/results",
     async run(/** @type {Ctx} */ ctx) {
+      /** @type {[string, Parameters<typeof split>[2]][]} */
       const cases = [
         ["loser", { arms: { a: { n: 120, conv: 90 }, b: { n: 120, conv: 50 } } }],
         ["flat", { arms: { a: { n: 120, conv: 60 }, b: { n: 120, conv: 61 } } }],
@@ -72,7 +74,7 @@ export const journeys = guarded([
       ];
       for (const [kind, spec] of cases) {
         const site = await shop(ctx);
-        const id = await split(ctx, site, /** @type {Parameters<typeof split>[2]} */ (spec));
+        const id = await split(ctx, site, spec);
         const read = await results(ctx, site, id);
         await ctx.verify(`${kind}`, [same("verdict kind", pick(read.answer.body, "verdict", "kind"), kind)]);
       }

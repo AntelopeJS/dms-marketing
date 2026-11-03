@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mkt, num, pick, same } from "../marketing.mjs";
+import { byText, check, list, mkt, num, pick, same, text } from "../marketing.mjs";
 import { history } from "./parts/overview-helpers.mjs";
 import { declare, results, session, shop } from "./parts/funnels-helpers.mjs";
 
@@ -129,7 +129,7 @@ export const journeys = guarded([
       const suggestions = await mkt(ctx, "read the suggestions", "GET", `/funnels/suggestions?website=${site.id}`);
       await ctx.verify("suggestions", [
         same("pages with their views", list(suggestions.body, "pages").map((entry) => [entry.value, entry.count]), [["/pricing", 3], ["/blog", 2], ["/docs", 1]]),
-        same("events with their triggers", list(suggestions.body, "events").map((entry) => [entry.value, entry.count]).sort(), [["download", 1], ["purchase", 3], ["subscribe", 1]]),
+        same("events with their triggers", list(suggestions.body, "events").map((entry) => [entry.value, entry.count]).sort(byText), [["download", 1], ["purchase", 3], ["subscribe", 1]]),
       ]);
       await declare(ctx, site, { id: "any", steps: PRICING_THEN_SIGNUP });
       const winner = await mkt(ctx, "read the banner", "GET", `/funnels/winner?website=${site.id}`);
@@ -157,7 +157,7 @@ export const journeys = guarded([
         same("refused", [longName.status, noSteps.status, eleven.status, long501.status, w0.status, w721.status], [400, 400, 400, 400, 400, 400]),
         same("720 hours", w720.status, 200),
       ]);
-      const id = String(pick(ok.body, "_id") ?? "");
+      const id = text(ok.body, "_id");
       const read = await results(ctx, site, id);
       await ctx.verify("the default window is 24 hours", [same("hours", num(read.answer.body, "funnel", "conversionWindowMs") / 3_600_000, 24)]);
       const edit = await mkt(ctx, "rename without a window", "PUT", `/tables/funnels/edit?id=${id}`, { body: { websiteId: site.id, name: "Renamed", steps } });
@@ -168,7 +168,7 @@ export const journeys = guarded([
       const rows = await mkt(ctx, "read the funnels list", "GET", `/funnels/rows?website=${site.id}`);
       const events = await mkt(ctx, "read the overview", "GET", `/stats/overview?website=${site.id}`);
       await ctx.verify("deleting removes the definition and keeps the events", [same("delete", removed.status, 200), same("funnels left: the other one created with 720 hours", pick(rows.body, "total"), 1), same("the pageview stays", num(events.body, "totals", "pageviews"), 1)]);
-      const confirmation = await mkt(ctx, "read the delete confirmation", "GET", `/funnels/${pick(w720.body, "_id")}/delete-confirmation`);
+      const confirmation = await mkt(ctx, "read the delete confirmation", "GET", `/funnels/${text(w720.body, "_id")}/delete-confirmation`);
       await ctx.verify("the delete dialog is worded for the row", [check("it names the funnel", JSON.stringify(confirmation.body).includes('"F"') || JSON.stringify(confirmation.body).includes("\"F\"") || JSON.stringify(confirmation.body).includes("F"), confirmation.body)]);
     },
   },

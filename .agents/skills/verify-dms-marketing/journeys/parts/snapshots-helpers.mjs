@@ -1,4 +1,4 @@
-import { BROWSER_UA, check, mkt, pick, raw, same } from "../../marketing.mjs";
+import { BROWSER_UA, check, isRow, mkt, parseJson, raw, same, text } from "../../marketing.mjs";
 import { collect, createSite, pageview } from "../../site.mjs";
 
 /** @typedef {import("../../marketing.mjs").Ctx} Ctx */
@@ -35,8 +35,9 @@ export async function negotiate(ctx, site, options = {}) {
   const query = new URLSearchParams({ website: options.website ?? site.id, path: options.path ?? "/pricing", width: String(options.width ?? 1280) });
   const answer = await raw(ctx, `negotiate a capture of ${options.path ?? "/pricing"} at ${options.width ?? 1280}`, { path: `/api/marketing/snapshot.js?${query}`, headers });
   const match = /^window\.__dmsMarketingSnapshotConfig=(\{.*\});/m.exec(answer.text);
-  const config = match ? JSON.parse(match[1] ?? "{}") : {};
-  return { script: answer.text, token: typeof config.token === "string" ? config.token : "", config };
+  const parsed = parseJson(match?.[1] ?? "{}");
+  const config = isRow(parsed) ? parsed : {};
+  return { script: answer.text, token: text(config, "token"), config };
 }
 
 /**
@@ -82,7 +83,7 @@ export async function visit(ctx, site, path, ua = BROWSER_UA) {
  */
 export async function stored(ctx, site, path, layout = "desktop") {
   const answer = await mkt(ctx, `read the capture of ${path}`, "GET", `/stats/snapshot?website=${site.id}&path=${path}&layout=${layout}`);
-  const html = typeof pick(answer.body, "snapshot", "html") === "string" ? String(pick(answer.body, "snapshot", "html")) : "";
+  const html = text(answer.body, "snapshot", "html");
   return { answer, html };
 }
 

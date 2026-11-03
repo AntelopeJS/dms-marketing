@@ -32,6 +32,14 @@ export function isRow(value) {
 }
 
 /**
+ * @param {unknown} value Anything
+ * @returns {value is number} Whether it is a number
+ */
+function isNumber(value) {
+  return typeof value === "number";
+}
+
+/**
  * @param {unknown} value Anything a JSON answer holds
  * @returns {value is string} Whether it is a string
  */
@@ -49,8 +57,8 @@ export function isText(value) {
 export function pick(value, ...path) {
   let current = value;
   for (const step of path) {
-    if (Array.isArray(current) && typeof step === "number") current = current[step];
-    else if (isRow(current) && typeof step === "string") current = current[step];
+    if (Array.isArray(current) && isNumber(step)) current = current[step];
+    else if (isRow(current) && isText(step)) current = current[step];
     else return undefined;
   }
   return current;
@@ -73,7 +81,7 @@ export function text(value, ...path) {
  */
 export function num(value, ...path) {
   const found = pick(value, ...path);
-  return typeof found === "number" && Number.isFinite(found) ? found : Number.NaN;
+  return isNumber(found) && Number.isFinite(found) ? found : Number.NaN;
 }
 
 /**
@@ -243,4 +251,15 @@ export async function clickUntil(tab, target, opens, attempts = 12) {
     if (last.pass) return last;
   }
   return last;
+}
+
+/**
+ * A compare function for sort(): orders any JSON values by their text.
+ *
+ * @param {unknown} a One value
+ * @param {unknown} b Another
+ * @returns {number} The order
+ */
+export function byText(a, b) {
+  return (JSON.stringify(a) ?? "").localeCompare(JSON.stringify(b) ?? "");
 }

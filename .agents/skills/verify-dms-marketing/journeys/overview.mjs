@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mkt, num, pick, same } from "../marketing.mjs";
+import { byText, check, list, mkt, num, pick, same } from "../marketing.mjs";
 import { collected, pageview } from "../site.mjs";
 import { block, history, period, shop, utcDay } from "./parts/overview-helpers.mjs";
 
@@ -91,17 +91,17 @@ export const journeys = guarded([
       await ctx.verify("goal events need a funnel", [check("the fixture declares a funnel ending with signup", (await import("../marketing.mjs")).pick(await ctxFunnel(ctx, site), "ok") === true, "funnel")]);
       await new Promise((resolve) => setTimeout(resolve, 1500));
       const devices = await block(ctx, site, "/blocks/devices", WEEK);
-      await ctx.verify("devices", [same("sessions by type", list(devices.body, "items").map((item) => [item.id, item.value, item.share]).sort(), [["desktop", 1, 50], ["mobile", 1, 50]])]);
+      await ctx.verify("devices", [same("sessions by type", list(devices.body, "items").map((item) => [item.id, item.value, item.share]).sort(byText), [["desktop", 1, 50], ["mobile", 1, 50]])]);
       const content = await block(ctx, site, "/blocks/tops?group=content", WEEK);
       const tabs = Object.fromEntries(list(content.body, "tabs").map((tab) => [String(tab.id), list(tab, "items").map((item) => [item.id, item.value])]));
       await ctx.verify("content", [
         same("top pages", tabs.pages, [["/a", 2], ["/b", 1]]),
         same("entry pages", tabs.entry, [["/a", 2]]),
-        same("exit pages: the last page seen of each session", [...(tabs.exit ?? [])].sort(), [["/a", 1], ["/b", 1]]),
+        same("exit pages: the last page seen of each session", [...(tabs.exit ?? [])].sort(byText), [["/a", 1], ["/b", 1]]),
       ]);
       const audience = await block(ctx, site, "/blocks/tops?group=audience", WEEK);
       const audienceTabs = Object.fromEntries(list(audience.body, "tabs").map((tab) => [String(tab.id), list(tab, "items").map((item) => [item.id, item.value])]));
-      await ctx.verify("audience", [same("languages", [...(audienceTabs.languages ?? [])].sort(), [["en-US", 1], ["fr-FR", 1]]), check("browsers include Chrome and Mobile Safari once each", JSON.stringify(audienceTabs.browsers).includes("Chrome") && JSON.stringify(audienceTabs.browsers).includes("Safari"), audienceTabs.browsers)]);
+      await ctx.verify("audience", [same("languages", [...(audienceTabs.languages ?? [])].sort(byText), [["en-US", 1], ["fr-FR", 1]]), check("browsers include Chrome and Mobile Safari once each", JSON.stringify(audienceTabs.browsers).includes("Chrome") && JSON.stringify(audienceTabs.browsers).includes("Safari"), audienceTabs.browsers)]);
       const events = await block(ctx, site, "/blocks/tops?group=events", WEEK);
       const signup = list(list(events.body, "tabs")[0], "items")[0];
       await ctx.verify("custom events", [same("ranked by count", [signup?.id, signup?.value], ["signup", 1]), check("the event that ends a funnel carries a goal tag", JSON.stringify(signup).toLowerCase().includes("goal"), signup)]);

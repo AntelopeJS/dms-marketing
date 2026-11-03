@@ -69,6 +69,7 @@ export const journeys = guarded([
         same("the layout and viewport", [pick(read.answer.body, "snapshot", "layout"), pick(read.answer.body, "snapshot", "viewport")], ["desktop", { width: 1280, height: 800 }]),
         check("the page", read.html.includes("Pricing"), read.html.slice(0, 200)),
       ]);
+      /** @type {[string, Awaited<ReturnType<typeof upload>>][]} */
       const refusals = [];
       await visit(ctx, site, "/about");
       const aboutToken = (await negotiate(ctx, site, { path: "/about" })).token;
@@ -80,7 +81,7 @@ export const journeys = guarded([
       const hostedToken = (await negotiate(ctx, site, { path: "/hosted", ua: OTHER_AGENT })).token;
       refusals.push(["a page URL on a host the site does not declare", await upload(ctx, site, { token: hostedToken, url: "https://evil.example.net/hosted" }, { ua: OTHER_AGENT })]);
       refusals.push(["a request with no Origin or Referer", await upload(ctx, site, { token: hostedToken, url: `https://${site.domain}/hosted` }, { ua: OTHER_AGENT, origin: null })]);
-      await ctx.verify("refused uploads answer 200 with accepted false", refusals.map(([label, answer]) => same(String(label), [answer.status, pick(answer.json, "accepted")], [200, false])));
+      await ctx.verify("refused uploads answer 200 with accepted false", refusals.map(([label, answer]) => same(label, [answer.status, pick(answer.json, "accepted")], [200, false])));
       const foreign = await upload(ctx, site, { token: hostedToken, url: `https://${site.domain}/hosted` }, { ua: OTHER_AGENT, origin: "https://evil.example.net" });
       const unknown = await upload(ctx, site, { token: hostedToken, website: "does-not-exist" }, { ua: OTHER_AGENT });
       const invalid = await upload(ctx, site, { token: hostedToken }, { ua: OTHER_AGENT, rawBody: "{}" });

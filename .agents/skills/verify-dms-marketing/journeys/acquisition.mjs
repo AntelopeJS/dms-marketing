@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mkt, num, pick, same } from "../marketing.mjs";
+import { byText, check, list, mkt, num, pick, same, text } from "../marketing.mjs";
 import { eventually, overview } from "../site.mjs";
 import { campaigns, channels, channelsBlock, shop, visit } from "./parts/acquisition-helpers.mjs";
 
@@ -27,7 +27,7 @@ function rules(id, channel, visits, title) {
       await ctx.verify(`all ${visits.length} sessions are ${channel}`, [
         same("the rolled-up split", split, { [channel]: visits.length }),
         same("the channels card counts them", list(block.body, "items").find((item) => item.id === channel)?.sessions, visits.length),
-        same("the card lists all six channels, zero ones included", list(block.body, "items").map((item) => item.id).sort(), ["direct", "email", "organic", "paid", "referral", "social"]),
+        same("the card lists all six channels, zero ones included", list(block.body, "items").map((item) => item.id).sort(byText), ["direct", "email", "organic", "paid", "referral", "social"]),
       ]);
     },
   };
@@ -96,21 +96,21 @@ export const journeys = guarded([
       ]);
       await eventually(() => overview(ctx, site), (answer) => num(answer.body, "totals", "sessions") === 6);
       const all = await campaigns(ctx, site);
-      const key = (/** @type {Record<string, unknown>} */ row) => `${row.source}|${row.medium}|${row.campaign}|${row.channel}`;
+      const key = (/** @type {Record<string, unknown>} */ row) => [text(row, "source"), text(row, "medium"), text(row, "campaign"), text(row, "channel")].join("|");
       const byKey = Object.fromEntries(all.rows.map((row) => [key(row), row.sessions]));
       await ctx.verify("the rows", [
-        same("one row per triple and channel, normalised", byKey, { "newsletter|email|Spring Sale|email": 2, "newsletter|null|null|direct": 1, "facebook|cpc|ads|paid": 1, "facebook|null|app|direct": 1, "facebook|null|app|social": 1 }),
+        same("one row per triple and channel, normalised", byKey, { "newsletter|email|Spring Sale|email": 2, "newsletter|||direct": 1, "facebook|cpc|ads|paid": 1, "facebook||app|direct": 1, "facebook||app|social": 1 }),
         same("total", all.total, 5),
         same("the biggest row first", key(all.rows[0] ?? {}), "newsletter|email|Spring Sale|email"),
         same("the share of the period's sessions", pick(all.rows[0], "share", "params", "value", "value"), 33.3),
-        same("a row without a medium is flagged", all.rows.filter((row) => row.missingMedium === true).map(key).sort(), ["facebook|null|app|direct", "facebook|null|app|social", "newsletter|null|null|direct"]),
+        same("a row without a medium is flagged", all.rows.filter((row) => row.missingMedium === true).map(key).sort(byText), ["facebook||app|direct", "facebook||app|social", "newsletter|||direct"]),
       ]);
       const search = await campaigns(ctx, site, "&limit=25&search=spring");
       const social = await campaigns(ctx, site, "&limit=25&filter_channel=is:social");
       const paged = await campaigns(ctx, site, "&limit=2&offset=4");
       await ctx.verify("search, channel filter and paging", [
         same("search by campaign", search.rows.map(key), ["newsletter|email|Spring Sale|email"]),
-        same("filter by channel", social.rows.map(key), ["facebook|null|app|social"]),
+        same("filter by channel", social.rows.map(key), ["facebook||app|social"]),
         same("a page holds its rows and total counts them all", [paged.rows.length, paged.total], [1, 5]),
       ]);
       const tagged = await mkt(ctx, "read the tagged notice", "GET", `/blocks/campaigns/notice?kind=tagged&website=${site.id}`);
@@ -166,7 +166,7 @@ export const journeys = guarded([
       const tabs = list(acquisitionTops.body, "tabs");
       await ctx.verify("the acquisition card of the overview", [
         same("tabs", tabs.map((tab) => tab.id), ["channels", "campaigns", "referrers"]),
-        same("the channels tab", list(tabs.find((tab) => tab.id === "channels"), "items").map((item) => [item.id, item.value]).sort(), [["direct", 3], ["paid", 1], ["referral", 1], ["social", 3]]),
+        same("the channels tab", list(tabs.find((tab) => tab.id === "channels"), "items").map((item) => [item.id, item.value]).sort(byText), [["direct", 3], ["paid", 1], ["referral", 1], ["social", 3]]),
       ]);
     },
   },

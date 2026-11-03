@@ -2,6 +2,9 @@ import { check, list, num, pick, same } from "../../marketing.mjs";
 import { collect, collected, custom, eventually, overview, pageview, withConfig } from "../../site.mjs";
 import { FIVE_MINUTES, site, storedEvents, storedSessions } from "./collect-helpers.mjs";
 
+/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../site.mjs").Site} Site */
+
 /** The journeys of part 3. */
 export const journeys = [
   {

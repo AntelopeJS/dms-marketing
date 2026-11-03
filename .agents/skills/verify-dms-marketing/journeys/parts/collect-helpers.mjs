@@ -2,8 +2,8 @@ import { check } from "../../marketing.mjs";
 import { createSite } from "../../site.mjs";
 import { rows } from "../../store.mjs";
 
-/** @typedef {import("../marketing.mjs").Ctx} Ctx */
-/** @typedef {import("../site.mjs").Site} Site */
+/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../site.mjs").Site} Site */
 
 export const FIVE_MINUTES = 5 * 60 * 1000;
 

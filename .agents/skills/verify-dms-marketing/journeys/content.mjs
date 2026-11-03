@@ -48,6 +48,7 @@ export const journeys = guarded([
     title: "a missing, blank or padded tenant id rejects before anything is written, for the four content calls",
     entryPoint: "EnsureWebsite, EnsureFunnel, EnsurePageSnapshot, ImportAnalytics",
     async run(/** @type {Ctx} */ ctx) {
+      /** @type {[string, Record<string, unknown>][]} */
       const calls = [
         ["website", WEBSITE],
         ["funnel", { id: "f", websiteId: "w", name: "F", steps: [{ kind: "url", value: "/" }] }],
@@ -56,7 +57,7 @@ export const journeys = guarded([
       ];
       for (const [call, declaration] of calls) {
         for (const tenantId of [undefined, "", "   ", " default", "default "]) {
-          const answer = await ship(ctx, String(call), { ...declaration, tenantId });
+          const answer = await ship(ctx, call, { ...declaration, tenantId });
           await ctx.verify(`${call} with tenant ${JSON.stringify(tenantId)} is rejected`, [same("rejected", answer.ok, false), check("naming the tenant", /tenant/i.test(answer.error), answer.error)]);
         }
       }

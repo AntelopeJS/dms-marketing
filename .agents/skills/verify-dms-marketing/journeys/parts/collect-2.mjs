@@ -1,6 +1,9 @@
-import { check, mkt, same } from "../../marketing.mjs";
+import { mkt, same } from "../../marketing.mjs";
 import { collect, pageview, withConfig } from "../../site.mjs";
 import { storedEvents, site } from "./collect-helpers.mjs";
+
+/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../site.mjs").Site} Site */
 
 /** The journeys of part 2. */
 export const journeys = [
@@ -13,6 +16,7 @@ export const journeys = [
       const shop = await site(ctx, { extraDomains: [extra] });
       const event = pageview(shop, "/origin");
       const withOrigin = async (/** @type {string} */ label, /** @type {string | null} */ origin, /** @type {Record<string, string>} */ headers = {}) => collect(ctx, label, shop, [event], { origin, headers });
+      /** @type {[string, Awaited<ReturnType<typeof collect>>][]} */
       const accepted = [
         ["the domain", await withOrigin("origin: the domain", `https://${shop.domain}`)],
         ["a subdomain", await withOrigin("origin: www subdomain", `https://www.${shop.domain}`)],
@@ -21,14 +25,15 @@ export const journeys = [
         ["the domain with a port", await withOrigin("origin: the domain with a port", `https://${shop.domain}:8443`)],
         ["the domain in capitals", await withOrigin("origin: the domain in capitals", `https://${shop.domain.toUpperCase()}`)],
       ];
+      /** @type {[string, Awaited<ReturnType<typeof collect>>][]} */
       const refused = [
         ["another host", await withOrigin("origin: another host", "https://evil.example.net")],
         ["a host that only ends like the domain", await withOrigin("origin: look-alike suffix", `https://evil${shop.domain}`)],
         ["the domain as a label of another host", await withOrigin("origin: domain inside another host", `https://${shop.domain}.evil.example.net`)],
         ["the opaque origin", await withOrigin("origin: null", "null")],
       ];
-      await ctx.verify("hosts the website accepts", accepted.map(([label, answer]) => same(String(label), [answer.status, answer.accepted], [200, 1])));
-      await ctx.verify("hosts it refuses", refused.map(([label, answer]) => same(String(label), answer.status, 403)));
+      await ctx.verify("hosts the website accepts", accepted.map(([label, answer]) => same(label, [answer.status, answer.accepted], [200, 1])));
+      await ctx.verify("hosts it refuses", refused.map(([label, answer]) => same(label, answer.status, 403)));
       const viaReferer = await withOrigin("no origin, the website as referer", null, { referer: `https://${shop.domain}/page` });
       const viaForeignReferer = await withOrigin("no origin, another host as referer", null, { referer: "https://evil.example.net/page" });
       const originWins = await withOrigin("a foreign origin and the website as referer", "https://evil.example.net", { referer: `https://${shop.domain}/page` });
@@ -139,22 +144,22 @@ export const journeys = [
     entryPoint: "POST /api/marketing/collect",
     async run(/** @type {Ctx} */ ctx) {
       const shop = await site(ctx);
-      const visitors = async (/** @type {string} */ label) => [...new Set((await storedEvents(ctx, shop)).map((event) => String(event.visitorId)))].length;
+      const visitors = async () => new Set((await storedEvents(ctx, shop)).map((event) => String(event.visitorId))).size;
       const send = (/** @type {string} */ label, /** @type {string} */ forwarded) => collect(ctx, label, shop, [pageview(shop, `/${label.replace(/\W+/g, "-")}`)], { forwardedFor: forwarded });
       await send("no proxy: header a", "203.0.113.1");
       await send("no proxy: header b", "203.0.113.2");
-      await ctx.verify("with no trusted proxy the header is a client claim and every request is the same visitor", [same("distinct visitors", await visitors("none"), 1)]);
+      await ctx.verify("with no trusted proxy the header is a client claim and every request is the same visitor", [same("distinct visitors", await visitors(), 1)]);
       await withConfig(ctx, {}, async () => {
         await send("one proxy: spoof one, real one", "198.51.100.7, 203.0.113.10");
         await send("one proxy: spoof two, real one", "198.51.100.8, 203.0.113.10");
         await send("one proxy: spoof two, real two", "198.51.100.8, 203.0.113.11");
-        await ctx.verify("with one trusted proxy the entry it appended is the visitor, the entries to its left are ignored", [same("distinct visitors: the proxyless one plus the two real addresses", await visitors("one"), 3)]);
+        await ctx.verify("with one trusted proxy the entry it appended is the visitor, the entries to its left are ignored", [same("distinct visitors: the proxyless one plus the two real addresses", await visitors(), 3)]);
       }, { trustedProxies: 1 });
       await withConfig(ctx, {}, async () => {
         await collect(ctx, "client ip header: first", shop, [pageview(shop, "/header-one")], { headers: { "x-real-client": "192.0.2.50" } });
         await collect(ctx, "client ip header: second", shop, [pageview(shop, "/header-two")], { headers: { "x-real-client": "192.0.2.51" } });
         await collect(ctx, "client ip header: first again with a forged forwarded-for", shop, [pageview(shop, "/header-three")], { headers: { "x-real-client": "192.0.2.50" }, forwardedFor: "203.0.113.99" });
-        await ctx.verify("a configured header replaces the proxy count", [same("distinct visitors added by the header: two", await visitors("header"), 5)]);
+        await ctx.verify("a configured header replaces the proxy count", [same("distinct visitors added by the header: two", await visitors(), 5)]);
       }, { clientIpHeader: "x-real-client" });
     },
   },

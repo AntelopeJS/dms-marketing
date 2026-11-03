@@ -1,6 +1,6 @@
 import { request } from "node:http";
 import { guarded } from "../guard.mjs";
-import { check, list, mkt, num, pick, same, text } from "../marketing.mjs";
+import { byText, check, list, mkt, num, pick, same, text } from "../marketing.mjs";
 import { collect, collected, createSite, custom, eventually, pageview } from "../site.mjs";
 import { rows } from "../store.mjs";
 import { declare } from "./parts/funnels-helpers.mjs";
@@ -184,7 +184,7 @@ export const journeys = guarded([
       await ctx.verify("the heatmaps purge deletes clicks and scroll depths only", [
         same("a scope is required", [noScope.status, badScope.status], [400, 400]),
         same("answer", [heat.status, text(heat.body, "scope"), num(heat.body, "deleted", "events")], [200, "heatmaps", 2]),
-        same("pageview and custom event stay", afterHeat.map((row) => row.kind).sort(), ["custom", "pageview"]),
+        same("pageview and custom event stay", afterHeat.map((row) => row.kind).sort(byText), ["custom", "pageview"]),
       ]);
       const all = await mkt(ctx, "purge everything", "POST", `/websites/${doomed.id}/purge`, { body: { scope: "all" } });
       const again = await mkt(ctx, "purge everything again", "POST", `/websites/${doomed.id}/purge`, { body: { scope: "all" } });

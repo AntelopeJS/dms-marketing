@@ -7,11 +7,11 @@ const dmsClientUrl = process.env.DMS_CLIENT_BASE_URL;
  * The module's options as JSON, set by a journey in the run's environment
  * before it restarts the backend. Unset, the module runs its own defaults.
  */
-function marketingConfig(): Record<string, unknown> {
+function marketingConfig() {
   const text = process.env.VERIFY_MKT_CONFIG;
   if (!text) return {};
   const parsed: unknown = JSON.parse(text);
-  return typeof parsed === "object" && parsed !== null ? { ...parsed } : {};
+  return parsed instanceof Object ? parsed : {};
 }
 
 function numberOrUndefined(text: string | undefined): number | undefined {

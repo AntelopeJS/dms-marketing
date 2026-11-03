@@ -1,5 +1,5 @@
 import { check, pick, same } from "../../marketing.mjs";
-import { local, open, stored as storedEvents, waitFor } from "./tracker-helpers.mjs";
+import { open, stored as storedEvents, waitFor } from "./tracker-helpers.mjs";
 import { stored } from "./snapshots-helpers.mjs";
 
 /** @typedef {import("../../marketing.mjs").Ctx} Ctx */

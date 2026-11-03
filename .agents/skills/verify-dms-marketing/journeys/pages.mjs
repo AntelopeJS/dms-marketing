@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mkt, num, pick, same } from "../marketing.mjs";
+import { byText, check, list, mkt, num, pick, same } from "../marketing.mjs";
 import { collect, collected, createSite, eventually, pageview } from "../site.mjs";
 import { rows } from "../store.mjs";
 
@@ -43,12 +43,12 @@ export const journeys = guarded([
       const byViews = await read("");
       const byClicks = await read("&sort=clicks");
       const searched = await read("&search=BLOG");
-      const shape = (/** @type {Awaited<ReturnType<typeof read>>} */ answer) => list(answer.body, "pages").map((page) => [page.path, page.pageviews, page.clicks]);
+      const rowsOf = (/** @type {Awaited<ReturnType<typeof read>>} */ answer) => list(answer.body, "pages").map((page) => [page.path, page.pageviews, page.clicks]);
       await ctx.verify("the inventory", [
-        same("by views (the busiest first)", shape(byViews).slice(0, 1), [["/blog/a", 3, 3]]),
-        same("every path with its views and clicks", shape(byViews).sort(), [["/about", 1, 0], ["/blog/a", 3, 3], ["/pricing", 1, 2]]),
-        same("by clicks", shape(byClicks).map((page) => page[0]), ["/blog/a", "/pricing", "/about"]),
-        same("search is a case-insensitive filter on the path", shape(searched).map((page) => page[0]), ["/blog/a"]),
+        same("by views (the busiest first)", rowsOf(byViews).slice(0, 1), [["/blog/a", 3, 3]]),
+        same("every path with its views and clicks", rowsOf(byViews).sort(byText), [["/about", 1, 0], ["/blog/a", 3, 3], ["/pricing", 1, 2]]),
+        same("by clicks", rowsOf(byClicks).map((page) => page[0]), ["/blog/a", "/pricing", "/about"]),
+        same("search is a case-insensitive filter on the path", rowsOf(searched).map((page) => page[0]), ["/blog/a"]),
         same("flags the caller reads to explain an empty heatmap", [pick(byViews.body, "trackerEnabled"), pick(byViews.body, "snapshotsEnabled"), pick(byViews.body, "truncated"), pick(byViews.body, "total")], [true, true, false, 3]),
       ]);
     },
@@ -96,7 +96,7 @@ export const journeys = guarded([
       const plain = points.filter((point) => !point.anchor);
       await ctx.verify("the heatmap", [
         same("total clicks and the busiest point", [pick(read.body, "totalClicks"), pick(read.body, "maxWeight"), pick(read.body, "truncated")], [5, 2, false]),
-        same("two clicks on #buy with different window positions are one anchored point", anchored.map((point) => [pick(point, "anchor", "selector"), pick(point, "anchor", "nth"), point.weight]).sort(), [["#buy", 0, 2], ["#nav a", 1, 1]].sort()),
+        same("two clicks on #buy with different window positions are one anchored point", anchored.map((point) => [pick(point, "anchor", "selector"), pick(point, "anchor", "nth"), point.weight]).sort(byText), [["#buy", 0, 2], ["#nav a", 1, 1]].sort(byText)),
         same("clicks with no anchor fall back to one cell", plain.map((point) => point.weight), [2]),
       ]);
       const without = await mkt(ctx, "read the heatmap without a path", "GET", `/stats/heatmap?website=${shop.id}`);
