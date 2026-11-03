@@ -382,6 +382,12 @@ function dayRows(siteId) {
     .map(({ _id, websiteId, appliedImports, ...row }) => row);
 }
 
+/** Fakes the timers too, with the clock still held at NOW: ticks then move both. */
+function fakeTimers() {
+  mock.timers.reset();
+  mock.timers.enable({ apis: ["Date", "setTimeout", "setInterval"], now: NOW });
+}
+
 /** Fresh fakes, a known secret and the clock held at NOW per case. */
 function useFakeModels() {
   beforeEach(() => {
@@ -406,6 +412,7 @@ module.exports = {
   at,
   dayRows,
   drain,
+  fakeTimers,
   runCount: () => runCount,
   store: () => store,
   useFakeModels,

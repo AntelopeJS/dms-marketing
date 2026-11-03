@@ -10,6 +10,7 @@ const {
   at,
   dayRows,
   drain,
+  fakeTimers,
   runCount,
   store,
   useFakeModels,
@@ -168,7 +169,7 @@ describe("an analytics import's claims", () => {
   test("a claim whose holder stopped is taken over once its token stays unchanged", async () => {
     const site = website("stopped");
     leaveClaimBehind(site);
-    mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+    fakeTimers();
     let settled = false;
     const resumed = importAnalytics(batchFor(site)).finally(() => {
       settled = true;
@@ -195,7 +196,7 @@ describe("an analytics import's claims", () => {
       writing.resolve();
       await stalled.promise;
     });
-    mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+    fakeTimers();
     const holder = importAnalytics(batchFor(site));
     await writing.promise;
     for (let second = 0; second < 300; second += 1) {
