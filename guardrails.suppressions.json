@@ -14,5 +14,6 @@
     "typescript/restrict-template-expressions for packages/dms-marketing/tests/**/*.js": 1,
     "vue/multi-word-component-names for packages/dms-marketing/frontend-vue/**/*.ts": 1,
     "vue/multi-word-component-names for packages/dms-marketing/frontend-vue/**/*.vue": 1
-  }
+  },
+  "agentFiles": true
 }

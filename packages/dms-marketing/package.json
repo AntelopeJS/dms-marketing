@@ -77,7 +77,7 @@
     "@antelopejs/dms": "file:../../.campaign/tgz/antelopejs-dms-14e671d.tgz",
     "@antelopejs/interface-mongodb": ">=0.0.6 <1.0.0",
     "@antelopejs/mongodb": "file:../../.campaign/tgz/antelopejs-mongodb-db4b449.tgz",
-    "@antelopejs/tooling-configs": "^0.2.11",
+    "@antelopejs/tooling-configs": "file:../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz",
     "@types/node": "^22.19.15",
     "@types/sanitize-html": "^2.16.2",
     "knip": "^6.34.0",
@@ -101,7 +101,8 @@
       "@antelopejs/interface-dms-marketing": "file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz",
       "@antelopejs/interface-core": "file:../../.campaign/tgz/antelopejs-interface-core-f7df541.tgz",
       "@antelopejs/core": "file:../../.campaign/tgz/antelopejs-core-184eb90.tgz",
-      "@antelopejs/dms": "file:../../.campaign/tgz/antelopejs-dms-14e671d.tgz"
+      "@antelopejs/dms": "file:../../.campaign/tgz/antelopejs-dms-14e671d.tgz",
+      "@antelopejs/tooling-configs": "file:../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz"
     }
   },
   "antelopeJs": {
