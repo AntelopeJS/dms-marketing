@@ -12,8 +12,17 @@ function escapeAttribute(value: string): string {
  * (`module`), and a script to run after the tracker (`js`). Only the verification playground serves it.
  */
 export class VerifySiteController extends Controller("/verify-marketing/site") {
-  @Get("/*")
-  page(@Context() context: RequestContext) {
+  @Get("/:first")
+  one(@Context() context: RequestContext) {
+    return this.render(context);
+  }
+
+  @Get("/:first/:second")
+  two(@Context() context: RequestContext) {
+    return this.render(context);
+  }
+
+  private render(context: RequestContext) {
     const url = new URL(context.rawRequest.url ?? "/", "http://placeholder");
     const website = url.searchParams.get("w") ?? "";
     const attrs: Record<string, string> = JSON.parse(url.searchParams.get("attrs") ?? "{}");

@@ -1,4 +1,4 @@
-import { check, same } from "../../marketing.mjs";
+import { BROWSER_UA, check, same } from "../../marketing.mjs";
 import { createSite } from "../../site.mjs";
 import { rows } from "../../store.mjs";
 
@@ -28,6 +28,7 @@ export async function local(ctx) {
  */
 export async function open(ctx, site, name, options = {}) {
   const tab = await ctx.tab("anon", "visitor");
+  await tab.page.context().setExtraHTTPHeaders({ "user-agent": BROWSER_UA });
   if (options.init) await tab.page.addInitScript(options.init);
   const query = new URLSearchParams({ w: site.id });
   if (options.attrs) query.set("attrs", JSON.stringify(options.attrs));

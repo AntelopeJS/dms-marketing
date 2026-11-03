@@ -44,12 +44,14 @@ export const journeys = guarded([
       await tab.page.evaluate("history.pushState({}, '', '/verify-marketing/site/replaced?tab=2#/pricing')");
       await tab.page.evaluate("location.hash = '#/other'");
       const afterNoop = await settled(ctx, site, "pageview", 3);
-      const afterBack = await step("history.back()", 4);
+      const afterFourth = await step("history.pushState({}, '', '/verify-marketing/site/fourth')", 4);
+      const afterBack = await step("history.back()", 5);
       await ctx.verify("which navigations count", [
         same("pushState", afterPush.map((event) => event.url), ["/verify-marketing/site/spa", "/verify-marketing/site/pushed"]),
         same("replaceState", afterReplace.length, 3),
         afterNoop,
-        same("back (popstate) counts the page it lands on", afterBack.length, 4),
+        same("a push after the no-ops counts", afterFourth.length, 4),
+        same("back (popstate) counts the page it lands on", afterBack.map((event) => event.url).slice(-2), ["/verify-marketing/site/fourth", "/verify-marketing/site/replaced"]),
       ]);
     },
   },
