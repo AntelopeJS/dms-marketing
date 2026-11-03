@@ -24,6 +24,7 @@ jobs:
     with:
       docs-files: |
         README.md
+        docs
         packages/dms-marketing/README.md
         packages/dms-marketing/docs
         packages/interface-dms-marketing/README.md
