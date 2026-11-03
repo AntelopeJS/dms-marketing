@@ -101,6 +101,18 @@ export function check(name, pass, detail) {
 }
 
 /**
+ * The value with the keys of every object in order, so two objects compare equal whatever the order they were built in.
+ *
+ * @param {unknown} value A JSON value
+ * @returns {unknown} The same value with sorted keys; undefined stays undefined
+ */
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (isRow(value)) return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
+  return value;
+}
+
+/**
  * An equality check over JSON values, with both sides in the detail.
  *
  * @param {string} name What is compared
@@ -109,7 +121,7 @@ export function check(name, pass, detail) {
  * @returns {Check} The check
  */
 export function same(name, actual, expected) {
-  const [left, right] = [JSON.stringify(actual), JSON.stringify(expected)];
+  const [left, right] = [JSON.stringify(canonical(actual)), JSON.stringify(canonical(expected))];
   return { name, pass: left === right, detail: `expected ${right}, got ${left}` };
 }
 
