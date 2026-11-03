@@ -75,6 +75,7 @@
   "devDependencies": {
     "@antelopejs/core": "file:../../.campaign/tgz/antelopejs-core-184eb90.tgz",
     "@antelopejs/dms": "file:../../.campaign/tgz/antelopejs-dms-14e671d.tgz",
+    "@antelopejs/dms-frontend": "file:../../.campaign/tgz/antelopejs-dms-frontend-ee4e931.tgz",
     "@antelopejs/interface-mongodb": ">=0.0.6 <1.0.0",
     "@antelopejs/mongodb": "file:../../.campaign/tgz/antelopejs-mongodb-db4b449.tgz",
     "@antelopejs/tooling-configs": "file:../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz",

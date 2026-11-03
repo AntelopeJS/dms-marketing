@@ -25,7 +25,7 @@ export async function createSite(ctx, spec = {}) {
     body: { name, domain, extraDomains: spec.extraDomains, snapshotsEnabled: spec.snapshotsEnabled, snapshotMaskText: spec.snapshotMaskText },
     as: spec.as,
   });
-  return { id: text(answer.body, "id") || text(answer.body, "website", "id"), domain, name, answer };
+  return { id: text(answer.body, "_id"), domain, name, answer };
 }
 
 /**

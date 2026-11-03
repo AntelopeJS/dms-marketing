@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check } from "../marketing.mjs";
+import { check, num, pick, same } from "../marketing.mjs";
 import { collected, createSite, eventually, overview, pageview } from "../site.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
@@ -14,8 +14,12 @@ export const journeys = guarded([
       const site = await createSite(ctx, { name: "Smoke shop" });
       await ctx.verify("the website is created", [check("POST /websites answers its id", site.answer.status === 200 && site.id !== "", site.answer.body)], { critical: true });
       await collected(ctx, "a visit to /pricing is collected", site, [pageview(site, "/pricing", { title: "Pricing" })]);
-      const read = await eventually(() => overview(ctx, site), (answer) => JSON.stringify(answer.body).includes("pricing"));
-      await ctx.verify("the overview counts the pageview", [check("the overview read answers 200", read.status === 200, read.status), check("it mentions /pricing", JSON.stringify(read.body).includes("/pricing"), JSON.stringify(read.body).slice(0, 300))]);
+      const read = await eventually(() => overview(ctx, site), (answer) => num(answer.body, "totals", "pageviews") === 1);
+      await ctx.verify("the overview counts the pageview", [
+        check("the overview read answers 200", read.status === 200, read.status),
+        same("one pageview, one session, one new visitor", [num(read.body, "totals", "pageviews"), num(read.body, "totals", "sessions"), num(read.body, "totals", "newVisitors")], [1, 1, 1]),
+        same("the page is /pricing", pick(read.body, "topPages"), { "/pricing": 1 }),
+      ]);
     },
   },
 ]);
