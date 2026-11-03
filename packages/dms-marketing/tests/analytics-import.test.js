@@ -7,6 +7,7 @@ const MINUTE = 60_000;
 const {
   DAY,
   HISTORY,
+  NOW,
   ORIGIN,
   at,
   dayRows,
@@ -32,12 +33,11 @@ async function collectLive(site) {
     })),
   ).sort((x, y) => x.event.at - y.event.at);
   for (const { event, meta } of beacons) {
-    mock.timers.reset();
-    mock.timers.enable({ apis: ["Date"], now: event.at });
+    mock.timers.setTime(event.at);
     await processCollectBatch(site, [event], meta);
     await drain();
   }
-  mock.timers.reset();
+  mock.timers.setTime(NOW);
 }
 
 describe("an analytics import", () => {

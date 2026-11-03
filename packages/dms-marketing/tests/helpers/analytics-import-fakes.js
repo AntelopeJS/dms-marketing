@@ -17,8 +17,14 @@ const CHROME =
 const IPHONE =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 const ORIGIN = "https://shop.example.com";
-/** Three days ago at midnight UTC: well inside every retention. */
-const DAY_ONE = Math.floor((Date.now() - 3 * DAY) / DAY) * DAY;
+/**
+ * The pinned wall clock of every case. The visitor-hash salt changes with the
+ * UTC month, so a history that crosses midnight must not cross a month
+ * boundary: mid-month keeps the whole fixture in one salt month.
+ */
+const NOW = Date.UTC(2026, 5, 15, 12);
+/** Three days before NOW at midnight UTC: well inside every retention. */
+const DAY_ONE = Math.floor((NOW - 3 * DAY) / DAY) * DAY;
 
 /** @typedef {import("../../dist/db").Website} Website */
 /** @typedef {import("../../dist/db").FunnelExperiment} FunnelExperiment */
@@ -376,9 +382,10 @@ function dayRows(siteId) {
     .map(({ _id, websiteId, appliedImports, ...row }) => row);
 }
 
-/** Fresh fakes and a known secret per case. */
+/** Fresh fakes, a known secret and the clock held at NOW per case. */
 function useFakeModels() {
   beforeEach(() => {
+    mock.timers.enable({ apis: ["Date"], now: NOW });
     setConfig({ visitorHashSecret: "import-test" });
     fakeModels();
   });
@@ -394,6 +401,7 @@ module.exports = {
   DAY,
   DAY_ONE,
   HISTORY,
+  NOW,
   ORIGIN,
   at,
   dayRows,
