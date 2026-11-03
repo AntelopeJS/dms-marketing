@@ -6,6 +6,7 @@ covers:
   - packages/dms-marketing/frontend-vue/build/**
   - packages/dms-marketing/frontend-vue/dms.frontend.build.ts
   - packages/interface-dms-marketing/package.json
+  - packages/dms-marketing/frontend-vue/i18n/**
 docs:
   - packages/dms-marketing/README.md
   - packages/dms-marketing/docs/2.installation.md

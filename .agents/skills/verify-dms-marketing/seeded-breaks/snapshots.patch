@@ -1,0 +1,12 @@
+diff --git a/packages/dms-marketing/src/services/snapshot-html.ts b/packages/dms-marketing/src/services/snapshot-html.ts
+index 6f80231..fe20866 100644
+--- a/packages/dms-marketing/src/services/snapshot-html.ts
++++ b/packages/dms-marketing/src/services/snapshot-html.ts
+@@ -15,7 +15,6 @@ const SNAPSHOT_CSP_META =
+  * target base, a refresh. Shadow roots (`template`) included, as before. */
+ const DROPPED_TAGS = new Set([
+   "script",
+-  "iframe",
+   "frame",
+   "object",
+   "embed",

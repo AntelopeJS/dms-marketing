@@ -1,0 +1,11 @@
+diff --git a/packages/dms-marketing/src/routes/public-endpoints.ts b/packages/dms-marketing/src/routes/public-endpoints.ts
+index 6d6893b..e16d95d 100644
+--- a/packages/dms-marketing/src/routes/public-endpoints.ts
++++ b/packages/dms-marketing/src/routes/public-endpoints.ts
+@@ -15,5 +15,6 @@ export const TRACKER_PUBLIC_ENDPOINTS: FrontendPublicEndpoint[] = [
+   { path: `${API_BASE_PATH}/experiments.js`, methods: SCRIPT_METHODS },
+   { path: `${API_BASE_PATH}/snapshot.js`, methods: SCRIPT_METHODS },
+   { path: `${API_BASE_PATH}/collect`, methods: BEACON_METHODS },
++  { path: `${API_BASE_PATH}/websites`, methods: SCRIPT_METHODS },
+   { path: `${API_BASE_PATH}/snapshot`, methods: BEACON_METHODS },
+ ];

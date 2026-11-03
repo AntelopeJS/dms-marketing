@@ -3,6 +3,7 @@ import { guarded } from "../guard.mjs";
 import { check, list, mkt, num, pick, same, text } from "../marketing.mjs";
 import { collect, collected, createSite, custom, eventually, pageview } from "../site.mjs";
 import { rows } from "../store.mjs";
+import { declare } from "./parts/funnels-helpers.mjs";
 import { journeys as browser } from "./parts/websites-ui.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
@@ -173,8 +174,9 @@ export const journeys = guarded([
       for (const target of [doomed, kept]) {
         await collected(ctx, `data for ${target.name}`, target, [pageview(target, "/a"), custom(target, "/a", "signup"), { kind: "click", url: `https://${target.domain}/a`, data: { x: 0.5, y: 0.5 } }, { kind: "scroll", url: `https://${target.domain}/a`, data: { depth: 40 } }]);
       }
+      await declare(ctx, doomed, { id: "doomed-funnel", steps: [{ kind: "url", value: "/a" }] });
       const counts = await mkt(ctx, "count what a purge discards", "GET", `/websites/${doomed.id}/deletion`);
-      await ctx.verify("the deletion counts", [same("sessions, pageviews, heatmap events, snapshots", [num(counts.body, "sessions"), num(counts.body, "pageviews"), num(counts.body, "heatmapEvents"), num(counts.body, "snapshots")], [1, 1, 2, 0])]);
+      await ctx.verify("the deletion counts", [same("sessions, pageviews, heatmap events, snapshots, funnels", [num(counts.body, "sessions"), num(counts.body, "pageviews"), num(counts.body, "heatmapEvents"), num(counts.body, "snapshots"), num(counts.body, "funnels")], [1, 1, 2, 0, 1])]);
       const noScope = await mkt(ctx, "purge without a scope", "POST", `/websites/${doomed.id}/purge`, { body: {} });
       const badScope = await mkt(ctx, "purge with another scope", "POST", `/websites/${doomed.id}/purge`, { body: { scope: "everything" } });
       const heat = await mkt(ctx, "purge the heatmaps", "POST", `/websites/${doomed.id}/purge`, { body: { scope: "heatmaps" } });
@@ -190,6 +192,7 @@ export const journeys = guarded([
         same("first answer", [all.status, num(all.body, "deleted", "events"), num(all.body, "deleted", "sessions"), num(all.body, "deleted", "days")], [200, 2, 1, 1]),
         same("second answer", [again.status, num(again.body, "deleted", "events"), num(again.body, "deleted", "sessions"), num(again.body, "deleted", "days")], [200, 0, 0, 0]),
         same("the site stays", (await listed(ctx, doomed.id))?.name, "Doomed"),
+        same("its funnels stay", pick(await mkt(ctx, "read the funnels list", "GET", `/funnels/rows?website=${doomed.id}`).then((answer) => answer.body), "total"), 1),
         same("no event or session of it is stored", [(await rows(ctx, "marketing_events", { websiteId: doomed.id })).length, (await rows(ctx, "marketing_sessions", { websiteId: doomed.id })).length], [0, 0]),
       ]);
       const removed = await mkt(ctx, "delete the website", "DELETE", `/websites/${doomed.id}`);

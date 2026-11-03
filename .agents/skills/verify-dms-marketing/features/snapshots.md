@@ -35,6 +35,7 @@ Page snapshots: the negotiation, the upload and its guards, the server-side sani
 - `the-upload-cap-is-the-configured-size-clamped-between-64-kib-and-8-mib`
 - `the-stored-document-is-sanitised-again-on-the-server`
 - `a-capture-is-not-refreshed-within-a-day-and-an-option-change-discards-the-captures`
+- `a-sampled-visit-clicks-scrolls-and-captures-the-page-in-the-browser`
 
 ## How to get to it (user POV)
 

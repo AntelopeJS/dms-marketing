@@ -4,6 +4,7 @@ covers:
   - packages/dms-marketing/src/services/experiments/**
   - packages/dms-marketing/src/services/experiment-definitions.ts
   - packages/dms-marketing/src/utils/experiment-type.ts
+  - packages/dms-marketing/src/types/constants.ts
   - packages/dms-marketing/frontend-vue/app/components/ExperimentInput.vue
   - packages/dms-marketing/frontend-vue/app/components/ExperimentReport.vue
   - packages/dms-marketing/frontend-vue/app/components/VariationsInput.vue

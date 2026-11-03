@@ -1,0 +1,13 @@
+diff --git a/packages/dms-marketing/src/services/website-rules.ts b/packages/dms-marketing/src/services/website-rules.ts
+index 8b69624..0b3c530 100644
+--- a/packages/dms-marketing/src/services/website-rules.ts
++++ b/packages/dms-marketing/src/services/website-rules.ts
+@@ -36,7 +36,7 @@ export const nameSchema = z.string().trim().min(1).max(MAX_NAME_LENGTH);
+ 
+ export const extraDomainsSchema = z
+   .array(hostnameSchema)
+-  .max(MAX_EXTRA_DOMAINS);
++  .max(MAX_EXTRA_DOMAINS + 1);
+ 
+ /** Duplicates and the domain itself add nothing to the extra hosts. */
+ export function distinctExtraHosts(domain: string, hosts: string[]): string[] {

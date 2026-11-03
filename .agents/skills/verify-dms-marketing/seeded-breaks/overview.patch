@@ -1,0 +1,13 @@
+diff --git a/packages/dms-marketing/src/routes/blocks.ts b/packages/dms-marketing/src/routes/blocks.ts
+index b69ff11..35825f4 100644
+--- a/packages/dms-marketing/src/routes/blocks.ts
++++ b/packages/dms-marketing/src/routes/blocks.ts
+@@ -214,7 +214,7 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
+         title: key,
+         value,
+         description: percentText(shareOf(value, base)),
+-        delta: previous ? percentChange(value, previous[key]) : null,
++        delta: previous ? percentChange(previous[key], value) : null,
+       })),
+     };
+   }

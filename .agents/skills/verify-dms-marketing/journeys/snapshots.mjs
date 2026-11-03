@@ -1,6 +1,7 @@
 import { guarded } from "../guard.mjs";
 import { check, list, mkt, pick, same } from "../marketing.mjs";
 import { createSite } from "../site.mjs";
+import { journeys as browser } from "./parts/snapshots-browser.mjs";
 import { negotiate, snapshotSite, stored, upload, visit } from "./parts/snapshots-helpers.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
@@ -9,6 +10,7 @@ const OTHER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit
 
 /** Page snapshots: negotiation, upload and what is stored (4.usage/4.page-snapshots.md, 7.architecture/5.snapshots-and-heatmaps.md). */
 export const journeys = guarded([
+  ...browser,
   {
     id: "the-backend-asks-for-a-capture-only-when-it-wants-one",
     title: "the capture script goes to one visitor when the site opted in, the page has no young capture and nobody else holds the promise; every other case answers an empty script",

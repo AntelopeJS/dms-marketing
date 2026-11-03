@@ -1,0 +1,10 @@
+diff --git a/packages/dms-marketing/src/routes/index.ts b/packages/dms-marketing/src/routes/index.ts
+index cc36474..d009da9 100644
+--- a/packages/dms-marketing/src/routes/index.ts
++++ b/packages/dms-marketing/src/routes/index.ts
+@@ -8,4 +8,4 @@ export * from "./settings";
+ export * from "./snapshot";
+ export * from "./stats";
+ export * from "./tracker";
+-export * from "./websites";
++

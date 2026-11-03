@@ -1,5 +1,7 @@
 ---
 covers:
+  - packages/dms-marketing/src/db/models/index.ts
+  - packages/dms-marketing/src/db/tables/index.ts
   - packages/dms-marketing/src/index.ts
   - packages/dms-marketing/src/hooks/index.ts
   - packages/dms-marketing/src/db/index.ts

@@ -7,6 +7,7 @@ covers:
   - packages/dms-marketing/src/data-api/tenant-scope.ts
   - packages/dms-marketing/src/data-api/index.ts
   - packages/dms-marketing/src/services/tenant-website.ts
+  - packages/dms-marketing/src/utils/zod-json.ts
   - packages/dms-marketing/src/services/website-report.ts
   - packages/dms-marketing/src/services/website-rules.ts
   - packages/dms-marketing/src/services/website-hosts.ts

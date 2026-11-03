@@ -19,6 +19,8 @@ covers:
   - packages/dms-marketing/src/db/tables/marketing_events.table.ts
   - packages/dms-marketing/src/db/tables/marketing_sessions.table.ts
   - packages/dms-marketing/src/utils/guards.ts
+  - packages/dms-marketing/src/services/bounded-cache.ts
+  - packages/dms-marketing/src/services/keyed-queue.ts
 docs:
   - packages/dms-marketing/docs/7.architecture/3.http-api.md
   - packages/dms-marketing/docs/7.architecture/1.index.md

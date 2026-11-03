@@ -7,6 +7,7 @@ covers:
   - packages/dms-marketing/src/routes/context.ts
   - packages/dms-marketing/src/routes/blocks.ts
   - packages/dms-marketing/src/services/dashboard.ts
+  - packages/dms-marketing/src/services/composed.ts
   - packages/dms-marketing/src/services/rollups.ts
   - packages/dms-marketing/src/services/hourly-traffic.ts
   - packages/dms-marketing/src/services/period.ts

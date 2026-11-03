@@ -1,0 +1,13 @@
+diff --git a/packages/dms-marketing/src/services/funnels/compute.ts b/packages/dms-marketing/src/services/funnels/compute.ts
+index e35b902..a56c472 100644
+--- a/packages/dms-marketing/src/services/funnels/compute.ts
++++ b/packages/dms-marketing/src/services/funnels/compute.ts
+@@ -76,7 +76,7 @@ function sessionProgress(
+     }
+     if (
+       enteredAt !== undefined &&
+-      event.timestamp.getTime() - enteredAt > funnel.conversionWindowMs
++      event.timestamp.getTime() - enteredAt > funnel.conversionWindowMs * 4
+     ) {
+       break;
+     }
