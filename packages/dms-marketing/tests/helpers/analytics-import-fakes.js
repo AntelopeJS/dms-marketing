@@ -17,8 +17,14 @@ const CHROME =
 const IPHONE =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 const ORIGIN = "https://shop.example.com";
-/** Three days ago at midnight UTC: well inside every retention. */
-const DAY_ONE = Math.floor((Date.now() - 3 * DAY) / DAY) * DAY;
+/**
+ * The 10th of last month at midnight UTC: well inside every retention, and the
+ * two days of history stay in one month, the period of the visitor-id salt.
+ */
+const DAY_ONE = (() => {
+  const now = new Date();
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 10);
+})();
 const COUNTERS = [
   "pageviews",
   "sessions",
