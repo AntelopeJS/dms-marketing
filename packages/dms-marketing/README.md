@@ -1,24 +1,24 @@
 <div align="center">
 
-# @antelopejs/dms-marketing
+# `@antelopejs/dms-marketing`
 
-<a href="https://www.npmjs.com/package/@antelopejs/dms-marketing"><img alt="npm" src="https://img.shields.io/npm/v/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
-<a href="./LICENSE"><img alt="License" src="https://img.shields.io/npm/l/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
-<a href="https://discord.gg/sjK28QHrA7"><img alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
-<a href="https://dms.antelopejs.com/docs/modules/marketing"><img alt="Documentation" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
+<a href="https://www.npmjs.com/package/@antelopejs/dms-marketing"><img data-illustration alt="npm" src="https://img.shields.io/npm/v/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
+<a href="./LICENSE"><img data-illustration alt="License" src="https://img.shields.io/npm/l/@antelopejs/dms-marketing?style=for-the-badge&labelColor=000000&color=000000"></a>
+<a href="https://discord.gg/sjK28QHrA7"><img data-illustration alt="Discord" src="https://img.shields.io/badge/Discord-18181B?logo=discord&style=for-the-badge&color=000000"></a>
+<a href="https://dms.antelopejs.com/docs/modules/marketing"><img data-illustration alt="Documentation" src="https://img.shields.io/badge/Docs-18181B?style=for-the-badge&color=000000"></a>
 
 First-party marketing analytics for the AntelopeJS DMS: traffic, funnels, A/B splits and heatmaps.
 
 </div>
 
-![The Marketing overview: KPI cards, session quality and the traffic chart against the previous period](https://raw.githubusercontent.com/AntelopeJS/dms-marketing/main/packages/dms-marketing/docs/images/overview.png)
+![The Marketing overview of the Helio demo website over the last 30 days: the context bar, four KPI cards with their change and sparkline, the session-quality strip, the sessions chart against the previous period and the device split](./docs/images/captures/overview.webp)
 
 ## What it does
 
 - Shows pageviews, sessions, new visitors and custom events against the previous period, with acquisition channels and UTM campaigns.
 - Draws clicks and scroll depth over a snapshot of any tracked page, even on sites that refuse framing.
 - Measures ordered conversion funnels with per-step drop-off, optionally split into server-assigned A/B variations.
-- Stays first-party and cookieless: no external service, no IP or user agent stored, and the data stays in the project's MongoDB.
+- Stays first-party and cookieless. It calls no external service, stores no IP address or user agent, and keeps the data in the project's MongoDB.
 
 ## Install
 
@@ -30,14 +30,14 @@ ajs project modules add @antelopejs/dms-marketing
 
 ## Quick start
 
-Restart the backend, then the frontend, and open **Modules › Marketing**. Click **Add a website** on the Websites page: the install guide that opens gives the tracker snippet, in HTML, Nuxt or Google Tag Manager form. In HTML:
+Restart the backend, then the frontend, and open **Modules › Marketing**. Click **Add a website** on the **Websites** page. The install guide that opens gives the tracker snippet in HTML, Nuxt or Google Tag Manager form. The HTML form looks like this:
 
 ```html
 <script defer src="https://<backend>/api/marketing/tracker.js"
         data-website-id="<website id>"></script>
 ```
 
-Behind a reverse proxy, set the DMS `auth.trustedProxies` option: see [Installation](https://dms.antelopejs.com/docs/modules/marketing/installation).
+Behind a reverse proxy, set the DMS `auth.trustedProxies` option. See [Installation](https://dms.antelopejs.com/docs/modules/marketing/installation).
 
 ## Compatibility
 
@@ -56,7 +56,7 @@ Behind a reverse proxy, set the DMS `auth.trustedProxies` option: see [Installat
 
 <!-- antelopejs-docs-compat:end -->
 
-The module also needs a DMS backend in a release that implements the `@antelopejs/interface-dms` range in the table above, and the `@antelopejs/dms-frontend` renderer in the range its frontend module declares in `engines["@antelopejs/dms-frontend"]` of `frontend-vue/package.json`; the `ajs dms` CLI refuses to build it with a renderer outside that range.
+The module also needs a DMS backend in a release that implements the `@antelopejs/interface-dms` range in the table above, and the `@antelopejs/dms-frontend` renderer in the range its frontend module declares in `engines["@antelopejs/dms-frontend"]` of `frontend-vue/package.json`. The `ajs dms` CLI refuses to build it with a renderer outside that range.
 
 ## Documentation
 
@@ -68,7 +68,7 @@ The module also needs a DMS backend in a release that implements the `@antelopej
 - [FAQ](https://dms.antelopejs.com/docs/modules/marketing/faq)
 - [Architecture](https://dms.antelopejs.com/docs/modules/marketing/architecture)
 
-The guide's sources live in [`packages/dms-marketing/docs`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/docs); [`KNOWN-ISSUES.md`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/KNOWN-ISSUES.md) lists the defects found end to end and how each was closed. The module ships the `dms-marketing` Claude Code skill in [`packages/dms-marketing/skills`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/skills), declared under `antelopeJs.skills`.
+The guide's sources live in [`packages/dms-marketing/docs`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/docs). [`KNOWN-ISSUES.md`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/KNOWN-ISSUES.md) lists the defects found end to end, how each was closed, and the two still open in the DMS core. The module ships the `dms-marketing` Claude Code skill in [`packages/dms-marketing/skills`](https://github.com/AntelopeJS/dms-marketing/tree/main/packages/dms-marketing/skills), declared under `antelopeJs.skills`.
 
 ## Contributing
 
