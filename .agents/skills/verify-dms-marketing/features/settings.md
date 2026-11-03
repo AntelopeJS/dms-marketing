@@ -1,5 +1,8 @@
 ---
 covers:
+  - packages/dms-marketing/src/services/prune.ts
+  - packages/dms-marketing/src/db/models/retention.ts
+  - packages/dms-marketing/src/types/constants.ts
   - packages/dms-marketing/src/routes/settings.ts
   - packages/dms-marketing/src/services/settings.ts
   - packages/dms-marketing/src/types/settings.ts
