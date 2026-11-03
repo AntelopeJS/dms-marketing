@@ -1,4 +1,5 @@
 import "./fixture";
+import "./fixture-site";
 
 export function construct(): void {}
 
