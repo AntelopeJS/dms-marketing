@@ -1,4 +1,4 @@
-import { BROWSER_UA, check, mkt, num, pick, raw, text } from "./marketing.mjs";
+import { BROWSER_UA, check, fixture, mkt, num, pick, raw, text } from "./marketing.mjs";
 
 /**
  * @typedef {import("./marketing.mjs").Ctx} Ctx
@@ -152,4 +152,65 @@ export function overview(ctx, site, window = {}) {
  */
 export function field(answer, ...path) {
   return pick(answer.body, ...path);
+}
+
+/**
+ * Runs `body` with environment variables set on the backend (it restarts on the same database before and after).
+ *
+ * @param {Ctx} ctx The journey
+ * @param {Record<string, string>} env The variables (`VERIFY_MKT_CONFIG`, `VERIFY_MKT_TRUSTED_PROXIES`, `VERIFY_MKT_CLIENT_IP_HEADER`)
+ * @param {() => Promise<void>} body What to do under that environment
+ * @returns {Promise<void>}
+ */
+export async function withEnv(ctx, env, body) {
+  const previous = { ...ctx.state.extraEnv };
+  ctx.state.extraEnv = { ...previous, ...env };
+  try {
+    await ctx.restartBackend();
+    await body();
+  } finally {
+    ctx.state.extraEnv = previous;
+    await ctx.restartBackend();
+  }
+}
+
+/**
+ * Runs `body` with module options set (`trackerEnabled`, `sessionIdleTimeout` ...) and optional proxy settings.
+ *
+ * @param {Ctx} ctx The journey
+ * @param {Record<string, unknown>} options The module's options
+ * @param {() => Promise<void>} body What to do under that configuration
+ * @param {{ trustedProxies?: number, clientIpHeader?: string }} [dms] The DMS auth options that matter to the collector
+ * @returns {Promise<void>}
+ */
+export function withConfig(ctx, options, body, dms = {}) {
+  /** @type {Record<string, string>} */
+  const env = { VERIFY_MKT_CONFIG: JSON.stringify(options) };
+  if (dms.trustedProxies !== undefined) env.VERIFY_MKT_TRUSTED_PROXIES = String(dms.trustedProxies);
+  if (dms.clientIpHeader !== undefined) env.VERIFY_MKT_CLIENT_IP_HEADER = dms.clientIpHeader;
+  return withEnv(ctx, env, body);
+}
+
+/**
+ * Invites a member with a role of the given permissions and signs them up, so tabs and requests can act as them.
+ *
+ * @param {Ctx} ctx The journey
+ * @param {string} name The account name
+ * @param {{ permissions?: string[], asTenantOwner?: boolean, language?: string }} [spec] The role and whether the member owns the tenant
+ * @returns {Promise<{ roleId: string, userId: string }>} The role and the user
+ */
+export async function member(ctx, name, spec = {}) {
+  const invite = await fixture(ctx, `invite ${name}`, "POST", "/member", { name, permissions: spec.permissions ?? [], asTenantOwner: spec.asTenantOwner ?? false, language: spec.language ?? "en" });
+  const email = text(invite.body, "email");
+  const password = ctx.password();
+  const signup = await ctx.api(`${name} signs up`, {
+    method: "POST",
+    path: "/api/auth/signup",
+    body: { name, email, password, lang: spec.language ?? "en", token: text(invite.body, "token") },
+    as: "anon",
+  });
+  const userId = text(signup.body, "user", "_id");
+  ctx.addAccount(name, { email, password, userId });
+  await ctx.verify(`${name} is a member`, [check("the signup answers a session", signup.status === 200 && userId !== "", signup.status)], { critical: true });
+  return { roleId: text(invite.body, "roleId"), userId };
 }
