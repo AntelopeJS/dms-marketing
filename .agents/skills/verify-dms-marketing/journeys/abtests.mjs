@@ -1,5 +1,6 @@
 import { guarded } from "../guard.mjs";
 import { check, list, mkt, num, pick, same } from "../marketing.mjs";
+import { journeys as bounds } from "./parts/abtests-bounds.mjs";
 import { split, twoSidedP, zScore } from "./parts/abtests-helpers.mjs";
 import { results, shop } from "./parts/funnels-helpers.mjs";
 
@@ -15,6 +16,7 @@ function arms(read) {
 
 /** A/B tests: the reading, the verdicts and the checks (4.usage/6.ab-tests.md). */
 export const journeys = guarded([
+  ...bounds,
   {
     id: "an-arm-is-scored-per-exposed-session-with-a-two-sided-z-test",
     title: "each arm reports its exposed sessions, conversions and rate; the challenger's lift and p-value match an independent two-proportion z-test; the split check passes on a balanced split",

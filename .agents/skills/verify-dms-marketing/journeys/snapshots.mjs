@@ -12,6 +12,28 @@ const OTHER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit
 export const journeys = guarded([
   ...browser,
   {
+    id: "the-layout-is-the-viewport-width-bucketed-at-1024-and-600",
+    title: "a viewport of 1024 or more is desktop, 600 to 1023 tablet, below 600 phone; each layout is its own snapshot of the page and the heatmap read finds the nearest one",
+    entryPoint: "EnsurePageSnapshot, GET /api/marketing/stats/snapshot",
+    async run(/** @type {Ctx} */ ctx) {
+      const { fixture } = await import("../marketing.mjs");
+      await fixture(ctx, "declare a website with snapshots", "POST", "/website", { tenantId: "default", id: "layout-site", name: "Layout", domain: "layout.example.com", snapshotsEnabled: true });
+      const layouts = [];
+      for (const width of [1280, 1024, 1023, 768, 600, 599, 390]) {
+        const answer = await fixture(ctx, `declare a snapshot at ${width}`, "POST", "/snapshot", { tenantId: "default", websiteId: "layout-site", url: "https://layout.example.com/p", html: `<body>at ${width}</body>`, viewport: { width, height: 800 }, document: { width, height: 800 } });
+        layouts.push([width, pick(answer.body, "result", "layout"), pick(answer.body, "result", "status")]);
+      }
+      await ctx.verify("the layout of each width", [same("layout and status by width", layouts, [[1280, "desktop", "created"], [1024, "desktop", "kept"], [1023, "tablet", "created"], [768, "tablet", "kept"], [600, "tablet", "kept"], [599, "phone", "created"], [390, "phone", "kept"]])]);
+      const read = async (/** @type {string} */ layout) => (await mkt(ctx, `read the ${layout} snapshot`, "GET", `/stats/snapshot?website=layout-site&path=/p&layout=${layout}`)).body;
+      await ctx.verify("one snapshot per layout, the first declaration of each", [
+        same("desktop", [pick(await read("desktop"), "snapshot", "layout"), String(pick(await read("desktop"), "snapshot", "html")).includes("at 1280")], ["desktop", true]),
+        same("tablet", String(pick(await read("tablet"), "snapshot", "html")).includes("at 1023"), true),
+        same("phone", String(pick(await read("phone"), "snapshot", "html")).includes("at 599"), true),
+      ]);
+    },
+  },
+
+  {
     id: "the-backend-asks-for-a-capture-only-when-it-wants-one",
     title: "the capture script goes to one visitor when the site opted in, the page has no young capture and nobody else holds the promise; every other case answers an empty script",
     entryPoint: "GET /api/marketing/snapshot.js",

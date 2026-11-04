@@ -1,6 +1,7 @@
 import { guarded } from "../guard.mjs";
 import { byText, check, list, mkt, num, pick, same } from "../marketing.mjs";
 import { collected, pageview } from "../site.mjs";
+import { journeys as context } from "./parts/overview-context.mjs";
 import { block, history, period, shop, utcDay } from "./parts/overview-helpers.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
@@ -9,6 +10,7 @@ const WEEK = period(6, 0);
 
 /** The Overview: context, period, comparison and the blocks (4.usage/1.overview.md, 7.architecture/4.context-and-period.md). */
 export const journeys = guarded([
+  ...context,
   {
     id: "the-kpi-cards-change-against-the-comparison-window",
     title: "each KPI card gives its value, the previous value, the change in percent and a daily sparkline; with no comparison the change is left out, not 0",

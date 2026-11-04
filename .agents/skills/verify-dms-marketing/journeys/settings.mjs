@@ -2,6 +2,7 @@ import { guarded } from "../guard.mjs";
 import { check, list, mkt, num, pick, same } from "../marketing.mjs";
 import { collected, createSite, pageview } from "../site.mjs";
 import { DAY_MS, edit } from "../store.mjs";
+import { journeys as cuts } from "./parts/settings-cuts.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
@@ -28,6 +29,7 @@ function fieldsOf(answer) {
 
 /** The Settings page's routes (4.usage/8.settings.md, 3.configuration.md, 7.architecture/3.http-api.md). */
 export const journeys = guarded([
+  ...cuts,
   {
     id: "the-settings-start-from-the-configuration-defaults",
     title: "a deployment with no saved settings reads 90, 395 and 30 days, 10 % sampling and collection on, and At a glance draws them on a 760-day scale",

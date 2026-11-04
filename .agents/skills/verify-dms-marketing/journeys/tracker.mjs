@@ -1,11 +1,36 @@
 import { guarded } from "../guard.mjs";
-import { check, mkt, raw, same } from "../marketing.mjs";
+import { check, mkt, pick, raw, same } from "../marketing.mjs";
 import { local, open, settled, stored, waitFor } from "./parts/tracker-helpers.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
 /** The tracker script and its page API (4.usage/9.tracking.md, 2.installation.md). */
 export const journeys = guarded([
+  {
+    id: "the-tag-sets-the-heatmap-sampling-of-its-site",
+    title: "data-heatmap-sample 0 records no click and declares 0, 1 records every click and declares 1, and a tag without it declares the module's rate",
+    entryPoint: "data-heatmap-sample",
+    async run(/** @type {Ctx} */ ctx) {
+      const site = await local(ctx);
+      const rates = [];
+      for (const rate of ["0", "1"]) {
+        const tab = await open(ctx, site, `rate-${rate}`, { attrs: { "data-heatmap-sample": rate } });
+        const views = await waitFor(ctx, site, "pageview", (found) => found.filter((event) => event.url === `/verify-marketing/site/rate-${rate}`).length >= 1);
+        await tab.page.click("#buy");
+        const here = (/** @type {Record<string, unknown>[]} */ found) => found.filter((event) => event.url === `/verify-marketing/site/rate-${rate}`);
+        if (rate === "1") await waitFor(ctx, site, "click", (found) => here(found).length >= 1, 20_000);
+        else await new Promise((resolve) => setTimeout(resolve, 7000));
+        const clicks = here(await stored(ctx, site, "click")).length;
+        rates.push([rate, pick(views.find((event) => event.url === `/verify-marketing/site/rate-${rate}`), "data", "sample"), clicks]);
+      }
+      await ctx.verify("sampling by tag", [same("declared rate and recorded clicks per tag", rates, [["0", 0, 0], ["1", 1, 1]])]);
+      await mkt(ctx, "set the module sampling to 100 %", "PUT", "/settings", { body: { heatmapSamplePercent: 100 } });
+      await open(ctx, site, "module-rate", { account: "visitor-after-save" });
+      const views = await waitFor(ctx, site, "pageview", (found) => found.some((event) => event.url === "/verify-marketing/site/module-rate"));
+      await ctx.verify("a tag without the attribute follows the module setting", [same("declared rate", pick(views.find((event) => event.url === "/verify-marketing/site/module-rate"), "data", "sample"), 1)]);
+    },
+  },
+
   {
     id: "a-page-load-sends-a-pageview-with-its-context",
     title: "the tracker counts a page load and sends the path, the title, the screen, the language and the referrer; it sets no cookie and uses no storage",

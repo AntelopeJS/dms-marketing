@@ -23,11 +23,11 @@ export async function local(ctx) {
  * @param {Ctx} ctx The journey
  * @param {Site} site The website
  * @param {string} name The page name (its path under the visitor site)
- * @param {{ attrs?: Record<string, string>, twice?: boolean, module?: boolean, js?: string, init?: string }} [options] The tag's attributes, a second tag, a module tag, a script, and a script run before the page
+ * @param {{ account?: string, attrs?: Record<string, string>, twice?: boolean, module?: boolean, js?: string, init?: string }} [options] The tag's attributes, a second tag, a module tag, a script, and a script run before the page
  * @returns {Promise<import("../../marketing.mjs").Tab>} The tab, on the page
  */
 export async function open(ctx, site, name, options = {}) {
-  const tab = await ctx.tab("anon", "visitor");
+  const tab = await ctx.tab(options.account ?? "anon", "visitor");
   await tab.page.context().setExtraHTTPHeaders({ "user-agent": BROWSER_UA });
   if (options.init) await tab.page.addInitScript(options.init);
   const query = new URLSearchParams({ w: site.id });

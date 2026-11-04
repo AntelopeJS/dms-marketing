@@ -103,3 +103,19 @@ export function count(ctx, table, filter = {}) {
     return total;
   });
 }
+
+/**
+ * Deletes stored rows, to set up a state no request reaches (rollups without the sessions behind them).
+ *
+ * @param {Ctx} ctx The journey
+ * @param {string} table The table
+ * @param {Doc} filter Which rows
+ * @returns {Promise<number>} How many rows were deleted
+ */
+export function drop(ctx, table, filter) {
+  return withTable(ctx, table, async (collections) => {
+    let deleted = 0;
+    for (const collection of collections) deleted += (await collection.deleteMany(filter)).deletedCount;
+    return deleted;
+  });
+}
