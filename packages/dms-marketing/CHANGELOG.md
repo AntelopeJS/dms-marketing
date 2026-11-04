@@ -1,6 +1,26 @@
 # Changelog
 
 
+## v0.8.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.8.0...v0.8.1)
+
+### 🩹 Fixes
+
+- **import:** Resume an analytics import that stopped part-way ([#108](https://github.com/AntelopeJS/dms-marketing/pull/108))
+
+### 📖 Documentation
+
+- **github:** Send questions and ideas to Discord ([#109](https://github.com/AntelopeJS/dms-marketing/pull/109))
+
+### 🏡 Chore
+
+- **release:** @antelopejs/interface-dms-marketing v0.5.2 ([b97e15d](https://github.com/AntelopeJS/dms-marketing/commit/b97e15d))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.8.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.7.1...v0.8.0)

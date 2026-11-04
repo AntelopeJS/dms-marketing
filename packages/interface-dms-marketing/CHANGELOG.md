@@ -1,6 +1,55 @@
 # Changelog
 
 
+## v0.5.2
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.5.1...v0.5.2)
+
+### 🚀 Enhancements
+
+- **frontend:** Enforce the backend boundary in production builds ([#77](https://github.com/AntelopeJS/dms-marketing/pull/77))
+
+### 🩹 Fixes
+
+- **skills:** Show the imports of the provisioning hook example ([#75](https://github.com/AntelopeJS/dms-marketing/pull/75))
+- **marketing:** Present API failures through DMS core ([#102](https://github.com/AntelopeJS/dms-marketing/pull/102))
+- **import:** Resume an analytics import that stopped part-way ([#108](https://github.com/AntelopeJS/dms-marketing/pull/108))
+
+### 💅 Refactors
+
+- Clean up the tests, comments, types and oversize files ([#76](https://github.com/AntelopeJS/dms-marketing/pull/76))
+- **amp:** Narrow the forwarded location header with a JSDoc type guard ([#78](https://github.com/AntelopeJS/dms-marketing/pull/78))
+- Clear the residual ratchet findings ([#80](https://github.com/AntelopeJS/dms-marketing/pull/80))
+
+### 📖 Documentation
+
+- **changelog:** Upgrade notes of interface-dms-marketing 0.5.1 ([#69](https://github.com/AntelopeJS/dms-marketing/pull/69))
+- **changelog:** Upgrade notes of dms-marketing 0.7.1 ([#70](https://github.com/AntelopeJS/dms-marketing/pull/70))
+- **readme:** Link the DMS and fix the renderer range ([#95](https://github.com/AntelopeJS/dms-marketing/pull/95))
+- **readme:** Use one Discord invite ([#92](https://github.com/AntelopeJS/dms-marketing/pull/92))
+- Name DMS 0.11 and renderer 0.9, and ignore the playground's frontend build ([#71](https://github.com/AntelopeJS/dms-marketing/pull/71))
+- **github:** Send questions and ideas to Discord ([#109](https://github.com/AntelopeJS/dms-marketing/pull/109))
+
+### 📦 Build
+
+- Adopt the AntelopeJS guardrail pack ([#72](https://github.com/AntelopeJS/dms-marketing/pull/72))
+- **deps:** Bump @antelopejs/tooling-configs to 0.2.17 ([#79](https://github.com/AntelopeJS/dms-marketing/pull/79))
+
+### 🏡 Chore
+
+- **release:** @antelopejs/dms-marketing v0.7.1 ([dcd222e](https://github.com/AntelopeJS/dms-marketing/commit/dcd222e))
+- Configure Renovate with the shared preset ([#73](https://github.com/AntelopeJS/dms-marketing/pull/73))
+- **release:** @antelopejs/dms-marketing v0.8.0 ([07d2092](https://github.com/AntelopeJS/dms-marketing/commit/07d2092))
+
+### ✅ Tests
+
+- **skills:** Add eval cases for dms-marketing ([#74](https://github.com/AntelopeJS/dms-marketing/pull/74))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+- Alessandro Aloisio ([@alessaloisio](http://github.com/alessaloisio))
+
 ## v0.5.1
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.5.0...v0.5.1)
