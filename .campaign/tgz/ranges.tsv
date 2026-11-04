@@ -35,7 +35,7 @@
 @antelopejs/interface-dms	packages/dms-marketing/playground/package.json	pnpm.overrides	
 @antelopejs/interface-dms-marketing	packages/dms-marketing/package.json	dependencies	>=0.5.2 <0.6.0
 @antelopejs/interface-dms-marketing	packages/dms-marketing/package.json	pnpm.overrides	
-@antelopejs/dms-frontend	packages/dms-marketing/playground/package.json	devDependencies	0.9.1
+@antelopejs/dms-frontend	packages/dms-marketing/playground/package.json	devDependencies	>=0.9.1 <1.0.0
 @antelopejs/dms-frontend	packages/dms-marketing/playground/package.json	pnpm.overrides	
 @antelopejs/interface-core	packages/dms-marketing/package.json	dependencies	>=0.2.4 <1.0.0
 @antelopejs/interface-core	packages/dms-marketing/playground/package.json	dependencies	>=0.2.4 <1.0.0
