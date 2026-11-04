@@ -78,9 +78,9 @@ A `@antelopejs/dms-marketing` release implements one minor line of this interfac
 
 <!-- antelopejs-docs-compat:start -->
 
-| Package                      | Supported        | Tested with                                                      |
-| ---------------------------- | ---------------- | ---------------------------------------------------------------- |
-| `@antelopejs/interface-core` | `>=0.2.4 <1.0.0` | `file:../../.campaign/tgz/antelopejs-interface-core-f7df541.tgz` |
+| Package                      | Supported        | Tested with |
+| ---------------------------- | ---------------- | ----------- |
+| `@antelopejs/interface-core` | `>=0.2.4 <1.0.0` | `0.4.0`     |
 
 <!-- antelopejs-docs-compat:end -->
 
