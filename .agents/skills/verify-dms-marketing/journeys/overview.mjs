@@ -23,6 +23,8 @@ export const journeys = guarded([
         { visitor: "c", daysAgo: 3, minutes: [2, 3], paths: ["/a", "/b"] },
         { visitor: "old", daysAgo: 10, minutes: [0], paths: ["/a"] },
         { visitor: "old2", daysAgo: 11, minutes: [0], paths: ["/a"] },
+        { visitor: "edge-in", daysAgo: 89, minutes: [0], paths: ["/a"] },
+        { visitor: "edge-out", daysAgo: 90, minutes: [0], paths: ["/a"] },
         { visitor: "ancient", daysAgo: 100, minutes: [0], paths: ["/a"] },
       ]);
       const metrics = ["pageviews", "sessions", "new-visitors", "custom-events"];
@@ -45,7 +47,7 @@ export const journeys = guarded([
       const cut = await mkt(ctx, "a window of 120 days", "GET", `/stats/overview?website=${site.id}&from=${new Date(utcDay(119)).toISOString()}&to=${new Date(utcDay(0) + 86_399_999).toISOString()}`);
       await ctx.verify("no period reads 7 days; a window past 90 days is cut at its start", [
         same("last 7 days", num(default7.body, "totals", "pageviews"), 6),
-        same("120 days: the sessions of 10 and 11 days ago count, the one of 100 days ago is cut off", [num(cut.body, "totals", "pageviews"), list(cut.body, "days").length], [8, 3]),
+        same("120 days: 90 days are read (today and 89 days back): the sessions of 10, 11 and 89 days ago count, the ones of 90 and 100 days ago are cut off", [num(cut.body, "totals", "pageviews"), list(cut.body, "days").length], [9, 4]),
       ]);
     },
   },
