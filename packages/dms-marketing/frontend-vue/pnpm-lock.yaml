@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  '@antelopejs/tooling-configs': file:../../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz
-
 importers:
 
   .:
@@ -16,8 +13,8 @@ importers:
         version: 3.5.42(typescript@5.9.3)
     devDependencies:
       '@antelopejs/tooling-configs':
-        specifier: file:../../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz
-        version: file:../../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz
+        specifier: ^0.2.11
+        version: 0.2.17
       '@nuxt/ui':
         specifier: ^4.0.1
         version: 4.11.1(c420cae624172ad1daf921091187d8c1)
@@ -58,21 +55,16 @@ packages:
     resolution: {integrity: sha512-U4+70Pc5ZS9osnCBCE5Jha/ciHM+Yp+CNMNC/7HvYbNRk1Ldd+f7qO65W5qfhu/TCv+/ozljlXXe9Nj8419DMA==}
     engines: {node: '>=10'}
 
-  '@antelopejs/tooling-configs@file:../../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz':
-    resolution: {integrity: sha512-qw4AhQIL9HcyJkEQYmCrm1JWzJ65wa34Ih//q0E6Mgpx9cLEOyLQlzzIVpIVvGKX35Q6HtADDV12sLOzYcEl/g==, tarball: file:../../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz}
-    version: 0.2.17
+  '@antelopejs/tooling-configs@0.2.17':
+    resolution: {integrity: sha512-8fwh7xQPzazP/l/ivEwRKpfN8qShV9+PRizpI9cBewe2TwoRPu4n95w6sYSlygiRmm0HxLJYZFhmSPRgtiNo1Q==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
       '@nuxt/eslint-config': '>=1.2.0'
       eslint-plugin-perfectionist: '>=5.0.0'
       knip: '>=6.0.0'
-      mongodb-memory-server: '>=10.0.0'
       oxfmt: ^0.66.0
       oxlint: 1.81.0
-      pixelmatch: '>=7.0.0'
-      playwright-core: '>=1.56.0'
-      sharp: '>=0.34.0'
     peerDependenciesMeta:
       '@nuxt/eslint-config':
         optional: true
@@ -80,17 +72,9 @@ packages:
         optional: true
       knip:
         optional: true
-      mongodb-memory-server:
-        optional: true
       oxfmt:
         optional: true
       oxlint:
-        optional: true
-      pixelmatch:
-        optional: true
-      playwright-core:
-        optional: true
-      sharp:
         optional: true
 
   '@antfu/install-pkg@2.1.0':
@@ -2771,7 +2755,7 @@ snapshots:
 
   '@alloc/quick-lru@5.3.0': {}
 
-  '@antelopejs/tooling-configs@file:../../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz':
+  '@antelopejs/tooling-configs@0.2.17':
     dependencies:
       '@oxlint/plugins': 1.81.0
       dts-bundle-generator: 9.5.1
