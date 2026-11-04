@@ -45,13 +45,13 @@ Behind a reverse proxy, set the DMS `auth.trustedProxies` option. See [Installat
 
 | Package                                     | Supported                                                                 | Tested with                                                               |
 | ------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `@antelopejs/interface-api`                 | `file:../../.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz`           | `file:../../.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz`           |
-| `@antelopejs/interface-api-util`            | `file:../../.campaign/tgz/antelopejs-interface-api-util-639f38b.tgz`      | `file:../../.campaign/tgz/antelopejs-interface-api-util-639f38b.tgz`      |
+| `@antelopejs/interface-api`                 | `>=0.3.0 <1.0.0`                                                          | `0.3.0`                                                                   |
+| `@antelopejs/interface-api-util`            | `>=0.3.0 <1.0.0`                                                          | `0.3.0`                                                                   |
 | `@antelopejs/interface-core`                | `>=0.4.0 <1.0.0`                                                          | `0.4.0`                                                                   |
 | `@antelopejs/interface-data-api`            | `>=0.6.0 <1.0.0`                                                          | `0.6.0`                                                                   |
 | `@antelopejs/interface-database`            | `>=0.3.0 <1.0.0`                                                          | `0.3.0`                                                                   |
 | `@antelopejs/interface-database-decorators` | `>=0.2.0 <1.0.0`                                                          | `0.2.0`                                                                   |
-| `@antelopejs/interface-dms`                 | `file:../../.campaign/tgz/antelopejs-interface-dms-14e671d.tgz`           | `file:../../.campaign/tgz/antelopejs-interface-dms-14e671d.tgz`           |
+| `@antelopejs/interface-dms`                 | `>=0.12.0 <1.0.0`                                                         | `0.12.0`                                                                  |
 | `@antelopejs/interface-dms-marketing`       | `file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz` | `file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz` |
 
 <!-- antelopejs-docs-compat:end -->
