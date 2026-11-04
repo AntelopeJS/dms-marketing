@@ -36,17 +36,56 @@ const OTHER_TENANT = "tenant-b";
 const NOW = Date.UTC(2026, 8, 14);
 const DAY = 86_400_000;
 const CUTOFF = new Date(NOW - 5 * DAY);
+
+/**
+ * @typedef {import("mongodb").Document} Document
+ * @typedef {Parameters<typeof databaseQuery.RunQuery>[0]} QueryStages
+ * @typedef {typeof MarketingEventsModel | typeof MarketingSessionsModel | typeof PageSnapshotsModel} RetainedModel
+ * @typedef {abstract new (...args: never[]) => unknown} ModelClass
+ */
+
+/** @type {import("mongodb").MongoClient | undefined} */
 let client;
+/** @type {import("mongodb").Db} */
 let db;
+/** @type {(() => Promise<void>) | undefined} */
 let beforeWrite;
+/** @type {Document[]} */
 const commands = [];
 
+/**
+ * @template Instance
+ * @param {new (instance: ConstructorParameters<typeof MarketingEventsModel>[0]) => Instance} Model
+ * @returns {Instance}
+ */
 function modelFor(Model) {
   return new Model(new Schema(SCHEMA, {}).instance(TENANT));
 }
 
+/** @param {string} table */
 function collectionFor(table) {
   return db.collection(`${SCHEMA}__${table}`);
+}
+
+/** @param {import("mongodb").CommandStartedEvent} event */
+function recordCommand(event) {
+  commands.push(event.command);
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is object}
+ */
+function isObject(value) {
+  return typeof value === "object" && value !== null;
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is Record<string, object>}
+ */
+function isMapOfMaps(value) {
+  return isObject(value) && Object.values(value).every(isObject);
 }
 
 before(async () => {
@@ -54,22 +93,25 @@ before(async () => {
   await client.connect();
   db = client.db("marketing_retention");
   const providerClient = await internal.client;
-  providerClient.on("commandStarted", (event) => commands.push(event.command));
-  GetAtomicCollection(SCHEMA).client.on("commandStarted", (event) =>
-    commands.push(event.command),
-  );
+  providerClient.on("commandStarted", recordCommand);
+  GetAtomicCollection(SCHEMA).client.on("commandStarted", recordCommand);
 });
 
 beforeEach(() => {
   const runQuery = databaseQuery.RunQuery;
-  mock.method(databaseQuery, "RunQuery", async (stages) => {
+  /**
+   * @param {QueryStages} stages
+   * @returns {Promise<unknown>}
+   */
+  const hookedRunQuery = async (stages) => {
     if (stages.at(-1).stage === "atomicMutation") {
       const hook = beforeWrite;
       beforeWrite = undefined;
       await hook?.();
     }
     return runQuery(stages);
-  });
+  };
+  mock.method(databaseQuery, "RunQuery", hookedRunQuery);
 });
 
 afterEach(() => {
@@ -81,6 +123,7 @@ after(async () => {
   await client?.close();
 });
 
+/** @type {[RetainedModel, string, string][]} */
 const DELETIONS = [
   [MarketingEventsModel, "marketing_events", "timestamp"],
   [MarketingSessionsModel, "marketing_sessions", "lastSeenAt"],
@@ -169,8 +212,10 @@ for (const [Model, table, field] of DELETIONS.slice(1)) {
 for (const outcome of ["unknown", "not-applied"]) {
   test(`conditional cleanup handles ${outcome} without retry or false success`, async () => {
     const model = modelFor(MarketingSessionsModel);
+    /** @type {unknown[]} */
     const attempts = [];
-    mock.method(databaseQuery, "RunQuery", async (stages) => {
+    /** @param {QueryStages} stages */
+    const answerQuery = async (stages) => {
       const stage = stages.at(-1);
       if (stage.stage !== "atomicMutation") {
         const candidates = [{ _id: "expired", lastSeenAt: new Date(1) }];
@@ -181,7 +226,8 @@ for (const outcome of ["unknown", "not-applied"]) {
       }
       attempts.push(stage.args);
       return outcome;
-    });
+    };
+    mock.method(databaseQuery, "RunQuery", answerQuery);
     const result = model.deleteOlderThan(CUTOFF);
     if (outcome === "unknown") {
       await assert.rejects(result, /Retention deletion outcome is unknown/);
@@ -202,16 +248,19 @@ for (const outcome of ["unknown", "not-applied"]) {
 }
 
 test("unsupported atomic deletion fails without a generic-write fallback", async () => {
+  /** @type {string[]} */
   const stagesSeen = [];
   const unsupported = new Error("atomic mutation unsupported");
-  mock.method(databaseQuery, "RunQuery", async (stages) => {
+  /** @param {QueryStages} stages */
+  const failAtomicQuery = async (stages) => {
     const name = stages.at(-1).stage;
     stagesSeen.push(name);
     if (name === "pluck") {
       return [{ _id: "expired", capturedAt: new Date(1) }];
     }
     throw unsupported;
-  });
+  };
+  mock.method(databaseQuery, "RunQuery", failAtomicQuery);
   await assert.rejects(
     modelFor(PageSnapshotsModel).deleteOlderThan(CUTOFF),
     unsupported,
@@ -241,6 +290,7 @@ test("rollup replay empties only expired maps, preserves scalars and tenant boun
   const expired = await collection.findOne({ _id: "expired" });
   assert.equal(expired.pageviews, 17);
   assert.equal(expired.sessions, 3);
+  assert.ok(isMapOfMaps(expired.tops));
   assert.ok(
     Object.values(expired.tops).every((map) => Object.keys(map).length === 0),
   );
@@ -269,16 +319,20 @@ test("retention services keep their separate windows and snapshot minimum", asyn
     snapshotRetention: 7 * DAY,
     statisticsRetention: 180 * DAY,
   });
+  /** @type {number[]} */
   const cutoffs = [];
   const model = {
+    /** @param {Date} cutoff */
     async deleteOlderThan(cutoff) {
       cutoffs.push(+cutoff);
       return 0;
     },
+    /** @param {number} cutoff */
     async deleteDaysBefore(cutoff) {
       cutoffs.push(cutoff);
       return 0;
     },
+    /** @param {number} cutoff */
     async emptyTopsBefore(cutoff) {
       cutoffs.push(cutoff);
       return 0;
@@ -303,9 +357,14 @@ test("retention services keep their separate windows and snapshot minimum", asyn
 });
 
 test("a failed cleanup does not skip other retention effects or tenants", async () => {
+  /** @type {[string, string][]} */
   const calls = [];
   const failure = new Error("event retention failed");
-  mock.method(models, "GetModel", (Model, tenantId) => {
+  /**
+   * @param {ModelClass} Model
+   * @param {string} [tenantId]
+   */
+  const fakeGetModel = (Model, tenantId) => {
     if (!tenantId) {
       return { listTenantIds: async () => [TENANT, OTHER_TENANT] };
     }
@@ -321,7 +380,9 @@ test("a failed cleanup does not skip other retention effects or tenants", async 
       deleteDaysBefore: prune,
       emptyTopsBefore: prune,
     };
-  });
+  };
+  mock.method(models, "GetModel", fakeGetModel);
+  /** @type {unknown[]} */
   const errors = [];
   await pruneAllTenants((error) => errors.push(error));
   assert.deepEqual(errors, [failure]);

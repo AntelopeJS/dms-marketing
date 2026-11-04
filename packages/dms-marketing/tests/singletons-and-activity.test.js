@@ -37,19 +37,34 @@ const LAST_ACTIVITY_INDEX = "websiteId_lastSeenAt__i";
 const LAST_SEEN_INDEX = "lastSeenAt__i";
 const TENANT = "tenant-a";
 const OTHER_TENANT = "tenant-b";
+/** @type {MongoClient | undefined} */
 let client;
+/** @type {ReturnType<MongoClient["db"]>} */
 let db;
+/** @type {import("mongodb").Document[]} */
 const commands = [];
+
+/** @typedef {{ aggregate: string; pipeline: import("mongodb").Document[] }} AggregateCommand */
+
+/**
+ * @param {import("mongodb").Document} command
+ * @returns {command is AggregateCommand}
+ */
+function isSessionsRead(command) {
+  return command.aggregate === SESSIONS_COLLECTION;
+}
 
 /**
  * Each settings case gets a scratch schema of its own: the fixed key is
  * unique per collection, exactly like the dms-core schema the singleton lives
  * in, which only ever has the default instance.
+ * @param {string} schemaId
  */
 function settingsModel(schemaId) {
   return new MarketingSettingsModel(new Schema(schemaId, {}).instance());
 }
 
+/** @param {string} schemaId */
 function settingsRows(schemaId) {
   return db.collection(`${schemaId}__marketing_settings`).find().toArray();
 }
@@ -150,9 +165,7 @@ test("last activity is one indexed top-1 read per website", async () => {
       ["b", 2_000],
     ],
   );
-  const reads = commands.filter(
-    (command) => command.aggregate === SESSIONS_COLLECTION,
-  );
+  const reads = commands.filter(isSessionsRead);
   assert.equal(reads.length, 3);
   for (const read of reads) {
     assert.equal(

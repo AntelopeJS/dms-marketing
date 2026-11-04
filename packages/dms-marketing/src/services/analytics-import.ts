@@ -361,7 +361,7 @@ export async function importAnalytics(
     await claim.release().catch(() => {});
     throw refuse(
       importId,
-      `failed part-way; call it again to resume: ${describeIssue(err)}`,
+      `failed part-way; call it again to resume: ${err instanceof Error ? describeIssue(err) : String(err)}`,
     );
   }
 }

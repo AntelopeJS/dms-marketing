@@ -79,11 +79,13 @@ export async function websitesSummary(
  * Each listed row with its card, in the list's order; a row whose card is
  * missing (the site went between the two reads) is listed as it came.
  */
-export function mergeWebsiteCards<Row extends { _id: string }>(
+export function mergeWebsiteCards<Row extends { _id?: unknown }>(
   rows: Row[],
   cards: WebsiteCard[],
 ): Row[] {
-  const byId = new Map(cards.map((card) => [card.id, card]));
+  const byId = new Map<unknown, WebsiteCard>(
+    cards.map((card) => [card.id, card]),
+  );
   return rows.map((row) => {
     const card = byId.get(row._id);
     return card ? { ...row, ...card } : row;

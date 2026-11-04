@@ -39,14 +39,32 @@ const OWNER = { _id: "owner" };
 const ALL = { scope: "all" };
 const HEATMAPS = { scope: "heatmaps" };
 
-const controller = Object.create(WebsitesController.prototype);
+const controller = new WebsitesController();
 
-/** The status an HTTPResult rejection carries. */
+/** @typedef {{ getStatus(): number }} HttpFailure what an HTTPResult rejection exposes */
+
+/**
+ * The status an HTTPResult rejection carries.
+ * @param {number} code
+ * @returns {(error: HttpFailure) => boolean}
+ */
 const status = (code) => (error) => error.getStatus() === code;
+
+/**
+ * @typedef {abstract new (...args: never[]) => unknown} ModelClass
+ * @typedef {{ deleteByWebsite(): Promise<number> }} FakeTable
+ * @typedef {{ _id: string, tenantId: string, name: string }} FakeSite
+ * @typedef {{
+ *   get(id: string): Promise<FakeSite | undefined>,
+ *   delete(id: string): Promise<void>,
+ * }} FakeWebsitesTable
+ */
 
 /** A websites table of three sites over fake tenant tables. */
 function fakeStore() {
+  /** @type {Record<string, number>} */
   const rows = { events: 5, funnels: 2 };
+  /** @param {string} key */
   const table = (key) => ({
     async deleteByWebsite() {
       const deleted = rows[key] ?? 0;
@@ -54,6 +72,11 @@ function fakeStore() {
       return deleted;
     },
   });
+  /**
+   * @param {string} id
+   * @param {string} tenantId
+   * @returns {FakeSite}
+   */
   const site = (id, tenantId) => ({ _id: id, tenantId, name: id });
   const websites = new Map(
     [
@@ -62,6 +85,7 @@ function fakeStore() {
       site("guard-foreign", "other"),
     ].map((website) => [website._id, website]),
   );
+  /** @type {Map<ModelClass, FakeTable | FakeWebsitesTable>} */
   const byModel = new Map([
     [MarketingEventsModel, table("events")],
     [MarketingSessionsModel, table("sessions")],
@@ -72,12 +96,16 @@ function fakeStore() {
     [
       WebsitesModel,
       {
+        /** @param {string} id */
         get: async (id) => websites.get(id),
+        /** @param {string} id */
         delete: async (id) => void websites.delete(id),
       },
     ],
   ]);
-  mock.method(models, "GetModel", (model) => byModel.get(model));
+  /** @param {ModelClass} model */
+  const fakeGetModel = (model) => byModel.get(model);
+  mock.method(models, "GetModel", fakeGetModel);
   return { rows, websites };
 }
 
@@ -151,7 +179,10 @@ describe("the purge route", () => {
     assert.equal(rows.events, 5);
   });
 
-  /** What the route resolves its first parameter (the caller) with. */
+  /**
+   * What the route resolves its first parameter (the caller) with.
+   * @param {string} handler
+   */
   function callerProvider(handler) {
     const meta = GetMetadata(WebsitesController, ControllerMeta);
     return meta.getParameterArray(handler)[0].provider;
@@ -162,15 +193,21 @@ describe("the purge route", () => {
       const provider = callerProvider(handler);
       assert.match(String(provider), /requireOwner: true/);
       assert.equal(String(provider), String(callerProvider("update")));
-      await assert.rejects(provider(tenantRequest()), (error) =>
-        [401, 403].includes(error.getStatus()),
-      );
+      /** @param {HttpFailure} error */
+      const refused = (error) => [401, 403].includes(error.getStatus());
+      await assert.rejects(provider(tenantRequest()), refused);
     });
   }
 });
 
 const DAY_MS = 86_400_000;
 
+/**
+ * @param {string} websiteId
+ * @param {string} kind
+ * @param {string} url
+ * @param {number} at
+ */
 function event(websiteId, kind, url, at) {
   const timestamp = new Date(at);
   return {
@@ -188,6 +225,7 @@ function event(websiteId, kind, url, at) {
  * A site with traffic on two pages: pageviews, clicks, scrolls, an A/B
  * exposure, a session, a day of statistics, a snapshot, an import claim and
  * a funnel.
+ * @param {string} id
  */
 async function seededSite(id) {
   await EnsureWebsite({
@@ -248,9 +286,11 @@ async function seededSite(id) {
   });
 }
 
+/** @param {string} id */
 const clicksOf = async (id) =>
   (await computePageActivity(TENANT, id, trailingWindow(7))).clicks;
 
+/** @param {string} id */
 async function eventKinds(id) {
   const rows = await realGetModel(MarketingEventsModel, TENANT)
     .table.getAll([id], "websiteId")

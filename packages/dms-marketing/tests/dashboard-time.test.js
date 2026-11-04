@@ -10,6 +10,10 @@ const { deltaText } = require("../dist/services/composed");
 const DAY = 86_400_000;
 const FIRST = Date.UTC(2026, 8, 1);
 
+/**
+ * @param {number} dayIndex
+ * @param {number} sessions
+ */
 function row(dayIndex, sessions) {
   return {
     day: FIRST + dayIndex * DAY,
@@ -23,6 +27,11 @@ function row(dayIndex, sessions) {
   };
 }
 
+/**
+ * @param {number} days
+ * @param {number} [offset]
+ * @param {boolean} [inProgress]
+ */
 function window(days, offset = 0, inProgress = false) {
   const firstDay = FIRST + offset * DAY;
   return {
@@ -95,6 +104,7 @@ test("a change names the period it is measured against", () => {
 });
 
 test("countries are listed whenever the period has some, GeoIP or not", () => {
+  /** @param {import("../dist/services/rollups").RollupRead["rows"]} rows */
   const read = (rows) => ({
     window: window(2),
     rows,
@@ -102,6 +112,7 @@ test("countries are listed whenever the period has some, GeoIP or not", () => {
     compareRows: [],
     compareDays: [],
   });
+  /** @param {import("../dist/services/rollups").RollupRead["rows"]} rows */
   const tabs = (rows) =>
     topGroupPayload(read(rows), "audience").map((tab) => tab.id);
   assert.deepEqual(tabs([row(0, 3), row(1, 2)]), ["languages", "browsers"]);

@@ -27,6 +27,7 @@ const WEBSITE = { _id: "site-h", tenantId: TENANT };
 const HOUR = 3_600_000;
 let client;
 let events;
+/** @type {ReturnType<Schema["instance"]>} */
 let instance;
 
 /** A table as the module declares it: a grouped read needs its schema. */
@@ -40,6 +41,12 @@ function declared(Table) {
 }
 
 let rowCount = 0;
+/**
+ * @param {string} kind
+ * @param {number} timestamp
+ * @param {string} sessionId
+ * @param {Record<string, string>} [extra]
+ */
 function event(kind, timestamp, sessionId, extra = {}) {
   rowCount += 1;
   return {
@@ -108,6 +115,7 @@ describe("the Today hourly series", () => {
       event("pageview", at(2), "s9", { websiteId: "other-site" }),
       event("pageview", at(24), "s4"),
     ]);
+    /** @param {Parameters<typeof hourlyValues>[3]} metric */
     const series = (metric) => hourlyValues(WEBSITE, since, 24, metric);
     const pageviews = await series("pageviews");
     assert.equal(pageviews.length, 24);

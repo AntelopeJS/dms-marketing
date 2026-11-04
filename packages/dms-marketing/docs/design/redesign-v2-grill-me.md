@@ -1,7 +1,7 @@
 # Design v2 port — self-answered grill-me
 
 A grilling session run before the port of `@antelopejs/dms-marketing` to
-`@antelopejs/dms` 0.6 / `@antelopejs/interface-dms` 0.4 / `@antelopejs/dms-frontend`
+`dms` 0.6 / `interface-dms` 0.4 / `dms-frontend`
 0.5 and to the v2 design mockup (`modules/marketing/*`). Every question was
 answered with the recommended option; the answer is the decision the pull
 request implements. It exists so a reviewer can check the reasoning behind each
@@ -9,9 +9,9 @@ choice without re-deriving it from the diff.
 
 Sources read before the session:
 
-- `@antelopejs/dms` 0.6.0 / `@antelopejs/interface-dms` 0.4.0 changelogs and
+- `dms` 0.6.0 / `interface-dms` 0.4.0 changelogs and
   `docs/02.building/13.migration-0-3-to-0-4.md`.
-- `@antelopejs/dms-frontend` 0.5.0 changelog and `docs/02.building/08.frontend-layer.md`
+- `dms-frontend` 0.5.0 changelog and `docs/02.building/08.frontend-layer.md`
   (component naming, auto-imports).
 - The block catalogue of interface-dms 0.4 (`base/*`) and the public
   components of the dms-ui layer.
@@ -23,16 +23,16 @@ Sources read before the session:
 ## 1. Dependencies and breaking changes
 
 **Q1. Which ranges move?**
-`@antelopejs/interface-dms` to `>=0.4.0 <1.0.0` (a 0.3 floor would resolve a
-copy the 0.6 DMS refuses; the upper bound stays wide, as
+`interface-dms` to the 0.4 line (a 0.3 floor would resolve a
+copy the 0.6 DMS refuses; the upper bound stays at the next major, as
 `antelopejs-check-interface-ranges` requires, so every module of a project
 deduplicates on one copy — the DMS alone caps it below its next minor);
-`@antelopejs/interface-data-api` to `>=0.2.0 <1.0.0` (partial edits);
-`@antelopejs/core` to `>=1.13.5 <2`; `@antelopejs/mongodb` to `1.4.2` (stores a
+`interface-data-api` to the 0.2 line, up to the next major (partial edits);
+`core` to 1.13.5 and later in the 1.x line; `mongodb` to 1.4.2 (stores a
 `$`-prefixed string as a string — every i18n key we persist starts with `$`);
-the frontend module's `engines` to `@antelopejs/dms-frontend >=0.5.0 <0.6.0`;
-the playground's `@antelopejs/dms-frontend` to `0.5.0` and `@antelopejs/dms` to
-`>=0.6.0 <1.0.0`. The test harness pins the same DMS floor.
+the frontend module's `engines` to the `dms-frontend` 0.5 line;
+the playground's `dms-frontend` to 0.5.0 and `dms` to
+0.6.0 and later in the 0.x line below 1.0.0. The test harness pins the same DMS floor.
 
 **Q2. dms-frontend 0.5 prefixes every registered component and no longer strips
 a leading `Dms`. What does the layer change?**

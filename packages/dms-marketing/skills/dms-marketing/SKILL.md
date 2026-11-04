@@ -15,8 +15,8 @@ https://dms.antelopejs.com/docs/modules/marketing (`architecture` holds the full
 
 ## Setup
 
-- Marketing 0.7.1 requires `@antelopejs/dms` >=0.11 (interface-dms 0.9, renderer `@antelopejs/dms-frontend` 0.9);
-  0.7.0 is the DMS 0.10 line. Each analytics page declares `static toolbar = marketingToolbar()`: the DMS
+- The DMS backend and renderer releases the module runs on are in the README compatibility block and in `engines["@antelopejs/dms-frontend"]` of `frontend-vue/package.json`;
+  0.4 is the DMS 0.8 line. Each analytics page declares `static toolbar = marketingToolbar()`: the DMS
   `pageToolbar()` (website picker leading, Direct / Pause, period); it needs a DMS shipping `pageToolbar()` child options. Its period uses the DMS short codes
   (1D / 7D / 30D / 90D); the custom range's calendar segment is icon-only, with its accessible name, from the DMS.
   The comparison is the toolbar's default dropdown (vs previous period, vs previous year, none); the routes read the `compareFrom`/`compareTo` it sends, and "none" sends none, so no change is shown.
@@ -53,7 +53,7 @@ const arm = await window.dmsMarketing?.variation("hero-cta");      // null = ren
   (tenant owner; settings modal, Danger zone): heatmaps = clicks, scroll depths and snapshots; all = every
   event, session, rollup, snapshot and import. Funnels stay, their results start again from zero.
 - The dashboard origin forwards the scripts and beacons because the module declares them `publicEndpoints`
-  (renderer 0.6 refuses other cross-origin writes); the backend origin works too.
+  (the renderer refuses other cross-origin writes); the backend origin works too.
 - Never `type="module"` (breaks `document.currentScript`). Always guard with `?.`.
 - Snapshots (heatmap backdrops) are opt-in per site (Websites page, a site's settings modal, General tab, next to Collect data); mask with
   `data-dms-marketing-mask` / `data-dms-marketing-block`. Captures drop transient overlays on their own (top

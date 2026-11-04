@@ -14,10 +14,10 @@ export async function deleteExpiredRows<
   F extends string,
   T extends RetentionRow & Record<F, Date>,
 >(table: Table<T>, field: F, lowerBound: T[F], cutoff: T[F]): Promise<number> {
-  const candidates = (await table
+  const candidates = await table
     .between(field, lowerBound, cutoff)
-    .pluck("_id", field)
-    .run()) as Pick<T, "_id" | F>[];
+    .pluck<"_id" | F>("_id", field)
+    .run();
   let deleted = 0;
   for (const row of candidates) {
     const outcome = await table

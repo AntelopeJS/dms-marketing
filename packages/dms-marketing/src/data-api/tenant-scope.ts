@@ -1,7 +1,6 @@
 import type { RequestContext } from "@antelopejs/interface-api";
 import type { DataControllerCallback } from "@antelopejs/interface-data-api";
 import type { Parameters } from "@antelopejs/interface-data-api/components";
-import type { FilterValue } from "@antelopejs/interface-data-api/metadata";
 import { TableViewRoutes } from "@antelopejs/interface-dms/base";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import type { Website } from "@/db/tables/websites.table";
@@ -22,21 +21,30 @@ export type TenantGate = (ctx: RequestContext, id: string) => Promise<Website>;
  * the server, whatever filters the client sends. The scoped table must carry
  * a `tenantId` field registered with HiddenStringFilter.
  */
-function withTenantScope(base: DataControllerCallback): DataControllerCallback {
+function withTenantScope<Answer, Rest extends unknown[]>(
+  base: DataControllerCallback<
+    Parameters.ListParameters,
+    Answer,
+    [RequestContext, Parameters.ListParameters, ...Rest]
+  >,
+): DataControllerCallback<
+  Parameters.ListParameters,
+  Answer,
+  [RequestContext, Parameters.ListParameters, ...Rest]
+> {
   return {
     ...base,
-    func: async function (
+    func: function (
       this: unknown,
       ctx: RequestContext,
       listParams: Parameters.ListParameters,
-      ...rest: unknown[]
+      ...rest: Rest
     ) {
       const params: Parameters.ListParameters = {
         ...listParams,
         filters: {
           ...listParams?.filters,
-          // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- "is" is the compare mode the DMS DataTypes register and the dms-ui frontend sends, but interface-data-api's Comparison type does not know it; "eq" would typecheck and match nothing
-          tenantId: [getRequestTenantId(ctx), "is"] as unknown as FilterValue,
+          tenantId: [getRequestTenantId(ctx), "is"],
         },
       };
       return base.func.call(this, ctx, params, ...rest);
@@ -51,17 +59,16 @@ function withTenantScope(base: DataControllerCallback): DataControllerCallback {
  */
 function withTenantGate(
   gate: TenantGate,
-): (base: DataControllerCallback) => DataControllerCallback {
+): (base: typeof TableViewRoutes.Get) => typeof TableViewRoutes.Get {
   return (base) => ({
     ...base,
     func: async function (
       this: unknown,
-      ctx: RequestContext,
-      params: Parameters.GetParameters,
-      ...rest: unknown[]
+      ...args: Parameters<(typeof TableViewRoutes.Get)["func"]>
     ) {
+      const [ctx, params] = args;
       await gate(ctx, params.id);
-      return base.func.call(this, ctx, params, ...rest);
+      return base.func.call(this, ...args);
     },
   });
 }

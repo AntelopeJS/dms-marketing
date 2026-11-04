@@ -124,7 +124,7 @@ export function sanitizeSnapshotHtml(html: string): string {
 }
 
 /** Attributes that carry text a visitor could read: the ones
- * static/snapshot.js masks with the text. */
+ * static/snapshot/ masks with the text. */
 const TEXT_ATTRIBUTES = new Set([
   "title",
   "alt",

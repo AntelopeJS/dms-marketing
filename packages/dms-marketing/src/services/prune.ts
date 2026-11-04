@@ -136,12 +136,18 @@ const TENANT_PRUNES = [
  * the others from their retention.
  */
 export async function pruneAllTenants(
-  onError: (err: unknown) => void,
+  onError: (failure: Error) => void,
 ): Promise<void> {
   const tenantIds = await GetModel(WebsitesModel).listTenantIds();
   for (const tenantId of tenantIds) {
     for (const prune of TENANT_PRUNES) {
-      await prune(tenantId).catch(onError);
+      await prune(tenantId).catch((reason: unknown) => {
+        onError(
+          reason instanceof Error
+            ? reason
+            : new Error(String(reason), { cause: reason }),
+        );
+      });
     }
   }
 }

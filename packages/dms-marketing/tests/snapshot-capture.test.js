@@ -1,13 +1,14 @@
 const assert = require("node:assert/strict");
 const { gzipSync } = require("node:zlib");
 const test = it;
+const { loadSnapshotModule } = require("./helpers/snapshot-module");
 const {
   contentSize,
   createStyleCollector,
   splitSelectorList,
   styleText,
   testedSelector,
-} = require("../static/snapshot.js");
+} = loadSnapshotModule();
 const { getConfig, setConfig } = require("../dist/config");
 const { inflateIfGzipped } = require("../dist/services/request-body");
 const { storedDocument } = require("../dist/services/snapshots");
@@ -20,9 +21,45 @@ const {
 
 const BASE = "https://shop.example.com/";
 
+/**
+ * @typedef {object} FakeRule
+ * @property {number} type
+ * @property {string} cssText
+ * @property {string} [selectorText]
+ * @property {string[]} [style]
+ * @property {FakeRule[]} [cssRules]
+ */
+
 after(() => setConfig({}));
 
-/** A style rule; custom properties come from its declarations. */
+/**
+ * The text of a value the capture script returns untyped.
+ * @param {unknown} value
+ * @returns {string}
+ */
+function textOf(value) {
+  const text = String(value);
+  assert.equal(text, value, "the capture script returns text");
+  return text;
+}
+
+/**
+ * Each sheet's text, from what the capture script returns untyped.
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+function textsOf(value) {
+  assert.ok(Array.isArray(value), "the capture script returns a list");
+  return value.map(textOf);
+}
+
+/**
+ * A style rule; custom properties come from its declarations.
+ * @param {string} selectorText
+ * @param {string} [declarations]
+ * @param {FakeRule[]} [nested]
+ * @returns {FakeRule}
+ */
 function styleRule(selectorText, declarations = "", nested) {
   const names = [...declarations.matchAll(/(--[\w-]+):\s*([^;]*);/g)];
   const style = names.map((match) => match[1]);
@@ -42,6 +79,12 @@ function styleRule(selectorText, declarations = "", nested) {
   };
 }
 
+/**
+ * @param {string} prelude
+ * @param {FakeRule[]} rules
+ * @param {number} [type]
+ * @returns {FakeRule}
+ */
 function groupRule(prelude, rules, type = 4) {
   return {
     type,
@@ -50,14 +93,24 @@ function groupRule(prelude, rules, type = 4) {
   };
 }
 
+/**
+ * @param {number} type
+ * @param {string} cssText
+ * @returns {FakeRule}
+ */
 function atRule(type, cssText) {
   return { type, cssText };
 }
 
-/** A scope answering `querySelector` for the selectors listed as present;
- * `throws` lists what its parser would refuse. */
+/**
+ * A scope answering `querySelector` for the selectors listed as present;
+ * `throws` lists what its parser would refuse.
+ * @param {string[]} present
+ * @param {string[]} [throws]
+ */
 function scope(present, throws = []) {
   return {
+    /** @param {string} selector */
     querySelector(selector) {
       if (throws.includes(selector)) {
         throw new SyntaxError(selector);
@@ -67,17 +120,25 @@ function scope(present, throws = []) {
   };
 }
 
+/** @param {FakeRule[]} rules */
 function sheet(rules) {
   return { cssRules: rules };
 }
 
+/**
+ * @param {FakeRule[][]} sheets
+ * @param {string[]} present
+ * @param {string[]} [throws]
+ */
 function capture(sheets, present, throws) {
   const styles = createStyleCollector();
   const root = scope(present, throws);
-  const segments = sheets.map((rules) =>
-    styles.sheetSegments(sheet(rules), BASE, root),
-  );
-  return { styles, finish: () => styles.finish(segments) };
+  /** @type {unknown[]} */
+  const segments = [];
+  for (const rules of sheets) {
+    segments.push(styles.sheetSegments(sheet(rules), BASE, root));
+  }
+  return { styles, finish: () => textsOf(styles.finish(segments)) };
 }
 
 test("a state or a pseudo-element is tested on its element", () => {
@@ -261,7 +322,7 @@ test("a serialized stylesheet opens no markup and is stored whole", () => {
   const css =
     '@media (width < 48rem){.a{display:none}}.b::after{content:"</style><b>"}' +
     "@media (400px<width){.c{top:0}}";
-  const text = styleText(css);
+  const text = textOf(styleText(css));
   assert.equal(
     text,
     "@media (width < 48rem){.a{display:none}}" +
@@ -347,9 +408,29 @@ test("a capture records the whole content of an inner scroll root", () => {
 });
 
 describe("transient overlays at capture", () => {
-  const { isTransientOverlay } = require("../static/snapshot.js");
+  const { isTransientOverlay } = loadSnapshotModule();
 
-  /** A fake element: its role and attributes, computed position, children. */
+  /**
+   * @typedef {object} FakeElement
+   * @property {string} localName
+   * @property {string} position
+   * @property {FakeElement | null} parentElement
+   * @property {FakeElement[]} children
+   * @property {(name: string) => string | null} getAttribute
+   * @property {() => boolean} matches
+   */
+
+  /**
+   * A fake element: its role and attributes, computed position, children.
+   * @param {string} localName
+   * @param {{
+   *   attrs?: Record<string, string>,
+   *   position?: string,
+   *   children?: FakeElement[],
+   *   top?: boolean,
+   * }} [options]
+   * @returns {FakeElement}
+   */
   function el(
     localName,
     { attrs = {}, position = "static", children = [], top = false } = {},
@@ -367,12 +448,17 @@ describe("transient overlays at capture", () => {
     }
     return node;
   }
+  /** @param {FakeElement} node */
   const positionOf = (node) => node.position;
-  /** `tree` mounted under a body, as the page has it. */
+  /**
+   * `tree` mounted under a body, as the page has it.
+   * @param {FakeElement} tree
+   */
   function mount(tree) {
     const body = el("body", { children: [tree] });
     return {
       body,
+      /** @param {FakeElement} node */
       dropped: (node) => isTransientOverlay(node, positionOf, body),
     };
   }

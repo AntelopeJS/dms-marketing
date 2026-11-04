@@ -1,6 +1,6 @@
 {
   "rules": {
-    "anti-slop/no-chained-type-assertions": 1,
+    "anti-slop/no-chained-type-assertions": 0,
     "anti-slop/no-object-parameters": 1,
     "eslint/max-params": 2,
     "typescript/no-explicit-any": 1,
@@ -14,5 +14,6 @@
     "typescript/restrict-template-expressions for packages/dms-marketing/tests/**/*.js": 1,
     "vue/multi-word-component-names for packages/dms-marketing/frontend-vue/**/*.ts": 1,
     "vue/multi-word-component-names for packages/dms-marketing/frontend-vue/**/*.vue": 1
-  }
+  },
+  "agentFiles": true
 }

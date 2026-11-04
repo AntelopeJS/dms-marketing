@@ -12,7 +12,7 @@ import {
   WebsitesModel,
 } from "@/db";
 import type { MarketingEvent } from "@/db/tables/marketing_events.table";
-import type { ClickEventData, EventKind } from "@/types";
+import { type ClickEventData, clickDataSchema, type EventKind } from "@/types";
 import {
   HEATMAP_DIVISIONS_PER_AXIS,
   MAX_ANCHORED_HEATMAP_CELLS,
@@ -214,8 +214,8 @@ function bucketClicks(
   const cells = new Map<string, MarketingHeatmapPoint>();
   let totalClicks = 0;
   for (const payload of payloads) {
-    const data = payload.data as ClickEventData | undefined;
-    if (data && bucketClick(cells, data)) {
+    const click = clickDataSchema.safeParse(payload.data);
+    if (click.success && bucketClick(cells, click.data)) {
       totalClicks++;
     }
   }
@@ -257,7 +257,9 @@ export function mergeClickHeatmaps(
  * the anchored cells are capped by re-bucketing the lightest ones — a branch
  * and a second pass the query layer cannot express (no conditional in the
  * ValueProxy, and `data` is an unvalidated record, so an arithmetic stage over
- * it would abort the aggregation on the first forged payload). What the
+ * it would abort the aggregation on the first forged payload). Each payload is
+ * checked against the click schema as it is read, and a row that does not fit,
+ * such as one written by an earlier release, is skipped. What the
  * projection does buy is that only `data` travels, never the whole row.
  */
 type ClickPayload = Pick<MarketingEvent, "data">;

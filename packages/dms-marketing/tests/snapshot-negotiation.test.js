@@ -21,6 +21,12 @@ const {
   SNAPSHOT_PROMISE_TTL_MS,
 } = require("../dist/types/constants");
 
+/**
+ * @typedef {import("../dist/db/tables/websites.table").Website} Website
+ * @typedef {import("../dist/db/tables/page_snapshots.table").PageSnapshot} PageSnapshot
+ * @typedef {import("../dist/types/snapshots").SnapshotLayout} SnapshotLayout
+ */
+
 /** Read while the files load, before any test has mocked it. */
 const realGetModel = models.GetModel;
 const TENANT = "default";
@@ -28,6 +34,7 @@ const SITE = "snapshot-negotiation";
 const HOST = "negotiation-test.example.com";
 const DESKTOP = 1280;
 
+/** @returns {Promise<Website>} */
 async function website() {
   await EnsureWebsite({
     id: SITE,
@@ -36,14 +43,21 @@ async function website() {
     domain: HOST,
     snapshotsEnabled: true,
   });
-  return realGetModel(WebsitesModel).get(SITE);
+  const row = await realGetModel(WebsitesModel).get(SITE);
+  assert.ok(row, "the declared website is stored");
+  return row;
 }
 
 function snapshots() {
   return realGetModel(PageSnapshotsModel, TENANT);
 }
 
-/** A negotiation answered and its upload stored, as one sampled visit. */
+/**
+ * A negotiation answered and its upload stored, as one sampled visit.
+ * @param {Website} site
+ * @param {string} path
+ * @param {string} [visitor]
+ */
 async function capture(site, path, visitor = "visitor") {
   const token = await wantsSnapshot(site, path, DESKTOP, visitor);
   assert.ok(token, `a capture of ${path} is wanted`);
@@ -61,7 +75,10 @@ async function capture(site, path, visitor = "visitor") {
   );
 }
 
-/** Lets the clock run on by `ms`, the database untouched. */
+/**
+ * Lets the clock run on by `ms`, the database untouched.
+ * @param {number} ms
+ */
 function advance(ms) {
   const now = Date.now();
   mock.method(Date, "now", () => now + ms);
@@ -80,6 +97,10 @@ describe("the snapshot negotiation", () => {
   });
 
   let currentPath = "/";
+  /**
+   * @param {Website} site
+   * @param {string} path
+   */
   async function captured(site, path) {
     currentPath = path;
     assert.equal(await capture(site, path), true);
@@ -149,6 +170,11 @@ describe("the snapshot negotiation", () => {
 
   test("replaces early a capture taken before the scroll root mark", async () => {
     const site = await website();
+    /**
+     * @param {string} path
+     * @param {Record<string, unknown>} [extra]
+     * @returns {PageSnapshot}
+     */
     const legacy = (path, extra = {}) => ({
       _id: snapshotId(SITE, "desktop", path),
       websiteId: SITE,
@@ -184,6 +210,13 @@ describe("the pages list's snapshot summary", () => {
 
   test("tells each path's newest capture and layouts from one read", async () => {
     const site = "snapshot-summary";
+    /**
+     * @param {string} url
+     * @param {SnapshotLayout} layout
+     * @param {number} at
+     * @param {number} [documentWidth]
+     * @returns {PageSnapshot}
+     */
     const row = (url, layout, at, documentWidth = DESKTOP) => ({
       _id: snapshotId(site, layout, url),
       websiteId: site,

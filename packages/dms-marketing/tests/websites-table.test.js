@@ -14,6 +14,12 @@ const { MarketingWebsitesPage } = require("../dist/pages/websites/page");
 const { mergeWebsiteCards } = require("../dist/services/website-report");
 const { WEBSITES_REALTIME_TOPIC } = require("../dist/types/constants");
 
+/**
+ * @typedef {import("../dist/services/website-report").WebsiteCard} WebsiteCard
+ * @typedef {{ _id: string } & Partial<WebsiteCard>} Row a listed row, with its card merged in when the site was found
+ * @typedef {{ total: number, results: Row[] }} ListAnswer
+ */
+
 /** Read while the files load, before any test has mocked it. */
 const realGetModel = models.GetModel;
 
@@ -25,6 +31,7 @@ const DEFAULT_TENANT_CTX = { rawRequest: { headers: {} } };
  * as the route's auth decorator does at runtime: dms 0.10 never reads the
  * tenant of an unverified token.
  */
+/** @param {string} tenantId */
 async function requestOf(tenantId) {
   const users = realGetModel(UserModel);
   const [userId] = await users.insert({
@@ -40,13 +47,67 @@ async function requestOf(tenantId) {
   return ctx;
 }
 
-/** A list route answering `rows`, as the data controller's would. */
+/**
+ * A list route answering `rows`, as the data controller's would.
+ * @param {{ _id: string }[]} rows
+ */
 const listing = (rows) => ({
   func: async () => ({ results: rows, total: rows.length, offset: 0 }),
 });
 
+/**
+ * @param {unknown} value
+ * @returns {value is Row}
+ */
+function isRow(value) {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "_id" in value &&
+    typeof value._id === "string"
+  );
+}
+
+/**
+ * @param {unknown} value
+ * @returns {value is ListAnswer}
+ */
+function isListAnswer(value) {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "total" in value &&
+    typeof value.total === "number" &&
+    "results" in value &&
+    Array.isArray(value.results) &&
+    value.results.every(isRow)
+  );
+}
+
+/**
+ * The answer of a list route, checked to be a page of rows.
+ * @param {unknown} answer
+ * @returns {ListAnswer}
+ */
+function listAnswerOf(answer) {
+  assert.ok(isListAnswer(answer), "the list answers a page of rows");
+  return answer;
+}
+
+/**
+ * The answer of a get route, checked to be a row.
+ * @param {unknown} answer
+ * @returns {Row}
+ */
+function rowOf(answer) {
+  assert.ok(isRow(answer), "the get route answers a row");
+  return answer;
+}
+
 function tableOptions() {
-  return MarketingWebsitesPage.websites.serializeSync().options;
+  const { options } = MarketingWebsitesPage.websites.serializeSync();
+  assert.ok(options, "the Websites page declares a table");
+  return options;
 }
 
 describe("the Websites table", () => {
@@ -92,7 +153,7 @@ describe("the Websites table", () => {
     const route = withCardRows(
       listing([{ _id: "table-cards-a" }, { _id: "table-cards-foreign" }]),
     );
-    const answer = await route.func(DEFAULT_TENANT_CTX, {});
+    const answer = listAnswerOf(await route.func(DEFAULT_TENANT_CTX, {}));
     assert.equal(answer.total, 2);
     const [own, foreign] = answer.results;
     assert.equal(own.state, "waiting");
@@ -103,14 +164,19 @@ describe("the Websites table", () => {
     assert.deepEqual(own.rejected, []);
     assert.deepEqual(foreign, { _id: "table-cards-foreign" });
 
-    const asOther = await withCardRows(
-      listing([{ _id: "table-cards-a" }]),
-    ).func(await requestOf("table-cards-other"), {});
+    const asOther = listAnswerOf(
+      await withCardRows(listing([{ _id: "table-cards-a" }])).func(
+        await requestOf("table-cards-other"),
+        {},
+      ),
+    );
     assert.deepEqual(asOther.results, [{ _id: "table-cards-a" }]);
   });
 
   test("an empty page reads nothing more", async () => {
-    const answer = await withCardRows(listing([])).func(DEFAULT_TENANT_CTX, {});
+    const answer = listAnswerOf(
+      await withCardRows(listing([])).func(DEFAULT_TENANT_CTX, {}),
+    );
     assert.deepEqual(answer.results, []);
   });
 
@@ -124,7 +190,9 @@ describe("the Websites table", () => {
     const route = withCardRow({
       func: async () => ({ _id: "table-cards-get", name: "Cards get" }),
     });
-    const row = await route.func(DEFAULT_TENANT_CTX, { id: "table-cards-get" });
+    const row = rowOf(
+      await route.func(DEFAULT_TENANT_CTX, { id: "table-cards-get" }),
+    );
     assert.equal(row.id, "table-cards-get");
     assert.equal(row.state, "waiting");
     assert.ok(Number.isFinite(row.createdAt));

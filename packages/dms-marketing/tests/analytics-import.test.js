@@ -7,6 +7,7 @@ const MINUTE = 60_000;
 const {
   DAY,
   HISTORY,
+  NOW,
   ORIGIN,
   at,
   dayRows,
@@ -17,7 +18,10 @@ const {
   website,
 } = require("./helpers/analytics-import-fakes");
 
-/** The tracker's way: one beacon per event, sent when it happened. */
+/**
+ * The tracker's way: one beacon per event, sent when it happened.
+ * @param {import("./helpers/analytics-import-fakes").TrackedSite} site
+ */
 async function collectLive(site) {
   const beacons = HISTORY.flatMap((session, index) =>
     session.events.map((event) => ({
@@ -29,12 +33,11 @@ async function collectLive(site) {
     })),
   ).sort((x, y) => x.event.at - y.event.at);
   for (const { event, meta } of beacons) {
-    mock.timers.reset();
-    mock.timers.enable({ apis: ["Date"], now: event.at });
+    mock.timers.setTime(event.at);
     await processCollectBatch(site, [event], meta);
     await drain();
   }
-  mock.timers.reset();
+  mock.timers.setTime(NOW);
 }
 
 describe("an analytics import", () => {
@@ -80,6 +83,11 @@ describe("an analytics import's chronology", () => {
 
   test("rejects older windows before writing, even for another visitor", async () => {
     const site = website("ordered");
+    /**
+     * @param {string} importId
+     * @param {number} hour
+     * @param {string} [visitor]
+     */
     const batch = (importId, hour, visitor = "same") => ({
       tenantId: "default",
       importId,
@@ -119,6 +127,10 @@ describe("an analytics import's chronology", () => {
 
   test("reads another instance's session changes instead of its cached counters", async () => {
     const site = website("durable-session");
+    /**
+     * @param {string} importId
+     * @param {number} minute
+     */
     const batch = (importId, minute) => ({
       tenantId: "default",
       importId,
@@ -164,6 +176,7 @@ describe("an analytics import's guards", () => {
         experiment: { key: "draft-split", status: "draft" },
       },
     );
+    /** @param {string} key */
     const exposure = (key) => ({
       kind: "exposure",
       at: at(0, 9, 0, 1),

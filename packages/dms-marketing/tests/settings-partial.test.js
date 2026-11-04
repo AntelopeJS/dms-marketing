@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const test = it;
+const { z } = require("zod");
 const { setConfig, applyConfigOverrides } = require("../dist/config");
 const {
   applySettingsForm,
@@ -9,17 +10,27 @@ const {
   settingsFormValues,
 } = require("../dist/services/settings");
 
+/**
+ * @typedef {import("@antelopejs/interface-api").HTTPResult} HTTPResult
+ * @typedef {import("../dist/services/settings").RetentionCutCounter} RetentionCutCounter
+ * @typedef {import("../dist/services/settings").SettingsSaveGuard} SettingsSaveGuard
+ * @typedef {ReturnType<typeof storedRow>} StoredRow
+ */
+
 const DAY = 86_400_000;
 
+/** @param {StoredRow} row */
 function fakeModel(row) {
   return {
     row,
     async getSingleton() {
       return this.row;
     },
+    /** @param {StoredRow} next */
     async update(next) {
       this.row = { ...next };
     },
+    /** @param {StoredRow} doc */
     async insertSingleton(doc) {
       this.row = doc;
       return doc;
@@ -74,14 +85,34 @@ test("snapshots kept longer than raw events are refused, not clamped", async () 
   assert.equal(model.row.snapshotRetention, 20 * DAY);
 });
 
-/** HTTPResult serializes an object body to JSON. */
-function bodyOf(error) {
-  const body = error.getBody();
-  return typeof body === "string" ? JSON.parse(body) : body;
+const issuesSchema = z.array(z.object({ path: z.array(z.string()) }));
+const conflictSchema = z
+  .object({
+    field: z.string(),
+    message: z.string(),
+    params: z.object({ deleted: z.number() }),
+  })
+  .passthrough();
+
+/**
+ * HTTPResult serializes an object body to JSON.
+ * @param {HTTPResult} error
+ */
+function bodyText(error) {
+  return z.string().parse(error.getBody());
 }
 
+/**
+ * @param {HTTPResult} error
+ * @returns {string}
+ */
 function issueField(error) {
-  return bodyOf(error)[0].path[0];
+  return issuesSchema.parse(JSON.parse(bodyText(error)))[0].path[0];
+}
+
+/** @param {HTTPResult} error */
+function conflictOf(error) {
+  return conflictSchema.parse(JSON.parse(bodyText(error)));
 }
 
 test("a decimal is rounded to whole days", async () => {
@@ -121,6 +152,11 @@ test("statistics kept shorter than raw events are refused", async () => {
 
 describe("lowering a retention that deletes data", () => {
   const counted = async () => ({ count: 1234, what: "raw_events" });
+  /**
+   * @param {string} actor
+   * @param {RetentionCutCounter} count
+   * @returns {SettingsSaveGuard}
+   */
   const lower = (actor, count) => (current, next) =>
     confirmRetentionCuts(actor, current, next, count);
 
@@ -134,10 +170,10 @@ describe("lowering a retention that deletes data", () => {
       ),
       (error) =>
         error.getStatus() === 409 &&
-        bodyOf(error).field === "rawEventsRetentionDays" &&
-        bodyOf(error).message.endsWith("retention_cut.raw_events") &&
-        bodyOf(error).params.deleted === 1234 &&
-        !("values" in bodyOf(error)),
+        conflictOf(error).field === "rawEventsRetentionDays" &&
+        conflictOf(error).message.endsWith("retention_cut.raw_events") &&
+        conflictOf(error).params.deleted === 1234 &&
+        !("values" in conflictOf(error)),
     );
     assert.equal(model.row.rawEventsRetention, 60 * DAY);
     await applySettingsForm(
@@ -226,10 +262,26 @@ describe("the collection paused notice", () => {
   });
 });
 
+const serializedFormSchema = z.object({
+  fields: z.array(
+    z.object({
+      component: z.object({
+        options: z.object({
+          clamp: z.boolean(),
+          min: z.number(),
+          max: z.number(),
+        }),
+      }),
+    }),
+  ),
+});
+
 describe("the settings form", () => {
   test("keeps a number typed out of bounds and says so under the field", () => {
     const { retentionForm } = require("../dist/pages/settings/form");
-    const { fields } = retentionForm.serializeSync().options;
+    const { fields } = serializedFormSchema.parse(
+      retentionForm.serializeSync().options,
+    );
     assert.equal(fields.length, 3);
     for (const field of fields) {
       const options = field.component.options;

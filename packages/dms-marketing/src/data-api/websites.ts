@@ -1,9 +1,7 @@
 import type { RequestContext } from "@antelopejs/interface-api";
-import type { Parameters } from "@antelopejs/interface-data-api/components";
 import { Controller } from "@antelopejs/interface-api";
 import {
   DataController,
-  type DataControllerCallback,
   RegisterDataController,
 } from "@antelopejs/interface-data-api";
 import {
@@ -11,11 +9,17 @@ import {
   AccessMode,
   Listable,
   ModelReference,
+  type RowFields,
   Sortable,
 } from "@antelopejs/interface-data-api/metadata";
 import { Model } from "@antelopejs/interface-database-decorators";
 import { AuthOwnerOnly } from "@antelopejs/interface-dms/auth";
-import { Column, Searchable, Select } from "@antelopejs/interface-dms/base";
+import {
+  Column,
+  Searchable,
+  Select,
+  type TableViewRoutes,
+} from "@antelopejs/interface-dms/base";
 import { DefaultDataTypes } from "@antelopejs/interface-dms/base/data-types/default-types";
 import { DefaultDisplays } from "@antelopejs/interface-dms/base/table-view/column-display";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
@@ -32,15 +36,11 @@ import { tenantScopedReadRoutes } from "./tenant-scope";
 
 const COLUMN_PREFIX = "$page.marketing.websites.column.";
 
-interface ListedWebsite {
-  _id: string;
-}
-
 /** The listed rows, each with the figures of its Websites page card. */
-async function withCards<Row extends ListedWebsite>(
+async function withCards(
   ctx: RequestContext,
-  rows: Row[],
-): Promise<Row[]> {
+  rows: RowFields[],
+): Promise<RowFields[]> {
   if (rows.length === 0) {
     return rows;
   }
@@ -58,19 +58,16 @@ async function withCards<Row extends ListedWebsite>(
  * computed, not columns, and only the listed page of rows pays for them.
  */
 export function withCardRows(
-  base: DataControllerCallback,
-): DataControllerCallback {
+  base: typeof TableViewRoutes.List,
+): typeof TableViewRoutes.List {
   return {
     ...base,
     func: async function (
       this: unknown,
-      ctx: RequestContext,
-      listParams: Parameters.ListParameters,
-      ...rest: unknown[]
+      ...args: Parameters<(typeof TableViewRoutes.List)["func"]>
     ) {
-      const answer = (await base.func.call(this, ctx, listParams, ...rest)) as {
-        results: ListedWebsite[];
-      };
+      const [ctx] = args;
+      const answer = await base.func.call(this, ...args);
       return { ...answer, results: await withCards(ctx, answer.results) };
     },
   };
@@ -78,23 +75,17 @@ export function withCardRows(
 
 /** The row a deep link reads beyond the listed page, with its card too. */
 export function withCardRow(
-  base: DataControllerCallback,
-): DataControllerCallback {
+  base: typeof TableViewRoutes.Get,
+): typeof TableViewRoutes.Get {
   return {
     ...base,
     func: async function (
       this: unknown,
-      ctx: RequestContext,
-      params: Parameters.GetParameters,
-      ...rest: unknown[]
+      ...args: Parameters<(typeof TableViewRoutes.Get)["func"]>
     ) {
-      const row = (await base.func.call(
-        this,
-        ctx,
-        params,
-        ...rest,
-      )) as ListedWebsite;
-      const [withCard] = await withCards(ctx, [row]);
+      const [ctx] = args;
+      const row = await base.func.call(this, ...args);
+      const [withCard = row] = await withCards(ctx, [row]);
       return withCard;
     },
   };

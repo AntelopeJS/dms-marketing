@@ -42,7 +42,8 @@ export const funnelStepsSchema = z
       return [];
     }
     try {
-      return JSON.parse(value);
+      const parsed: unknown = JSON.parse(value);
+      return parsed;
     } catch {
       return [];
     }

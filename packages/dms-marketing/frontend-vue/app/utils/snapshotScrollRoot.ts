@@ -3,7 +3,7 @@
  *
  * An app shell keeps its document still and scrolls a panel instead; the
  * capture marks that panel `data-marketing-scroll-root` (see
- * static/snapshot.js). Rendered as captured, the panel stays clipped at the
+ * static/snapshot/). Rendered as captured, the panel stays clipped at the
  * visitor's window height and everything below the fold is out of reach —
  * the frame does not scroll, and no click below the first screen has
  * anything under it. Unrolled, the panel and every ancestor that pinned its

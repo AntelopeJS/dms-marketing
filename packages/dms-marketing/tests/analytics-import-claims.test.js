@@ -10,12 +10,17 @@ const {
   at,
   dayRows,
   drain,
+  fakeTimers,
   runCount,
   store,
   useFakeModels,
   website,
 } = require("./helpers/analytics-import-fakes");
 
+/**
+ * @param {import("./helpers/analytics-import-fakes").TrackedSite} site
+ * @param {string} [importId]
+ */
 function batchFor(site, importId = "history") {
   return {
     tenantId: "default",
@@ -42,7 +47,10 @@ function interceptWrites(write) {
   );
 }
 
-/** What a process killed mid-replay leaves in the claim and import rows. */
+/**
+ * What a process killed mid-replay leaves in the claim and import rows.
+ * @param {import("./helpers/analytics-import-fakes").TrackedSite} site
+ */
 function leaveClaimBehind(site) {
   const row = {
     websiteId: site._id,
@@ -161,7 +169,7 @@ describe("an analytics import's claims", () => {
   test("a claim whose holder stopped is taken over once its token stays unchanged", async () => {
     const site = website("stopped");
     leaveClaimBehind(site);
-    mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+    fakeTimers();
     let settled = false;
     const resumed = importAnalytics(batchFor(site)).finally(() => {
       settled = true;
@@ -188,7 +196,7 @@ describe("an analytics import's claims", () => {
       writing.resolve();
       await stalled.promise;
     });
-    mock.timers.enable({ apis: ["setTimeout", "setInterval"] });
+    fakeTimers();
     const holder = importAnalytics(batchFor(site));
     await writing.promise;
     for (let second = 0; second < 300; second += 1) {
@@ -232,10 +240,13 @@ describe("an analytics import's claims", () => {
       importAnalytics(batchFor(site, "b")),
     ]);
     assert.equal(results.filter((r) => r.status === "fulfilled").length, 1);
-    assert.match(
-      results.find((r) => r.status === "rejected").reason.message,
-      /another import/,
+    const refusals = results.flatMap((r) =>
+      r.status === "rejected" && r.reason instanceof Error
+        ? [r.reason.message]
+        : [],
     );
+    assert.equal(refusals.length, 1);
+    assert.match(refusals[0], /another import/);
     assert.equal(store().events.length, 10);
   });
 

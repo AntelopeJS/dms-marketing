@@ -71,8 +71,8 @@ const READABLE_MESSAGES = new Map([
   ],
 ]);
 
-/** The first issue of a zod failure, as one readable line. */
-export function describeIssue(error: unknown): string {
+/** The first issue of a zod failure, or the message of any other error, as one readable line. */
+export function describeIssue(error: Error): string {
   if (error instanceof z.ZodError) {
     const issue = error.issues[0];
     const message =
@@ -80,5 +80,5 @@ export function describeIssue(error: unknown): string {
     const path = issue?.path.join(".");
     return path ? `${path}: ${message}` : (message ?? "invalid");
   }
-  return error instanceof Error ? error.message : String(error);
+  return error.message;
 }

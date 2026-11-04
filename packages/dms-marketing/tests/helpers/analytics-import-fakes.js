@@ -18,13 +18,38 @@ const IPHONE =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1";
 const ORIGIN = "https://shop.example.com";
 /**
- * The 10th of last month at midnight UTC: well inside every retention, and the
- * two days of history stay in one month, the period of the visitor-id salt.
+ * The pinned wall clock of every case. The visitor-hash salt changes with the
+ * UTC month, so a history that crosses midnight must not cross a month
+ * boundary: mid-month keeps the whole fixture in one salt month.
  */
-const DAY_ONE = (() => {
-  const now = new Date();
-  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 10);
-})();
+const NOW = Date.UTC(2026, 5, 15, 12);
+/** Three days before NOW at midnight UTC: well inside every retention. */
+const DAY_ONE = Math.floor((NOW - 3 * DAY) / DAY) * DAY;
+
+/** @typedef {import("../../dist/db").Website} Website */
+/** @typedef {import("../../dist/db").FunnelExperiment} FunnelExperiment */
+/** @typedef {Pick<Website, "_id" | "tenantId" | "name" | "domain" | "trackingEnabled">} TrackedSite The fields the fake websites carry. */
+/** @typedef {Pick<import("../../dist/db").Funnel, "websiteId"> & { experiment: Pick<FunnelExperiment, "key" | "status"> }} ExperimentFunnel The fields the fake funnels carry. */
+/** @typedef {import("../../dist/db").NewMarketingEvent} NewMarketingEvent */
+/** @typedef {import("../../dist/db").MarketingSession} MarketingSession */
+/** @typedef {import("../../dist/db").WebsiteStatistics} WebsiteStatistics */
+/** @typedef {import("../../dist/db").MarketingImport} MarketingImport */
+/** @typedef {Pick<MarketingImport, keyof MarketingImport>} ImportRow A stored claim: plain data, not a model instance. */
+/** @typedef {InstanceType<typeof MarketingSessionsModel>} SessionsModel */
+/** @typedef {InstanceType<typeof MarketingEventsModel>} EventsModel */
+/** @typedef {InstanceType<typeof WebsiteStatisticsModel>} StatisticsModel */
+
+/**
+ * @typedef {object} Store
+ * @property {Map<string, TrackedSite>} websites
+ * @property {ExperimentFunnel[]} funnels
+ * @property {NewMarketingEvent[]} events
+ * @property {MarketingSession[]} sessions
+ * @property {Map<string, WebsiteStatistics>} stats
+ * @property {Map<string, ImportRow>} imports
+ */
+
+/** @type {Array<Exclude<keyof Parameters<StatisticsModel["addDelta"]>[1], "tops" | "drops">>} */
 const COUNTERS = [
   "pageviews",
   "sessions",
@@ -35,20 +60,28 @@ const COUNTERS = [
 ];
 let runCount = 0;
 let claimSwaps = 0;
-/** @typedef {Record<string, unknown>} Row */
-/** @type {{ websites: Map<unknown, Row>, funnels: Row[], events: Row[], sessions: Row[], stats: Map<unknown, Row>, imports: Map<unknown, Row> }} */
+/** @type {Store} */
 let store;
 
 function fakeSessions() {
   return {
+    /**
+     * @param {string} websiteId
+     * @param {string} importId
+     */
     async listImported(websiteId, importId) {
       return store.sessions.filter(
         (s) => s.websiteId === websiteId && s.importId === importId,
       );
     },
+    /** @param {string[]} ids */
     async deleteMany(ids) {
       store.sessions = store.sessions.filter((s) => !ids.includes(s._id));
     },
+    /**
+     * @param {string} id
+     * @param {Parameters<SessionsModel["restoreActivity"]>[1]} events
+     */
     async restoreActivity(id, events) {
       const session = store.sessions.find((s) => s._id === id);
       const pageviews = events.filter((e) => e.kind === "pageview");
@@ -57,16 +90,24 @@ function fakeSessions() {
       session.lastSeenAt = events[events.length - 1].timestamp;
       session.exitUrl = pageviews[pageviews.length - 1].url;
     },
+    /**
+     * @param {string} websiteId
+     * @param {string} visitorId
+     */
     async findLatestForVisitor(websiteId, visitorId) {
       const row = store.sessions
         .filter((s) => s.websiteId === websiteId && s.visitorId === visitorId)
         .sort((a, b) => b.startedAt - a.startedAt)[0];
       return row && structuredClone(row);
     },
-    /** @param {Row} session */
+    /** @param {MarketingSession} session */
     async insert(session) {
       store.sessions.push(structuredClone(session));
     },
+    /**
+     * @param {string} id
+     * @param {Parameters<SessionsModel["recordActivity"]>[1]} delta
+     */
     async recordActivity(id, delta) {
       const session = store.sessions.find((s) => s._id === id);
       session.pageviewsCount += delta.pageviews;
@@ -79,21 +120,34 @@ function fakeSessions() {
 
 function fakeEvents() {
   return {
-    /** @param {Row[]} docs */
+    /** @param {NewMarketingEvent[]} docs */
     async insertMany(docs) {
       store.events.push(...docs);
       return docs.length;
     },
+    /**
+     * @param {string} websiteId
+     * @param {string} importId
+     */
     async listImported(websiteId, importId) {
       return store.events.filter(
         (e) => e.websiteId === websiteId && e.importId === importId,
       );
     },
+    /**
+     * @param {string} websiteId
+     * @param {string} sessionId
+     */
     async listBySession(websiteId, sessionId) {
       return store.events
         .filter((e) => e.websiteId === websiteId && e.sessionId === sessionId)
         .sort((a, b) => a.timestamp - b.timestamp);
     },
+    /**
+     * @param {string} websiteId
+     * @param {string} importId
+     * @param {number} day
+     */
     async deleteImportedOnDay(websiteId, importId, day) {
       store.events = store.events.filter(
         (e) =>
@@ -105,19 +159,27 @@ function fakeEvents() {
 
 function fakeStatistics() {
   return {
+    /** @param {string} id */
     async get(id) {
       const row = store.stats.get(id);
       return row && structuredClone(row);
     },
-    /** @param {Row} row */
+    /** @param {WebsiteStatistics} row */
     async insert(row) {
       store.stats.set(row._id, structuredClone(row));
     },
+    /** @param {string} websiteId */
     async getDaysSince(websiteId) {
       return [...store.stats.values()]
         .filter((row) => row.websiteId === websiteId)
         .map((row) => structuredClone(row));
     },
+    /**
+     * @param {string} id
+     * @param {Parameters<StatisticsModel["addDelta"]>[1]} delta
+     * @param {Parameters<StatisticsModel["addDelta"]>[2]} tops
+     * @param {Parameters<StatisticsModel["addDelta"]>[3]} appliedImports
+     */
     async addDelta(id, delta, tops, appliedImports) {
       const row = store.stats.get(id);
       if (appliedImports) row.appliedImports = structuredClone(appliedImports);
@@ -131,26 +193,35 @@ function fakeStatistics() {
 
 function fakeImports() {
   return {
+    /** @param {string} id */
     async get(id) {
       const row = store.imports.get(id);
       return row && { ...row };
     },
-    /** @param {Row} row */
+    /** @param {ImportRow} row */
     async insert(row) {
       if (store.imports.has(row._id)) {
         throw new Error("duplicate key");
       }
       store.imports.set(row._id, { ...row });
     },
-    /** @param {Row} patch */
+    /**
+     * @param {string} id
+     * @param {Partial<ImportRow>} patch
+     */
     async update(id, patch) {
       store.imports.set(id, { ...store.imports.get(id), ...patch });
     },
+    /** @param {string} websiteId */
     async listByWebsite(websiteId) {
       return [...store.imports.values()].filter(
         (row) => row.websiteId === websiteId,
       );
     },
+    /**
+     * @param {string} id
+     * @param {string} token
+     */
     async swapClaim(id, token) {
       const row = store.imports.get(id);
       if (row?.claimToken !== token) return undefined;
@@ -158,6 +229,10 @@ function fakeImports() {
       row.claimToken = `swapped-${claimSwaps}`;
       return row.claimToken;
     },
+    /**
+     * @param {string} id
+     * @param {string} token
+     */
     async releaseClaim(id, token) {
       if (store.imports.get(id)?.claimToken === token) {
         store.imports.delete(id);
@@ -188,6 +263,7 @@ function fakeModels() {
     [
       WebsitesModel,
       {
+        /** @param {string} id */
         async get(id) {
           return store.websites.get(id);
         },
@@ -196,6 +272,7 @@ function fakeModels() {
     [
       FunnelsModel,
       {
+        /** @param {string} websiteId */
         async listByWebsite(websiteId) {
           return store.funnels.filter(
             (funnel) => funnel.websiteId === websiteId,
@@ -211,7 +288,11 @@ function fakeModels() {
   );
 }
 
-/** A website id per test: the session cache outlives each case. */
+/**
+ * A website id per test: the session cache outlives each case.
+ * @param {string} name
+ * @returns {TrackedSite}
+ */
 function website(name) {
   runCount += 1;
   const site = {
@@ -225,6 +306,12 @@ function website(name) {
   return site;
 }
 
+/**
+ * @param {number} day
+ * @param {number} hours
+ * @param {number} minutes
+ * @param {number} [seconds]
+ */
 function at(day, hours, minutes, seconds = 0) {
   return DAY_ONE + day * DAY + ((hours * 60 + minutes) * 60 + seconds) * 1000;
 }
@@ -284,7 +371,10 @@ async function drain() {
   }
 }
 
-/** The rows of a site, without what names the site. */
+/**
+ * The rows of a site, without what names the site.
+ * @param {string} siteId
+ */
 function dayRows(siteId) {
   return [...store.stats.values()]
     .filter((row) => row.websiteId === siteId)
@@ -292,9 +382,16 @@ function dayRows(siteId) {
     .map(({ _id, websiteId, appliedImports, ...row }) => row);
 }
 
-/** Fresh fakes and a known secret per case. */
+/** Fakes the timers too, with the clock still held at NOW: ticks then move both. */
+function fakeTimers() {
+  mock.timers.reset();
+  mock.timers.enable({ apis: ["Date", "setTimeout", "setInterval"], now: NOW });
+}
+
+/** Fresh fakes, a known secret and the clock held at NOW per case. */
 function useFakeModels() {
   beforeEach(() => {
+    mock.timers.enable({ apis: ["Date"], now: NOW });
     setConfig({ visitorHashSecret: "import-test" });
     fakeModels();
   });
@@ -310,10 +407,12 @@ module.exports = {
   DAY,
   DAY_ONE,
   HISTORY,
+  NOW,
   ORIGIN,
   at,
   dayRows,
   drain,
+  fakeTimers,
   runCount: () => runCount,
   store: () => store,
   useFakeModels,

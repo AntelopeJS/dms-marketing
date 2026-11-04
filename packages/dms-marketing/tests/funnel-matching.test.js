@@ -43,6 +43,12 @@ test("saved page steps are stored as the path", () => {
   assert.equal(step.value, "/Pricing");
 });
 
+/**
+ * @param {string} sessionId
+ * @param {string} kind
+ * @param {string} value
+ * @param {number} at
+ */
 function event(sessionId, kind, value, at) {
   return {
     sessionId,

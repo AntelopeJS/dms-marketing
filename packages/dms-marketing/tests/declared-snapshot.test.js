@@ -13,6 +13,10 @@ const { readPageSnapshot } = require("../dist/services/snapshots");
 const realGetModel = models.GetModel;
 const HOST = "snapshot-test.example.com";
 
+/**
+ * @param {string} html
+ * @param {Record<string, unknown>} [extra]
+ */
 function page(html, extra = {}) {
   return {
     tenantId: "default",

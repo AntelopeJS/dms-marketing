@@ -52,6 +52,18 @@ const TRACKED_URL_PATTERN = /^(https?:\/\/|\/)/i;
 /** 0-1 coordinate; NaN and infinities fail the bounds. */
 const fraction = z.number().min(0).max(1);
 
+/** The `data` of a click event, as collect validates it and the heatmap re-checks it on read. */
+export const clickDataSchema = z.object({
+  x: fraction,
+  y: fraction,
+  dx: fraction.optional(),
+  dy: fraction.optional(),
+  selector: z.string().max(MAX_CLICK_SELECTOR_LENGTH).optional(),
+  ox: fraction.optional(),
+  oy: fraction.optional(),
+  nth: z.number().int().nonnegative().optional(),
+});
+
 const customDataSchema = z
   .record(z.unknown())
   .refine((data) => JSON.stringify(data).length <= MAX_EVENT_DATA_BYTES);
@@ -102,16 +114,7 @@ export const trackedEventSchema = z.discriminatedUnion("kind", [
   eventBaseSchema.extend({
     kind: z.literal("click"),
     name: ignored,
-    data: z.object({
-      x: fraction,
-      y: fraction,
-      dx: fraction.optional(),
-      dy: fraction.optional(),
-      selector: z.string().max(MAX_CLICK_SELECTOR_LENGTH).optional(),
-      ox: fraction.optional(),
-      oy: fraction.optional(),
-      nth: z.number().int().nonnegative().optional(),
-    }),
+    data: clickDataSchema,
   }),
   eventBaseSchema.extend({
     kind: z.literal("scroll"),

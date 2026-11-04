@@ -2,7 +2,7 @@
  * The tag that measures the dashboard itself, when the backend enables
  * `dashboardTracking`: the same tracker client sites embed, inserted by the
  * module instead of pasted. It is kept and retargeted, never reinserted: the
- * tracker follows its `data-website-id` (see static/tracker.js), and a
+ * tracker follows its `data-website-id` (see static/tracker/), and a
  * second copy would only be refused.
  */
 import { watch, type WatchStopHandle } from 'vue'

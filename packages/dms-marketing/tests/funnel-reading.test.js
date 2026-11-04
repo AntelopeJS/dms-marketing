@@ -5,6 +5,9 @@ const {
   unseenStepOf,
 } = require("../dist/services/funnel-report");
 
+/** @typedef {NonNullable<import("../dist/services/funnels/results").FunnelResults["experiment"]>["variations"][number]} Arm */
+
+/** @param {number[]} matches */
 function computation(matches) {
   return {
     totalSessions: 10,
@@ -18,6 +21,11 @@ function computation(matches) {
   };
 }
 
+/**
+ * @param {string} key
+ * @param {number} conversionRate
+ * @param {Partial<Pick<Arm, "uplift" | "pValue" | "significant">>} [test]
+ */
 function arm(key, conversionRate, test = {}) {
   return {
     key,
@@ -36,6 +44,10 @@ function arm(key, conversionRate, test = {}) {
 
 /** Control at 10 %, B at 12 % (significant), C at 11 % (not). */
 function split({ ready = true, mismatch = false, truncated = false } = {}) {
+  /**
+   * @param {number} uplift
+   * @param {boolean} significant
+   */
   const scored = (uplift, significant) => ({
     uplift,
     pValue: significant ? 0.01 : 0.4,

@@ -35,6 +35,10 @@ function row(dayIndex, overrides = {}) {
   };
 }
 
+/**
+ * @param {number} days
+ * @param {number} [offset]
+ */
 function window(days, offset = 0) {
   const firstDay = FIRST + offset * DAY;
   return {

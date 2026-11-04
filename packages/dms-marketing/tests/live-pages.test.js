@@ -23,11 +23,46 @@ const LIVE_PAGES = {
   funnel: MarketingFunnelPage,
 };
 
-/** Every component under the page's context gate, with its id path. */
+/** @typedef {import("@antelopejs/interface-dms/page").PageInfo} PageInfo */
+/** @typedef {import("@antelopejs/interface-dms/realtime").RealtimeMessage} RealtimeMessage */
+/** @typedef {(typeof LIVE_PAGES)[keyof typeof LIVE_PAGES]} LivePage */
+/** @typedef {NonNullable<ReturnType<LivePage["content"]["serializeSync"]>["children"]>[number]["component"]} SerializedBlock */
+/**
+ * @typedef {object} Block
+ * @property {string} path
+ * @property {string} name
+ * @property {Record<string, unknown>} options
+ */
+
+/**
+ * @param {unknown} options
+ * @returns {options is Record<string, unknown>}
+ */
+const isOptions = (options) => options instanceof Object;
+
+/**
+ * The Direct / Pause valve of a page: its own, or an older DMS's `menuOptions`.
+ * @param {PageInfo & { menuOptions?: Pick<PageInfo, "live"> }} pageInfo
+ */
+const liveOf = (pageInfo) => pageInfo.live ?? pageInfo.menuOptions?.live;
+
+/**
+ * Every component under the page's context gate, with its id path.
+ * @param {LivePage} Page
+ */
 function blocksOf(Page) {
+  /** @type {Block[]} */
   const found = [];
+  /**
+   * @param {SerializedBlock} info
+   * @param {string} path
+   */
   const walk = (info, path) => {
-    found.push({ path, name: info.componentName, options: info.options ?? {} });
+    found.push({
+      path,
+      name: info.componentName,
+      options: isOptions(info.options) ? info.options : {},
+    });
     for (const child of info.children ?? []) {
       walk(child.component, `${path}/${child.id}`);
     }
@@ -47,13 +82,16 @@ const TOPIC_BLOCKS = new Set([
 const KPI_CARD = "dms-kpi-card";
 const TABLE_VIEW = "dms-table-view";
 
-/** A block reading a route: a fetch URL, or a source table's own. */
+/**
+ * A block reading a route: a fetch URL, or a source table's own.
+ * @param {Block} block
+ */
 const readsData = (block) => !!(block.options.fetchUrl || block.options.source);
 
 test("every analytics page under the context bar is live, through the DMS gate", () => {
   for (const [id, Page] of Object.entries(LIVE_PAGES)) {
     const { pageInfo } = GetMetadata(Page, PageMetadata);
-    const live = pageInfo.live ?? pageInfo.menuOptions?.live;
+    const live = liveOf(pageInfo);
     assert.deepEqual(live, CONTEXT_PAGE_LIVE, id);
   }
   assert.equal(CONTEXT_PAGE_LIVE.rememberKey, "marketing");
@@ -120,6 +158,7 @@ test("the KPI cards follow the arrivals topic themselves", () => {
 
 test("arrivals are published batched per tenant, with their count and nothing else", async () => {
   stopCollectedNotices();
+  /** @type {RealtimeMessage[]} */
   const received = [];
   const unsubscribe = SubscribeMessage(MARKETING_EVENTS_TOPIC, (message) =>
     received.push(message),
@@ -143,6 +182,7 @@ test("arrivals are published batched per tenant, with their count and nothing el
 });
 
 test("a stop drops what was waiting to be published", async () => {
+  /** @type {RealtimeMessage[]} */
   const received = [];
   const unsubscribe = SubscribeMessage(MARKETING_EVENTS_TOPIC, (message) =>
     received.push(message),
