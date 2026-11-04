@@ -41,7 +41,7 @@ jobs:
           NODE
   release:
     needs: validate
-    uses: AntelopeJS/.github/.github/workflows/release-npm-public.yml@1ac4b3ed985bf5f137e0403d8347c5760d306a69
+    uses: AntelopeJS/.github/.github/workflows/release-npm-public.yml@acb5bdb5475a3897d46fe0020967053ac0be1de1
     with:
       channel: ${{ inputs.channel }}
       release-version: ${{ inputs.release-version }}
