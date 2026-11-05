@@ -1,6 +1,6 @@
 {
   "name": "@antelopejs/dms-marketing",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "First-party marketing analytics for the AntelopeJS DMS: traffic dashboards, conversion funnels with A/B splits and click heatmaps, without cookies or external services.",
   "keywords": [
     "ab-testing",
@@ -50,21 +50,21 @@
     "test:layer": "cd frontend-vue && pnpm test",
     "dev": "ajs project run -w -p playground",
     "frontend:dev": "cd playground && pnpm frontend:dev",
-    "release": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --dir frontend-vue install --frozen-lockfile && pnpm --dir ../.. run lint && pnpm --dir ../.. run format:check && release-it",
+    "release": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --dir ../.. install --frozen-lockfile && pnpm --dir ../.. run lint && pnpm --dir ../.. run format:check && release-it",
     "prepack": "pnpm run build",
     "typecheck": "tsc --noEmit",
     "knip": "knip --dependencies",
     "knip:all": "knip"
   },
   "dependencies": {
-    "@antelopejs/interface-api": "file:../../.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz",
-    "@antelopejs/interface-api-util": "file:../../.campaign/tgz/antelopejs-interface-api-util-639f38b.tgz",
-    "@antelopejs/interface-core": "file:../../.campaign/tgz/antelopejs-interface-core-f7df541.tgz",
-    "@antelopejs/interface-data-api": "file:../../.campaign/tgz/antelopejs-interface-data-api-d8a868f.tgz",
-    "@antelopejs/interface-database": "file:../../.campaign/tgz/antelopejs-interface-database-02e0360.tgz",
-    "@antelopejs/interface-database-decorators": "file:../../.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz",
-    "@antelopejs/interface-dms": "file:../../.campaign/tgz/antelopejs-interface-dms-14e671d.tgz",
-    "@antelopejs/interface-dms-marketing": "file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz",
+    "@antelopejs/interface-api": ">=0.3.0 <1.0.0",
+    "@antelopejs/interface-api-util": ">=0.3.0 <1.0.0",
+    "@antelopejs/interface-core": ">=0.4.0 <1.0.0",
+    "@antelopejs/interface-data-api": ">=0.6.0 <1.0.0",
+    "@antelopejs/interface-database": ">=0.3.0 <1.0.0",
+    "@antelopejs/interface-database-decorators": ">=0.2.0 <1.0.0",
+    "@antelopejs/interface-dms": ">=0.12.0 <1.0.0",
+    "@antelopejs/interface-dms-marketing": ">=0.6.0 <0.7.0",
     "defu": "^6.1.4",
     "maxmind": "^5.0.7",
     "node-cron": "^4.2.1",
@@ -73,12 +73,11 @@
     "zod": "~3.24.4"
   },
   "devDependencies": {
-    "@antelopejs/core": "file:../../.campaign/tgz/antelopejs-core-184eb90.tgz",
-    "@antelopejs/dms": "file:../../.campaign/tgz/antelopejs-dms-14e671d.tgz",
-    "@antelopejs/dms-frontend": "file:../../.campaign/tgz/antelopejs-dms-frontend-ee4e931.tgz",
+    "@antelopejs/core": "^1.20.0",
+    "@antelopejs/dms": ">=0.16.1 <1.0.0",
     "@antelopejs/interface-mongodb": ">=0.0.6 <1.0.0",
-    "@antelopejs/mongodb": "file:../../.campaign/tgz/antelopejs-mongodb-db4b449.tgz",
-    "@antelopejs/tooling-configs": "file:../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz",
+    "@antelopejs/mongodb": "1.6.2",
+    "@antelopejs/tooling-configs": "^0.2.18",
     "@types/node": "^22.19.15",
     "@types/sanitize-html": "^2.16.2",
     "knip": "^6.34.0",
@@ -90,22 +89,6 @@
     "typescript": "^6.0.3"
   },
   "packageManager": "pnpm@10.6.5",
-  "pnpm": {
-    "overrides": {
-      "@antelopejs/interface-database": "file:../../.campaign/tgz/antelopejs-interface-database-02e0360.tgz",
-      "@antelopejs/mongodb": "file:../../.campaign/tgz/antelopejs-mongodb-db4b449.tgz",
-      "@antelopejs/interface-data-api": "file:../../.campaign/tgz/antelopejs-interface-data-api-d8a868f.tgz",
-      "@antelopejs/interface-api": "file:../../.campaign/tgz/antelopejs-interface-api-f2a99b5.tgz",
-      "@antelopejs/interface-api-util": "file:../../.campaign/tgz/antelopejs-interface-api-util-639f38b.tgz",
-      "@antelopejs/interface-database-decorators": "file:../../.campaign/tgz/antelopejs-interface-database-decorators-e79a62b.tgz",
-      "@antelopejs/interface-dms": "file:../../.campaign/tgz/antelopejs-interface-dms-14e671d.tgz",
-      "@antelopejs/interface-dms-marketing": "file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz",
-      "@antelopejs/interface-core": "file:../../.campaign/tgz/antelopejs-interface-core-f7df541.tgz",
-      "@antelopejs/core": "file:../../.campaign/tgz/antelopejs-core-184eb90.tgz",
-      "@antelopejs/dms": "file:../../.campaign/tgz/antelopejs-dms-14e671d.tgz",
-      "@antelopejs/tooling-configs": "file:../../.campaign/tgz/antelopejs-tooling-configs-dab0aea.tgz"
-    }
-  },
   "antelopeJs": {
     "baseUrl": "dist",
     "test": "antelope.test.ts",

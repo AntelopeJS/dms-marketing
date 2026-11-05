@@ -108,12 +108,8 @@ export const journeys = guarded([
       const current = Number(major) * 1e6 + Number(minor) * 1e3 + Number(patch);
       await ctx.verify("the ranges", [
         ...interfaces.map(([name, spec]) => check(`${name} is in the table with the same range`, table.get(name) === spec, [table.get(name), spec])),
-        ...(range.startsWith("file:")
-          ? [check("on the campaign branch the interface is a pinned tarball of that interface", /antelopejs-interface-dms-marketing-[0-9a-f]+\.tgz$/.test(range), range)]
-          : [
-              check("the interface-dms-marketing range accepts the tree's interface", current >= asNumber(floor) && current < asNumber(ceiling), [range, version]),
-              check("the range stops below the next minor", ceiling !== null && Number(ceiling[2]) === Number(minor) + 1, range),
-            ]),
+        check("the interface-dms-marketing range accepts the tree's interface", current >= asNumber(floor) && current < asNumber(ceiling), [range, version]),
+        check("the range stops below the next minor", ceiling !== null && Number(ceiling[2]) === Number(minor) + 1, range),
         check("the dashboard layer pins one renderer minor", /^>=\d+\.\d+\.\d+ <\d+\.\d+\.0$/.test(String(pick(frontend, "engines", "@antelopejs/dms-frontend"))), pick(frontend, "engines")),
       ]);
     },

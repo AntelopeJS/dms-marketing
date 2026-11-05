@@ -19,7 +19,7 @@ Give `seeded`, `doors` and `--skill` absolute paths: the command runs in `packag
 ## Launch
 
 ```bash
-RUN=$($C up --prepare --base origin/campaign/integration)   # installs, builds, starts; prints the run folder
+RUN=$($C up --prepare --base origin/main)   # installs, builds, starts; prints the run folder
 ```
 
 `--prepare` runs the `prepare` commands of `verify.config.ts`: the frozen install, the build of the interface and the module, `playwright-core` into this folder, the link of the verification playground's `node_modules` to `packages/dms-marketing/node_modules`, and the TypeScript build of the playground's fixture module. Without it `up` uses the builds already there, and `doctor` fails on a stale one. `up` reads the playground from `verify.config.ts` (`playground/` in this folder: the DMS, the api, MongoDB, auth, file storage and mail modules, the module under verification as a `local` source at `packages/dms-marketing`, and a fixture module of its own) and starts an isolated DMS:
@@ -44,7 +44,7 @@ Do not drive a run that fails doctor.
 ## Drive
 
 ```bash
-$C plan --base origin/campaign/integration   # the diff mapped to features; unmapped surfaces
+$C plan --base origin/main   # the diff mapped to features; unmapped surfaces
 $C journey "$RUN" smoke
 $C journey "$RUN" collect [journey-id...]
 ```
@@ -112,7 +112,7 @@ List these under `notVerified` in the judgement of every verdict:
 - reading another workspace's dashboard (`?workspace=`): it needs two workspaces with a dashboard website and the DMS core creating a second tenant, which a run does not have; the single-workspace answer (`[]`) is driven;
 - a second tenant: isolation between tenants and the platform-owner level apart from the tenant-owner level (see Gotchas);
 - the exclusion of the sign-in pages and of `excludePaths` by the dashboard's own tag, and the tracker following sign-out and workspace switches: they run in the dashboard's frontend plugin on dashboard pages outside the module area, which the playground does not have; the collector's refusal of the module area is driven;
-- the Format door: no journey writes data with the previous release and reads it with the head, because `withBaseBackend` builds the base ref with this skill's playground and the base ref (`origin/campaign/integration`) does not hold the skill until this skill is merged;
+- the Format door: no journey writes data with the previous release and reads it with the head, because `withBaseBackend` builds the base ref with this skill's playground and the base ref (`origin/main`) does not hold the skill until this skill is merged;
 - the funnel builder and the A/B report in the browser (unsaved-changes guard, duplicate, the sample-size hint, start, stop and resume buttons, the verdict sentence); the funnel and A/B results behind them are driven through the API, and a split goes from draft to running through the interface;
 - the heatmap overlay, the legend and the preview's toolbar, the drift strip, and the pixel placement of clicks over a snapshot (the data behind them is driven);
 - the install guide's three steps, the Nuxt and Google Tag Manager tabs of the snippet and the copy buttons (the connection check behind them is driven);
