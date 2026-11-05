@@ -1,4 +1,5 @@
 import "./fixture";
+import "./fixture-clock";
 import "./fixture-site";
 import "./fixture-tenant";
 

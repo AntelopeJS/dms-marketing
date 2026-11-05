@@ -26,6 +26,25 @@ function conflict(answer) {
   return [answer.status, text(answer.body, "field"), text(answer.body, "message").replace(/^.*\./, ""), pick(answer.body, "params", "deleted")];
 }
 
+/**
+ * Runs `body` with the backend's `Date.now()` moved `ms` forward (the fixture's clock), then puts it back.
+ *
+ * @template T
+ * @param {Ctx} ctx The journey
+ * @param {number} ms How far ahead
+ * @param {() => Promise<T>} body What to do meanwhile
+ * @returns {Promise<T>} Its result
+ */
+async function ahead(ctx, ms, body) {
+  const moved = await fixture(ctx, `move the backend clock ${ms} ms ahead`, "POST", "/clock", { aheadMs: ms });
+  await ctx.verify("the backend clock moved", [same("status", moved.status, 200)], { critical: true });
+  try {
+    return await body();
+  } finally {
+    await fixture(ctx, "put the backend clock back", "POST", "/clock", { aheadMs: 0 });
+  }
+}
+
 /** @type {{ id: string, title: string, entryPoint: string, run: (ctx: Ctx) => Promise<void> }[]} */
 export const journeys = [
   {
@@ -72,30 +91,27 @@ export const journeys = [
   },
   {
     id: "a-warned-cut-applies-when-sent-again-within-ten-minutes",
-    title: "after the 409 the same cut is saved 9 minutes later (a real wait)",
+    title: "after the 409 the same cut is saved 9 minutes 59 seconds later (the backend clock moved ahead)",
     entryPoint: "PUT /api/marketing/settings",
     async run(ctx) {
       const site = await createSite(ctx);
       await collected(ctx, "one event", site, [pageview(site, "/a")]);
       await edit(ctx, "marketing_events", { websiteId: site.id }, { timestamp: new Date(Date.now() - 10 * DAY_MS) });
       const first = await save(ctx, { rawEventsRetentionDays: 5, snapshotRetentionDays: 5 });
-      await new Promise((resolve) => setTimeout(resolve, 9 * MINUTE_MS));
-      const inside = await save(ctx, { rawEventsRetentionDays: 5, snapshotRetentionDays: 5 });
-      await ctx.verify("9 minutes is inside the window", [same("first, second", [first.status, inside.status], [409, 200])]);
+      const inside = await ahead(ctx, 10 * MINUTE_MS - 1000, () => save(ctx, { rawEventsRetentionDays: 5, snapshotRetentionDays: 5 }));
+      await ctx.verify("9 minutes 59 seconds is inside the window", [same("first, second", [first.status, inside.status], [409, 200])]);
     },
   },
   {
     id: "a-warned-cut-is-asked-again-after-ten-minutes",
-    title: "after the 409 the same cut is answered 409 again 10 minutes and 30 seconds later, and applies when sent right after",
+    title: "after the 409 the same cut is answered 409 again 10 minutes and 1 second later, and applies when sent right after",
     entryPoint: "PUT /api/marketing/settings",
     async run(ctx) {
       const site = await createSite(ctx);
       await collected(ctx, "one event", site, [pageview(site, "/a")]);
       await edit(ctx, "marketing_events", { websiteId: site.id }, { timestamp: new Date(Date.now() - 10 * DAY_MS) });
       const first = await save(ctx, { rawEventsRetentionDays: 5, snapshotRetentionDays: 5 });
-      await new Promise((resolve) => setTimeout(resolve, 10 * MINUTE_MS + 30_000));
-      const late = await save(ctx, { rawEventsRetentionDays: 5, snapshotRetentionDays: 5 });
-      const confirmed = await save(ctx, { rawEventsRetentionDays: 5, snapshotRetentionDays: 5 });
+      const [late, confirmed] = await ahead(ctx, 10 * MINUTE_MS + 1000, async () => [await save(ctx, { rawEventsRetentionDays: 5, snapshotRetentionDays: 5 }), await save(ctx, { rawEventsRetentionDays: 5, snapshotRetentionDays: 5 })]);
       await ctx.verify("the window is ten minutes", [same("first, late, confirmed", [first.status, late.status, confirmed.status], [409, 409, 200])]);
     },
   },

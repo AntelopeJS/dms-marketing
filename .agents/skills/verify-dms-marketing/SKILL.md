@@ -29,7 +29,7 @@ RUN=$($C up --prepare --base origin/main)   # installs, builds, starts; prints t
 - a `mongod` the run owns serves `verify_<run>` databases;
 - the backend runs `ajs project start -e docs`, the dashboard `ajs dms start -e docs -b <api>`.
 
-The fixture module (`playground/src`) serves what a journey cannot do over the module's own HTTP API, under `/verify-marketing`: a member with a role and optionally the tenant owner right (`POST /member`), the interface's content calls with the body passed through unchanged (`POST /website`, `/funnel`, `/snapshot`, `/import`), the heatmap read (`POST /heatmap`), and a visitor site (`GET /site/<page>?w=<website id>&attrs=<tag attributes as JSON>&twice=1&module=1&js=<script>`) that loads the tracker from the API's origin, so a real browser can be a tracked visitor of a website whose domain is the API's host.
+The fixture module (`playground/src`) serves what a journey cannot do over the module's own HTTP API, under `/verify-marketing`: a member with a role and optionally the tenant owner right (`POST /member`), the interface's content calls with the body passed through unchanged (`POST /website`, `/funnel`, `/snapshot`, `/import`), the heatmap read (`POST /heatmap`), the tenant hooks as the DMS core fires them (`POST /tenant/export`, `/tenant/delete`), the backend's `Date.now()` moved ahead (`POST /clock` with `aheadMs`, for windows the module keeps in memory), and a visitor site (`GET /site/<page>?w=<website id>&attrs=<tag attributes as JSON>&twice=1&module=1&js=<script>`) that loads the tracker from the API's origin, so a real browser can be a tracked visitor of a website whose domain is the API's host.
 
 The module is verified without any external service: it calls none. The one input an operator brings, a MaxMind database, is a local file that the repository does not ship (see Not driven).
 
@@ -63,6 +63,8 @@ Everything goes under `$RUN/evidence/`: `<feature>/<journey>/NN-<step>/` with `a
 ```bash
 $C down "$RUN"
 ```
+
+Run it for every run you started, also after a journey failed or a command stopped halfway: `down` stops the backend, the dashboard, the mail sink and the run's `mongod`, and keeps `$RUN/evidence/`. Write the verdict after `down`, from the evidence.
 
 ## Verdict rules
 
