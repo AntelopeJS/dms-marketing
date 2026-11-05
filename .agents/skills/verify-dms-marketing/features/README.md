@@ -1,6 +1,6 @@
 # Feature map
 
-One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, `journeys/<feature>.mjs` its journeys and `seeded-breaks/<feature>.patch` the break its journeys must catch.
+One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, and `journeys/<feature>.mjs` its journeys.
 
 | Feature | What the user does | Journeys |
 |---|---|---|
