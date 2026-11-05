@@ -49,6 +49,7 @@ docs:
 - `a-referrer-of-the-site-itself-is-not-a-source`
 - `a-pageview-keeps-only-a-sample-rate-in-its-data`
 - `the-overview-reads-what-the-collector-rolled-up`
+- `the-default-session-idle-timeout-is-30-minutes`
 
 ## How to get to it (user POV)
 

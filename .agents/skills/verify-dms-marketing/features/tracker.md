@@ -26,6 +26,7 @@ The first-party tracker: automatic pageviews, SPA navigation, privacy signals, t
 - `each-exclude-pattern-takes-exactly-the-pages-it-names`
 - `the-website-id-of-the-tag-can-change`
 - `the-served-script-carries-the-settings-and-a-stub-when-paused`
+- `the-tag-sets-the-heatmap-sampling-of-its-site`
 
 ## How to get to it (user POV)
 

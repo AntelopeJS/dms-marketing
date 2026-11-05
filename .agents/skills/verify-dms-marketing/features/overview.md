@@ -45,6 +45,9 @@ The Overview: context bar, period and comparison, KPI cards, session quality, tr
 - `devices-and-the-tabbed-top-lists`
 - `the-context-bar-picks-a-website-and-remembers-it`
 - `a-read-without-a-period-covers-today-and-the-6-days-before`
+- `a-site-reads-live-for-5-minutes-after-its-last-event-then-last-event`
+- `a-block-resolves-its-website-from-the-url-then-the-pick-then-the-latest`
+- `an-imported-site-turns-live-with-the-first-collected-hit`
 
 ## How to get to it (user POV)
 

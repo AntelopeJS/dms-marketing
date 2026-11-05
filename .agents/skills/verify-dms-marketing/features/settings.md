@@ -26,6 +26,10 @@ The Settings page: the master switch, the three retentions, sampling, their boun
 - `retentions-keep-their-order`
 - `a-save-merges-and-null-or-the-default-follows-the-configuration`
 - `a-retention-cut-that-deletes-data-asks-before-it-applies`
+- `a-raw-events-cut-says-how-many-events-it-deletes`
+- `a-statistics-cut-counts-sessions-then-rollups-and-a-snapshot-cut-counts-captures`
+- `a-warned-cut-applies-when-sent-again-within-ten-minutes`
+- `a-warned-cut-is-asked-again-after-ten-minutes`
 
 ## How to get to it (user POV)
 

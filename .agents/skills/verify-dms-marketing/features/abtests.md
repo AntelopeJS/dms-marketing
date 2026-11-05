@@ -29,6 +29,11 @@ A/B tests: the assignment script, the reading per arm, the verdicts and the spli
 - `a-sample-ratio-mismatch-withholds-the-verdict`
 - `the-assignment-script-serves-running-splits-per-visitor`
 - `each-split-draws-its-own-arm-and-the-weights-set-the-shares`
+- `a-split-has-2-to-8-variations`
+- `keys-start-with-a-letter-or-digit-and-hold-lowercase-digits-dash-underscore`
+- `weights-are-zero-or-more-and-one-is-above-zero`
+- `each-challenger-is-tested-at-0-05-over-the-number-of-challengers`
+- `a-split-moves-draft-running-stopped-and-freezes-its-key-and-variations`
 
 ## How to get to it (user POV)
 

@@ -36,6 +36,7 @@ Page snapshots: the negotiation, the upload and its guards, the server-side sani
 - `the-stored-document-is-sanitised-again-on-the-server`
 - `a-capture-is-not-refreshed-within-a-day-and-an-option-change-discards-the-captures`
 - `a-sampled-visit-clicks-scrolls-and-captures-the-page-in-the-browser`
+- `the-layout-is-the-viewport-width-bucketed-at-1024-and-600`
 
 ## How to get to it (user POV)
 
