@@ -1,11 +1,10 @@
 /** A kind of one-way door. */
 export type DoorKind = "data" | "format" | "contract" | "outbound" | "exposure" | "publish";
 
-/** Path rules for one door kind: globs, declared funnel modules, and the journeys, as `feature/journey`, that contain it. */
+/** Path rules for one door kind: globs and declared funnel modules. */
 export interface DoorRule {
   globs: string[];
   funnels: string[];
-  containments: string[];
   why: string;
 }
 
@@ -85,13 +84,11 @@ const config: VerifyConfig = {
         `${MODULE}/src/hooks/index.ts`,
       ],
       funnels: [],
-      containments: ["websites/purges-and-deletion-take-only-the-sites-own-data", "content/deleting-the-workspace-purges-every-marketing-table-and-its-websites"],
       why: "these purge, delete and prune collected events, sessions, rollups, snapshots and funnels, which a revert of the code does not bring back",
     },
     format: {
       globs: [`${MODULE}/src/db/**`, `${MODULE}/src/services/rollup-write.ts`, `${MODULE}/src/types/events.ts`, `${MODULE}/src/types/statistics.ts`, `${MODULE}/src/types/snapshots.ts`],
       funnels: [],
-      containments: [],
       why: "the stored events, sessions, daily rollups, snapshots and funnels are read back by the next version of the module",
     },
     contract: {
@@ -105,7 +102,6 @@ const config: VerifyConfig = {
         `${MODULE}/frontend-vue/package.json`,
       ],
       funnels: [],
-      containments: [],
       why: "tracked sites embed the tracker and post the event contract, other modules import the interface, and projects set the config keys and the renderer range",
     },
     outbound: null,
@@ -121,13 +117,11 @@ const config: VerifyConfig = {
         `${MODULE}/src/data-api/tenant-scope.ts`,
       ],
       funnels: [],
-      containments: [],
       why: "these routes answer without a session for any site on the internet, and the origin and rate guards decide whose events are stored",
     },
     publish: {
       globs: [`${MODULE}/package.json`, `${INTERFACE}/package.json`, `${MODULE}/.release-it.json`, `${INTERFACE}/.release-it.json`, `${MODULE}/scripts/publish.mjs`, ".github/workflows/release.yml", ".github/workflows/release-interface.yml"],
       funnels: [],
-      containments: [],
       why: "the package names, their files and the release workflows claim @antelopejs/dms-marketing and @antelopejs/interface-dms-marketing in the npm registry",
     },
   },

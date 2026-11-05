@@ -1,6 +1,6 @@
 ---
 name: verify-dms-marketing
-description: "Drive the AntelopeJS dms-marketing module (the collector, the tracker, websites, the Overview and Acquisition pages, pages and heatmaps, page snapshots, funnels, A/B tests, settings and content from code) the way a visitor, a platform owner and a member do, inside a DMS with free ports and its own MongoDB database, and post a verdict with evidence. Use to prove a change to AntelopeJS/dms-marketing works before merge, to verify a PR, or to check that a seeded break or a seeded one-way door is caught."
+description: "Drive the AntelopeJS dms-marketing module (the collector, the tracker, websites, the Overview and Acquisition pages, pages and heatmaps, page snapshots, funnels, A/B tests, settings and content from code) the way a visitor, a platform owner and a member do, inside a DMS with free ports and its own MongoDB database, and post a verdict with evidence. Use to prove a change to AntelopeJS/dms-marketing works before merge, or to verify a PR."
 ---
 
 # Verify dms-marketing
@@ -14,7 +14,7 @@ C="pnpm --dir packages/dms-marketing exec dms-control"
 $C                       # lists every command
 ```
 
-Give `seeded`, `doors` and `--skill` absolute paths: the command runs in `packages/dms-marketing`.
+Give `doors` and `--skill` absolute paths: the command runs in `packages/dms-marketing`.
 
 ## Launch
 
@@ -73,23 +73,14 @@ Run it for every run you started, also after a journey failed or a command stopp
 3. **Every registered journey of a feature in `run` must have run and passed.**
 4. **Docs.** Judge every `docs:` page of each touched feature against what the journeys showed.
 5. **Formal checks.** `formal-import-claim` covers the website claim of `ImportAnalytics` and the replay it guards: `$C formal "$RUN"` runs it when the diff touches its files. While its findings stand, it fails a verdict whose diff changes the covered code.
-6. **One-way doors.** The section comes right after the result line and is mandatory. `$C doors` prints the `One-way-door:` line for the diff. A Data door is contained only by `websites/purges-and-deletion-take-only-the-sites-own-data` and `content/deleting-the-workspace-purges-every-marketing-table-and-its-websites` passing in this run; no journey contains a Format door (see Not driven), so a Format row says so.
+6. **One-way doors.** The section comes right after the result line and is mandatory. `$C doors` prints the `One-way-door:` line for the diff.
 7. **Result.** FAIL if any of rules 1 to 6 fail. PASS+NOTES when something is not verified or needs the owner's attention. PASS otherwise.
 
 Write `$RUN/evidence/judgement.json` (`doors`, `docs`, `notVerified`, `attention`, `verifier`), then `$C verdict "$RUN" --pr <n>` and, from a thread that did not write the change, `$C publish "$RUN" --pr <n>`.
 
 ## Trust
 
-The skill is not Trusted yet. It becomes Trusted when it catches every seeded break and flags every seeded door, passes a shadow run of 10 consecutive agent PRs, and its last maintain pass is newer than the last change to the repository or its `@antelopejs` dependencies and at most 30 days old.
-
-## Seeded breaks and doors
-
-```bash
-$C seeded smoke collect websites
-$C doors "$PWD/.agents/skills/verify-dms-marketing/seeded-doors/data.patch"
-```
-
-`seeded-breaks/<feature>.patch` is one minimal product bug per feature; `seeded` builds a control and a patched worktree, runs the feature's journeys in each, and prints `CAUGHT` with the journeys that caught it, or `MISSED`. A break counts only when a journey that passes in the control fails one of its checks with the patch. `seeded-doors/<kind>.patch` holds one change per door kind.
+The skill is not Trusted yet. It becomes Trusted when it passes a shadow run of 10 consecutive agent PRs, and its last maintain pass is newer than the last change to the repository or its `@antelopejs` dependencies and at most 30 days old.
 
 ## Gotchas
 
@@ -100,7 +91,7 @@ $C doors "$PWD/.agents/skills/verify-dms-marketing/seeded-doors/data.patch"
 - Rollups are written after the events: a read of the Overview waits for the figure (`eventually`).
 - History of past days comes from `ImportAnalytics` through the fixture (`history`, `split`): no request ages an event, and an import replays through the live pipeline with its own timestamps.
 - `mongod` comes from `DMS_CONTROL_MONGOD`, `PATH`, or the mongodb-memory-server cache (`~/.cache/mongodb-binaries`).
-- A step whose check fails because the backend or the dashboard stopped answering ends the journey with a `NOT VERIFIED` error and no failing check (`guard.mjs`), so `seeded` never counts an outage as a catch.
+- A step whose check fails because the backend or the dashboard stopped answering ends the journey with a `NOT VERIFIED` error and no failing check (`guard.mjs`).
 - `trackerEnabled: false` in the module options is not asserted: the master switch is copied into the settings row at the first start, so an option changed after that start has no effect, while the Settings page and the retention options follow the configuration (`dms-marketing-config-tracker-enabled-frozen`, a draft).
 - The tenant-owner and platform-owner levels of the access matrix meet in a single-tenant DMS (the owner of the default tenant is the platform owner), so `access/every-route-answers-only-the-roles-its-level-names` lists them together.
 
