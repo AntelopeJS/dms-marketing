@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative } from "node:path";
 
 /**
@@ -7,13 +7,16 @@ import { join, relative } from "node:path";
  * at the next minor, so `^0.6.0` installs 0.6.x and never 0.7. Every example of
  * this module in the READMEs, the docs and the skills of the workspace must
  * name a caret range that admits the version of this package. Prints the
- * violations only; exits 1 when there are any.
+ * violations only; exits 1 when there are any. With `--write` it rewrites each
+ * violation to a caret range of this package's version instead, which the
+ * release runs right after the version bump.
  */
 
 const PACKAGE_ROOT = join(import.meta.dirname, "..");
 const WORKSPACE_ROOT = join(PACKAGE_ROOT, "..", "..");
 const SOURCE =
   /["']?package["']?\s*:\s*"@antelopejs\/dms-marketing"\s*,\s*["']?version["']?\s*:\s*"(?<spec>[^"]*)"/g;
+const WRITE = process.argv.includes("--write");
 const CARET = /^\^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)$/;
 
 /** A `major.minor.patch` triple of non-negative integers. */
@@ -96,27 +99,44 @@ if (current === undefined || rest.length > 0) {
   throw new Error(`package.json: ${manifest.version} is not major.minor.patch`);
 }
 
+const wanted = `^${manifest.version}`;
+
+const admitted = (spec: string): boolean => {
+  const caret = CARET.exec(spec)?.groups;
+  const floor =
+    caret === undefined
+      ? undefined
+      : parseTriple(caret.major ?? "", caret.minor ?? "", caret.patch ?? "");
+  return floor !== undefined && caretAdmits(floor, current);
+};
+
 const errors: string[] = [];
 let examples = 0;
 for (const file of scannedFiles()) {
   const text = readFileSync(file, "utf8");
+  if (WRITE) {
+    const fixed = text.replace(SOURCE, (whole, spec: string) =>
+      admitted(spec)
+        ? whole
+        : `${whole.slice(0, whole.length - spec.length - 1)}${wanted}"`,
+    );
+    if (fixed !== text) {
+      writeFileSync(file, fixed);
+    }
+    continue;
+  }
   for (const match of text.matchAll(SOURCE)) {
     examples += 1;
     const spec = match.groups?.spec ?? "";
-    const caret = CARET.exec(spec)?.groups;
-    const floor =
-      caret === undefined
-        ? undefined
-        : parseTriple(caret.major ?? "", caret.minor ?? "", caret.patch ?? "");
-    if (floor === undefined || !caretAdmits(floor, current)) {
+    if (!admitted(spec)) {
       const line = text.slice(0, match.index).split("\n").length;
       errors.push(
-        `${relative(WORKSPACE_ROOT, file)}:${line}: version "${spec}" is not a caret range that selects ${manifest.version}; write "^${manifest.version}"`,
+        `${relative(WORKSPACE_ROOT, file)}:${line}: version "${spec}" is not a caret range that selects ${manifest.version}; write "${wanted}"`,
       );
     }
   }
 }
-if (examples === 0) {
+if (examples === 0 && !WRITE) {
   errors.push(
     "no config example of @antelopejs/dms-marketing found in the READMEs, docs or skills; the check would pass on nothing",
   );
