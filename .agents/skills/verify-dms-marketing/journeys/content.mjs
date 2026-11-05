@@ -2,6 +2,7 @@ import { guarded } from "../guard.mjs";
 import { check, fixture, list, mkt, num, pick, same, text } from "../marketing.mjs";
 import { collect, createSite, eventually, overview, pageview } from "../site.mjs";
 import { rows } from "../store.mjs";
+import { journeys as tenant } from "./parts/content-tenant.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
@@ -179,4 +180,5 @@ export const journeys = guarded([
       ]);
     },
   },
+  ...tenant,
 ]);

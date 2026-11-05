@@ -2,6 +2,7 @@ import { guarded } from "../guard.mjs";
 import { byText, check, list, mkt, num, pick, same, text } from "../marketing.mjs";
 import { history } from "./parts/overview-helpers.mjs";
 import { declare, results, session, shop } from "./parts/funnels-helpers.mjs";
+import { journeys as window } from "./parts/funnels-window.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
@@ -172,4 +173,5 @@ export const journeys = guarded([
       await ctx.verify("the delete dialog is worded for the row", [check("it names the funnel", JSON.stringify(confirmation.body).includes('"F"') || JSON.stringify(confirmation.body).includes("\"F\"") || JSON.stringify(confirmation.body).includes("F"), confirmation.body)]);
     },
   },
+  ...window,
 ]);

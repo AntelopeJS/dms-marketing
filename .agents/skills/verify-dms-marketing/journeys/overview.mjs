@@ -3,6 +3,7 @@ import { byText, check, list, mkt, num, pick, same } from "../marketing.mjs";
 import { collected, pageview } from "../site.mjs";
 import { journeys as context } from "./parts/overview-context.mjs";
 import { block, history, period, shop, utcDay } from "./parts/overview-helpers.mjs";
+import { journeys as defaultPeriod } from "./parts/overview-period.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
@@ -139,6 +140,7 @@ export const journeys = guarded([
       await ctx.verify("the pick is saved", [same("saved", put.status, 200), same("remembered", pick(after.body, "selectedId"), quiet.id), check("an unknown website is not stored", unknown.status >= 400 || pick((await mkt(ctx, "read the context", "GET", "/context")).body, "selectedId") === quiet.id, unknown.status)]);
     },
   },
+  ...defaultPeriod,
 ]);
 
 /**

@@ -44,6 +44,7 @@ The Overview: context bar, period and comparison, KPI cards, session quality, tr
 - `the-traffic-chart-and-the-quality-strip`
 - `devices-and-the-tabbed-top-lists`
 - `the-context-bar-picks-a-website-and-remembers-it`
+- `a-read-without-a-period-covers-today-and-the-6-days-before`
 
 ## How to get to it (user POV)
 

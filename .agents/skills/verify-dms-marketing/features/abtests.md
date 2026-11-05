@@ -28,6 +28,7 @@ A/B tests: the assignment script, the reading per arm, the verdicts and the spli
 - `a-challenger-below-the-control-and-a-flat-reading-and-a-thin-sample`
 - `a-sample-ratio-mismatch-withholds-the-verdict`
 - `the-assignment-script-serves-running-splits-per-visitor`
+- `each-split-draws-its-own-arm-and-the-weights-set-the-shares`
 
 ## How to get to it (user POV)
 

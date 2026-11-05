@@ -55,9 +55,10 @@ const config: VerifyConfig = {
         `${MODULE}/src/routes/stats.ts`,
         `${MODULE}/src/routes/settings.ts`,
         `${MODULE}/src/data-api/funnels.ts`,
+        `${MODULE}/src/hooks/index.ts`,
       ],
       funnels: [],
-      containments: ["websites/purges-and-deletion-take-only-the-sites-own-data"],
+      containments: ["websites/purges-and-deletion-take-only-the-sites-own-data", "content/deleting-the-workspace-purges-every-marketing-table-then-its-websites"],
       why: "these purge, delete and prune collected events, sessions, rollups, snapshots and funnels, which a revert of the code does not bring back",
     },
     format: {

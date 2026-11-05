@@ -23,6 +23,7 @@ The first-party tracker: automatic pageviews, SPA navigation, privacy signals, t
 - `do-not-track-and-global-privacy-control-are-honoured-unless-the-tag-opts-out`
 - `custom-events-come-from-the-page-api`
 - `an-excluded-page-sends-nothing`
+- `each-exclude-pattern-takes-exactly-the-pages-it-names`
 - `the-website-id-of-the-tag-can-change`
 - `the-served-script-carries-the-settings-and-a-stub-when-paused`
 

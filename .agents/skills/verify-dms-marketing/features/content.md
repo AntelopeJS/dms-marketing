@@ -15,13 +15,14 @@ covers:
 docs:
   - packages/dms-marketing/docs/5.extending.md
   - packages/dms-marketing/docs/7.architecture/7.interface.md
+  - packages/dms-marketing/docs/7.architecture/2.tenancy-and-access.md
   - packages/interface-dms-marketing/README.md
   - packages/interface-dms-marketing/docs/1.index.md
 ---
 
 # Content
 
-Content from code: EnsureWebsite, EnsureFunnel, EnsurePageSnapshot, ImportAnalytics and the heatmap read of the interface.
+Content from code: EnsureWebsite, EnsureFunnel, EnsurePageSnapshot, ImportAnalytics and the heatmap read of the interface; and the tenant hooks: what the workspace export holds and what the workspace deletion purges.
 
 ## Sub-features
 
@@ -31,10 +32,13 @@ Content from code: EnsureWebsite, EnsureFunnel, EnsurePageSnapshot, ImportAnalyt
 - `a-declared-snapshot-needs-a-website-that-opted-in-and-never-replaces-a-capture`
 - `an-import-replays-history-once-through-the-collect-pipeline`
 - `the-heatmap-read-takes-a-tenant-a-path-and-a-window`
+- `the-workspace-export-holds-the-websites-funnels-and-rollups-and-no-captures`
+- `deleting-the-workspace-purges-every-marketing-table-then-its-websites`
 
 ## How to get to it (user POV)
 
 - A backend module calls the interface from its provisioning hook.
+- The DMS core exports or deletes a workspace; the fixture fires the two hooks as the core does (`POST /verify-marketing/tenant/export`, `/tenant/delete`), because a run has no route that exports or deletes a tenant.
 
 ## Driving it with dms-control
 

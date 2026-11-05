@@ -1,6 +1,7 @@
 import { guarded } from "../guard.mjs";
 import { check, mkt, pick, raw, same } from "../marketing.mjs";
 import { local, open, settled, stored, waitFor } from "./parts/tracker-helpers.mjs";
+import { journeys as exclusion } from "./parts/tracker-exclude.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
@@ -181,4 +182,5 @@ export const journeys = guarded([
       await ctx.verify("paused sites send nothing, a module script has no API", [nothing, same("window.dmsMarketing", absent, "undefined")]);
     },
   },
+  ...exclusion,
 ]);
