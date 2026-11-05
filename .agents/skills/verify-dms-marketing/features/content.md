@@ -33,7 +33,7 @@ Content from code: EnsureWebsite, EnsureFunnel, EnsurePageSnapshot, ImportAnalyt
 - `an-import-replays-history-once-through-the-collect-pipeline`
 - `the-heatmap-read-takes-a-tenant-a-path-and-a-window`
 - `the-workspace-export-holds-the-websites-funnels-and-rollups-and-no-captures`
-- `deleting-the-workspace-purges-every-marketing-table-then-its-websites`
+- `deleting-the-workspace-purges-every-marketing-table-and-its-websites`
 
 ## How to get to it (user POV)
 

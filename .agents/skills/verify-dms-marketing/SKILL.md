@@ -71,7 +71,7 @@ $C down "$RUN"
 3. **Every registered journey of a feature in `run` must have run and passed.**
 4. **Docs.** Judge every `docs:` page of each touched feature against what the journeys showed.
 5. **Formal checks.** None.
-6. **One-way doors.** The section comes right after the result line and is mandatory. `$C doors` prints the `One-way-door:` line for the diff. A Data door is contained only by `websites/purges-and-deletion-take-only-the-sites-own-data` and `content/deleting-the-workspace-purges-every-marketing-table-then-its-websites` passing in this run; no journey contains a Format door (see Not driven), so a Format row says so.
+6. **One-way doors.** The section comes right after the result line and is mandatory. `$C doors` prints the `One-way-door:` line for the diff. A Data door is contained only by `websites/purges-and-deletion-take-only-the-sites-own-data` and `content/deleting-the-workspace-purges-every-marketing-table-and-its-websites` passing in this run; no journey contains a Format door (see Not driven), so a Format row says so.
 7. **Result.** FAIL if any of rules 1 to 6 fail. PASS+NOTES when something is not verified or needs the owner's attention. PASS otherwise.
 
 Write `$RUN/evidence/judgement.json` (`doors`, `docs`, `notVerified`, `attention`, `verifier`), then `$C verdict "$RUN" --pr <n>` and, from a thread that did not write the change, `$C publish "$RUN" --pr <n>`.
