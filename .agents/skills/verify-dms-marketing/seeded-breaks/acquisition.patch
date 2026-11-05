@@ -1,0 +1,12 @@
+diff --git a/packages/dms-marketing/src/services/acquisition.ts b/packages/dms-marketing/src/services/acquisition.ts
+index 29dca91..df02e79 100644
+--- a/packages/dms-marketing/src/services/acquisition.ts
++++ b/packages/dms-marketing/src/services/acquisition.ts
+@@ -57,7 +57,6 @@ const PAID_MEDIUMS = new Set([
+   "sem",
+   "display",
+   "banner",
+-  "retargeting",
+ ]);
+ 
+ const SOCIAL_MEDIUMS = new Set([

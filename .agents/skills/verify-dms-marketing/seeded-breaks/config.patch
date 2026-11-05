@@ -1,0 +1,13 @@
+diff --git a/packages/dms-marketing/src/config.ts b/packages/dms-marketing/src/config.ts
+index 74573f4..8ff2ba9 100644
+--- a/packages/dms-marketing/src/config.ts
++++ b/packages/dms-marketing/src/config.ts
+@@ -78,7 +78,7 @@ export type DmsMarketingConfigInput = Partial<
+   Omit<DmsMarketingConfig, "dashboardTracking">
+ > & { dashboardTracking?: Partial<DashboardTrackingConfig> };
+ 
+-const DEFAULT_DASHBOARD_WEBSITE_NAME = "Dashboard";
++const DEFAULT_DASHBOARD_WEBSITE_NAME = "Dashboards";
+ /** One dashboard route pattern: `/x`, `/x/*` or `/x/**`, no other wildcard. */
+ const DASHBOARD_PATH_PATTERN = /^\/[^*,\s]*(?:\/\*\*?)?$/;
+ 

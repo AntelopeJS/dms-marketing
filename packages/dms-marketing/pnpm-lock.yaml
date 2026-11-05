@@ -57,6 +57,9 @@ importers:
       '@antelopejs/dms':
         specifier: '>=0.16.1 <1.0.0'
         version: 0.16.1(@antelopejs/core@1.20.0)
+      '@antelopejs/dms-frontend':
+        specifier: ^0.10.0
+        version: 0.10.0(@antelopejs/core@1.20.0)
       '@antelopejs/interface-mongodb':
         specifier: '>=0.0.6 <1.0.0'
         version: 0.0.6(socks@2.8.10)
@@ -103,6 +106,13 @@ packages:
     resolution: {integrity: sha512-7clqf/n8aUi4iCwMG0G2dWLQCwzy9ZxTLHLmOIEtfObw5wuN06s0+n57Zzjr3wbIyR2wD3Q4AeorqJ94QidIfg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
+
+  '@antelopejs/dms-frontend@0.10.0':
+    resolution: {integrity: sha512-zNsYW0NUPHoJNj3tNUDxubXQUH0171Ga/avp8ka0VK253eQD7KDgImq8Fc3tmG5GD+oBzhUlO4RMun5BapqfYQ==}
+    engines: {node: '>=20.19.0'}
+    hasBin: true
+    peerDependencies:
+      '@antelopejs/core': '>=1.16.0 <2'
 
   '@antelopejs/dms@0.16.1':
     resolution: {integrity: sha512-iwnM390H/boqGNckjQFZom1Apa8TZY1DERr/09mNZrJIFRO5bFoFiO9XFIOcXaHybDLQ9T+XwAHkzBAIQXtdCQ==}
@@ -380,6 +390,14 @@ packages:
       '@types/node':
         optional: true
 
+  '@intlify/message-compiler@11.4.18':
+    resolution: {integrity: sha512-9v2s0+mIuJaFOyWBfZBHrV/g9VLFH/4osx/zaQ52BgT6FQkjvTWHWyNriCMRqWs3PEuBKysmwTUwmNpg9iPjJw==}
+    engines: {node: '>= 22'}
+
+  '@intlify/shared@11.4.18':
+    resolution: {integrity: sha512-8q7UR/eAFP0xOZndaClKYeh/lWkcIPOZkWsU85CMR9BYLjTeaENpAFWfFBvuUI8fFz0BDtZvR/fgbwiiQaqcDg==}
+    engines: {node: '>= 22'}
+
   '@ioredis/commands@1.10.0':
     resolution: {integrity: sha512-UmeW7z4LfctwoQ5wkhVzgq8tXkreED2xZGpX+Bg+zA+WJFZCT6c062AfCK/Dfk81xZnnwdhJCUMkitihRaoC2Q==}
 
@@ -476,8 +494,20 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
+  '@oxc-parser/binding-darwin-arm64@0.95.0':
+    resolution: {integrity: sha512-zun9+V33kyCtNec9oUSWwb0qi3fB8pXwum1yGFECPEr55g/CrWju6/Jv4hwwNBeW2tK9Ch/PRstEtYmOLMhHpg==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [darwin]
+
   '@oxc-parser/binding-darwin-x64@0.148.0':
     resolution: {integrity: sha512-6ZeklaamrMy4H2JmhvcJg6iip59tYILtuLaILxyAHT3l5FDxnI5ihVievAft5ZmAbqtlWHErOi1OpJK8gy1wcA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [darwin]
+
+  '@oxc-parser/binding-darwin-x64@0.95.0':
+    resolution: {integrity: sha512-9djMQ/t6Ns/UXtziwUe562uVJMbhtuLtCj+Xav+HMVT/rhV9gWO8PQOG7AwDLUBjJanItsrfqrGtqhNxtZ701w==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [darwin]
@@ -502,6 +532,13 @@ packages:
 
   '@oxc-parser/binding-linux-arm64-gnu@0.148.0':
     resolution: {integrity: sha512-Fnu95O4eZ5i++GPvIzBEZ8y4ddTLR+D9paYa8JRaRk6ZK7nHQiWP5xtrhcPQsXqgat1d7sU/d5rbbI0p1FTHSQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [arm64]
+    os: [linux]
+    libc: [glibc]
+
+  '@oxc-parser/binding-linux-arm64-gnu@0.95.0':
+    resolution: {integrity: sha512-0LzebARTU0ROfD6pDK4h1pFn+09meErCZ0MA2TaW08G72+GNneEsksPufOuI+9AxVSRa+jKE3fu0wavvhZgSkg==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [arm64]
     os: [linux]
@@ -549,6 +586,13 @@ packages:
     os: [linux]
     libc: [glibc]
 
+  '@oxc-parser/binding-linux-x64-gnu@0.95.0':
+    resolution: {integrity: sha512-8huzHlK/N98wrnYKxIcYsK8ZGBWomQchu/Mzi6m+CtbhjWOv9DmK0jQ2fUWImtluQVpTwS0uZT06d3g7XIkJrA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [linux]
+    libc: [glibc]
+
   '@oxc-parser/binding-linux-x64-musl@0.148.0':
     resolution: {integrity: sha512-qQoPDZUFV0bh9xA09XydmkjMBpgc1ukJuhMvzQ9QeVmFaHTS9W5TE5CoLmSl3QQyUP9OuHO3x/WPZTIIZPWR3Q==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -576,6 +620,12 @@ packages:
 
   '@oxc-parser/binding-win32-x64-msvc@0.148.0':
     resolution: {integrity: sha512-Ye6vB7VQulghWYkYkECOBYFRVEizz4XyRTUAv+t8BuyurhKU7uD0P9eowL+mKG5Mf8MSYx+DI3Cm8SKZvYG7bQ==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    cpu: [x64]
+    os: [win32]
+
+  '@oxc-parser/binding-win32-x64-msvc@0.95.0':
+    resolution: {integrity: sha512-BQpgl7rDjFvCIHudmUR0dCwc4ylBYZl4CPVinlD3NhkMif4WD5dADckoo5ES/KOpFyvwcbKZX+grP63cjHi26g==}
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
@@ -1670,6 +1720,10 @@ packages:
 
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
+
+  ignore@7.0.14:
+    resolution: {integrity: sha512-wCBiZ77u1tuWde6G/nfOtLaCTYcFDU5yCzARzK10y+rLhzYoL7a7yEemcopcc2Mzow7gZOIjnV2ym1NYmdiJOQ==}
+    engines: {node: '>= 4'}
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
@@ -2811,6 +2865,21 @@ snapshots:
       semver: 7.8.5
       typescript: 5.9.3
 
+  '@antelopejs/dms-frontend@0.10.0(@antelopejs/core@1.20.0)':
+    dependencies:
+      '@antelopejs/core': 1.20.0
+      '@intlify/message-compiler': 11.4.18
+      chokidar: 4.0.3
+      commander: 13.1.0
+      ignore: 7.0.14
+      semver: 7.8.5
+    optionalDependencies:
+      '@oxc-parser/binding-darwin-arm64': 0.95.0
+      '@oxc-parser/binding-darwin-x64': 0.95.0
+      '@oxc-parser/binding-linux-arm64-gnu': 0.95.0
+      '@oxc-parser/binding-linux-x64-gnu': 0.95.0
+      '@oxc-parser/binding-win32-x64-msvc': 0.95.0
+
   '@antelopejs/dms@0.16.1(@antelopejs/core@1.20.0)':
     dependencies:
       2fa: 0.1.2
@@ -3116,6 +3185,13 @@ snapshots:
     optionalDependencies:
       '@types/node': 22.20.1
 
+  '@intlify/message-compiler@11.4.18':
+    dependencies:
+      '@intlify/shared': 11.4.18
+      source-map-js: 1.2.2
+
+  '@intlify/shared@11.4.18': {}
+
   '@ioredis/commands@1.10.0':
     optional: true
 
@@ -3221,7 +3297,13 @@ snapshots:
   '@oxc-parser/binding-darwin-arm64@0.148.0':
     optional: true
 
+  '@oxc-parser/binding-darwin-arm64@0.95.0':
+    optional: true
+
   '@oxc-parser/binding-darwin-x64@0.148.0':
+    optional: true
+
+  '@oxc-parser/binding-darwin-x64@0.95.0':
     optional: true
 
   '@oxc-parser/binding-freebsd-x64@0.148.0':
@@ -3234,6 +3316,9 @@ snapshots:
     optional: true
 
   '@oxc-parser/binding-linux-arm64-gnu@0.148.0':
+    optional: true
+
+  '@oxc-parser/binding-linux-arm64-gnu@0.95.0':
     optional: true
 
   '@oxc-parser/binding-linux-arm64-musl@0.148.0':
@@ -3254,6 +3339,9 @@ snapshots:
   '@oxc-parser/binding-linux-x64-gnu@0.148.0':
     optional: true
 
+  '@oxc-parser/binding-linux-x64-gnu@0.95.0':
+    optional: true
+
   '@oxc-parser/binding-linux-x64-musl@0.148.0':
     optional: true
 
@@ -3267,6 +3355,9 @@ snapshots:
     optional: true
 
   '@oxc-parser/binding-win32-x64-msvc@0.148.0':
+    optional: true
+
+  '@oxc-parser/binding-win32-x64-msvc@0.95.0':
     optional: true
 
   '@oxc-project/types@0.148.0': {}
@@ -4181,6 +4272,8 @@ snapshots:
       safer-buffer: 2.1.2
 
   ieee754@1.2.1: {}
+
+  ignore@7.0.14: {}
 
   inflight@1.0.6:
     dependencies:

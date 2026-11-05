@@ -1,0 +1,13 @@
+diff --git a/packages/dms-marketing/src/services/rollups.ts b/packages/dms-marketing/src/services/rollups.ts
+index b789de5..7c0be49 100644
+--- a/packages/dms-marketing/src/services/rollups.ts
++++ b/packages/dms-marketing/src/services/rollups.ts
+@@ -170,7 +170,7 @@ export function percentChange(
+   if (previous === undefined || previous === 0) {
+     return null;
+   }
+-  return ((current - previous) / previous) * 100;
++  return ((current - previous) / current) * 100;
+ }
+ 
+ export function shareOf(value: number, total: number): number {

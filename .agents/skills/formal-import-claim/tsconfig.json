@@ -1,0 +1,14 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "typeRoots": ["../../../packages/dms-marketing/node_modules/@types"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "allowJs": true,
+    "checkJs": true,
+    "incremental": false,
+    "noEmit": true
+  },
+  "include": ["*.mjs"]
+}

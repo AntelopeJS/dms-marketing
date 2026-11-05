@@ -1,0 +1,13 @@
+diff --git a/packages/dms-marketing/src/db/models/website_statistics.model.ts b/packages/dms-marketing/src/db/models/website_statistics.model.ts
+index 19c1ed3..e7c1d22 100644
+--- a/packages/dms-marketing/src/db/models/website_statistics.model.ts
++++ b/packages/dms-marketing/src/db/models/website_statistics.model.ts
+@@ -13,7 +13,7 @@ import {
+ 
+ /** Primary key of a rollup row; the write path never needs a lookup. */
+ export function dayRowId(websiteId: string, day: number): string {
+-  return `${websiteId}:${day}`;
++  return `${day}:${websiteId}`;
+ }
+ 
+ /** One day's slice of the top maps, holding only the requested dimensions. */

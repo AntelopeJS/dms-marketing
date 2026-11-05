@@ -1,0 +1,13 @@
+diff --git a/packages/dms-marketing/src/types/constants.ts b/packages/dms-marketing/src/types/constants.ts
+index 795a997..9e09a89 100644
+--- a/packages/dms-marketing/src/types/constants.ts
++++ b/packages/dms-marketing/src/types/constants.ts
+@@ -30,7 +30,7 @@ export const DEFAULT_STATISTICS_RETENTION_MS =
+  * 25 months — two full year-over-year windows, and the ceiling most privacy
+  * regimes put on audience-measurement data.
+  */
+-export const MAX_STATISTICS_RETENTION_DAYS = 760;
++export const MAX_STATISTICS_RETENTION_DAYS = 730;
+ export const DEFAULT_HEATMAP_SAMPLE_RATIO = 0.1;
+ export const MAX_COLLECT_BATCH_SIZE = 25;
+ export const MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS = 5 * MS_PER_MINUTE;

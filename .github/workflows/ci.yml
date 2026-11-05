@@ -81,11 +81,42 @@ jobs:
         env:
           DMS_PREBUILT: "1"
 
+  # Model-checks the ImportAnalytics claim and replay with TLC
+  # (.agents/skills/formal-import-claim). Only the root package is installed:
+  # the runner is @antelopejs/tooling-configs/formal.
+  formal-import-claim:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - run: pnpm install --filter dms-marketing-workspace --frozen-lockfile --ignore-scripts
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/antelopejs-formal
+          key: tla2tools-1.7.4
+
+      - run: node .agents/skills/formal-import-claim/check.mjs
+
   # The job name the branch protection requires; it passes only when every
   # job above passed.
   ubuntu:
     if: always()
-    needs: [ci, backend]
+    needs: [ci, backend, formal-import-claim]
     runs-on: ubuntu-latest
     steps:
       - run: |
