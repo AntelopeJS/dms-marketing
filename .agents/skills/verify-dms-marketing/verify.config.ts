@@ -9,6 +9,33 @@ export interface DoorRule {
   why: string;
 }
 
+/**
+ * How the gate decides whether a diff changed what the covered code does:
+ * `emit` compares the JavaScript statements of the covered files on the
+ * base and on HEAD (types, comments, formatting, imports and export
+ * keywords left out); `probe` runs a command on a checkout of each, the
+ * checkout's path as last argument, and compares what it prints.
+ */
+export type Behaviour = { kind: "emit" } | { kind: "probe"; command: string[] };
+
+/**
+ * A formal check: the source files it covers, the check's own files, the
+ * command that runs it, how its output names a violated and a passing rule,
+ * how the gate decides that a diff changed the covered behaviour, and the
+ * command run on the base when it did or when the check's own files changed
+ * (`command` when absent).
+ */
+export interface FormalCheck {
+  name: string;
+  covers: string[];
+  files: string[];
+  command: string[];
+  baseCommand?: string[];
+  violation: RegExp | null;
+  passing: RegExp | null;
+  behaviour: Behaviour;
+}
+
 /** The repo-owned layer of the verification skill, read by `dms-control`. */
 export interface VerifyConfig {
   playground: string;
@@ -18,7 +45,7 @@ export interface VerifyConfig {
   smoke: string;
   smokeJourney: string;
   doors: Record<DoorKind, DoorRule | null>;
-  formal: never[];
+  formal: FormalCheck[];
 }
 
 const SKILL = ".agents/skills/verify-dms-marketing";
@@ -104,7 +131,24 @@ const config: VerifyConfig = {
       why: "the package names, their files and the release workflows claim @antelopejs/dms-marketing and @antelopejs/interface-dms-marketing in the npm registry",
     },
   },
-  formal: [],
+  formal: [
+    {
+      name: "formal-import-claim",
+      covers: [
+        `${MODULE}/src/services/analytics-import-claim.ts`,
+        `${MODULE}/src/services/analytics-import.ts`,
+        `${MODULE}/src/services/analytics-import-replay.ts`,
+        `${MODULE}/src/services/rollup-write.ts`,
+        `${MODULE}/src/db/models/marketing_imports.model.ts`,
+      ],
+      files: [".agents/skills/formal-import-claim/**"],
+      command: ["node", ".agents/skills/formal-import-claim/check.mjs", "--full"],
+      baseCommand: ["node", ".agents/skills/formal-import-claim/check.mjs"],
+      violation: /^(?:finding|BROKEN|CHANGED|HOLDS) +(\w+)/gm,
+      passing: /(?<=^holds +(?:\w+, )*)(\w+)(?=,| \()/gm,
+      behaviour: { kind: "emit" },
+    },
+  ],
 };
 
 export default config;

@@ -72,7 +72,7 @@ Run it for every run you started, also after a journey failed or a command stopp
 2. **Unmapped surface fails the verdict.** User-facing code is `packages/dms-marketing/src/**`, `static/**`, `frontend-vue/**`, `skills/**`, `package.json`, and `packages/interface-dms-marketing/src/**` and `package.json`, tests and tool configs excluded (`verify.config.ts`). `map` checks the whole tree.
 3. **Every registered journey of a feature in `run` must have run and passed.**
 4. **Docs.** Judge every `docs:` page of each touched feature against what the journeys showed.
-5. **Formal checks.** None.
+5. **Formal checks.** `formal-import-claim` covers the website claim of `ImportAnalytics` and the replay it guards: `$C formal "$RUN"` runs it when the diff touches its files. While its findings stand, it fails a verdict whose diff changes the covered code.
 6. **One-way doors.** The section comes right after the result line and is mandatory. `$C doors` prints the `One-way-door:` line for the diff. A Data door is contained only by `websites/purges-and-deletion-take-only-the-sites-own-data` and `content/deleting-the-workspace-purges-every-marketing-table-and-its-websites` passing in this run; no journey contains a Format door (see Not driven), so a Format row says so.
 7. **Result.** FAIL if any of rules 1 to 6 fail. PASS+NOTES when something is not verified or needs the owner's attention. PASS otherwise.
 
@@ -111,6 +111,7 @@ List these under `notVerified` in the judgement of every verdict:
 - the hourly prune (retention): it runs from a `node-cron` task at the top of the hour and no request, switch or restart runs it; the counts it would delete are driven through the 409 of a destructive retention cut (`settings`);
 - the visitor-country dimension from a GeoIP database (`geoipDatabasePath`): the module ships no `.mmdb` file and the repository holds none; countries are driven through the `country` of an imported session;
 - the monthly rotation of the visitor salt: it follows the server's clock;
+- concurrent `ImportAnalytics` calls on several instances, a holder that stalls or dies, and the takeover of its claim: a run has one instance; `formal-import-claim` checks them (rule 5);
 - reading another workspace's dashboard (`?workspace=`): it needs two workspaces with a dashboard website and the DMS core creating a second tenant, which a run does not have; the single-workspace answer (`[]`) is driven;
 - a second tenant: isolation between tenants and the platform-owner level apart from the tenant-owner level (see Gotchas);
 - the exclusion of the sign-in pages and of `excludePaths` by the dashboard's own tag, and the tracker following sign-out and workspace switches: they run in the dashboard's frontend plugin on dashboard pages outside the module area, which the playground does not have; the collector's refusal of the module area is driven;
