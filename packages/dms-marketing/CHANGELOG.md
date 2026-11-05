@@ -1,6 +1,28 @@
 # Changelog
 
 
+## v0.9.0
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.8.1...v0.9.0)
+
+### 📖 Documentation
+
+- **readme:** Show the interface-dms-marketing 0.5.2 floor ([#118](https://github.com/AntelopeJS/dms-marketing/pull/118))
+
+### 🏡 Chore
+
+- Land the cleanup campaign on main ([#127](https://github.com/AntelopeJS/dms-marketing/pull/127))
+- **release:** @antelopejs/interface-dms-marketing v0.6.0 ([fe2a726](https://github.com/AntelopeJS/dms-marketing/commit/fe2a726))
+- Land the cleanup campaign on main ([#130](https://github.com/AntelopeJS/dms-marketing/pull/130))
+
+### ✅ Tests
+
+- **import:** Keep the import fixture's history inside one month ([#117](https://github.com/AntelopeJS/dms-marketing/pull/117))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.8.1
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.8.0...v0.8.1)
