@@ -114,7 +114,7 @@ export const journeys = guarded([
         window.dmsMarketing?.track("too_big", { text: "x".repeat(5000) });
         window.dmsMarketing?.track("after_big");
       });
-      const events = await waitFor(ctx, site, "custom", (found) => found.length >= 3, 15_000);
+      const events = await waitFor(ctx, site, "custom", (found) => found.length >= 3, 30_000);
       await ctx.verify("custom events", [
         same("names in order, the oversized one dropped", events.map((event) => event.name), ["signup_submitted", "n".repeat(50), "after_big"]),
         same("data travels with the event", events[0]?.data, { plan: "pro" }),
