@@ -43,16 +43,16 @@ Behind a reverse proxy, set the DMS `auth.trustedProxies` option. See [Installat
 
 <!-- antelopejs-docs-compat:start -->
 
-| Package                                     | Supported                                                                 | Tested with                                                               |
-| ------------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `@antelopejs/interface-api`                 | `>=0.3.0 <1.0.0`                                                          | `0.3.0`                                                                   |
-| `@antelopejs/interface-api-util`            | `>=0.3.0 <1.0.0`                                                          | `0.3.0`                                                                   |
-| `@antelopejs/interface-core`                | `>=0.4.0 <1.0.0`                                                          | `0.4.0`                                                                   |
-| `@antelopejs/interface-data-api`            | `>=0.6.0 <1.0.0`                                                          | `0.6.0`                                                                   |
-| `@antelopejs/interface-database`            | `>=0.3.0 <1.0.0`                                                          | `0.3.0`                                                                   |
-| `@antelopejs/interface-database-decorators` | `>=0.2.0 <1.0.0`                                                          | `0.2.0`                                                                   |
-| `@antelopejs/interface-dms`                 | `>=0.12.0 <1.0.0`                                                         | `0.12.0`                                                                  |
-| `@antelopejs/interface-dms-marketing`       | `file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz` | `file:../../.campaign/tgz/antelopejs-interface-dms-marketing-ece90b2.tgz` |
+| Package                                     | Supported         | Tested with |
+| ------------------------------------------- | ----------------- | ----------- |
+| `@antelopejs/interface-api`                 | `>=0.3.0 <1.0.0`  | `0.3.0`     |
+| `@antelopejs/interface-api-util`            | `>=0.3.0 <1.0.0`  | `0.3.0`     |
+| `@antelopejs/interface-core`                | `>=0.4.0 <1.0.0`  | `0.4.0`     |
+| `@antelopejs/interface-data-api`            | `>=0.6.0 <1.0.0`  | `0.6.0`     |
+| `@antelopejs/interface-database`            | `>=0.3.0 <1.0.0`  | `0.3.0`     |
+| `@antelopejs/interface-database-decorators` | `>=0.2.0 <1.0.0`  | `0.2.0`     |
+| `@antelopejs/interface-dms`                 | `>=0.12.0 <1.0.0` | `0.12.0`    |
+| `@antelopejs/interface-dms-marketing`       | `>=0.6.0 <0.7.0`  | `0.6.0`     |
 
 <!-- antelopejs-docs-compat:end -->
 
