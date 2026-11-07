@@ -22,6 +22,7 @@ The module implements the interface, so it depends on it as `>=<floor> <0.<minor
 `pnpm run checks` runs only the Vue layer tests (`test:layer`). The backend suite runs in its own CI job. Run it when your change touches the module's backend:
 
 - `pnpm --dir packages/dms-marketing test:backend` builds the interface and the module, then `ajs module test .` boots the module against a real DMS and an in-memory MongoDB replica set (`antelope.test.ts`). Set `DMS_PREBUILT=1` to reuse an existing build.
+- `packages/dms-marketing/antelope-lock/` records the lockfile of each package module `antelope.test.ts` installs, so every run, cached or not, installs the same dependencies. After you change a version there, delete the records of the old versions, run `test:backend` once, and commit the new records it writes.
 - `pnpm --dir packages/dms-marketing knip:all` also reports unused files and exports. The exports of `src/frontend-module.ts` are reached through `dmsFrontend` in `package.json`; confirm every other finding before you remove it.
 
 ## Orb

@@ -59,12 +59,16 @@ jobs:
       # `ajs module test` packs and installs the package-sourced modules
       # (dms, api, auth-jwt...) into `.antelope/cache`, and mongodb-memory-server
       # downloads its mongod binary; both used to be fetched on every run.
-      # Ranges are still resolved against the registry, so a stale cache only
-      # costs a download, never an outdated module.
+      # Core installs each of them from its lockfile in antelope-lock/ and
+      # reuses a cached module only when its version and its lockfile match
+      # the record, so a restored folder installs the same dependencies as an
+      # empty one; the key follows the pins and the records, not pnpm's
+      # lockfiles.
       - uses: actions/cache@v4
         with:
           path: packages/dms-marketing/.antelope/cache
-          key: antelope-${{ runner.os }}-${{ hashFiles('packages/dms-marketing/antelope.test.ts', 'packages/*/pnpm-lock.yaml') }}
+          key: antelope-${{ runner.os }}-${{ hashFiles('packages/dms-marketing/antelope.test.ts', 'packages/dms-marketing/antelope-lock/**') }}
+          restore-keys: antelope-${{ runner.os }}-
       - uses: actions/cache@v4
         with:
           path: ~/.cache/mongodb-binaries
