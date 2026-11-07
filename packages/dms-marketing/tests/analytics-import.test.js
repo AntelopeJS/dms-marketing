@@ -148,6 +148,41 @@ describe("an analytics import while the modules stop", () => {
     );
     assert.deepEqual(dayRows(site._id), dayRows(whole._id));
   });
+
+  test("stops between the batches of one visitor's day", async () => {
+    const site = website("busy");
+    const stopping = mock.method(
+      models.GetModel(MarketingEventsModel),
+      "insertMany",
+      /** @param {object[]} docs */ async (docs) => {
+        Events.ModulesStopping.emit();
+        store().events.push(...docs);
+        return docs.length;
+      },
+    );
+    await assert.rejects(
+      importAnalytics({
+        tenantId: "default",
+        importId: "busy-visitor",
+        websiteId: site._id,
+        sessions: [
+          {
+            visitor: "busy",
+            events: Array.from({ length: 100 }, (_, minute) => ({
+              kind: "pageview",
+              at: at(0, 10, minute),
+              url: `${ORIGIN}/`,
+            })),
+          },
+        ],
+      }),
+      /the modules are stopping/,
+    );
+    stopping.mock.restore();
+    assert.ok(
+      store().events.filter((e) => e.websiteId === site._id).length < 100,
+    );
+  });
 });
 
 describe("an analytics import's chronology", () => {
