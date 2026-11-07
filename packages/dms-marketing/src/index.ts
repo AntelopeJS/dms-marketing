@@ -19,6 +19,7 @@ import {
   reloadSettings,
   stopCollectedNotices,
 } from "./services";
+import { trackModulesStopping } from "./services/modules-stopping";
 import { MS_PER_SECOND } from "./types/constants";
 
 const HOURLY_CRON = "0 * * * *";
@@ -43,6 +44,7 @@ export async function construct(
   setConfig(config);
   await loadGeoipDatabase();
   registerMarketingHookListeners();
+  trackModulesStopping();
   RegisterHook(Hook.DATABASE_INITIALIZED, onDatabaseInitialized);
 
   ImplementInterface(

@@ -1,6 +1,9 @@
 const assert = require("node:assert/strict");
 const { mock } = require("node:test");
 const test = it;
+const { Events } = require("@antelopejs/interface-core/modules");
+const models = require("@antelopejs/interface-database-decorators/model");
+const { MarketingEventsModel } = require("../dist/db");
 const { importAnalytics } = require("../dist/services/analytics-import");
 const { processCollectBatch } = require("../dist/services/collect");
 const MINUTE = 60_000;
@@ -74,6 +77,110 @@ describe("an analytics import", () => {
     assert.deepEqual(
       ownEvents.map((e) => e.timestamp.getTime()).sort((x, y) => x - y),
       HISTORY.flatMap((s) => s.events.map((e) => e.at)).sort((x, y) => x - y),
+    );
+  });
+});
+
+describe("an analytics import while the modules stop", () => {
+  useFakeModels();
+
+  afterEach(() => {
+    Events.ModulesStarted.emit();
+  });
+
+  /**
+   * Twelve visitors, more than the replay runs side by side, on three days.
+   * @param {import("./helpers/analytics-import-fakes").TrackedSite} site
+   */
+  function batchFor(site) {
+    return {
+      tenantId: "default",
+      importId: "history-stop",
+      websiteId: site._id,
+      sessions: Array.from({ length: 12 }, (_, visitor) => ({
+        visitor: `v${visitor}`,
+        events: [0, 1, 2].map((day) => ({
+          kind: "pageview",
+          at: at(day, 10, visitor),
+          url: `${ORIGIN}/`,
+        })),
+      })),
+    };
+  }
+
+  test("stops inside its first day, and a call after the restart finishes it exactly once", async () => {
+    const whole = website("whole");
+    const expected = await importAnalytics(batchFor(whole));
+
+    const site = website("stopped");
+    const stopping = mock.method(
+      models.GetModel(MarketingEventsModel),
+      "insertMany",
+      /** @param {object[]} docs */ async (docs) => {
+        Events.ModulesStopping.emit();
+        store().events.push(...docs);
+        return docs.length;
+      },
+    );
+    await assert.rejects(
+      importAnalytics(batchFor(site)),
+      /failed part-way; call it again to resume: the modules are stopping/,
+    );
+    stopping.mock.restore();
+    const written = store().events.filter((e) => e.websiteId === site._id);
+    assert.ok(written.length > 0);
+    assert.ok(written.length < 12);
+    assert.ok(written.every((e) => e.timestamp.getTime() < at(1, 0, 0)));
+
+    Events.ModulesStarted.emit();
+    const resumed = await importAnalytics(batchFor(site));
+    assert.deepEqual(
+      [resumed.status, resumed.sessions, resumed.events],
+      ["imported", expected.sessions, expected.events],
+    );
+    assert.equal(
+      store().events.filter((e) => e.websiteId === site._id).length,
+      expected.events,
+    );
+    assert.equal(
+      store().sessions.filter((s) => s.websiteId === site._id).length,
+      expected.sessions,
+    );
+    assert.deepEqual(dayRows(site._id), dayRows(whole._id));
+  });
+
+  test("stops between the batches of one visitor's day", async () => {
+    const site = website("busy");
+    const stopping = mock.method(
+      models.GetModel(MarketingEventsModel),
+      "insertMany",
+      /** @param {object[]} docs */ async (docs) => {
+        Events.ModulesStopping.emit();
+        store().events.push(...docs);
+        return docs.length;
+      },
+    );
+    await assert.rejects(
+      importAnalytics({
+        tenantId: "default",
+        importId: "busy-visitor",
+        websiteId: site._id,
+        sessions: [
+          {
+            visitor: "busy",
+            events: Array.from({ length: 100 }, (_, minute) => ({
+              kind: "pageview",
+              at: at(0, 10, minute),
+              url: `${ORIGIN}/`,
+            })),
+          },
+        ],
+      }),
+      /the modules are stopping/,
+    );
+    stopping.mock.restore();
+    assert.ok(
+      store().events.filter((e) => e.websiteId === site._id).length < 100,
     );
   });
 });

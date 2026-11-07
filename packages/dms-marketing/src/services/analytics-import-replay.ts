@@ -15,6 +15,7 @@ import {
   type IngestOutcome,
   type PreparedEvent,
 } from "./collect";
+import { isModulesStopping } from "./modules-stopping";
 import { commitImportedDay, getUtcMidnight } from "./rollup-write";
 import { getVisitorHashSecret } from "./settings";
 import { computeVisitorId } from "./visitor-id";
@@ -79,7 +80,9 @@ function trackerBatches(events: VisitorEvent[]): VisitorEvent[][] {
 
 /**
  * Replays one visitor's batches of a day through live ingestion, each on the
- * clock of its last event — the instant the tracker would have sent it.
+ * clock of its last event — the instant the tracker would have sent it. Stops
+ * before the next batch once the modules are stopping, so one busy visitor
+ * cannot hold a shutdown.
  */
 async function replayVisitor(
   website: Website,
@@ -89,6 +92,9 @@ async function replayVisitor(
 ): Promise<ReplayCounts> {
   const counts: ReplayCounts = { sessions: 0, events: 0, dropped: 0 };
   for (const batch of batches) {
+    if (isModulesStopping()) {
+      throw new Error("the modules are stopping");
+    }
     const first = batch[0]!;
     const last = batch[batch.length - 1]!;
     const outcome: IngestOutcome | undefined = await ingestPreparedBatch(
