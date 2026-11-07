@@ -15,6 +15,7 @@ import {
   type IngestOutcome,
   type PreparedEvent,
 } from "./collect";
+import { isModulesStopping } from "./modules-stopping";
 import { commitImportedDay, getUtcMidnight } from "./rollup-write";
 import { getVisitorHashSecret } from "./settings";
 import { computeVisitorId } from "./visitor-id";
@@ -156,6 +157,9 @@ async function replayDay(
     for (let next = queue.shift(); next; next = queue.shift()) {
       if (!claim.isHeld()) {
         throw new Error("another instance took the website claim over");
+      }
+      if (isModulesStopping()) {
+        throw new Error("the modules are stopping");
       }
       try {
         const visitor = await replayVisitor(
