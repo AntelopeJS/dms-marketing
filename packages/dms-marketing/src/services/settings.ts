@@ -67,13 +67,16 @@ function generateSecret(): string {
 }
 
 /**
- * A numeric null is the absence of an override: it must fall through to the
- * module config, never reach it as a zero.
+ * A null is the absence of an override: it must fall through to the module
+ * config, never reach it as a zero or a `false`.
  */
 function overridesFrom(doc: SettingsDocument): Partial<DmsMarketingConfig> {
   const overrides: Partial<DmsMarketingConfig> = {};
   for (const setting of BOOLEAN_SETTINGS) {
-    overrides[setting.configKey] = doc[setting.configKey];
+    const stored = doc[setting.configKey];
+    if (stored != null) {
+      overrides[setting.configKey] = stored;
+    }
   }
   for (const setting of NUMBER_SETTINGS) {
     const stored = doc[setting.configKey];
@@ -103,12 +106,12 @@ export async function reloadSettings(
   }
 }
 
+/** No override at all: every setting follows the module config until saved. */
 function defaultDocument(): SettingsDocument {
-  const config = getConfig();
   const [tracker] = BOOLEAN_SETTINGS;
   const [rawEvents, statistics, heatmap, snapshot] = NUMBER_SETTINGS;
   return {
-    [tracker.configKey]: config[tracker.configKey],
+    [tracker.configKey]: null,
     [rawEvents.configKey]: null,
     [statistics.configKey]: null,
     [heatmap.configKey]: null,
@@ -137,19 +140,21 @@ export function settingsFormValues(): SettingsFormValues {
 
 /**
  * The body is partial (a form sends the fields the user changed): a key left
- * out keeps its stored value, and an emptied numeric field arrives as `null`,
+ * out keeps its stored value, a null one still following the module config,
+ * and an emptied numeric field arrives as `null`,
  * a deliberate clear that puts the config default back in force.
  */
 function buildNextSettings(
   values: SettingsFormValues,
   existing: MarketingSettings | undefined,
 ): SettingsDocument {
-  const config = getConfig();
-  const nextBoolean = (setting: (typeof BOOLEAN_SETTINGS)[number]): boolean => {
+  const nextBoolean = (
+    setting: (typeof BOOLEAN_SETTINGS)[number],
+  ): boolean | null => {
     const submitted = values[setting.id];
     return isBoolean(submitted)
       ? submitted
-      : (existing?.[setting.configKey] ?? config[setting.configKey]);
+      : (existing?.[setting.configKey] ?? null);
   };
   const nextNumber = (
     setting: (typeof NUMBER_SETTINGS)[number],
