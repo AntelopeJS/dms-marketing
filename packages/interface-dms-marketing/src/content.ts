@@ -281,11 +281,11 @@ export interface MarketingImportResult {
 }
 
 /**
- * Creates or refreshes a website from its declaration. Idempotent: a record
- * still identical to what was last declared is refreshed to the new
- * declaration; one a user changed since (or never declared from code) is
- * kept as is (`"kept"`). Rejects on invalid input, on an id taken by another
- * tenant, and on a host another website of the tenant already declares.
+ * Creates a website from its declaration, written once: an id that already
+ * exists, declared before or made in the dashboard, is `"kept"` and nothing
+ * is written, whatever the new declaration says. Rejects on invalid input, on
+ * an id taken by another tenant, and on a host another website of the tenant
+ * already declares.
  */
 export const EnsureWebsite =
   InterfaceFunction<
@@ -295,8 +295,8 @@ export const EnsureWebsite =
   >();
 
 /**
- * Creates or refreshes a funnel, and its A/B split, from its declaration.
- * Same idempotency rule as {@link EnsureWebsite}. Rejects on invalid input, an
+ * Creates a funnel, and its A/B split, from its declaration. Same
+ * written-once rule as {@link EnsureWebsite}. Rejects on invalid input, an
  * unknown website, an experiment key another funnel of the website uses, a
  * status move the lifecycle refuses, or a change to the arms of a split that
  * left draft.
@@ -309,10 +309,9 @@ export const EnsureFunnel =
   >();
 
 /**
- * Creates or refreshes the snapshot of one page at one layout from its
- * declaration. Same idempotency rule as {@link EnsureWebsite}: a snapshot
- * still identical to what was last declared is refreshed to the new
- * declaration; one the tracker captured since is kept. The tracker
+ * Creates the snapshot of one page at one layout from its declaration. Same
+ * written-once rule as {@link EnsureWebsite}: a snapshot already stored for
+ * that page and layout, captured or declared, is `"kept"`. The tracker
  * recaptures a page once its snapshot is older than the refresh age (a day),
  * so a declared backdrop gives way to the real page once it is online and
  * sampled; the snapshot retention prunes it like a capture. Rejects on
