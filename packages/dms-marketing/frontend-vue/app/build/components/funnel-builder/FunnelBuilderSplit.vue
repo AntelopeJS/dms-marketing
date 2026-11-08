@@ -4,6 +4,7 @@ import {
   MAX_EXPERIMENT_KEY_LENGTH,
   MAX_VARIATIONS,
   MIN_VARIATIONS,
+  type DraftField,
 } from '../../../utils/funnel-draft'
 import { fractionDigits } from '../../../constants'
 import type { VariationDraft } from '../../types/funnelBuilder'
@@ -13,7 +14,7 @@ defineProps<{
   VARIATION_CONTROL_PREFIX: string
   addVariation: () => void
   clearVariationError: () => void
-  fieldErrors: ReturnType<typeof useFieldErrors>
+  fieldErrors: ReturnType<typeof useFieldErrors<DraftField>>
   firstUrlStep: string
   flaggedVariation: number | null
   frozen: boolean

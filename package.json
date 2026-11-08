@@ -6,7 +6,7 @@
   "scripts": {
     "build": "pnpm --filter @antelopejs/dms-marketing build",
     "lint": "oxlint && pnpm --dir packages/dms-marketing/frontend-vue lint && node packages/dms-marketing/scripts/check-locales.mts && node packages/dms-marketing/scripts/check-docs-module-version.mts && pnpm --dir packages/dms-marketing exec antelopejs-check-interface-ranges",
-    "typecheck": "pnpm --filter @antelopejs/interface-dms-marketing typecheck && pnpm --filter @antelopejs/dms-marketing typecheck",
+    "typecheck": "pnpm --filter @antelopejs/interface-dms-marketing typecheck && pnpm --filter @antelopejs/dms-marketing typecheck && pnpm --dir packages/dms-marketing run typecheck:layer",
     "knip": "pnpm --dir packages/dms-marketing knip",
     "test": "pnpm --dir packages/dms-marketing test:layer",
     "prepare": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && command -v lefthook >/dev/null 2>&1; then lefthook install; fi",

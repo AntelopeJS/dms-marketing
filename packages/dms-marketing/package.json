@@ -53,6 +53,7 @@
     "release": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --dir ../.. install --frozen-lockfile && pnpm --dir ../.. run lint && pnpm --dir ../.. run format:check && release-it",
     "prepack": "pnpm run build",
     "typecheck": "tsc --noEmit",
+    "typecheck:layer": "env -u npm_config_shamefully_hoist ajs dms verify-source -q -m frontend-vue",
     "knip": "knip --dependencies",
     "knip:all": "knip"
   },

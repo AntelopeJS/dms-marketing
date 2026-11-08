@@ -5,7 +5,11 @@ import type {
   MarketingFunnelSuggestion,
 } from '../../../composables/useMarketingApi'
 import { formatNumber } from '../../../utils/format'
-import { MAX_STEP_VALUE_LENGTH, MAX_STEPS } from '../../../utils/funnel-draft'
+import {
+  MAX_STEP_VALUE_LENGTH,
+  MAX_STEPS,
+  type DraftField,
+} from '../../../utils/funnel-draft'
 import type { StepDraft } from '../../types/funnelBuilder'
 
 /** The steps section of `FunnelBuilder`: each step's kind and value, with suggestions as it is typed, its preview count and its controls. */
@@ -15,7 +19,7 @@ defineProps<{
   addStep: (kind?: MarketingFunnelStep['kind'], value?: string) => void
   blurStep: (step: StepDraft) => void
   clearStepError: () => void
-  fieldErrors: ReturnType<typeof useFieldErrors>
+  fieldErrors: ReturnType<typeof useFieldErrors<DraftField>>
   flaggedStep: number | null
   focusStep: (step: StepDraft) => void
   focusedStep: number | null
