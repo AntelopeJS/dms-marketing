@@ -1,9 +1,14 @@
 const assert = require("node:assert/strict");
 const test = it;
 const { z } = require("zod");
-const { setConfig, applyConfigOverrides } = require("../dist/config");
+const {
+  setConfig,
+  applyConfigOverrides,
+  getConfig,
+} = require("../dist/config");
 const {
   applySettingsForm,
+  loadSettings,
   collectionPausedNotice,
   confirmRetentionCuts,
   reloadSettings,
@@ -19,7 +24,7 @@ const {
 
 const DAY = 86_400_000;
 
-/** @param {StoredRow} row */
+/** @param {StoredRow | undefined} row */
 function fakeModel(row) {
   return {
     row,
@@ -36,6 +41,13 @@ function fakeModel(row) {
       return doc;
     },
   };
+}
+
+/** A settings table with no row yet: the module's first start. */
+function firstStartModel() {
+  /** @type {StoredRow | undefined} */
+  const empty = undefined;
+  return fakeModel(empty);
 }
 
 function storedRow() {
@@ -74,6 +86,36 @@ test("the master switch alone flips collection", async () => {
   await applySettingsForm(model, { trackerEnabled: false });
   assert.equal(model.row.trackerEnabled, false);
   assert.equal(model.row.heatmapSampleRate, 0.25);
+});
+
+describe("the module config's collection switch", () => {
+  afterEach(() => applyConfigOverrides({}));
+
+  test("still applies on a restart after the first start", async () => {
+    const model = firstStartModel();
+    await loadSettings(model);
+    setConfig({ trackerEnabled: false });
+    await loadSettings(model);
+    assert.equal(getConfig().trackerEnabled, false);
+  });
+
+  test("still applies after a save that leaves the switch out", async () => {
+    const model = firstStartModel();
+    await loadSettings(model);
+    await applySettingsForm(model, { heatmapSamplePercent: 50 });
+    setConfig({ trackerEnabled: false });
+    await loadSettings(model);
+    assert.equal(getConfig().trackerEnabled, false);
+  });
+
+  test("gives way to a switch a person saved", async () => {
+    const model = firstStartModel();
+    await loadSettings(model);
+    await applySettingsForm(model, { trackerEnabled: true });
+    setConfig({ trackerEnabled: false });
+    await loadSettings(model);
+    assert.equal(getConfig().trackerEnabled, true);
+  });
 });
 
 test("snapshots kept longer than raw events are refused, not clamped", async () => {
