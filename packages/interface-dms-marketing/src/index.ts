@@ -61,8 +61,10 @@ export interface MarketingHeatmapQuery {
 
 /**
  * Click heatmap of one page path across the tenant's websites, aggregated on
- * the implementer's grid. As an optional-dependency interface the call
- * rejects when no module implements it — callers must catch and degrade.
+ * the implementer's grid. A call made before the implementing module attaches
+ * waits for it; past 1,000 waiting calls, a new call rejects with a
+ * `ProviderQueueFullError`. Storage failures reject too, so a caller whose
+ * page works without a heatmap catches the rejection.
  */
 export const GetClickHeatmap =
   InterfaceFunction<
