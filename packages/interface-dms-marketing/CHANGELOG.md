@@ -1,6 +1,51 @@
 # Changelog
 
 
+## v0.6.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.6.0...v0.6.1)
+
+### 🚀 Enhancements
+
+- **skills:** Add the verify-dms-marketing verification skill ([#119](https://github.com/AntelopeJS/dms-marketing/pull/119))
+
+### 🔥 Performance
+
+- **ci:** Commit the backend test modules' lockfiles and key their cache on them ([#137](https://github.com/AntelopeJS/dms-marketing/pull/137))
+
+### 🩹 Fixes
+
+- **import:** Stop an analytics import when the modules stop ([#138](https://github.com/AntelopeJS/dms-marketing/pull/138))
+- **frontend:** Pass the ajs dms verify-source type check ([#139](https://github.com/AntelopeJS/dms-marketing/pull/139))
+- **settings:** Keep the config's trackerEnabled in force until a person saves the switch ([#141](https://github.com/AntelopeJS/dms-marketing/pull/141))
+
+### 📖 Documentation
+
+- Name the released module version ([#131](https://github.com/AntelopeJS/dms-marketing/pull/131))
+- **interface:** State the written-once rule and the provider queue in the TSDoc ([#140](https://github.com/AntelopeJS/dms-marketing/pull/140))
+- **readme:** Open with the AntelopeJS DMS module kit ([#143](https://github.com/AntelopeJS/dms-marketing/pull/143))
+
+### 📦 Build
+
+- **deps:** Bump @antelopejs packages to the 2026-11-06 releases ([#136](https://github.com/AntelopeJS/dms-marketing/pull/136))
+- **deps:** Bump @antelopejs/dms to 0.18.2 and drop verify publish ([#142](https://github.com/AntelopeJS/dms-marketing/pull/142))
+
+### 🏡 Chore
+
+- Land the cleanup campaign on main ([#130](https://github.com/AntelopeJS/dms-marketing/pull/130))
+- **release:** @antelopejs/dms-marketing v0.9.0 ([c4864ad](https://github.com/AntelopeJS/dms-marketing/commit/c4864ad))
+- Remove the .amp directory ([#132](https://github.com/AntelopeJS/dms-marketing/pull/132))
+- **verify:** Remove seeded runs from the verification skill ([#133](https://github.com/AntelopeJS/dms-marketing/pull/133))
+- **ci:** Remove the weekly mutation caller ([#134](https://github.com/AntelopeJS/dms-marketing/pull/134))
+
+### 🤖 CI
+
+- Call ci-node.yml@v1 ([#135](https://github.com/AntelopeJS/dms-marketing/pull/135))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.6.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.5.2...v0.6.0)
