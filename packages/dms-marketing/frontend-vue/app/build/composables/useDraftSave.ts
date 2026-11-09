@@ -1,5 +1,9 @@
 import { computed } from 'vue'
-import { draftIssues, type DraftField } from '../../utils/funnel-draft'
+import {
+  draftIssues,
+  type DraftField,
+  type FunnelDraftValues,
+} from '../../utils/funnel-draft'
 import {
   type MarketingExperiment,
   saveFunnel,
@@ -10,7 +14,7 @@ import type { ComputedRef, Ref } from 'vue'
 import type { useDmsRouter, useI18n } from '#dms/frontend-module'
 import type { useCopyDraft } from '../../composables/useCopyDraft'
 import type { useMarketingApi } from '../../composables/useMarketingApi'
-import type { VariationDraft } from '../types/funnelBuilder'
+import type { StepDraft, VariationDraft } from '../types/funnelBuilder'
 import type { useDraftLoad } from './useDraftLoad'
 import type { useDraftPreview } from './useDraftPreview'
 
@@ -20,7 +24,7 @@ export function useDraftSave(
   objectiveOf: ReturnType<typeof useDraftLoad>['objectiveOf'],
   values: () => FunnelDraftValues,
   savedObjective: Ref<string>,
-  fieldErrors: ReturnType<typeof useFieldErrors>,
+  fieldErrors: ReturnType<typeof useFieldErrors<DraftField>>,
   flaggedStep: Ref<number | null>,
   steps: Ref<StepDraft[]>,
   flaggedVariation: Ref<number | null>,
@@ -43,7 +47,7 @@ export function useDraftSave(
   clearStepError: () => void,
   clearVariationError: () => void,
   applyValues: (next: FunnelDraftValues) => void,
-  baseline: ReturnType<typeof useFormDirty>['baseline'],
+  baseline: ReturnType<typeof useFormDirty<FunnelDraftValues>>['baseline'],
   isEdit: boolean,
   sourceId: string,
   confirmLeave: ReturnType<typeof useUnsavedChanges>['confirmLeave'],

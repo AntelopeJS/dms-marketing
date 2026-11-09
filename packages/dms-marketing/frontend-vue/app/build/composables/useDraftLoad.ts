@@ -16,7 +16,7 @@ import { type ContextWebsite } from '../../composables/useMarketingContext'
 import type { Ref } from 'vue'
 import type { useDmsRoute, useI18n } from '#dms/frontend-module'
 import type { useCopyDraft } from '../../composables/useCopyDraft'
-import type { VariationDraft } from '../types/funnelBuilder'
+import type { StepDraft, VariationDraft } from '../types/funnelBuilder'
 
 /** How `FunnelBuilder` fills its draft once mounted: the funnel being edited or copied, a template, and the websites it can target. */
 export function useDraftLoad(

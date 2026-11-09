@@ -135,7 +135,7 @@ export function useFunnelTemplates(
 export function useWebsiteConnection(
   websiteId: MaybeRefOrGetter<string>,
   since: MaybeRefOrGetter<number | null>,
-  options: ContextReadOptions = {},
+  options: { refreshInterval?: MaybeRefOrGetter<number | null> } = {},
 ): ApiDataResult<MarketingConnectionStatus> {
   const path = computed(() => {
     const id = toValue(websiteId)
