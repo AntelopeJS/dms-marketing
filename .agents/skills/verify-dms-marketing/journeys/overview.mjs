@@ -138,6 +138,9 @@ export const journeys = guarded([
       const after = await mkt(ctx, "read the context again", "GET", "/context");
       const unknown = await mkt(ctx, "pick a website that does not exist", "PUT", "/context", { body: { website: "does-not-exist" } });
       await ctx.verify("the pick is saved", [same("saved", put.status, 200), same("remembered", pick(after.body, "selectedId"), quiet.id), check("an unknown website is not stored", unknown.status >= 400 || pick((await mkt(ctx, "read the context", "GET", "/context")).body, "selectedId") === quiet.id, unknown.status)]);
+      const repick = await mkt(ctx, "pick the busy website again", "PUT", "/context", { body: { website: busy.id } });
+      const reread = await mkt(ctx, "read the context after the second pick", "GET", "/context");
+      await ctx.verify("a second pick replaces the first", [same("saved", repick.status, 200), same("remembered", pick(reread.body, "selectedId"), busy.id)]);
     },
   },
   ...defaultPeriod,

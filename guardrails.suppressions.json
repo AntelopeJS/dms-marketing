@@ -2,6 +2,7 @@
   "rules": {
     "anti-slop/no-chained-type-assertions": 0,
     "anti-slop/no-object-parameters": 1,
+    "antelopejs/no-read-then-insert": 1,
     "eslint/max-params": 2,
     "typescript/no-explicit-any": 1,
     "typescript/no-require-imports": 0,

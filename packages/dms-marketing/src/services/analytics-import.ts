@@ -330,6 +330,7 @@ export async function importAnalytics(
     if (current) {
       await imports.update(rowId, { status: "running" });
     } else {
+      // oxlint-disable-next-line antelopejs/no-read-then-insert -- A duplicate key here is the refusal of a second claim holder after a takeover; an upsert would let both replay (AntelopeJS/dms-marketing#146).
       await imports.insert(row);
     }
   } catch (err) {
