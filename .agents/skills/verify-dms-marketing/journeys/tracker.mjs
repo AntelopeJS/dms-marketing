@@ -45,7 +45,17 @@ export const journeys = guarded([
       await ctx.verify("one pageview of the landing page", [
         same("pageviews and their path", [events.length, events[0]?.url], [1, "/verify-marketing/site/landing"]),
         same("no cookie, nothing in the storages", [cookies.length, keys], [0, [0, 0]]),
-        check("the API exposes the page API", await tab.page.evaluate(() => window.dmsMarketing?.track instanceof Function && window.dmsMarketing?.variation instanceof Function && window.dmsMarketing?.exposure instanceof Function), "dmsMarketing"),
+        check("the API exposes the page API", await tab.page.evaluate(() => {
+          /**
+           * @param {unknown} value A member of the page API
+           * @returns {value is Function} Whether page code can call it
+           */
+          function callable(value) {
+            return typeof value === "function";
+          }
+          const api = window.dmsMarketing;
+          return callable(api?.track) && callable(api?.variation) && callable(api?.exposure);
+        }), "dmsMarketing"),
       ]);
       const sessions = await (await import("../store.mjs")).rows(ctx, "marketing_sessions", { websiteId: site.id });
       await ctx.verify("the session context", [same("language", sessions[0]?.language, "en-US"), check("screen is width x height", /^\d+x\d+$/.test(String(sessions[0]?.screen)), sessions[0]?.screen)]);
@@ -90,7 +100,16 @@ export const journeys = guarded([
       const dnt = await open(ctx, site, "dnt", { init: "Object.defineProperty(navigator, 'doNotTrack', { value: '1', configurable: true })", js: "window.dmsMarketing?.track('while-dnt')" });
       await open(ctx, site, "gpc", { init: "Object.defineProperty(navigator, 'globalPrivacyControl', { value: true, configurable: true })", js: "window.dmsMarketing?.track('while-gpc')" });
       const still = await settled(ctx, site, undefined, 0);
-      const noop = await dnt.page.evaluate(() => window.dmsMarketing?.track instanceof Function);
+      const noop = await dnt.page.evaluate(() => {
+        /**
+         * @param {unknown} value A member of the page API
+         * @returns {value is Function} Whether page code can call it
+         */
+        function callable(value) {
+          return typeof value === "function";
+        }
+        return callable(window.dmsMarketing?.track);
+      });
       const variation = await dnt.page.evaluate(() => window.dmsMarketing?.variation("hero"));
       await ctx.verify("DNT and GPC are respected", [still, same("the API stays callable", noop, true), same("variation() answers null", variation, null)]);
       await open(ctx, site, "dnt-optout", { init: "Object.defineProperty(navigator, 'doNotTrack', { value: '1', configurable: true })", attrs: { "data-do-not-track": "false", "data-heatmap-sample": "0" } });

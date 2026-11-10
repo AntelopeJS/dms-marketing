@@ -2,11 +2,10 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "composite": true,
-    "skipLibCheck": true,
     "emitDeclarationOnly": true,
     "rootDir": ".",
     "outDir": "../../node_modules/.cache/module-config",
     "tsBuildInfoFile": "../../node_modules/.cache/module-config/.tsbuildinfo"
   },
-  "include": ["./antelope.test.ts"]
+  "include": ["./antelope.test.ts", "./knip.config.ts"]
 }

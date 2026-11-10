@@ -94,9 +94,17 @@ test("a step never received replaces the detail with a warning", () => {
   assert.equal(results[0].detail.text.params.step, "order");
 });
 
+/**
+ * @param {import("@antelopejs/interface-dms/base/types/composed-text").BlockText} text A block text
+ * @returns {text is import("@antelopejs/interface-dms/base/types/composed-text").ComposedText} Whether it is a composed text
+ */
+function isComposed(text) {
+  return typeof text !== "string";
+}
+
 /** @param {import("@antelopejs/interface-dms/base/types/composed-text").BlockText} text */
 function keyOf(text) {
-  assert.ok(text instanceof Object);
+  assert.ok(isComposed(text));
   return text.key;
 }
 

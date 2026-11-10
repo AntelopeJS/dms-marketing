@@ -1,4 +1,4 @@
-import { check, mkt, num, pick, same } from "../../marketing.mjs";
+import { check, list, mkt, num, pick, same } from "../../marketing.mjs";
 import { declare, results, shop } from "./funnels-helpers.mjs";
 import { split } from "./abtests-helpers.mjs";
 
@@ -129,7 +129,7 @@ export const journeys = [
         const id = await split(ctx, site, { key: name, arms: armsSpec });
         read[name] = await results(ctx, site, id);
       }
-      const arm = (/** @type {string} */ name, /** @type {string} */ key) => /** @type {Record<string, unknown>[]} */ (pick(read[name]?.answer.body, "experiment", "variations") ?? []).find((entry) => entry.key === key);
+      const arm = (/** @type {string} */ name, /** @type {string} */ key) => list(read[name]?.answer.body, "experiment", "variations").find((entry) => entry.key === key);
       await ctx.verify("the significance level of each comparison", [
         same("alpha with two, three and four arms", [num(read.two?.answer.body, "experiment", "alpha"), num(read.near?.answer.body, "experiment", "alpha"), num(read.four?.answer.body, "experiment", "alpha")], [0.05, 0.025, 0.05 / 3]),
         check("b against a: p about 0.036", Math.abs(num(arm("near", "b"), "pValue") - 0.036) < 0.002, pick(arm("near", "b"), "pValue")),

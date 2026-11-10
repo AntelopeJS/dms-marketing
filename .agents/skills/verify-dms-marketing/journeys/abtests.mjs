@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mkt, num, pick, same } from "../marketing.mjs";
+import { check, isRow, list, mkt, num, pick, same } from "../marketing.mjs";
 import { journeys as lifecycle } from "./parts/abtests-lifecycle.mjs";
 import { journeys as bounds } from "./parts/abtests-bounds.mjs";
 import { split, twoSidedP, zScore } from "./parts/abtests-helpers.mjs";
@@ -110,7 +110,9 @@ export const journeys = guarded([
       const read = async (/** @type {string} */ visitor) => {
         const answer = await raw(ctx, `assignment for ${visitor}`, { path: `/api/marketing/experiments.js?website=${site.id}`, headers: { "user-agent": `Mozilla/5.0 Chrome/130 ${visitor}` } });
         const match = /__dmsMarketingAssignments=(\{.*\})/.exec(answer.text);
-        return { answer, map: /** @type {Record<string, string>} */ (match ? JSON.parse(match[1] ?? "{}") : null) };
+        /** @type {unknown} */
+        const map = match ? JSON.parse(match[1] ?? "{}") : null;
+        return { answer, map: isRow(map) ? map : null };
       };
       await split(ctx, site, { key: "hero", weights: { a: 1, b: 1 }, arms: { a: { n: 0, conv: 0 }, b: { n: 0, conv: 0 } } });
       const first = await read("visitor-1");
