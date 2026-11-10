@@ -14,16 +14,11 @@ export class MarketingPreferencesModel extends BasicDataModel(
   }
 
   async setWebsiteId(userId: string, websiteId: string): Promise<void> {
-    const existing = await this.table.get(userId).run();
-    if (existing) {
-      await this.table
-        .get(userId)
-        .update({ websiteId, updatedAt: new Date() })
-        .run();
-      return;
-    }
     await this.table
-      .insert({ _id: userId, websiteId, updatedAt: new Date() })
+      .insert(
+        { _id: userId, websiteId, updatedAt: new Date() },
+        { conflict: "update" },
+      )
       .run();
   }
 
