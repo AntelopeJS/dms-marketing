@@ -1,4 +1,4 @@
-import { mkt, num, pick, same } from "../../marketing.mjs";
+import { list, mkt, num, pick, same } from "../../marketing.mjs";
 import { results, shop } from "./funnels-helpers.mjs";
 
 /** @typedef {import("../../marketing.mjs").Ctx} Ctx */
@@ -19,7 +19,7 @@ export const journeys = [
       const edit = (/** @type {string} */ label, /** @type {Record<string, unknown>} */ body) => mkt(ctx, label, "PUT", `/tables/funnels/edit?id=${id}`, { body: { websiteId: site.id, name: "Split", steps: STEPS, ...body } });
       const state = async () => {
         const read = await results(ctx, site, id);
-        return { status: pick(read.answer.body, "funnel", "experiment", "status"), runs: /** @type {unknown[]} */ (pick(read.answer.body, "funnel", "experiment", "runs") ?? []) };
+        return { status: pick(read.answer.body, "funnel", "experiment", "status"), runs: list(read.answer.body, "funnel", "experiment", "runs") };
       };
       const draft = await state();
       const retuned = await edit("change the variations of a draft", { experiment: { key: "hero2", variations: [{ key: "a", weight: 1 }, { key: "c", weight: 3 }] } });

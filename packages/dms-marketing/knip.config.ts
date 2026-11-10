@@ -1,4 +1,5 @@
 import { antelopeKnipConfig } from "@antelopejs/tooling-configs/knip";
+import type { KnipConfig } from "knip";
 
 /**
  * Knip for the module. The entries add what the preset does not find: the
@@ -14,7 +15,7 @@ import { antelopeKnipConfig } from "@antelopejs/tooling-configs/knip";
  * as `SNAPSHOT_REFRESH_AGE_MS = MS_PER_DAY`: each names a tuning knob that
  * happens to equal a unit today.
  */
-export default Object.assign(
+const config: KnipConfig = Object.assign(
   antelopeKnipConfig({
     entry: [
       "antelope.test.ts",
@@ -33,3 +34,5 @@ export default Object.assign(
     },
   },
 );
+
+export default config;

@@ -16,7 +16,7 @@ export const journeys = [
     async run(ctx) {
       const tab = await ctx.tab();
       await tab.signIn("admin");
-      for (const [seconds, live] of /** @type {[number, boolean][]} */ ([[270, true], [330, false]])) {
+      for (const { seconds, live } of [{ seconds: 270, live: true }, { seconds: 330, live: false }]) {
         const site = await shop(ctx);
         await collected(ctx, "a pageview", site, [pageview(site, "/a")]);
         const at = new Date(Date.now() - seconds * 1000);

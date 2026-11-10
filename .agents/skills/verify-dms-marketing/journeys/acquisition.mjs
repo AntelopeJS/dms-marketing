@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { byText, check, list, mkt, num, pick, same, text } from "../marketing.mjs";
+import { byText, check, counts, list, mkt, num, pick, same, text } from "../marketing.mjs";
 import { eventually, overview } from "../site.mjs";
 import { campaigns, channels, channelsBlock, shop, visit } from "./parts/acquisition-helpers.mjs";
 
@@ -160,7 +160,7 @@ export const journeys = guarded([
       await ctx.verify("the lists", [
         same("referrers: network, not shim, own domain left out, paid sessions included", pick(read.body, "topReferrers"), { "facebook.com": 2, "youtube.com": 1, "blog.partner.example.org": 1, "google.com": 1 }),
         same("utm contents", pick(read.body, "topUtmContents"), { "banner-a": 2 }),
-        check("utm terms keep both spellings apart or together as documented (two sessions in total)", Object.values(/** @type {Record<string, number>} */ (pick(read.body, "topUtmTerms") ?? {})).reduce((a, b) => a + b, 0) === 2, pick(read.body, "topUtmTerms")),
+        check("utm terms keep both spellings apart or together as documented (two sessions in total)", Object.values(counts(read.body, "topUtmTerms")).reduce((a, b) => a + b, 0) === 2, pick(read.body, "topUtmTerms")),
       ]);
       const acquisitionTops = await mkt(ctx, "read the acquisition top-list card", "GET", `/blocks/tops?group=acquisition&website=${site.id}`);
       const tabs = list(acquisitionTops.body, "tabs");

@@ -1,4 +1,4 @@
-import { check, list, mkt, num, pick, same } from "../../marketing.mjs";
+import { check, counts, list, mkt, num, same } from "../../marketing.mjs";
 import { collect, createSite, eventually, overview } from "../../site.mjs";
 
 /** @typedef {import("../../marketing.mjs").Ctx} Ctx */
@@ -42,7 +42,7 @@ export async function visit(ctx, site, visits) {
  */
 export async function channels(ctx, site, sessions) {
   const read = await eventually(() => overview(ctx, site), (answer) => num(answer.body, "totals", "sessions") === sessions);
-  return Object.fromEntries(Object.entries(/** @type {Record<string, number>} */ (pick(read.body, "topChannels") ?? {})));
+  return counts(read.body, "topChannels");
 }
 
 /**

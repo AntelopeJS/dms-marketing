@@ -85,6 +85,30 @@ export function num(value, ...path) {
 }
 
 /**
+ * The numbers of an array field of a JSON answer.
+ *
+ * @param {unknown} value The answer
+ * @param {...(string | number)} path The field names, outermost first
+ * @returns {number[]} The array's numbers, empty when the field is not an array
+ */
+export function numbers(value, ...path) {
+  const found = pick(value, ...path);
+  return Array.isArray(found) ? found.filter(isNumber) : [];
+}
+
+/**
+ * The numeric entries of an object field of a JSON answer, such as a count per name.
+ *
+ * @param {unknown} value The answer
+ * @param {...(string | number)} path The field names, outermost first
+ * @returns {Record<string, number>} The field's numeric entries, empty when the field is not an object
+ */
+export function counts(value, ...path) {
+  const found = pick(value, ...path);
+  return isRow(found) ? Object.fromEntries(Object.entries(found).filter((entry) => isNumber(entry[1]))) : {};
+}
+
+/**
  * The objects of an array field of a JSON answer.
  *
  * @param {unknown} value The answer

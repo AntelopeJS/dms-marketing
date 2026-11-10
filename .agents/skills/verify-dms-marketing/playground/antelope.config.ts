@@ -3,6 +3,11 @@ import { defineConfig } from "@antelopejs/interface-core/config";
 const preferredApiPort = process.env.PORT ?? "5010";
 const dmsClientUrl = process.env.DMS_CLIENT_BASE_URL;
 
+/** Whether a parsed JSON value is an object whose entries can be read. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 /**
  * The module's options as JSON, set by a journey in the run's environment
  * before it restarts the backend. Unset, the module runs its own defaults.
@@ -11,7 +16,7 @@ function marketingConfig() {
   const text = process.env.VERIFY_MKT_CONFIG;
   if (!text) return {};
   const parsed: unknown = JSON.parse(text);
-  return parsed instanceof Object ? parsed : {};
+  return isRecord(parsed) ? parsed : {};
 }
 
 function numberOrUndefined(text: string | undefined): number | undefined {

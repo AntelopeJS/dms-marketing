@@ -1,4 +1,4 @@
-import { check, fixture, mkt, num, pick, same } from "../../marketing.mjs";
+import { check, fixture, list, mkt, num, same } from "../../marketing.mjs";
 import { collect, createSite } from "../../site.mjs";
 
 /** @typedef {import("../../marketing.mjs").Ctx} Ctx */
@@ -56,6 +56,6 @@ export async function session(ctx, site, visitor, steps) {
  */
 export async function results(ctx, site, id, query = "") {
   const answer = await mkt(ctx, `read the results of ${id}`, "GET", `/funnels/${id}/results?website=${site.id}${query}`);
-  const steps = /** @type {Record<string, unknown>[]} */ (pick(answer.body, "computation", "steps") ?? []);
+  const steps = list(answer.body, "computation", "steps");
   return { answer, steps, total: num(answer.body, "computation", "totalSessions") };
 }

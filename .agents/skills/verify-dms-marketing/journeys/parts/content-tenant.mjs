@@ -1,4 +1,4 @@
-import { check, fixture, list, mkt, pick, same, text } from "../../marketing.mjs";
+import { check, fixture, isRow, list, mkt, pick, same, text } from "../../marketing.mjs";
 import { count } from "../../store.mjs";
 import { createSite } from "../../site.mjs";
 import { declare } from "./funnels-helpers.mjs";
@@ -65,7 +65,8 @@ export const journeys = [
       const site = await workspace(ctx, "exported");
       const answer = await fixture(ctx, "export the workspace", "POST", "/tenant/export", { tenantId: "default" });
       const mine = list(answer.body, "contributions").find((entry) => pick(entry, "contribution", "moduleId") === "marketing");
-      const data = /** @type {Record<string, unknown>} */ (pick(mine, "contribution", "data") ?? {});
+      const contribution = pick(mine, "contribution", "data");
+      const data = isRow(contribution) ? contribution : {};
       const of = (/** @type {string} */ key) => list(data, key);
       await ctx.verify("the marketing contribution", [
         check("the module contributes under the id marketing", mine !== undefined, list(answer.body, "contributions").map((entry) => pick(entry, "contribution", "moduleId"))),

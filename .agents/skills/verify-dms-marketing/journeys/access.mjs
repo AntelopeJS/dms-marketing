@@ -90,7 +90,7 @@ export const journeys = guarded([
         for (const account of accounts) {
           const answer = await mkt(ctx, `${account}: ${method} ${path}`, method, path, { body, as: account });
           const denied = answer.status === 401 || answer.status === 403;
-          const mayCall = /** @type {string[]} */ (ALLOWED[level]).includes(account);
+          const mayCall = Object.entries(ALLOWED).some(([name, accounts]) => name === level && accounts.includes(account));
           if (denied === mayCall) wrong.push(`${level} ${method} ${path.split("?")[0]} as ${account}: ${answer.status}`);
         }
       }

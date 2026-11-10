@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { byText, check, list, mkt, num, pick, same } from "../marketing.mjs";
+import { byText, check, list, mkt, num, numbers, pick, same } from "../marketing.mjs";
 import { collect, collected, createSite, eventually, pageview } from "../site.mjs";
 import { rows } from "../store.mjs";
 
@@ -115,7 +115,7 @@ export const journeys = guarded([
       const depth = (/** @type {number} */ value) => ({ kind: "scroll", url: `https://${shop.domain}/long`, data: { depth: value } });
       for (const [index, value] of [0, 40, 40, 90, 100].entries()) await collected(ctx, `a view that reached ${value} %`, shop, [pageview(shop, "/long"), depth(value)], { ua: `Mozilla/5.0 Chrome/130 reader-${index}` });
       const read = await eventually(() => mkt(ctx, "read the scroll depth", "GET", `/stats/scroll?website=${shop.id}&path=/long`), (answer) => num(answer.body, "views") === 5);
-      const reached = /** @type {number[]} */ (pick(read.body, "reached"));
+      const reached = numbers(read.body, "reached");
       await ctx.verify("who reached what", [
         same("views", pick(read.body, "views"), 5),
         same("101 steps, 0 to 100", reached.length, 101),

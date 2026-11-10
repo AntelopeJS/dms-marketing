@@ -67,14 +67,17 @@ importers:
         specifier: 1.6.2
         version: 1.6.2(socks@2.8.10)
       '@antelopejs/tooling-configs':
-        specifier: ^0.3.3
-        version: 0.3.3(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
+        specifier: ^0.5.0
+        version: 0.5.0(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))
       '@types/node':
         specifier: ^22.19.15
         version: 22.20.1
       '@types/sanitize-html':
         specifier: ^2.16.2
         version: 2.16.2
+      '@types/semver':
+        specifier: ^7.8.0
+        version: 7.8.0
       knip:
         specifier: ^6.34.0
         version: 6.36.0
@@ -205,8 +208,8 @@ packages:
   '@antelopejs/mongodb@1.6.2':
     resolution: {integrity: sha512-+iMgHoA5Kj9rujlHKJmVHC82N38y/V7A5hgn4WAQU5vLfrKxBM6wSdrtvZDivY1Qt3OgRLwyBhj1+/YT13yyBw==}
 
-  '@antelopejs/tooling-configs@0.3.3':
-    resolution: {integrity: sha512-jQ09zavCF5MMQtfyd8YOqpoxV6l6bp3m9tA5iN0z0XhQpVHM5VWr53yEuQ6Mc+1tseBW85N94ruP4TEfiGg8iQ==}
+  '@antelopejs/tooling-configs@0.5.0':
+    resolution: {integrity: sha512-vTZyx0FpSzArjSdb119i+CTGPsYe903/D/JY+0KVUgBjdw/2+LTRt58NUinDtvnf9H18uAlF2xwWJXsSPTv/6A==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
@@ -214,7 +217,7 @@ packages:
       eslint-plugin-perfectionist: '>=5.0.0'
       knip: '>=6.0.0'
       mongodb-memory-server: '>=10.0.0'
-      oxfmt: ^0.66.0
+      oxfmt: ^0.66.0 || ^0.77.0
       oxlint: 1.81.0
       pixelmatch: '>=7.0.0'
       playwright-core: '>=1.56.0'
@@ -1043,6 +1046,9 @@ packages:
 
   '@types/sanitize-html@2.16.2':
     resolution: {integrity: sha512-kuAbgDCFv418flrp3z4o/4ufLA/5ovmXRH0L419iZCPGO7w00znjeDI5Wy/KZWNIBpDQc7hucCK+J5almB6FyA==}
+
+  '@types/semver@7.8.0':
+    resolution: {integrity: sha512-1mAINjtQCXXeLkJ9ehXkwOcBpqtLxiVtKhpUf83DdRNdQKV0iXZpaHYqRr7nj+wvxuJzoAmAwXI+sCNMv1CzLQ==}
 
   '@types/webidl-conversions@7.0.3':
     resolution: {integrity: sha512-CiJJvcRtIgzadHCYXw7dqEnMNRjhGZlYK05Mj9OyktqV8uVT8fD2BFOB7S1uwBE3Kj2Z+4UyPmFw/Ixgw/LAlA==}
@@ -2970,10 +2976,11 @@ snapshots:
       - snappy
       - socks
 
-  '@antelopejs/tooling-configs@0.3.3(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
+  '@antelopejs/tooling-configs@0.5.0(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))':
     dependencies:
       '@oxlint/plugins': 1.81.0
       dts-bundle-generator: 9.5.1
+      minimatch: 10.2.6
       typescript: 5.9.3
       yaml: 2.9.1
     optionalDependencies:
@@ -3535,6 +3542,8 @@ snapshots:
   '@types/sanitize-html@2.16.2':
     dependencies:
       htmlparser2: 12.0.0
+
+  '@types/semver@7.8.0': {}
 
   '@types/webidl-conversions@7.0.3': {}
 
