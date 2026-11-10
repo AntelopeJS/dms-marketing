@@ -30,6 +30,26 @@ export function setBounded<T>(
 }
 
 /**
+ * `compute` remembered per key for the process lifetime, which only holds
+ * for a pure function of its key, capped like `setBounded`.
+ */
+export function memoizeBounded<T>(
+  compute: (key: string) => T,
+  maxEntries: number = MAX_CACHE_ENTRIES,
+): (key: string) => T {
+  const entries = new Map<string, CacheHit<T>>();
+  return (key) => {
+    const hit = entries.get(key);
+    if (hit) {
+      return hit.value;
+    }
+    const value = compute(key);
+    setBounded(entries, key, { value }, maxEntries);
+    return value;
+  };
+}
+
+/**
  * TTL cache with a hard entry cap: the public endpoints key lookups on
  * request parameters, so an unbounded Map is a memory sink any anonymous
  * caller can fill. A miss only costs the lookup the cache saves, so overflow

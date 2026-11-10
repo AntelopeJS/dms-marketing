@@ -5,17 +5,16 @@ import {
   MAX_SNAPSHOTS_PER_WINDOW_PER_SOURCE,
   RATE_LIMIT_MAX_SOURCES,
 } from "@/types/constants";
-import { setBounded } from "./bounded-cache";
+import { memoizeBounded, setBounded } from "./bounded-cache";
 
 const AUTOMATION_UA_PATTERN = /headless|phantomjs|slimerjs/i;
 
-export function isAutomatedClient(userAgent: string): boolean {
-  return (
+export const isAutomatedClient = memoizeBounded(
+  (userAgent): boolean =>
     userAgent === "" ||
     AUTOMATION_UA_PATTERN.test(userAgent) ||
-    isBot(userAgent)
-  );
-}
+    isBot(userAgent),
+);
 
 interface WindowEntry {
   windowStart: number;
