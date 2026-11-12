@@ -329,3 +329,70 @@ describe("an analytics import whose claim was taken over", () => {
     assert.equal(eventsOf(site).length, 10);
   });
 });
+
+describe("an analytics import whose row insert fails", () => {
+  useFakeModels();
+
+  /**
+   * Makes the insert of the site's import row run `onInsert` first, as another
+   * instance writing in between would.
+   * @param {import("./helpers/analytics-import-fakes").TrackedSite} site
+   * @param {() => void} onInsert
+   */
+  function interceptRowInsert(site, onInsert) {
+    const imports = models.GetModel(MarketingImportsModel);
+    const insert = imports.insert.bind(imports);
+    return mock.method(
+      imports,
+      "insert",
+      /** @param {import("../dist/db").MarketingImport} row */ async (row) => {
+        if (row._id === `${site._id}:history`) onInsert();
+        return insert(row);
+      },
+    );
+  }
+
+  test("a duplicate row found while this call holds the claim releases the claim", async () => {
+    const site = website("duplicate");
+    interceptRowInsert(site, () => {
+      store().imports.set(`${site._id}:history`, {
+        _id: `${site._id}:history`,
+        websiteId: site._id,
+        importId: "history",
+        status: "running",
+        sessions: 0,
+        events: 0,
+        dropped: 0,
+        startedAt: new Date(DAY_ONE),
+        ledgered: true,
+      });
+    });
+
+    const result = await importAnalytics(batchFor(site));
+
+    assert.equal(result.status, "in_progress");
+    assert.equal(eventsOf(site).length, 0);
+    assert.equal(store().imports.has(`${site._id}:`), false);
+    assert.equal((await importAnalytics(batchFor(site))).status, "imported");
+    assert.equal(eventsOf(site).length, 10);
+  });
+
+  test("a failed insert that leaves no row rethrows its error and releases the claim", async () => {
+    const site = website("unreachable");
+    const failing = interceptRowInsert(site, () => {
+      throw new Error("socket closed");
+    });
+
+    await assert.rejects(() => importAnalytics(batchFor(site)), {
+      message: "socket closed",
+    });
+
+    assert.equal(store().imports.has(`${site._id}:`), false);
+    assert.equal(store().imports.has(`${site._id}:history`), false);
+    assert.equal(eventsOf(site).length, 0);
+
+    failing.mock.restore();
+    assert.equal((await importAnalytics(batchFor(site))).status, "imported");
+    assert.equal(eventsOf(site).length, 10);
+  });
+});
