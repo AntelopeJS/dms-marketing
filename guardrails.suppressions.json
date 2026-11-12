@@ -1,10 +1,10 @@
 {
   "rules": {
-    "anti-slop/no-chained-type-assertions": 0,
-    "anti-slop/no-object-parameters": 1,
     "antelopejs/no-read-then-insert": 1,
-    "eslint/max-params": 2,
-    "typescript/no-explicit-any": 1,
+    "anti-slop/no-chained-type-assertions": 0,
+    "anti-slop/no-object-parameters": 0,
+    "eslint/max-params": 0,
+    "typescript/no-explicit-any": 0,
     "typescript/no-require-imports": 0,
     "typescript/unbound-method": 0
   },
@@ -12,9 +12,9 @@
   "tsIgnore": 0,
   "safety": 0,
   "config": {
-    "typescript/restrict-template-expressions for packages/dms-marketing/tests/**/*.js": 1,
-    "vue/multi-word-component-names for packages/dms-marketing/frontend-vue/**/*.ts": 1,
-    "vue/multi-word-component-names for packages/dms-marketing/frontend-vue/**/*.vue": 1
+    "typescript/restrict-template-expressions for packages/dms-marketing/tests/**/*.js": 0,
+    "vue/multi-word-component-names for packages/dms-marketing/frontend-vue/**/*.ts": 0,
+    "vue/multi-word-component-names for packages/dms-marketing/frontend-vue/**/*.vue": 0
   },
   "agentFiles": true
 }

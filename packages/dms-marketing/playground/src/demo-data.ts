@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { Schema } from "@antelopejs/interface-database";
+import type { WriteValue } from "@antelopejs/interface-database/common";
 import {
   CORE_SCHEMA_NAME,
   DEFAULT_TENANT_ID,
@@ -29,26 +30,17 @@ const HISTORY_DAYS = 120;
 const RAW_DAYS = 30;
 const SEPARATOR = "\u001f";
 
-// The demo writes rows of several tables through one helper, so it drops the
-// row typing the decorated models would give it.
-// oxlint-disable-next-line typescript/no-explicit-any
-type Row = Record<string, any> & { _id: string };
-interface Runnable {
-  run(): Promise<unknown>;
-}
+/** A document the demo writes as is, to any of the module's tables. */
+type Row = { _id: string } & Record<string, WriteValue>;
 
-/** The two calls the demo makes, on rows of any table. */
-interface AnyTable {
-  insert(rows: Row | Row[]): Runnable;
-  get(id: string): Runnable;
-}
-
-function table(schema: string, name: string, instance?: string): AnyTable {
-  const found = Schema.get(schema)?.instance(instance).table(name);
+function table(schema: string, name: string, instance?: string) {
+  const found = Schema.get<Record<string, Row>>(schema)
+    ?.instance(instance)
+    .table(name);
   if (!found) {
     throw new Error(`[playground] table ${name} is not registered`);
   }
-  return found as AnyTable;
+  return found;
 }
 
 /** Deterministic: the same dataset on every fresh database. */
@@ -418,7 +410,7 @@ async function seedSnapshot(): Promise<void> {
     .run();
 }
 
-function funnel(name: string, steps: Array<[string, string]>, windowHours: number, experiment: unknown = null): Row {
+function funnel(name: string, steps: Array<[string, string]>, windowHours: number, experiment: WriteValue = null): Row {
   return {
     _id: randomUUID(),
     websiteId: SHOP_ID,

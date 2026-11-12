@@ -23,7 +23,6 @@ export default [
     languageOptions: { parserOptions: { parser: ts.parser } },
     rules: {
       curly: ['error', 'all'],
-      'vue/multi-word-component-names': 'off',
     },
   },
   { files: ['**/*.ts'], languageOptions: { parser: ts.parser } },
