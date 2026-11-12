@@ -1,6 +1,23 @@
 # Changelog
 
 
+## v0.9.2
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.9.1...v0.9.2)
+
+### 🔥 Performance
+
+- **collect:** Parse each user agent once instead of twice per batch ([#145](https://github.com/AntelopeJS/dms-marketing/pull/145))
+
+### 📦 Build
+
+- **deps:** Move to @antelopejs/tooling-configs 0.5.0 ([#144](https://github.com/AntelopeJS/dms-marketing/pull/144))
+- **deps:** Bump @antelopejs/tooling-configs to 0.5.1 ([#147](https://github.com/AntelopeJS/dms-marketing/pull/147))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.9.1
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.9.0...v0.9.1)
