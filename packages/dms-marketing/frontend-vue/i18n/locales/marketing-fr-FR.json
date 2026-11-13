@@ -442,7 +442,7 @@
         "invalid_body": "Le corps de la requête n'est pas un JSON valide.",
         "invalid_hostname": "Saisissez un nom d'hôte sans protocole ni chemin, par exemple shop.example.com.",
         "invalid_experiment_key": "Clé invalide : minuscules, chiffres, tirets et tirets bas, en commençant par une lettre ou un chiffre, 64 caractères max.",
-        "invalid_layout": "Mise en page inconnue : utilisez desktop, tablet ou phone.",
+        "invalid_layout": "Mise en page inconnue : utilisez desktop, tablet ou phone.",
         "invalid_metric": "Indicateur inconnu.",
         "invalid_settings": "Paramètres invalides : vérifiez que chaque valeur est dans les bornes autorisées.",
         "invalid_status_transition": "Ce changement de statut n'est pas autorisé : un brouillon peut démarrer, un test en cours peut s'arrêter et un test arrêté peut reprendre.",
