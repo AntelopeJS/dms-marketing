@@ -403,8 +403,11 @@ describe("an analytics import whose row insert fails", () => {
     );
   }
 
-  test("a duplicate row found while this call holds the claim releases the claim", async () => {
-    const site = website("duplicate");
+  /**
+   * Makes the site's import row appear just before this call inserts it.
+   * @param {import("./helpers/analytics-import-fakes").TrackedSite} site
+   */
+  function interceptDuplicateRow(site) {
     interceptRowInsert(site, () => {
       store().imports.set(`${site._id}:history`, {
         _id: `${site._id}:history`,
@@ -418,6 +421,11 @@ describe("an analytics import whose row insert fails", () => {
         ledgered: true,
       });
     });
+  }
+
+  test("a duplicate row found while this call holds the claim releases the claim", async () => {
+    const site = website("duplicate");
+    interceptDuplicateRow(site);
 
     const result = await importAnalytics(batchFor(site));
 
@@ -426,6 +434,31 @@ describe("an analytics import whose row insert fails", () => {
     assert.equal(store().imports.has(`${site._id}:`), false);
     assert.equal((await importAnalytics(batchFor(site))).status, "imported");
     assert.equal(eventsOf(site).length, 10);
+  });
+
+  test("a duplicate row's claim release that fails once in storage is retried", async () => {
+    const site = website("release-retried");
+    interceptDuplicateRow(site);
+    const imports = models.GetModel(MarketingImportsModel);
+    const releaseClaim = imports.releaseClaim.bind(imports);
+    let releases = 0;
+    mock.method(
+      imports,
+      "releaseClaim",
+      /**
+       * @param {string} id
+       * @param {string} token
+       */
+      async (id, token) => {
+        if (++releases === 1) throw new Error("socket closed");
+        return releaseClaim(id, token);
+      },
+    );
+
+    const result = await importAnalytics(batchFor(site));
+
+    assert.equal(result.status, "in_progress");
+    assert.equal(store().imports.has(`${site._id}:`), false);
   });
 
   test("a failed insert that leaves no row rethrows its error and releases the claim", async () => {
