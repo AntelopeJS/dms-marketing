@@ -5,6 +5,8 @@ import { MARKETING_CONTEXT_KEY } from '../composables/useMarketingContext'
 import { useContextWebsite } from '../composables/useContextWebsite'
 import { installLink } from '../composables/useMarketingRoutes'
 
+defineOptions({ name: 'DmsMarketingContext' })
+
 /**
  * The gate in front of the blocks of every analytics page. The page's
  * toolbar (`marketingToolbar()`, declared by the page) picks the website and

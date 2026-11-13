@@ -303,16 +303,13 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
    * own tenant and the counts are added up (see resolveWorkspaceScope).
    */
   @Get("pages")
-  // oxlint-disable-next-line eslint/max-params -- The parameter list of a decorated handler is its HTTP surface, not an argument list to shorten.
   async pages(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
-    @Parameter("search", "query") search?: string,
-    @Parameter("limit", "query") limit?: string,
-    @Parameter("sort", "query") sort?: string,
     @Parameter("workspace", "query") workspace?: string,
   ) {
+    const params = context.url.searchParams;
     const { sites } = await requestScope(context, user, website, workspace);
     const captured = sites.filter((site) => site.website.snapshotsEnabled);
     const window = requestWindow(context);
@@ -333,9 +330,9 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
 
     const views = mergeDimension(inRange, "topPages");
     const paths = new Set([...Object.keys(views), ...activity.clicks.keys()]);
-    const needle = queryString(search)?.toLowerCase() ?? "";
+    const needle = queryString(params.get("search"))?.toLowerCase() ?? "";
     const order: PagesSort =
-      queryString(sort) === "clicks" ? "clicks" : "views";
+      queryString(params.get("sort")) === "clicks" ? "clicks" : "views";
     const matching = [...paths]
       .filter((path) => !needle || path.toLowerCase().includes(needle))
       .map((path): PageRow => {
@@ -356,7 +353,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
           : b.pageviews - a.pageviews || b.clicks - a.clicks,
       );
 
-    const max = clampLimit(limit);
+    const max = clampLimit(params.get("limit"));
     return {
       pages: matching.slice(0, max),
       total: matching.length,
@@ -474,13 +471,11 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
    * another workspace's records never reach the browser readable.
    */
   @Get("snapshot")
-  // oxlint-disable-next-line eslint/max-params -- The parameter list of a decorated handler is its HTTP surface, not an argument list to shorten.
   async snapshot(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
     @Parameter("website", "query") website?: string,
     @Parameter("path", "query") path?: string,
-    @Parameter("layout", "query") layout?: string,
     @Parameter("workspace", "query") workspace?: string,
   ) {
     const wantedPath = requestedPath(path);
@@ -490,7 +485,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
       website,
       workspace,
     );
-    const wantedLayout = queryString(layout);
+    const wantedLayout = queryString(context.url.searchParams.get("layout"));
     return {
       snapshot: await readScopedPageSnapshot(
         siteRefs(sites),

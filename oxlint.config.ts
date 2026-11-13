@@ -21,12 +21,4 @@ export default defineConfig({
     typeAware: true,
     maxWarnings: 0,
   },
-  overrides: [
-    {
-      files: ["packages/dms-marketing/tests/**/*.js"],
-      rules: {
-        "typescript/restrict-template-expressions": "off",
-      },
-    },
-  ],
 });
