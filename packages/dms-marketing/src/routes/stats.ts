@@ -67,6 +67,7 @@ import {
 } from "@/types/constants";
 
 const MISSING_PATH_MESSAGE = "$page.marketing.errors.missing_path";
+const INVALID_LAYOUT_MESSAGE = "$page.marketing.errors.invalid_layout";
 const OVERVIEW_CARD_TOP_ENTRIES = 10;
 const DEFAULT_SNAPSHOT_LAYOUT: SnapshotLayout = "desktop";
 
@@ -236,6 +237,21 @@ function requestedPath(path: QueryParameter): string {
     throw new HTTPResult(HTTP_BAD_REQUEST, MISSING_PATH_MESSAGE);
   }
   return parseTrackedUrl(wanted).path;
+}
+
+/**
+ * The layout a snapshot read asks for: `desktop` when absent or blank, a 400 for a
+ * name outside SNAPSHOT_LAYOUTS, never one silently read as another.
+ */
+function requestedLayout(context: RequestContext): SnapshotLayout {
+  const wanted = queryString(context.url.searchParams.get("layout"));
+  if (wanted === undefined) {
+    return DEFAULT_SNAPSHOT_LAYOUT;
+  }
+  if (!isSnapshotLayout(wanted)) {
+    throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_LAYOUT_MESSAGE);
+  }
+  return wanted;
 }
 
 /**
@@ -464,8 +480,9 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
 
   /**
    * Backdrop of one path: the capture at the asked layout, else the nearest
-   * one, else null. Never an error — "not captured yet" is a state the
-   * surface explains. `website` is required: a capture belongs to one site.
+   * one, else null. "Not captured yet" is a state the surface explains, not
+   * an error; an unknown layout is one (see requestedLayout). `website` is
+   * required: a capture belongs to one site.
    * Under another `workspace` (see pages) the newest capture of the scope's
    * sites is sent, its text masked here whatever the site's own setting:
    * another workspace's records never reach the browser readable.
@@ -479,18 +496,18 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
     @Parameter("workspace", "query") workspace?: string,
   ) {
     const wantedPath = requestedPath(path);
+    const wantedLayout = requestedLayout(context);
     const { sites, foreign } = await requestScope(
       context,
       user,
       website,
       workspace,
     );
-    const wantedLayout = queryString(context.url.searchParams.get("layout"));
     return {
       snapshot: await readScopedPageSnapshot(
         siteRefs(sites),
         wantedPath,
-        isSnapshotLayout(wantedLayout) ? wantedLayout : DEFAULT_SNAPSHOT_LAYOUT,
+        wantedLayout,
         foreign,
       ),
     };

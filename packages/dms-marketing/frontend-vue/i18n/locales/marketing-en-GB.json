@@ -442,6 +442,7 @@
         "invalid_body": "The request body is not valid JSON.",
         "invalid_hostname": "Enter a hostname without scheme or path, such as shop.example.com.",
         "invalid_experiment_key": "Invalid key: lowercase letters, digits, hyphens and underscores, starting with a letter or a digit, 64 characters max.",
+        "invalid_layout": "Unknown layout: use desktop, tablet or phone.",
         "invalid_metric": "Unknown metric.",
         "invalid_settings": "Invalid settings: check that every value is within its allowed range.",
         "invalid_status_transition": "This status change is not allowed: a draft can start, a running test can stop and a stopped test can resume.",
