@@ -273,12 +273,12 @@ ReadBack(c) ==
   /\ UNCHANGED <<claim, holds, seen, moved, answer>>
   /\ Frozen
 
-(* A release that throws reaches the outer catch, which releases again    *)
-(* and rethrows (import.ts:342-343, 346-348).                             *)
+(* The release's error is ignored, also when another call took the claim  *)
+(* over before this one renewed (import.ts:342-343).                      *)
 ReleaseBusy(c) ==
   /\ pc[c] = "releaseBusy"
   /\ ReleaseApplies(c)
-  /\ Finish(c, IF ReleaseThrows(c) THEN "error" ELSE "in_progress")
+  /\ Finish(c, "in_progress")
   /\ UNCHANGED <<holds, seen>>
   /\ Frozen
 

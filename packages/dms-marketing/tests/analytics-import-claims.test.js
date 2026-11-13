@@ -328,6 +328,57 @@ describe("an analytics import whose claim was taken over", () => {
     assert.equal((await importAnalytics(batchFor(site))).status, "imported");
     assert.equal(eventsOf(site).length, 10);
   });
+
+  test("a stalled holder that never renewed answers in_progress and leaves the taker's claim", async () => {
+    const site = website("unrenewed");
+    const imports = models.GetModel(MarketingImportsModel);
+    const insert = imports.insert.bind(imports);
+    const holderInserting = Promise.withResolvers();
+    const holderResumes = Promise.withResolvers();
+    let rowInserts = 0;
+    mock.method(
+      imports,
+      "insert",
+      /** @param {import("../dist/db").MarketingImport} row */ async (row) => {
+        if (row._id === `${site._id}:history` && ++rowInserts === 1) {
+          holderInserting.resolve();
+          await holderResumes.promise;
+        }
+        return insert(row);
+      },
+    );
+    const takerWriting = Promise.withResolvers();
+    const takerResumes = Promise.withResolvers();
+    interceptWrites(async () => {
+      takerWriting.resolve();
+      await takerResumes.promise;
+    });
+    fakeTimers();
+    const setInterval = globalThis.setInterval;
+    mock.method(
+      globalThis,
+      "setInterval",
+      /** @param {unknown} _renew @param {number} ms */ (_renew, ms) =>
+        setInterval(() => {}, ms),
+    );
+    const holder = importAnalytics(batchFor(site));
+    await holderInserting.promise;
+    const taker = importAnalytics(batchFor(site));
+    for (let second = 0; second < 30; second += 1) {
+      await drain();
+      mock.timers.tick(1000);
+    }
+    await takerWriting.promise;
+    const takerClaim = store().imports.get(`${site._id}:`).claimToken;
+
+    holderResumes.resolve();
+    assert.equal((await holder).status, "in_progress");
+    assert.equal(store().imports.get(`${site._id}:`).claimToken, takerClaim);
+
+    takerResumes.resolve();
+    assert.equal((await taker).status, "imported");
+    assert.equal(eventsOf(site).length, 10);
+  });
 });
 
 describe("an analytics import whose row insert fails", () => {
