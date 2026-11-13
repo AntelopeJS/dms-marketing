@@ -188,6 +188,11 @@ async function requireWebsite(
   return website;
 }
 
+/** An unfinished import that writes through the rollup ledger. */
+function isResumable(row: MarketingImport): boolean {
+  return row.status !== "done" && row.ledgered === true;
+}
+
 /** What a call answers for an import id it finds already claimed. */
 const CLAIMED_STATUS = {
   running: "in_progress",
@@ -195,19 +200,18 @@ const CLAIMED_STATUS = {
   failed: "failed",
 } as const satisfies Record<MarketingImport["status"], string>;
 
+/**
+ * A resumable import answers `in_progress` whatever its status: its holder
+ * replays it, or a later call resumes it.
+ */
 function claimed(row: MarketingImport): MarketingImportResult {
   return {
     importId: row.importId,
-    status: CLAIMED_STATUS[row.status],
+    status: isResumable(row) ? "in_progress" : CLAIMED_STATUS[row.status],
     sessions: row.sessions,
     events: row.events,
     dropped: row.dropped,
   };
-}
-
-/** An unfinished import that writes through the rollup ledger. */
-function isResumable(row: MarketingImport): boolean {
-  return row.status !== "done" && row.ledgered === true;
 }
 
 /**
@@ -330,8 +334,14 @@ export async function importAnalytics(
     if (current) {
       await imports.update(rowId, { status: "running" });
     } else {
-      // oxlint-disable-next-line antelopejs/no-read-then-insert -- A duplicate key here is the refusal of a second claim holder after a takeover; an upsert would let both replay (AntelopeJS/dms-marketing#146).
-      await imports.insert(row);
+      try {
+        await imports.insert(row);
+      } catch (err) {
+        const existing = await imports.get(rowId);
+        if (!existing) throw err;
+        await claim.release();
+        return claimed(existing);
+      }
     }
   } catch (err) {
     await claim.release();

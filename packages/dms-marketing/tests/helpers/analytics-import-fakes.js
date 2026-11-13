@@ -234,9 +234,10 @@ function fakeImports() {
      * @param {string} token
      */
     async releaseClaim(id, token) {
-      if (store.imports.get(id)?.claimToken === token) {
-        store.imports.delete(id);
+      if (store.imports.get(id)?.claimToken !== token) {
+        throw new Error("Analytics import claim release was not confirmed");
       }
+      store.imports.delete(id);
     },
   };
 }

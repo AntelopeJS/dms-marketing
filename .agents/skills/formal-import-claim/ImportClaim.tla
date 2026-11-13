@@ -45,7 +45,7 @@ VARIABLES
   holds,     \* holdClaim's `token` is set (claim.ts:29, 50)
   seen,      \* the holder of the claim the call read as `owner` (claim.ts:125)
   moved,     \* the claim's token changed since the call read `owner`
-  resuming,  \* `current !== undefined` (import.ts:318)
+  resuming,  \* `current !== undefined` (import.ts:322)
   counted,   \* the days the ledger named when the call read it (replay.ts:257)
   day,       \* the day the call replays next
   answer,    \* what the call returned, or "error" when it rejected
@@ -57,14 +57,15 @@ vars == <<claim, row, ledger, raw, everDone, pc, holds, seen, moved, resuming,
           counted, day, answer, failed, failures, crashes>>
 
 PCs == {"idle", "insert", "readOwner", "ownerFinished", "releaseOwner", "watch",
-        "takeover", "current", "releaseSkip", "writeRow", "releaseErr", "ledger",
-        "discard", "check", "write", "commit", "markDone", "release",
-        "markFailed", "releaseFailed", "end", "crashed"}
+        "takeover", "current", "releaseSkip", "writeRow", "readBack",
+        "releaseBusy", "releaseErr", "ledger", "discard", "check", "write",
+        "commit", "markDone", "release", "markFailed", "releaseFailed", "end",
+        "crashed"}
 
 (* From acquiring the claim until release() clears the interval.          *)
-Holding == {"current", "releaseSkip", "writeRow", "releaseErr", "ledger",
-            "discard", "check", "write", "commit", "markDone", "release",
-            "markFailed", "releaseFailed"}
+Holding == {"current", "releaseSkip", "writeRow", "readBack", "releaseBusy",
+            "releaseErr", "ledger", "discard", "check", "write", "commit",
+            "markDone", "release", "markFailed", "releaseFailed"}
 
 Answers == {"none", "imported", "in_progress", "skipped", "error"}
 
@@ -127,8 +128,8 @@ Frozen == UNCHANGED <<row, ledger, raw, everDone, resuming, counted, day,
 (* ------------------------------ acquiring ------------------------------ *)
 
 (* `applied = get(rowId)`: a done import answers "skipped" before it      *)
-(* touches the claim (import.ts:273-276, 192-206). A running or failed    *)
-(* one is resumable, since every row here is ledgered (import.ts:208-211).*)
+(* touches the claim (import.ts:277-280, 196-215). A running or failed    *)
+(* one is resumable, since every row here is ledgered (import.ts:191-194).*)
 Begin(c) ==
   /\ pc[c] = "idle"
   /\ IF row = "done"
@@ -183,7 +184,7 @@ ReleaseOwner(c) ==
 
 (* One poll of watchClaim: the row is gone, so insert again; its token    *)
 (* changed, so the owner is alive and the call answers "in_progress"      *)
-(* (claim.ts:70-72, 134, import.ts:303-306).                              *)
+(* (claim.ts:70-72, 134, import.ts:307-310).                              *)
 Poll(c) ==
   /\ pc[c] = "watch"
   /\ \/ /\ claim = None
@@ -231,7 +232,7 @@ Renew(c) ==
   /\ Frozen
 
 (* `current = get(rowId)`: done, release and answer "skipped"; otherwise  *)
-(* resume when the row exists (import.ts:317-322).                        *)
+(* resume when the row exists (import.ts:321-326).                        *)
 ReadCurrent(c) ==
   /\ pc[c] = "current"
   /\ IF row = "done"
@@ -242,7 +243,7 @@ ReadCurrent(c) ==
                  counted, day, answer, failed, failures, crashes>>
 
 (* A release that throws reaches the catch, which releases again and      *)
-(* rethrows (import.ts:320, 335-337).                                     *)
+(* rethrows (import.ts:324, 342, 346-348).                                *)
 ReleaseSkip(c) ==
   /\ pc[c] = "releaseSkip"
   /\ ReleaseApplies(c)
@@ -251,16 +252,37 @@ ReleaseSkip(c) ==
   /\ Frozen
 
 (* A resumed import is set running again; a new one inserts its row,     *)
-(* which fails when the row exists (import.ts:330-334).                   *)
+(* which fails when the row exists (import.ts:334-338).                   *)
 WriteRow(c) ==
   /\ pc[c] = "writeRow"
   /\ IF resuming[c] \/ row = "none"
      THEN row' = "running" /\ Go(c, "ledger")
-     ELSE UNCHANGED row /\ Go(c, "releaseErr")
+     ELSE UNCHANGED row /\ Go(c, "readBack")
   /\ UNCHANGED <<claim, ledger, raw, everDone, holds, seen, moved, resuming,
                  counted, day, answer, failed, failures, crashes>>
 
-(* The catch releases and rethrows (import.ts:335-337).                   *)
+(* The insert's catch reads the row back: none rethrows the insert's     *)
+(* error; a done import releases and answers "skipped", a running or      *)
+(* failed one, resumable since it is ledgered, "in_progress"             *)
+(* (import.ts:339-343, 203-215).                                          *)
+ReadBack(c) ==
+  /\ pc[c] = "readBack"
+  /\ Go(c, CASE row = "none" -> "releaseErr"
+             [] row = "done" -> "releaseSkip"
+             [] OTHER -> "releaseBusy")
+  /\ UNCHANGED <<claim, holds, seen, moved, answer>>
+  /\ Frozen
+
+(* A release that throws reaches the outer catch, which releases again    *)
+(* and rethrows (import.ts:342-343, 346-348).                             *)
+ReleaseBusy(c) ==
+  /\ pc[c] = "releaseBusy"
+  /\ ReleaseApplies(c)
+  /\ Finish(c, IF ReleaseThrows(c) THEN "error" ELSE "in_progress")
+  /\ UNCHANGED <<holds, seen>>
+  /\ Frozen
+
+(* The catch releases and rethrows (import.ts:346-348).                   *)
 ReleaseErr(c) ==
   /\ pc[c] = "releaseErr"
   /\ ReleaseApplies(c)
@@ -332,7 +354,7 @@ StorageFails(c) ==
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
                  resuming, counted, day, answer, crashes>>
 
-(* The import row is set done (import.ts:349-354).                        *)
+(* The import row is set done (import.ts:360-365).                        *)
 MarkDone(c) ==
   /\ pc[c] = "markDone"
   /\ row' = "done" /\ everDone' = TRUE
@@ -341,7 +363,7 @@ MarkDone(c) ==
                  day, answer, failed, failures, crashes>>
 
 (* release(), then "imported"; a release that throws lands in the catch   *)
-(* (import.ts:355-357).                                                   *)
+(* (import.ts:366-367).                                                   *)
 Release(c) ==
   /\ pc[c] = "release"
   /\ ReleaseApplies(c)
@@ -351,7 +373,7 @@ Release(c) ==
   /\ UNCHANGED <<holds, seen>>
   /\ Frozen
 
-(* The catch sets the import row failed (import.ts:358-360).              *)
+(* The catch sets the import row failed (import.ts:369-371).              *)
 MarkFailed(c) ==
   /\ pc[c] = "markFailed"
   /\ row' = "failed"
@@ -359,7 +381,7 @@ MarkFailed(c) ==
   /\ UNCHANGED <<claim, ledger, raw, everDone, holds, seen, moved, resuming,
                  counted, day, answer, failed, failures, crashes>>
 
-(* then releases, errors ignored, and rejects (import.ts:361-365).        *)
+(* then releases, errors ignored, and rejects (import.ts:372-376).        *)
 ReleaseFailed(c) ==
   /\ pc[c] = "releaseFailed"
   /\ ReleaseApplies(c)
@@ -383,7 +405,8 @@ Busy ==
   \E c \in Calls :
     \/ Begin(c) \/ InsertClaim(c) \/ ReadOwner(c) \/ OwnerFinished(c)
     \/ ReleaseOwner(c) \/ Poll(c) \/ GiveUp(c) \/ TakeOver(c) \/ Renew(c)
-    \/ ReadCurrent(c) \/ ReleaseSkip(c) \/ WriteRow(c) \/ ReleaseErr(c)
+    \/ ReadCurrent(c) \/ ReleaseSkip(c) \/ WriteRow(c) \/ ReadBack(c)
+    \/ ReleaseBusy(c) \/ ReleaseErr(c)
     \/ ReadLedger(c) \/ Discard(c) \/ Check(c) \/ WriteRaw(c) \/ Commit(c)
     \/ StorageFails(c) \/ MarkDone(c) \/ Release(c) \/ MarkFailed(c)
     \/ ReleaseFailed(c) \/ Crash(c)
