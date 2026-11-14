@@ -73,7 +73,9 @@ export class MarketingImportsModel extends BasicDataModel(
    * Writes `patch` to an import row only while it still carries `fence`, and
    * installs `next` as its fence. An undefined `fence` matches a row with none.
    *
-   * @returns Whether the row carried `fence` and took the write
+   * @returns Whether the row carried `fence` and took the write; false only
+   * once another write replaced `fence`
+   * @throws When the outcome is unknown and the row still carries `fence`
    */
   async writeFenced(
     id: string,
@@ -92,6 +94,9 @@ export class MarketingImportsModel extends BasicDataModel(
       .run();
     if (outcome !== "unknown") return outcome === "applied";
     const stored = await this.get(id);
+    if (stored && stored.fence === fence) {
+      throw new Error("Analytics import row write was not confirmed");
+    }
     return stored?.fence === next;
   }
 

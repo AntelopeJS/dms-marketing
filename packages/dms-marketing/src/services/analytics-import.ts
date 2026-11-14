@@ -292,8 +292,9 @@ async function answerOverwritten(
   claim: ImportClaim,
 ): Promise<MarketingImportResult> {
   const existing = await yieldRow(imports, rowId, claim);
-  if (!existing) throw new Error("the import row is gone");
-  return existing;
+  if (existing) return existing;
+  await claim.release().catch(() => {});
+  throw new Error("the import row is gone");
 }
 
 /**

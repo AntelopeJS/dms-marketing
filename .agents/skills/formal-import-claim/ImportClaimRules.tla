@@ -33,7 +33,7 @@ NothingLost ==
 DoneStaysDone == everDone => row = "done"
 
 (* A call whose import-row insert or fenced resume failed only answers   *)
-(* (import.ts:305-326, 274-297).                                          *)
+(* (import.ts:306-327, 274-298).                                          *)
 LoserWritesNothing ==
   \A c \in Calls :
     lost[c] => pc[c] \in {"readBack", "releaseSkip", "releaseFound", "releaseErr",
