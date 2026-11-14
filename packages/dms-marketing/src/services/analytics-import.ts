@@ -339,7 +339,10 @@ export async function importAnalytics(
       } catch (err) {
         const existing = await imports.get(rowId);
         if (!existing) throw err;
-        await claim.release();
+        await claim
+          .release()
+          .catch(() => claim.release())
+          .catch(() => {});
         return claimed(existing);
       }
     }

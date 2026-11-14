@@ -64,7 +64,7 @@ const PHASES = new Map([
   ["markFailed", "Failing"],
   ["releaseFailed", "Failing"],
   ["releaseSkip", "Finishing"],
-  ["releaseBusy", "Finishing"],
+  ["releaseFound", "Finishing"],
   ["releaseErr", "Failing"],
   ["crashed", "Process died"],
 ]);
@@ -108,7 +108,7 @@ const STEPS = new Map([
   ["ReleaseSkip", "the holder releases and answers skipped"],
   ["WriteRow", "the holder writes its import row"],
   ["ReadBack", "the holder reads back the import row its insert lost to"],
-  ["ReleaseBusy", "the holder releases and answers in_progress"],
+  ["ReleaseFound", "the holder releases and answers the row it read back"],
   ["ReleaseErr", "the holder releases and rejects"],
   ["ReadLedger", "the holder reads the ledger"],
   ["Discard", "the holder deletes the rows of uncounted days"],
