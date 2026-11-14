@@ -13,7 +13,7 @@ import {
   MAX_SCREEN_AND_LANGUAGE_CHARS,
   MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS,
 } from "@/types/constants";
-import { acquireClaim } from "./analytics-import-claim";
+import { type ClaimAttempt, acquireClaim } from "./analytics-import-claim";
 import { replayAll, type VisitorEvent } from "./analytics-import-replay";
 import { prepareEvents } from "./collect";
 import {
@@ -214,6 +214,17 @@ function claimed(row: MarketingImport): MarketingImportResult {
   };
 }
 
+/** Why a call that did not get the website's claim refuses its import. */
+function claimRefusal(
+  attempt: Exclude<ClaimAttempt, { kind: "held" }>,
+  websiteId: string,
+  tenantId: string,
+): string {
+  return attempt.kind === "owned"
+    ? `another import ("${attempt.owner.importId}") owns this website; retry after it completes, or call it again if it stopped`
+    : `the website "${websiteId}" is claimed by an import outside the tenant "${tenantId}"; remove that tenant's import rows for this website before importing`;
+}
+
 /**
  * The newest instant the website's other imports filled. Refuses while one of
  * them is unfinished, or when this import would write before that instant.
@@ -304,14 +315,11 @@ export async function importAnalytics(
   };
   const claimId = importRowId(websiteId, "");
   const attempt = await acquireClaim(imports, { ...row, _id: claimId });
-  if (attempt.kind === "owned") {
-    if (attempt.owner.importId === importId) {
-      return claimed(attempt.owner);
-    }
-    throw refuse(
-      importId,
-      `another import ("${attempt.owner.importId}") owns this website; retry after it completes, or call it again if it stopped`,
-    );
+  if (attempt.kind === "owned" && attempt.owner.importId === importId) {
+    return claimed(attempt.owner);
+  }
+  if (attempt.kind !== "held") {
+    throw refuse(importId, claimRefusal(attempt, websiteId, tenantId));
   }
   const { claim } = attempt;
 

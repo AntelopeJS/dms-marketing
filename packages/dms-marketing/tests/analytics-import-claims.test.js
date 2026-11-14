@@ -534,7 +534,7 @@ describe("an analytics import whose claim insert fails", () => {
     assert.equal(store().imports.has(`${site._id}:`), false);
   });
 
-  test("a claim row the owner read cannot see rejects with the duplicate key after a bounded retry", async () => {
+  test("a claim row the owner read cannot see refuses the import after a bounded retry", async () => {
     const site = website("unseen-claim");
     let claimInserts = 0;
     interceptClaimInsert(site, () => {
@@ -542,9 +542,10 @@ describe("an analytics import whose claim insert fails", () => {
       throw new DuplicateKeyError("_id", ["_id"]);
     });
 
-    await assert.rejects(() => importAnalytics(batchFor(site)), {
-      name: "DuplicateKeyError",
-    });
+    await assert.rejects(
+      () => importAnalytics(batchFor(site)),
+      /is claimed by an import outside the tenant "default"/,
+    );
 
     assert.equal(claimInserts, 3);
     assert.equal(eventsOf(site).length, 0);
