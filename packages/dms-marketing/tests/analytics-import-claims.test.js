@@ -415,6 +415,30 @@ describe("an analytics import whose claim insert fails", () => {
     assert.equal(eventsOf(site).length, 0);
   });
 
+  test("an import row the read cannot see refuses the import and frees the claim", async () => {
+    const site = website("unseen-row");
+    const imports = models.GetModel(MarketingImportsModel);
+    const insert = imports.insert.bind(imports);
+    mock.method(
+      imports,
+      "insert",
+      /** @param {import("../dist/db").MarketingImport} row */ async (row) => {
+        if (row._id === `${site._id}:history`) {
+          throw new DuplicateKeyError("_id", ["_id"]);
+        }
+        return insert(row);
+      },
+    );
+
+    await assert.rejects(
+      () => importAnalytics(batchFor(site)),
+      /its import row is held outside the tenant "default"/,
+    );
+
+    assert.equal(store().imports.has(`${site._id}:`), false);
+    assert.equal(eventsOf(site).length, 0);
+  });
+
   test("a claim insert that fails in storage and leaves no row rethrows its error", async () => {
     const site = website("claim-unreachable");
     interceptClaimInsert(site, () => {
