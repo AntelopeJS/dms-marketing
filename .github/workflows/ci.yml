@@ -32,13 +32,31 @@ jobs:
       docs-typescript-project: packages/interface-dms-marketing/docs/tsconfig.json
       renovate-sync: false
       test-job: true
+      windows: true
     permissions:
       contents: read
 
   backend:
-    runs-on: ubuntu-latest
+    name: backend${{ matrix.os == 'windows-latest' && ' on Windows' || '' }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
     timeout-minutes: 30
     steps:
+      - name: Use LF line endings, symlinks and Git Bash for package scripts, as ci-node.yml does
+        if: runner.os == 'Windows'
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.symlinks true
+          bash_path=$(cygpath -w /usr/bin/bash)
+          echo "npm_config_script_shell=${bash_path}" >> "$GITHUB_ENV"
+          echo "pnpm_config_script_shell=${bash_path}" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
