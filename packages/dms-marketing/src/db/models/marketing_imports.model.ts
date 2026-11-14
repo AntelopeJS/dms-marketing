@@ -73,8 +73,8 @@ export class MarketingImportsModel extends BasicDataModel(
    * Writes `patch` to an import row only while it still carries `fence`, and
    * installs `next` as its fence. An undefined `fence` matches a row with none.
    *
-   * @returns Whether the row carried `fence` and took the write; false only
-   * once another write replaced `fence`
+   * @returns Whether the row carried `fence` and took the write; false once
+   * another write replaced `fence`, or when the row is gone
    * @throws When the outcome is unknown and the row still carries `fence`
    */
   async writeFenced(
