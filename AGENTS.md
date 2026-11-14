@@ -11,7 +11,7 @@ A pnpm workspace with two published packages. The root holds the tool configs an
 | `packages/dms-marketing/playground`   | A project of its own (`--ignore-workspace`), outside lint and format               |
 | `packages/interface-dms-marketing`    | `@antelopejs/interface-dms-marketing`, the public contracts                        |
 
-Each package keeps its own `pnpm-lock.yaml` (`shared-workspace-lockfile=false`). The module's lockfile resolves the interface from npm, not from the workspace sibling. Run a package script from its own directory: `pnpm --dir packages/dms-marketing <script>`.
+Each package keeps its own `pnpm-lock.yaml` (`shared-workspace-lockfile=false`). The module's lockfile links the interface from the workspace sibling, and the root `typecheck` builds the interface first so the module's typecheck and lint resolve it. Run a package script from its own directory: `pnpm --dir packages/dms-marketing <script>`.
 
 ## Versioning
 

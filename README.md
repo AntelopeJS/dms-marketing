@@ -89,7 +89,7 @@ pnpm frontend:dev   # dashboard, in a second terminal
 <summary>Repository notes</summary>
 
 - The admin pages are declared backend-side as trees of DMS blocks. `frontend-vue/` is a Vue frontend module whose `dms.frontend.ts` declares the `DmsMarketing` component prefix, registers every component of `app/components/` under it, and ships its own i18n catalogs ([Architecture](https://dms.antelopejs.com/docs/modules/marketing/architecture/frontend#frontend-layout)).
-- The module implements the interface, so it caps its range below the next minor (`>=<interface version> <0.<minor + 1>.0`). Release the interface first (`release-interface.yml`), then the module (`release.yml`), which refuses to run until the interface version in the tree resolves on npm.
+- The module implements the interface, so it caps its range below the next minor (`>=<interface version> <0.<minor + 1>.0`). Release the interface first (`release-interface.yml`): its release commit runs `sync`, which moves the module's range to the new minor. Then release the module (`release.yml`), which refuses to run until the interface version in the tree resolves on npm.
 - Declare `zod` as `^3.24.2`, the range `@antelopejs/dms` and `@antelopejs/interface-dms` declare, so a project installs one zod copy that the module and the DMS share.
 
 </details>
