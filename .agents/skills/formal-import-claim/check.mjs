@@ -20,26 +20,21 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 
 /** The findings of each configuration, with the states in TLC's shortest counterexample, in run order. */
 const CONFIGS = {
-  Crash: {
-    ci: { OneWriter: 31, DoneStaysDone: 18, CallsAnswer: 19 },
-    full: { OneWriter: 34, DoneStaysDone: 21, CallsAnswer: 22 },
-  },
+  Crash: { ci: {}, full: {} },
   Stall: {
     ci: {
       OneWriter: 16,
       CountedOnce: 22,
       StoredOnce: 27,
       NothingLost: 25,
-      DoneStaysDone: 18,
-      CallsAnswer: 19,
+      DoneStaysDone: 19,
     },
     full: {
       OneWriter: 16,
       CountedOnce: 22,
       StoredOnce: 27,
       NothingLost: 28,
-      DoneStaysDone: 21,
-      CallsAnswer: 22,
+      DoneStaysDone: 22,
     },
   },
 };

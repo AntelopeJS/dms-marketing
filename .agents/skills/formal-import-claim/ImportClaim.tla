@@ -118,8 +118,8 @@ Finish(c, result) ==
 
 (* release(): stops renewing, then deletes the claim row only while it    *)
 (* still holds this call's token, and throws when the delete is not       *)
-(* confirmed (claim.ts:58-62, model.ts:64-75).                            *)
-ReleaseThrows(c) == holds[c] /\ claim # c
+(* confirmed (claim.ts:58-62, model.ts:64-75). Every caller ignores that  *)
+(* error or rejects anyway, so the model leaves it out.                   *)
 ReleaseApplies(c) ==
   IF holds[c] /\ claim = c
   THEN claim' = None /\ Touch
@@ -248,12 +248,12 @@ ReadCurrent(c) ==
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
                  counted, day, answer, failed, failures, crashes, lost>>
 
-(* A release that throws reaches the catch, which releases again and      *)
-(* rethrows (import.ts:324, 349-351).                                     *)
+(* The release's error is ignored: another call's ownerFinished may have *)
+(* deleted the claim of this done import (import.ts:332).                 *)
 ReleaseSkip(c) ==
   /\ pc[c] = "releaseSkip"
   /\ ReleaseApplies(c)
-  /\ Finish(c, IF ReleaseThrows(c) THEN "error" ELSE "skipped")
+  /\ Finish(c, "skipped")
   /\ UNCHANGED <<holds, seen>>
   /\ Frozen
 
@@ -372,14 +372,13 @@ MarkDone(c) ==
   /\ UNCHANGED <<claim, ledger, raw, holds, seen, moved, resuming, counted,
                  day, answer, failed, failures, crashes, lost>>
 
-(* release(), then "imported"; a release that throws lands in the catch   *)
-(* (import.ts:369-370).                                                   *)
+(* release(), its error ignored, then "imported": another call's          *)
+(* ownerFinished may have deleted the claim of this done import           *)
+(* (import.ts:377-378, claim.ts:142-143).                                 *)
 Release(c) ==
   /\ pc[c] = "release"
   /\ ReleaseApplies(c)
-  /\ IF ReleaseThrows(c)
-     THEN Go(c, "markFailed") /\ UNCHANGED answer
-     ELSE Finish(c, "imported")
+  /\ Finish(c, "imported")
   /\ UNCHANGED <<holds, seen>>
   /\ Frozen
 
