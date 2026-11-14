@@ -5,6 +5,15 @@ import {
   marketingImportsTableName,
 } from "../tables/marketing_imports.table";
 
+/** The fields a holder writes to its import row as the import moves on. */
+type FencedField =
+  | "status"
+  | "sessions"
+  | "events"
+  | "dropped"
+  | "importedThrough"
+  | "finishedAt";
+
 export class MarketingImportsModel extends BasicDataModel(
   MarketingImport,
   marketingImportsTableName,
@@ -58,6 +67,32 @@ export class MarketingImportsModel extends BasicDataModel(
     if (outcome === "not-applied") return undefined;
     const stored = await this.get(id);
     return stored?.claimToken === next ? next : undefined;
+  }
+
+  /**
+   * Writes `patch` to an import row only while it still carries `fence`, and
+   * installs `next` as its fence. An undefined `fence` matches a row with none.
+   *
+   * @returns Whether the row carried `fence` and took the write
+   */
+  async writeFenced(
+    id: string,
+    fence: string | undefined,
+    next: string,
+    patch: Partial<Pick<MarketingImport, FencedField>>,
+  ): Promise<boolean> {
+    const outcome = await this.table
+      .atomicMutation(id, {
+        type: "update",
+        revisionField: "fence",
+        expectedRevision: fence ?? { kind: "missing" },
+        nextRevision: next,
+        patch,
+      })
+      .run();
+    if (outcome !== "unknown") return outcome === "applied";
+    const stored = await this.get(id);
+    return stored?.fence === next;
   }
 
   /** Never release an acquisition owned by another instance. */

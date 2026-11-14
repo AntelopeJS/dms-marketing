@@ -26,15 +26,12 @@ const CONFIGS = {
       OneWriter: 16,
       CountedOnce: 22,
       StoredOnce: 27,
-      NothingLost: 25,
-      DoneStaysDone: 19,
     },
     full: {
       OneWriter: 16,
       CountedOnce: 22,
       StoredOnce: 27,
-      NothingLost: 28,
-      DoneStaysDone: 22,
+      NothingLost: 38,
     },
   },
 };

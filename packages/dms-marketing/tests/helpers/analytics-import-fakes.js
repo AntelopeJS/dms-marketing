@@ -208,10 +208,15 @@ function fakeImports() {
     },
     /**
      * @param {string} id
+     * @param {string | undefined} fence
+     * @param {string} next
      * @param {Partial<ImportRow>} patch
      */
-    async update(id, patch) {
-      store.imports.set(id, { ...store.imports.get(id), ...patch });
+    async writeFenced(id, fence, next, patch) {
+      const row = store.imports.get(id);
+      if (!row || row.fence !== fence) return false;
+      store.imports.set(id, { ...row, ...patch, fence: next });
+      return true;
     },
     /** @param {string} websiteId */
     async listByWebsite(websiteId) {

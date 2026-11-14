@@ -57,6 +57,16 @@ export class MarketingImport extends Table {
   declare claimToken?: string;
 
   /**
+   * Only an import row carries this value. Each write to the row replaces it,
+   * and a holder's write applies only while the row still carries the value
+   * that holder last wrote or read, so a stalled holder cannot overwrite the
+   * row of a call that took its claim over. A row with no value accepts the
+   * first fenced write.
+   */
+  @Field("string")
+  declare fence?: string;
+
+  /**
    * The import writes through the rollup ledger, which is what lets it resume.
    * Rows older than the ledger have partial writes nothing can tell apart.
    */

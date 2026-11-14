@@ -20,7 +20,7 @@ OneWriter ==
 CountedOnce == \A d \in DaySet : ledger[d] <= 1
 
 (* Once no call runs, the raw rows of a counted day come from one replay: *)
-(* a resume never discards a counted day's rows (replay.ts:203-205).      *)
+(* a resume never discards a counted day's rows (replay.ts:214-220).      *)
 StoredOnce ==
   Quiet => \A d \in DaySet : ledger[d] >= 1 => Cardinality(raw[d]) <= 1
 
@@ -32,7 +32,8 @@ NothingLost ==
 (* A completed import stays done.                                         *)
 DoneStaysDone == everDone => row = "done"
 
-(* A call whose import-row insert failed only answers (import.ts:339-346).*)
+(* A call whose import-row insert or fenced resume failed only answers   *)
+(* (import.ts:305-326, 274-297).                                          *)
 LoserWritesNothing ==
   \A c \in Calls :
     lost[c] => pc[c] \in {"readBack", "releaseSkip", "releaseFound", "releaseErr",
