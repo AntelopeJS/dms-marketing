@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Logging } from "@antelopejs/interface-core/logging";
+import { IsDuplicateKeyError } from "@antelopejs/interface-database";
 import type { MarketingImportsModel } from "@/db";
 import type { MarketingImport } from "@/db/tables/marketing_imports.table";
 
@@ -8,6 +9,12 @@ const CLAIM_RENEW_MS = 5000;
 const CLAIM_POLL_MS = 1000;
 /** How many reads must find the token unchanged before a takeover. */
 const CLAIM_STALE_POLLS = 30;
+/**
+ * How many claim inserts may lose to a row gone before the owner read. Each
+ * loss needs another call to insert and release the claim in between; a row
+ * the read cannot see, such as one under another tenant, fails every insert.
+ */
+const CLAIM_INSERT_TRIES = 3;
 
 /** The website claim, renewed in the background for as long as a replay runs. */
 export interface ImportClaim {
@@ -114,6 +121,7 @@ export async function acquireClaim(
     kind: "held",
     claim: holdClaim(imports, claimRow._id, current),
   });
+  let releasedBeforeRead = 0;
   for (;;) {
     let failure: unknown;
     try {
@@ -123,6 +131,13 @@ export async function acquireClaim(
       failure = error;
     }
     const owner = await imports.get(claimRow._id);
+    if (
+      !owner &&
+      IsDuplicateKeyError(failure) &&
+      ++releasedBeforeRead < CLAIM_INSERT_TRIES
+    ) {
+      continue;
+    }
     if (!owner?.claimToken) throw failure;
     if (owner.claimToken === token) return held(token);
     if (await ownerFinished(imports, owner)) {

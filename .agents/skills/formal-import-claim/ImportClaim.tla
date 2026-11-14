@@ -11,8 +11,8 @@
 (* Every call carries the same import id for the same website. A call    *)
 (* inserts the claim row `websiteId:` to hold the website, or watches the *)
 (* holder's token and takes the claim over once the token stays           *)
-(* unchanged (claim.ts:97-141). The holder replaces its token every 5 s   *)
-(* (claim.ts:24-57) and replays the history one UTC day at a time         *)
+(* unchanged (claim.ts:104-156). The holder replaces its token every 5 s  *)
+(* (claim.ts:31-64) and replays the history one UTC day at a time         *)
 (* (replay.ts:250-284).                                                   *)
 (*                                                                         *)
 (* One database round trip is one step, and Node runs other calls at     *)
@@ -42,8 +42,8 @@ VARIABLES
   raw,       \* per day, the calls whose raw events and sessions are stored
   everDone,  \* the import row has said "done"
   pc,        \* where each call is
-  holds,     \* holdClaim's `token` is set (claim.ts:29, 50)
-  seen,      \* the holder of the claim the call read as `owner` (claim.ts:125)
+  holds,     \* holdClaim's `token` is set (claim.ts:36, 57)
+  seen,      \* the holder of the claim the call read as `owner` (claim.ts:133)
   moved,     \* the claim's token changed since the call read `owner`
   resuming,  \* `current !== undefined` (import.ts:322)
   counted,   \* the days the ledger named when the call read it (replay.ts:257)
@@ -115,7 +115,7 @@ Finish(c, result) ==
 
 (* release(): stops renewing, then deletes the claim row only while it    *)
 (* still holds this call's token, and throws when the delete is not       *)
-(* confirmed (claim.ts:51-55, model.ts:64-75).                            *)
+(* confirmed (claim.ts:58-62, model.ts:64-75).                            *)
 ReleaseThrows(c) == holds[c] /\ claim # c
 ReleaseApplies(c) ==
   IF holds[c] /\ claim = c
@@ -138,7 +138,7 @@ Begin(c) ==
   /\ UNCHANGED <<claim, holds, seen, moved>>
   /\ Frozen
 
-(* The plain insert of the claim row elects the writer (claim.ts:120-121).*)
+(* The plain insert of the claim row elects the writer (claim.ts:128-129).*)
 InsertClaim(c) ==
   /\ pc[c] = "insert"
   /\ IF claim = None
@@ -150,21 +150,24 @@ InsertClaim(c) ==
   /\ UNCHANGED <<seen, answer>>
   /\ Frozen
 
-(* `owner = get(claimRow._id)`; no row rethrows the insert's error        *)
-(* (claim.ts:125-126).                                                    *)
+(* `owner = get(claimRow._id)`; no row means the holder whose row the     *)
+(* insert hit has released it since, so the call inserts again            *)
+(* (claim.ts:133-141). The code rethrows after its third such loss; each  *)
+(* loss needs another call's claim to come and go, so a call with at most *)
+(* two others never reaches that bound.                                   *)
 ReadOwner(c) ==
   /\ pc[c] = "readOwner"
   /\ IF claim = None
-     THEN Finish(c, "error") /\ UNCHANGED <<seen, moved>>
+     THEN Go(c, "insert") /\ UNCHANGED <<seen, moved>>
      ELSE /\ seen' = [seen EXCEPT ![c] = claim]
           /\ moved' = [moved EXCEPT ![c] = FALSE]
-          /\ Go(c, "ownerFinished") /\ UNCHANGED answer
-  /\ UNCHANGED <<claim, holds>>
+          /\ Go(c, "ownerFinished")
+  /\ UNCHANGED <<claim, holds, answer>>
   /\ Frozen
 
 (* ownerFinished reads the import row: a done import's holder stopped     *)
-(* before releasing (claim.ts:128, 81-87). Otherwise the owner holds this *)
-(* same ledgered import, so the call watches it (claim.ts:130-133).      *)
+(* before releasing (claim.ts:143, 88-94). Otherwise the owner holds this *)
+(* same ledgered import, so the call watches it (claim.ts:145-148).      *)
 OwnerFinished(c) ==
   /\ pc[c] = "ownerFinished"
   /\ Go(c, IF row = "done" THEN "releaseOwner" ELSE "watch")
@@ -172,7 +175,7 @@ OwnerFinished(c) ==
   /\ Frozen
 
 (* releaseClaim(owner token), errors ignored, then insert again           *)
-(* (claim.ts:129, model.ts:64-75).                                        *)
+(* (claim.ts:144, model.ts:64-75).                                        *)
 ReleaseOwner(c) ==
   /\ pc[c] = "releaseOwner"
   /\ IF claim # None /\ ~moved[c]
@@ -184,7 +187,7 @@ ReleaseOwner(c) ==
 
 (* One poll of watchClaim: the row is gone, so insert again; its token    *)
 (* changed, so the owner is alive and the call answers "in_progress"      *)
-(* (claim.ts:70-72, 134, import.ts:307-310).                              *)
+(* (claim.ts:77-79, 149, import.ts:307-310).                              *)
 Poll(c) ==
   /\ pc[c] = "watch"
   /\ \/ /\ claim = None
@@ -195,7 +198,7 @@ Poll(c) ==
   /\ Frozen
 
 (* After 30 polls with the token unchanged the watcher judges the holder  *)
-(* stopped (claim.ts:68-74). A live holder renews every 5 s, so without   *)
+(* stopped (claim.ts:75-81). A live holder renews every 5 s, so without   *)
 (* stalls that happens only once the holder's process died.               *)
 GiveUp(c) ==
   /\ pc[c] = "watch"
@@ -206,7 +209,7 @@ GiveUp(c) ==
   /\ Frozen
 
 (* swapClaim(owner token): taken, it holds; lost, the owner is alive      *)
-(* (claim.ts:136-137, model.ts:46-61).                                    *)
+(* (claim.ts:151-152, model.ts:46-61).                                    *)
 TakeOver(c) ==
   /\ pc[c] = "takeover"
   /\ IF claim # None /\ ~moved[c]
@@ -222,7 +225,7 @@ TakeOver(c) ==
 
 (* The renewal: swapClaim(token) replaces the holder's own token; failed, *)
 (* a read finds another token and clears `token`, so isHeld() turns false *)
-(* (claim.ts:31-48).                                                      *)
+(* (claim.ts:38-55).                                                      *)
 Renew(c) ==
   /\ pc[c] \in Holding /\ holds[c]
   /\ IF claim = c
