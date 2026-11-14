@@ -17,6 +17,39 @@ export async function local(ctx) {
   return created;
 }
 
+/** @type {WeakMap<Ctx, { browser: Promise<import("playwright-core").Browser>, contexts: Map<string, Promise<import("playwright-core").BrowserContext>> }>} */
+const visitorBrowsers = new WeakMap();
+
+/**
+ * A visitor's browser context, one per account, in a browser of the journey's own that announces a desktop Chrome on every request.
+ * A context's user agent or extra headers reach only the requests of a live page: the beacon a page sends as it unloads leaves with
+ * `HeadlessChrome`, which the collector drops. The browser closes with the journey's.
+ *
+ * @param {Ctx} ctx The journey
+ * @param {string} account The visitor's name
+ * @returns {Promise<import("playwright-core").BrowserContext>} The context
+ */
+function visitorContext(ctx, account) {
+  let visitor = visitorBrowsers.get(ctx);
+  if (!visitor) {
+    const browser = ctx.browser.browserType().launch({ headless: true, args: [`--user-agent=${BROWSER_UA}`] });
+    ctx.browser.on("disconnected", () => {
+      void browser.then(
+        (launched) => launched.close(),
+        () => undefined,
+      );
+    });
+    visitor = { browser, contexts: new Map() };
+    visitorBrowsers.set(ctx, visitor);
+  }
+  let context = visitor.contexts.get(account);
+  if (!context) {
+    context = visitor.browser.then((launched) => launched.newContext({ viewport: { width: 1280, height: 900 }, locale: "en-US", colorScheme: "light" }));
+    visitor.contexts.set(account, context);
+  }
+  return context;
+}
+
 /**
  * Opens a visitor-site page in an anonymous browser.
  *
@@ -24,19 +57,18 @@ export async function local(ctx) {
  * @param {Site} site The website
  * @param {string} name The page name (its path under the visitor site)
  * @param {{ account?: string, attrs?: Record<string, string>, twice?: boolean, module?: boolean, js?: string, init?: string }} [options] The tag's attributes, a second tag, a module tag, a script, and a script run before the page
- * @returns {Promise<import("../../marketing.mjs").Tab>} The tab, on the page
+ * @returns {Promise<{ page: import("playwright-core").Page }>} The tab, on the page
  */
 export async function open(ctx, site, name, options = {}) {
-  const tab = await ctx.tab(options.account ?? "anon", "visitor");
-  await tab.page.context().setExtraHTTPHeaders({ "user-agent": BROWSER_UA });
-  if (options.init) await tab.page.addInitScript(options.init);
+  const page = await (await visitorContext(ctx, options.account ?? "anon")).newPage();
+  if (options.init) await page.addInitScript(options.init);
   const query = new URLSearchParams({ w: site.id });
   if (options.attrs) query.set("attrs", JSON.stringify(options.attrs));
   if (options.twice) query.set("twice", "1");
   if (options.module) query.set("module", "1");
   if (options.js) query.set("js", options.js);
-  await tab.page.goto(`${ctx.state.apiUrl}/verify-marketing/site/${name}?${query}`, { waitUntil: "load" });
-  return tab;
+  await page.goto(`${ctx.state.apiUrl}/verify-marketing/site/${name}?${query}`, { waitUntil: "load" });
+  return { page };
 }
 
 /**
