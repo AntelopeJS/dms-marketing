@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { IsDuplicateKeyError } from "@antelopejs/interface-database";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type {
   MarketingAnalyticsImport,
@@ -230,6 +231,11 @@ function claimRefusal(
     : `the website "${websiteId}" is claimed by an import outside the tenant "${tenantId}"; remove that tenant's import rows for this website before importing`;
 }
 
+/** Why a call refuses an import whose row id is taken by a row it cannot read. */
+function unseenRow(tenantId: string): string {
+  return `its import row is held outside the tenant "${tenantId}"; remove that tenant's import rows for this website before importing`;
+}
+
 /**
  * The newest instant the website's other imports filled. Refuses while one of
  * them is unfinished, or when this import would write before that instant.
@@ -412,7 +418,9 @@ export async function importAnalytics(
     if (written) return written;
   } catch (err) {
     await claim.release();
-    throw err;
+    throw IsDuplicateKeyError(err)
+      ? refuse(importId, unseenRow(tenantId))
+      : err;
   }
 
   try {
