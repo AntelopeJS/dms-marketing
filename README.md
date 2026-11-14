@@ -88,7 +88,7 @@ pnpm frontend:dev   # dashboard, in a second terminal
 <details>
 <summary>Repository notes</summary>
 
-- The admin pages are declared backend-side as trees of DMS blocks. `frontend-vue/` is a Vue 3 frontend module whose `dms.frontend.ts` declares the `DmsMarketing` component prefix, registers every component of `app/components/` under it, and ships its own i18n catalogs ([Architecture](https://dms.antelopejs.com/docs/modules/marketing/architecture/frontend#frontend-layout)).
+- The admin pages are declared backend-side as trees of DMS blocks. `frontend-vue/` is a Vue frontend module whose `dms.frontend.ts` declares the `DmsMarketing` component prefix, registers every component of `app/components/` under it, and ships its own i18n catalogs ([Architecture](https://dms.antelopejs.com/docs/modules/marketing/architecture/frontend#frontend-layout)).
 - The module implements the interface, so it caps its range below the next minor (`>=<interface version> <0.<minor + 1>.0`). Release the interface first (`release-interface.yml`), then the module (`release.yml`), which refuses to run until the interface version in the tree resolves on npm.
 - Keep `zod` on `~3.24.x`. The DMS builds its shared types against zod 3.24, and a later zod breaks this module against them.
 
