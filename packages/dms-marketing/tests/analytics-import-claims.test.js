@@ -1,5 +1,6 @@
 const assert = require("node:assert/strict");
 const { mock } = require("node:test");
+const { DuplicateKeyError } = require("@antelopejs/interface-database");
 const test = it;
 const models = require("@antelopejs/interface-database-decorators/model");
 const { MarketingEventsModel, MarketingImportsModel } = require("../dist/db");
@@ -531,6 +532,22 @@ describe("an analytics import whose claim insert fails", () => {
     assert.equal(result.status, "imported");
     assert.equal(eventsOf(site).length, 10);
     assert.equal(store().imports.has(`${site._id}:`), false);
+  });
+
+  test("a claim row the owner read cannot see rejects with the duplicate key after a bounded retry", async () => {
+    const site = website("unseen-claim");
+    let claimInserts = 0;
+    interceptClaimInsert(site, () => {
+      claimInserts += 1;
+      throw new DuplicateKeyError("_id", ["_id"]);
+    });
+
+    await assert.rejects(() => importAnalytics(batchFor(site)), {
+      name: "DuplicateKeyError",
+    });
+
+    assert.equal(claimInserts, 3);
+    assert.equal(eventsOf(site).length, 0);
   });
 
   test("a claim insert that fails in storage and leaves no row rethrows its error", async () => {
