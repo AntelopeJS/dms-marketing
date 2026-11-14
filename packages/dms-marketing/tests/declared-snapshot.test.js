@@ -1,12 +1,14 @@
 const assert = require("node:assert/strict");
 const { mock } = require("node:test");
 const test = it;
+const { HTTPResult } = require("@antelopejs/interface-api");
 const models = require("@antelopejs/interface-database-decorators/model");
 const {
   EnsurePageSnapshot,
   EnsureWebsite,
 } = require("@antelopejs/interface-dms-marketing");
 const { PageSnapshotsModel } = require("../dist/db");
+const { StatsController } = require("../dist/routes/stats");
 const { readPageSnapshot } = require("../dist/services/snapshots");
 
 /** Read while the files load, before any test has mocked it. */
@@ -131,5 +133,56 @@ describe("a page snapshot declared from code", () => {
       EnsurePageSnapshot(page("<p>x</p>", { tenantId: " default" })),
       /tenantId/,
     );
+  });
+});
+
+describe("the snapshot route", () => {
+  beforeEach(async () => {
+    mock.method(models, "GetModel", realGetModel);
+    await ensureWebsites();
+  });
+  afterEach(() => mock.restoreAll());
+
+  test("is exact only at a captured layout, and an unknown layout is refused", async () => {
+    await EnsurePageSnapshot(
+      page("<html><body>Wide", { url: `https://${HOST}/layouts` }),
+    );
+    await EnsurePageSnapshot(
+      page("<html><body>Medium", {
+        url: `https://${HOST}/layouts`,
+        viewport: { width: 768, height: 1024 },
+        document: { width: 768, height: 2400 },
+      }),
+    );
+    /** @param {string} query */
+    const read = (query) =>
+      new StatsController().snapshot(
+        { owner: false },
+        {
+          rawRequest: { headers: {} },
+          url: new URL(`http://dms.test/api/marketing/stats/snapshot?${query}`),
+        },
+        "declared-snapshots",
+        "/layouts",
+      );
+    /** @param {string} query */
+    const sent = async (query) => {
+      const { snapshot } = await read(query);
+      return [snapshot?.layout, snapshot?.exact];
+    };
+    assert.deepEqual(await sent(""), ["desktop", true]);
+    assert.deepEqual(await sent("layout=desktop"), ["desktop", true]);
+    assert.deepEqual(await sent("layout=tablet"), ["tablet", true]);
+    assert.deepEqual(await sent("layout=phone"), ["tablet", false]);
+    for (const layout of ["mobile", "Desktop"]) {
+      await assert.rejects(read(`layout=${layout}`), (error) => {
+        assert.ok(error instanceof HTTPResult);
+        assert.deepEqual(
+          [error.getStatus(), error.getBody()],
+          [400, "$page.marketing.errors.invalid_layout"],
+        );
+        return true;
+      });
+    }
   });
 });
