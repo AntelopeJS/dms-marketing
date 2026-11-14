@@ -30,7 +30,10 @@ let events;
 /** @type {ReturnType<Schema["instance"]>} */
 let instance;
 
-/** A table as the module declares it: a grouped read needs its schema. */
+/**
+ * A table as the module declares it: a grouped read needs its schema.
+ * @param {Function} Table
+ */
 function declared(Table) {
   const indexes = Object.fromEntries(
     Object.entries(getMetadata(Table, DatumStaticMetadata).indexes).map(

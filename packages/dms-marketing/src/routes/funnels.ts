@@ -145,8 +145,8 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
   async rows(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("filter_kind", "query") kindFilter?: string,
-    @Parameter("website", "query") website?: string,
+    @Parameter("filter_kind", "query") kindFilter?: QueryParameter,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const kind = queryString(kindFilter)?.replace(/^is:/, "");
     const { rows, comparison } = await summarizeWebsiteFunnels(
@@ -165,7 +165,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
   async winner(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const { rows, coverage, comparison } = await summarizeWebsiteFunnels(
       context,
@@ -180,7 +180,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
   async templates(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const site = await resolveContextWebsite(context, user, website);
     return funnelTemplates(
@@ -194,7 +194,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
   async suggestions(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const site = await resolveContextWebsite(context, user, website);
     return funnelSuggestions(site, trailingWindow(BUILDER_WINDOW_DAYS));
@@ -206,7 +206,7 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
     @JSONBody() body: JsonBody,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const data = assertValidation(
       body,

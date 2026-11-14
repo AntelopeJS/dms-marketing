@@ -284,7 +284,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
   async overview(
     @AuthTenantMember() _user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const websiteDoc = await requireTenantWebsite(
       context,
@@ -322,8 +322,8 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
   async pages(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
-    @Parameter("workspace", "query") workspace?: string,
+    @Parameter("website", "query") website?: QueryParameter,
+    @Parameter("workspace", "query") workspace?: QueryParameter,
   ) {
     const params = context.url.searchParams;
     const { sites } = await requestScope(context, user, website, workspace);
@@ -389,7 +389,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
   async workspaces(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     return {
       workspaces: await listDashboardWorkspaces(
@@ -406,9 +406,9 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
   async heatmap(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
-    @Parameter("path", "query") path?: string,
-    @Parameter("workspace", "query") workspace?: string,
+    @Parameter("website", "query") website?: QueryParameter,
+    @Parameter("path", "query") path?: QueryParameter,
+    @Parameter("workspace", "query") workspace?: QueryParameter,
   ) {
     const wantedPath = requestedPath(path);
     if (queryString(workspace)) {
@@ -445,9 +445,9 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
   async scrollDepth(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
-    @Parameter("path", "query") path?: string,
-    @Parameter("workspace", "query") workspace?: string,
+    @Parameter("website", "query") website?: QueryParameter,
+    @Parameter("path", "query") path?: QueryParameter,
+    @Parameter("workspace", "query") workspace?: QueryParameter,
   ) {
     const wantedPath = requestedPath(path);
     if (queryString(workspace)) {
@@ -491,9 +491,9 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
   async snapshot(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
-    @Parameter("path", "query") path?: string,
-    @Parameter("workspace", "query") workspace?: string,
+    @Parameter("website", "query") website?: QueryParameter,
+    @Parameter("path", "query") path?: QueryParameter,
+    @Parameter("workspace", "query") workspace?: QueryParameter,
   ) {
     const wantedPath = requestedPath(path);
     const wantedLayout = requestedLayout(context);
@@ -522,7 +522,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
   async countHeatmap(
     @AuthTenantOwner() _user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const websiteDoc = await requireTenantWebsite(
       context,
@@ -547,7 +547,7 @@ export class StatsController extends Controller(`${API_BASE_PATH}/stats`) {
   async resetHeatmap(
     @AuthTenantOwner() _user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const path = resetPath(context);
     const websiteDoc = await requireTenantWebsite(

@@ -120,10 +120,10 @@ export class SnapshotController extends Controller(API_BASE_PATH) {
   @Get("snapshot.js")
   async negotiate(
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
-    @Parameter("path", "query") pathname?: string,
-    @Parameter("width", "query") width?: string,
-    @Parameter("root", "query") root?: string,
+    @Parameter("website", "query") website?: QueryParameter,
+    @Parameter("path", "query") pathname?: QueryParameter,
+    @Parameter("width", "query") width?: QueryParameter,
+    @Parameter("root", "query") root?: QueryParameter,
   ) {
     const body = await this.negotiatedScript(context, {
       website,

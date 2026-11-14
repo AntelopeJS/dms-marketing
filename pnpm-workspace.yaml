@@ -1,3 +1,6 @@
 packages:
   - packages/*
   - packages/*/frontend-vue
+allowBuilds:
+  lefthook: false
+  mongodb-memory-server: false

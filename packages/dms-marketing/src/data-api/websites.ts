@@ -9,7 +9,6 @@ import {
   AccessMode,
   Listable,
   ModelReference,
-  type RowFields,
   Sortable,
 } from "@antelopejs/interface-data-api/metadata";
 import { Model } from "@antelopejs/interface-database-decorators";
@@ -37,10 +36,10 @@ import { tenantScopedReadRoutes } from "./tenant-scope";
 const COLUMN_PREFIX = "$page.marketing.websites.column.";
 
 /** The listed rows, each with the figures of its Websites page card. */
-async function withCards(
+async function withCards<Row extends { _id?: unknown }>(
   ctx: RequestContext,
-  rows: RowFields[],
-): Promise<RowFields[]> {
+  rows: Row[],
+): Promise<Row[]> {
   if (rows.length === 0) {
     return rows;
   }
