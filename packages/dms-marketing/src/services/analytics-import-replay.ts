@@ -160,9 +160,7 @@ async function replayDay(
   const counts: ReplayCounts = { sessions: 0, events: 0, dropped: 0 };
   const worker = async () => {
     for (let next = queue.shift(); next; next = queue.shift()) {
-      if (!claim.isHeld()) {
-        throw new Error("another instance took the website claim over");
-      }
+      requireHeld(claim);
       try {
         const visitor = await replayVisitor(
           website,
@@ -184,6 +182,13 @@ async function replayDay(
     if (result.status === "rejected") throw result.reason;
   }
   return { deltas, counts };
+}
+
+/** Throws once the claim's renewal found another instance's token. */
+function requireHeld(claim: ImportClaim): void {
+  if (!claim.isHeld()) {
+    throw new Error("another instance took the website claim over");
+  }
 }
 
 function addCounts(total: ReplayCounts, counts: ReplayCounts): void {
@@ -264,6 +269,7 @@ export async function replayAll(
     ? await readLedger(website, importId)
     : new Map<number, AppliedImport>();
   if (resuming) {
+    requireHeld(claim);
     await discardUncommitted(website, importId, new Set(ledger.keys()));
   }
   const total: ReplayCounts = { sessions: 0, events: 0, dropped: 0 };

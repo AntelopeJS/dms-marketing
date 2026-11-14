@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type {
   MarketingAnalyticsImport,
@@ -13,7 +14,11 @@ import {
   MAX_SCREEN_AND_LANGUAGE_CHARS,
   MAX_TRUSTED_CLIENT_CLOCK_SKEW_MS,
 } from "@/types/constants";
-import { type ClaimAttempt, acquireClaim } from "./analytics-import-claim";
+import {
+  type ClaimAttempt,
+  type ImportClaim,
+  acquireClaim,
+} from "./analytics-import-claim";
 import { replayAll, type VisitorEvent } from "./analytics-import-replay";
 import { prepareEvents } from "./collect";
 import {
@@ -259,6 +264,69 @@ function chronologyBoundary(
 }
 
 /**
+ * Answers the import row as another call left it and lets the claim go: the
+ * call lost the row's insert, or its fence was replaced. The release is
+ * retried once and its error ignored, since a call that took the claim over
+ * holds a token this one does not.
+ *
+ * @returns Undefined when no import row is left to answer
+ */
+async function yieldRow(
+  imports: MarketingImportsModel,
+  rowId: string,
+  claim: ImportClaim,
+): Promise<MarketingImportResult | undefined> {
+  const existing = await imports.get(rowId);
+  if (!existing) return undefined;
+  await claim
+    .release()
+    .catch(() => claim.release())
+    .catch(() => {});
+  return claimed(existing);
+}
+
+/** Answers the import row of a call whose fence was replaced. */
+async function answerOverwritten(
+  imports: MarketingImportsModel,
+  rowId: string,
+  claim: ImportClaim,
+): Promise<MarketingImportResult> {
+  const existing = await yieldRow(imports, rowId, claim);
+  if (existing) return existing;
+  await claim.release().catch(() => {});
+  throw new Error("the import row is gone");
+}
+
+/**
+ * Sets a resumed import row running while it still carries the fence the
+ * call read, or inserts a new one, and installs the call's fence.
+ *
+ * @returns What to answer when another call wrote the row first
+ */
+async function writeImportRow(
+  imports: MarketingImportsModel,
+  row: Parameters<typeof acquireClaim>[1],
+  current: MarketingImport | undefined,
+  fence: string,
+  claim: ImportClaim,
+): Promise<MarketingImportResult | undefined> {
+  if (current) {
+    const resumed = await imports.writeFenced(row._id, current.fence, fence, {
+      status: "running",
+    });
+    return resumed ? undefined : answerOverwritten(imports, row._id, claim);
+  }
+  try {
+    await imports.insert({ ...row, fence });
+    return undefined;
+  } catch (err) {
+    const existing = await yieldRow(imports, row._id, claim);
+    if (!existing) throw err;
+    return existing;
+  }
+}
+
+/**
  * ImportAnalytics: claims the website for the import id, then replays the
  * history. Claimed first, so a second call — another instance booting the
  * same project, the next boot — is not counted twice: it answers
@@ -302,6 +370,7 @@ export async function importAnalytics(
       latest = Math.max(latest, event.at);
     }
   }
+  const fence = randomUUID();
   const row = {
     _id: rowId,
     websiteId,
@@ -339,21 +408,8 @@ export async function importAnalytics(
       ),
       earliest,
     );
-    if (current) {
-      await imports.update(rowId, { status: "running" });
-    } else {
-      try {
-        await imports.insert(row);
-      } catch (err) {
-        const existing = await imports.get(rowId);
-        if (!existing) throw err;
-        await claim
-          .release()
-          .catch(() => claim.release())
-          .catch(() => {});
-        return claimed(existing);
-      }
-    }
+    const written = await writeImportRow(imports, row, current, fence, claim);
+    if (written) return written;
   } catch (err) {
     await claim.release();
     throw err;
@@ -368,12 +424,13 @@ export async function importAnalytics(
       resuming,
     );
     counts.dropped += dropped;
-    await imports.update(rowId, {
+    const finished = await imports.writeFenced(rowId, fence, randomUUID(), {
       status: "done",
       ...counts,
       importedThrough: new Date(Math.max(importedThrough, latest)),
       finishedAt: new Date(),
     });
+    if (!finished) return await answerOverwritten(imports, rowId, claim);
     await claim.release().catch(() => {});
     return { importId, status: "imported", ...counts };
   } catch (err) {
@@ -381,9 +438,17 @@ export async function importAnalytics(
       await claim.release();
       return claimed(row);
     }
-    await imports
-      .update(rowId, { status: "failed", dropped, finishedAt: new Date() })
-      .catch(() => {});
+    const overwritten = await imports
+      .writeFenced(rowId, fence, randomUUID(), {
+        status: "failed",
+        dropped,
+        finishedAt: new Date(),
+      })
+      .then(
+        (applied) => !applied,
+        () => false,
+      );
+    if (overwritten) return await answerOverwritten(imports, rowId, claim);
     await claim.release().catch(() => {});
     throw refuse(
       importId,

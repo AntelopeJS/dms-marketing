@@ -12,7 +12,7 @@ const {
 } = require("./helpers/analytics-import-fakes");
 
 /**
- * Runs a holder to its `update(done)`, where a second call with the same
+ * Runs a holder to its done write, where a second call with the same
  * import id, which read the import row while it was running, finds the
  * holder's claim and deletes it through `ownerFinished`. The second call then
  * claims the website and finds the import done. With `takenAgain`, a third
@@ -30,10 +30,10 @@ async function finishBesideOwnerRead(site, { takenAgain }) {
   const claimId = `${site._id}:`;
   const rowId = `${site._id}:history`;
   const imports = models.GetModel(MarketingImportsModel);
-  const { get, insert, update, releaseClaim } = {
+  const { get, insert, writeFenced, releaseClaim } = {
     get: imports.get.bind(imports),
     insert: imports.insert.bind(imports),
-    update: imports.update.bind(imports),
+    writeFenced: imports.writeFenced.bind(imports),
     releaseClaim: imports.releaseClaim.bind(imports),
   };
   const ownerRead = Promise.withResolvers();
@@ -68,17 +68,20 @@ async function finishBesideOwnerRead(site, { takenAgain }) {
   );
   mock.method(
     imports,
-    "update",
+    "writeFenced",
     /**
      * @param {string} id
+     * @param {string | undefined} fence
+     * @param {string} next
      * @param {Partial<import("../dist/db").MarketingImport>} patch
-     */ async (id, patch) => {
-      if (patch.status !== "done") return update(id, patch);
+     */ async (id, fence, next, patch) => {
+      if (patch.status !== "done") return writeFenced(id, fence, next, patch);
       second = importAnalytics(batch);
       await ownerRead.promise;
-      await update(id, patch);
+      const applied = await writeFenced(id, fence, next, patch);
       doneWritten.resolve();
       await ownerReleased.promise;
+      return applied;
     },
   );
   mock.method(
