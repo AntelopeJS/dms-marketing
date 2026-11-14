@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Logging } from "@antelopejs/interface-core/logging";
+import { IsDuplicateKeyError } from "@antelopejs/interface-database";
 import type { MarketingImportsModel } from "@/db";
 import type { MarketingImport } from "@/db/tables/marketing_imports.table";
 
@@ -123,6 +124,7 @@ export async function acquireClaim(
       failure = error;
     }
     const owner = await imports.get(claimRow._id);
+    if (!owner && IsDuplicateKeyError(failure)) continue;
     if (!owner?.claimToken) throw failure;
     if (owner.claimToken === token) return held(token);
     if (await ownerFinished(imports, owner)) {

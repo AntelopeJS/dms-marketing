@@ -1,4 +1,5 @@
 const { mock } = require("node:test");
+const { DuplicateKeyError } = require("@antelopejs/interface-database");
 const models = require("@antelopejs/interface-database-decorators/model");
 const { setConfig } = require("../../dist/config");
 const {
@@ -201,7 +202,7 @@ function fakeImports() {
     /** @param {ImportRow} row */
     async insert(row) {
       if (store.imports.has(row._id)) {
-        throw new Error("duplicate key");
+        throw new DuplicateKeyError("_id", ["_id"]);
       }
       store.imports.set(row._id, { ...row });
     },
