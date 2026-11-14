@@ -51,10 +51,11 @@ VARIABLES
   answer,    \* what the call returned, or "error" when it rejected
   failed,    \* the call met a storage failure
   failures,
-  crashes
+  crashes,
+  lost       \* the call's import-row insert failed (import.ts:338)
 
 vars == <<claim, row, ledger, raw, everDone, pc, holds, seen, moved, resuming,
-          counted, day, answer, failed, failures, crashes>>
+          counted, day, answer, failed, failures, crashes, lost>>
 
 PCs == {"idle", "insert", "readOwner", "ownerFinished", "releaseOwner", "watch",
         "takeover", "current", "releaseSkip", "writeRow", "readBack",
@@ -86,6 +87,7 @@ Init ==
   /\ failed = [c \in Calls |-> FALSE]
   /\ failures = 0
   /\ crashes = 0
+  /\ lost = [c \in Calls |-> FALSE]
 
 TypeOK ==
   /\ claim \in Calls \cup {None}
@@ -97,6 +99,7 @@ TypeOK ==
        /\ counted[c] \subseteq DaySet
        /\ day[c] \in 1..(Days + 1)
        /\ answer[c] \in Answers
+       /\ lost[c] \in BOOLEAN
 
 (* The first day from `from` on that the ledger read did not name.       *)
 NextDay(from, named) ==
@@ -123,7 +126,7 @@ ReleaseApplies(c) ==
   ELSE UNCHANGED <<claim, moved>>
 
 Frozen == UNCHANGED <<row, ledger, raw, everDone, resuming, counted, day,
-                      failed, failures, crashes>>
+                      failed, failures, crashes, lost>>
 
 (* ------------------------------ acquiring ------------------------------ *)
 
@@ -243,7 +246,7 @@ ReadCurrent(c) ==
      ELSE /\ resuming' = [resuming EXCEPT ![c] = row # "none"]
           /\ Go(c, "writeRow")
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
-                 counted, day, answer, failed, failures, crashes>>
+                 counted, day, answer, failed, failures, crashes, lost>>
 
 (* A release that throws reaches the catch, which releases again and      *)
 (* rethrows (import.ts:324, 349-351).                                     *)
@@ -261,6 +264,7 @@ WriteRow(c) ==
   /\ IF resuming[c] \/ row = "none"
      THEN row' = "running" /\ Go(c, "ledger")
      ELSE UNCHANGED row /\ Go(c, "readBack")
+  /\ lost' = [lost EXCEPT ![c] = ~(resuming[c] \/ row = "none")]
   /\ UNCHANGED <<claim, ledger, raw, everDone, holds, seen, moved, resuming,
                  counted, day, answer, failed, failures, crashes>>
 
@@ -308,7 +312,7 @@ ReadLedger(c) ==
      ELSE /\ day' = [day EXCEPT ![c] = 1]
           /\ Go(c, "check") /\ UNCHANGED counted
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
-                 resuming, answer, failed, failures, crashes>>
+                 resuming, answer, failed, failures, crashes, lost>>
 
 (* discardUncommitted deletes the import's raw rows on every day that    *)
 (* ledger read did not name (replay.ts:260-262, 196-224).                 *)
@@ -318,7 +322,7 @@ Discard(c) ==
   /\ day' = [day EXCEPT ![c] = NextDay(1, counted[c])]
   /\ Go(c, "check")
   /\ UNCHANGED <<claim, row, ledger, everDone, holds, seen, moved, resuming,
-                 counted, answer, failed, failures, crashes>>
+                 counted, answer, failed, failures, crashes, lost>>
 
 (* A worker checks isHeld() before each visitor and throws once it is     *)
 (* false (replay.ts:157-159). With no day left, the replay returns.       *)
@@ -336,7 +340,7 @@ WriteRaw(c) ==
   /\ raw' = [raw EXCEPT ![day[c]] = @ \cup {c}]
   /\ Go(c, "commit")
   /\ UNCHANGED <<claim, row, ledger, everDone, holds, seen, moved, resuming,
-                 counted, day, answer, failed, failures, crashes>>
+                 counted, day, answer, failed, failures, crashes, lost>>
 
 (* commitImportedDay adds the day's counters and its ledger entry in one  *)
 (* write to the day row, with no look at the claim (replay.ts:276-281,    *)
@@ -348,7 +352,7 @@ Commit(c) ==
   /\ day' = [day EXCEPT ![c] = NextDay(day[c] + 1, counted[c])]
   /\ Go(c, "check")
   /\ UNCHANGED <<claim, row, raw, everDone, holds, seen, moved, resuming,
-                 counted, answer, failed, failures, crashes>>
+                 counted, answer, failed, failures, crashes, lost>>
 
 (* A raw write or a day commit fails in storage, and replayAll throws.    *)
 StorageFails(c) ==
@@ -358,7 +362,7 @@ StorageFails(c) ==
   /\ failed' = [failed EXCEPT ![c] = TRUE]
   /\ Go(c, "markFailed")
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
-                 resuming, counted, day, answer, crashes>>
+                 resuming, counted, day, answer, crashes, lost>>
 
 (* The import row is set done (import.ts:363-368).                        *)
 MarkDone(c) ==
@@ -366,7 +370,7 @@ MarkDone(c) ==
   /\ row' = "done" /\ everDone' = TRUE
   /\ Go(c, "release")
   /\ UNCHANGED <<claim, ledger, raw, holds, seen, moved, resuming, counted,
-                 day, answer, failed, failures, crashes>>
+                 day, answer, failed, failures, crashes, lost>>
 
 (* release(), then "imported"; a release that throws lands in the catch   *)
 (* (import.ts:369-370).                                                   *)
@@ -385,7 +389,7 @@ MarkFailed(c) ==
   /\ row' = "failed"
   /\ Go(c, "releaseFailed")
   /\ UNCHANGED <<claim, ledger, raw, everDone, holds, seen, moved, resuming,
-                 counted, day, answer, failed, failures, crashes>>
+                 counted, day, answer, failed, failures, crashes, lost>>
 
 (* then releases, errors ignored, and rejects (import.ts:375-379).        *)
 ReleaseFailed(c) ==
@@ -405,7 +409,7 @@ Crash(c) ==
   /\ crashes' = crashes + 1
   /\ Go(c, "crashed")
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
-                 resuming, counted, day, answer, failed, failures>>
+                 resuming, counted, day, answer, failed, failures, lost>>
 
 Busy ==
   \E c \in Calls :
@@ -426,40 +430,5 @@ Next == Busy \/ Settled
 Spec == Init /\ [][Next]_vars
 
 CallSymmetry == Permutations(Calls)
-
-(* -------------------------------- rules -------------------------------- *)
-
-(* No call is running: every call is yet to start, has returned, or died. *)
-Quiet == \A c \in Calls : pc[c] \in {"idle", "end", "crashed"}
-
-(* At most one call is about to write the website's analytics with no    *)
-(* claim check before the write: delete uncommitted rows, store raw rows, *)
-(* or commit a day.                                                       *)
-OneWriter ==
-  \A c, d \in Calls :
-    pc[c] \in {"discard", "write", "commit"} /\ pc[d] \in {"discard", "write", "commit"}
-      => c = d
-
-(* Each day of the history is counted at most once in its rollup.        *)
-CountedOnce == \A d \in DaySet : ledger[d] <= 1
-
-(* Once no call runs, the raw rows of a counted day come from one replay: *)
-(* a resume never discards a counted day's rows (replay.ts:203-205).      *)
-StoredOnce ==
-  Quiet => \A d \in DaySet : ledger[d] >= 1 => Cardinality(raw[d]) <= 1
-
-(* Once no call runs, an import that says done has every day counted and *)
-(* its raw rows stored.                                                   *)
-NothingLost ==
-  Quiet /\ row = "done" => \A d \in DaySet : ledger[d] >= 1 /\ raw[d] # {}
-
-(* A completed import stays done.                                         *)
-DoneStaysDone == everDone => row = "done"
-
-(* A call that met no storage failure answers imported, in_progress or    *)
-(* skipped.                                                               *)
-CallsAnswer ==
-  \A c \in Calls :
-    pc[c] = "end" /\ ~failed[c] => answer[c] \in {"imported", "in_progress", "skipped"}
 
 =============================================================================

@@ -9,7 +9,7 @@ description: TLA+ model of the website claim of ImportAnalytics in @antelopejs/d
 
 The model treats each database round trip as one step. TLC checks every order of those steps across concurrent calls with one import id, a storage failure, a process death, and a live holder that stops for 30 s and resumes, within the bounds below.
 
-- `ImportClaim.tla` holds the variables, the actions and the rules. Each condition carries a `file.ts:NN` comment. Under `packages/dms-marketing/src/`, `claim.ts` is `services/analytics-import-claim.ts`, `import.ts` is `services/analytics-import.ts`, `replay.ts` is `services/analytics-import-replay.ts`, `rollup.ts` is `services/rollup-write.ts` and `model.ts` is `db/models/marketing_imports.model.ts`.
+- `ImportClaim.tla` holds the variables and the actions, and `ImportClaimRules.tla` the rules; `check.mjs` runs the latter. Each condition carries a `file.ts:NN` comment. Under `packages/dms-marketing/src/`, `claim.ts` is `services/analytics-import-claim.ts`, `import.ts` is `services/analytics-import.ts`, `replay.ts` is `services/analytics-import-replay.ts`, `rollup.ts` is `services/rollup-write.ts` and `model.ts` is `db/models/marketing_imports.model.ts`.
 - `Crash.cfg` (a process can die, a live holder renews in time) and `Stall.cfg` (a live holder can stop for 30 s and resume) are the full configurations. Each has a `.ci.cfg` twin.
 - `ImportClaim.map.mjs`, `chart-crash.cfg` and `chart-stall.cfg` are for reading results with `/statechart`.
 
@@ -26,10 +26,10 @@ Java 11 or later comes from `$JAVA`, else `java` on PATH, else the `eclipse-temu
 
 | Configuration | Calls and days (Crash, Stall) | States of the rules that hold (Crash, Stall) | Wall time |
 | --- | --- | --- | --- |
-| CI (`<config>.ci.cfg`) | 3 and 1, 2 and 1 | 15,507, 2,358 | 22.9 s |
-| Full (`<config>.cfg`) | 3 and 2, 3 and 2 | 18,840, 2,661,434 | 65.1 s |
+| CI (`<config>.ci.cfg`) | 3 and 1, 2 and 1 | 15,507, 2,369 | 12.1 s |
+| Full (`<config>.cfg`) | 3 and 2, 3 and 2 | 18,840, 2,676,392 | 23.4 s |
 
-Every configuration allows one storage failure; `Crash` allows one process death. The times are one run each in Docker Java 21 on a shared 16-core machine with a load average near 60.
+Every configuration allows one storage failure; `Crash` allows one process death. The times are one run each in Docker Java 21 on a 32-core desktop.
 
 - Exit 0 means every rule that held still holds, and each finding still breaks with its recorded counterexample length.
 - Exit 1 means a rule changed. `BROKEN` names a rule that held and now breaks. `CHANGED` names a finding whose shortest counterexample changed length. `HOLDS` names a finding that no longer breaks. The script prints the folder where it kept TLC's output. The run stops at the first configuration that changed.
@@ -53,6 +53,7 @@ Run `--full` when a change touches a file in the coverage record or this folder.
 | `NothingLost` | Once no call runs, an import that says done has every day counted and stored. | The rollup counts visits whose events and sessions are gone for good. | holds | F4 (26, 29) |
 | `DoneStaysDone` | A completed import stays done. | Its caller gets "failed part-way", and other import ids are refused until the id is called again. | F1 (18, 21) | F1 (18, 21) |
 | `CallsAnswer` | A call that met no storage failure answers `imported`, `in_progress` or `skipped`. | The caller gets "failed part-way" for an import that is running or complete. | F1 (19, 22) | F4 (16, 16) |
+| `LoserWritesNothing` | A call whose import-row insert failed only releases the claim and answers. | A loser that resumes runs a second replay beside the holder. | holds | holds |
 
 `TypeOK` holds too. The numbers in brackets are the states of TLC's shortest counterexample, which `check.mjs` records per configuration. A liveness rule (every call returns) is out of reach of the shared runner.
 
@@ -69,7 +70,7 @@ Each finding was replayed on `packages/dms-marketing/dist` built at the sync com
 
 ## Read every result with /statechart
 
-Read each TLC result with the pstack `/statechart` skill. Work on a copy of `ImportClaim.tla`, the map and the chart configs in a scratch folder outside the repo, since it writes its output next to its input. Use `ImportClaim.map.mjs` as the view: one region each for the claim row, the import row and the history, and one per call. `chart-crash.cfg` (two calls, one day, one death, no storage failure) reaches 682 states and draws the bug paths in 19 states and 16 arrows: `DoneStaysDone` in 17 steps and `CallsAnswer` in 18, F1's path one step further, while `OneWriter`, `CountedOnce`, `StoredOnce` and `NothingLost` hold. `chart-stall.cfg` (two calls, one day, stalls, no storage failure) reaches 2,604 states and draws its four bug paths in 41 states and 55 arrows: `OneWriter` in 15 steps, `CountedOnce` in 21, `NothingLost` in 25 and `StoredOnce` in 28. Read the report's numbered paths before the chart. The view hides `Settled`, the step that changes nothing once nothing else can happen. A new bug shows as a new numbered path, and a fix shows which paths it removes.
+Read each TLC result with the pstack `/statechart` skill. Work on a copy of `ImportClaim.tla`, `ImportClaimRules.tla` (the spec to open), the map and the chart configs in a scratch folder outside the repo, since it writes its output next to its input. Use `ImportClaim.map.mjs` as the view: one region each for the claim row, the import row and the history, and one per call. `chart-crash.cfg` (two calls, one day, one death, no storage failure) reaches 682 states and draws the bug paths in 19 states and 16 arrows: `DoneStaysDone` in 17 steps and `CallsAnswer` in 18, F1's path one step further, while `OneWriter`, `CountedOnce`, `StoredOnce` and `NothingLost` hold. `chart-stall.cfg` (two calls, one day, stalls, no storage failure) reaches 2,626 states and draws its four bug paths in 41 states and 55 arrows: `OneWriter` in 15 steps, `CountedOnce` in 21, `NothingLost` in 25 and `StoredOnce` in 28. Read the report's numbered paths before the chart. The view hides `Settled`, the step that changes nothing once nothing else can happen. A new bug shows as a new numbered path, and a fix shows which paths it removes.
 
 ## Real bug or modeling error
 
@@ -128,7 +129,8 @@ On a scratch copy of this folder with `node_modules` reachable (a symlink beside
 | `resume-without-discard`: a resume skips `discardUncommitted` (replay.ts:260-262): `Discard` keeps every row | `BROKEN StoredOnce` | same |
 | `discard-counted-days`: `discardUncommitted` gets an empty set (replay.ts:261): `Discard` empties every day | `BROKEN NothingLost` | same |
 | `no-held-check`: the `isHeld()` check goes (replay.ts:157-159): `Check` always writes | exit 0 | `CHANGED StoredOnce: 30 states (recorded 28)` |
+| `readback-continues`: the read-back resumes the row instead of answering (import.ts:339-346): `ReadBack` goes to `ledger` as a resume | `BROKEN LoserWritesNothing` (14 states, under `Stall`) | same |
 
 Every scratch run in the table exited 1, except `no-held-check` on the CI configuration. With the edits dropped, both configurations exit 0.
 
-`readback-continues` (the read-back resumes the row instead of answering, import.ts:339-346: `ReadBack` goes to `ledger` as a resume) exits 0 on both configurations, since F3 already reaches the states it adds. A ghost `lost` woven into a scratch copy, set when `WriteRow` goes to `readBack` (`Spec == Init /\ [][Next /\ lost' = ...]_vars`), with the invariant `lost[c] => pc[c] \notin {"ledger", "discard", "check", "write", "commit"}` holds on the model under both `Stall` configurations and breaks on it in 14 states.
+Only `LoserWritesNothing` catches `readback-continues`: F3 already reaches the states it adds. The rows above it ran before that rule existed.

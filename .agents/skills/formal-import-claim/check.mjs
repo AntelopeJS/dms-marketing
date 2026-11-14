@@ -2,9 +2,9 @@
 /**
  * Model-checks the website claim of ImportAnalytics in
  * @antelopejs/dms-marketing, and the day-by-day replay it guards, with TLC
- * through the shared runner of @antelopejs/tooling-configs: ImportClaim.tla
- * where a call's process can die, then where a live holder can stop for 30 s
- * and resume.
+ * through the shared runner of @antelopejs/tooling-configs: the rules of
+ * ImportClaimRules.tla on ImportClaim.tla, where a call's process can die,
+ * then where a live holder can stop for 30 s and resume.
  *
  * With no argument it runs the CI configuration of each (`<config>.ci.cfg`);
  * with `--full` it runs the full one (`<config>.cfg`). Exits 0 when both
@@ -54,7 +54,7 @@ const mode = args.includes("--full") ? "full" : "ci";
 for (const [config, findings] of Object.entries(CONFIGS)) {
   await checkSpec({
     dir,
-    spec: "ImportClaim",
+    spec: "ImportClaimRules",
     config: mode === "full" ? config : `${config}.ci`,
     findings: findings[mode],
   });
