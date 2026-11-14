@@ -52,7 +52,7 @@ const slotStub = (tag: string) =>
   })
 
 const STUBS = {
-  DmsEyebrow: slotStub('p'),
+  DmsEyebrowLabel: slotStub('p'),
   DmsEmptyState: slotStub('div'),
   DmsStatusPill: slotStub('span'),
   DmsAutoLink: slotStub('a'),

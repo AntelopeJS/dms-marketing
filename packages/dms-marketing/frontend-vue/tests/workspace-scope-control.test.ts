@@ -99,11 +99,11 @@ async function renderExplorer(): Promise<string> {
     reload: async () => {},
   })
   for (const name of [
-    'DmsBanner',
+    'DmsNoticeBanner',
     'DmsEmptyState',
-    'DmsEyebrow',
+    'DmsEyebrowLabel',
     'DmsMarketingWorkspaceScope',
-    'DmsSegmented',
+    'DmsSegmentedControl',
     'UButton',
     'UIcon',
     'UInput',

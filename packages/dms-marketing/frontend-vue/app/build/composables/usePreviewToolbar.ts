@@ -57,7 +57,7 @@ export function usePreviewToolbar(
   )
 
   /**
-   * Names the icon-only layout segments: DmsSegmented renders an item's label
+   * Names the icon-only layout segments: DmsSegmentedControl renders an item's label
    * as its only text and has no per-item aria-label, so a screen reader would
    * read three unnamed radios. Set on the rendered buttons, in preset order.
    */

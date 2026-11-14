@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm --filter @antelopejs/dms-marketing build",
-    "lint": "oxlint && pnpm --dir packages/dms-marketing/frontend-vue lint && node packages/dms-marketing/scripts/check-locales.mts && node packages/dms-marketing/scripts/check-docs-module-version.mts",
+    "lint": "oxlint && pnpm --dir packages/dms-marketing/frontend-vue lint && node packages/dms-marketing/scripts/check-locales.mts && node packages/dms-marketing/scripts/check-dms-components.mts &&node packages/dms-marketing/scripts/check-docs-module-version.mts",
     "typecheck": "pnpm --filter @antelopejs/interface-dms-marketing typecheck && pnpm --filter @antelopejs/dms-marketing typecheck && pnpm --dir packages/dms-marketing run typecheck:layer",
     "knip": "pnpm --dir packages/dms-marketing knip",
     "test": "pnpm --dir packages/dms-marketing test:layer",

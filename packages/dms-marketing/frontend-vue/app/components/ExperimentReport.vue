@@ -270,14 +270,14 @@ const withheldCounts = computed(() =>
 
 <template>
   <div class="flex flex-col gap-4" :class="loading ? 'opacity-80' : ''">
-    <DmsBanner
+    <DmsNoticeBanner
       v-if="srmMismatch"
       tone="error"
       icon="i-ph-scales"
       :title="t('page.marketing.experiment.srm_title')"
       :description="srmLine"
     />
-    <DmsBanner
+    <DmsNoticeBanner
       v-if="results.truncated"
       tone="warning"
       icon="i-ph-hourglass"
@@ -441,7 +441,7 @@ const withheldCounts = computed(() =>
       <div
         class="flex flex-col gap-1 border-t border-default p-5 lg:border-t-0 lg:border-l"
       >
-        <DmsEyebrow :label="t('page.marketing.experiment.lift')" />
+        <DmsEyebrowLabel :label="t('page.marketing.experiment.lift')" />
         <span
           class="text-3xl font-semibold tabular-nums"
           :class="
@@ -468,7 +468,7 @@ const withheldCounts = computed(() =>
       <div
         class="flex flex-col gap-1 border-t border-default p-5 lg:border-t-0 lg:border-l"
       >
-        <DmsEyebrow :label="t('page.marketing.experiment.p_value')" />
+        <DmsEyebrowLabel :label="t('page.marketing.experiment.p_value')" />
         <span class="text-3xl font-semibold tabular-nums text-highlighted">
           {{ pValueText }}
         </span>
@@ -486,7 +486,7 @@ const withheldCounts = computed(() =>
       <div
         class="flex flex-col gap-1 border-t border-default p-5 lg:border-t-0 lg:border-l"
       >
-        <DmsEyebrow :label="t('page.marketing.experiment.exposed')" />
+        <DmsEyebrowLabel :label="t('page.marketing.experiment.exposed')" />
         <span class="text-3xl font-semibold tabular-nums text-highlighted">
           {{ formatNumber(totalExposed, locale) }}
         </span>
@@ -538,7 +538,9 @@ const withheldCounts = computed(() =>
           <header
             class="flex items-center justify-between border-b border-default px-4 py-3"
           >
-            <DmsEyebrow :label="t('page.marketing.experiment.variations')" />
+            <DmsEyebrowLabel
+              :label="t('page.marketing.experiment.variations')"
+            />
             <DmsStatusPill
               size="sm"
               icon="i-ph-lock-simple"
@@ -581,7 +583,7 @@ const withheldCounts = computed(() =>
         </section>
         <section class="dms-card p-0">
           <header class="border-b border-default px-4 py-3">
-            <DmsEyebrow
+            <DmsEyebrowLabel
               :label="
                 t(
                   stopped
@@ -603,7 +605,7 @@ const withheldCounts = computed(() =>
               <div
                 class="flex items-center justify-between border-b border-default px-3 py-1.5"
               >
-                <DmsEyebrow label="JavaScript" />
+                <DmsEyebrowLabel label="JavaScript" />
                 <DmsCopyButton :value="snippet" />
               </div>
               <pre

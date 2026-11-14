@@ -20,7 +20,7 @@ const { t } = useI18n()
     <header
       class="flex items-center justify-between border-b border-default px-4 py-3"
     >
-      <DmsEyebrow :label="t('page.marketing.funnel.definition.title')" />
+      <DmsEyebrowLabel :label="t('page.marketing.funnel.definition.title')" />
       <DmsAutoLink
         :to="inContext(funnelBuilderLink(definition._id))"
         class="text-xs font-medium text-primary hover:underline"

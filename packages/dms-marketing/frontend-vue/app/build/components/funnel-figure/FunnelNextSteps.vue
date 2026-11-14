@@ -26,7 +26,7 @@ const { t, locale } = useI18n()
 <template>
   <section v-if="!noTraffic" class="dms-card p-0">
     <header class="border-b border-default px-4 py-3">
-      <DmsEyebrow :label="t('page.marketing.funnel.next.title')" />
+      <DmsEyebrowLabel :label="t('page.marketing.funnel.next.title')" />
     </header>
     <ul class="divide-y divide-default">
       <li v-if="worst" class="flex items-start gap-3 px-4 py-3">

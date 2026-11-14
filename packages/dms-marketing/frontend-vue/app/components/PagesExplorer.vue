@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import {
-  computed,
-  nextTick,
-  onBeforeUnmount,
-  onMounted,
-  ref,
-  watch,
-} from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 // Imported rather than resolved from the registry: a registered component is
 // a lazy chunk of its own, fetched only once a page is selected, so the
@@ -395,7 +388,7 @@ const sortItems = computed(() => [
 
     <template v-else>
       <!-- The preview's own strip says it when a page is shown. -->
-      <DmsBanner
+      <DmsNoticeBanner
         v-if="!trackerEnabled && !(selectedPath && website)"
         tone="error"
         size="sm"
@@ -436,8 +429,8 @@ const sortItems = computed(() => [
             />
           </div>
           <div class="flex items-center justify-between gap-2 px-4 py-2">
-            <DmsEyebrow :label="countLabel" />
-            <DmsSegmented
+            <DmsEyebrowLabel :label="countLabel" />
+            <DmsSegmentedControl
               v-model="sort"
               :items="sortItems"
               size="xs"

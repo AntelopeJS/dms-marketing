@@ -99,7 +99,7 @@ function stepsKey(steps: MarketingFunnelStep[]): string {
         class="flex flex-col items-start gap-2 rounded-xl border border-dashed border-default p-4 text-left transition-colors hover:border-primary"
         @click="startFrom(null)"
       >
-        <DmsEyebrow :label="t('page.marketing.funnels.empty.blank')" />
+        <DmsEyebrowLabel :label="t('page.marketing.funnels.empty.blank')" />
         <span class="text-sm font-semibold text-highlighted">
           {{ t('page.marketing.funnels.empty.scratch') }}
         </span>
@@ -117,7 +117,7 @@ function stepsKey(steps: MarketingFunnelStep[]): string {
         class="dms-card flex min-w-0 flex-col items-start gap-2 p-4 text-left transition-colors hover:border-primary"
         @click="startFrom(template.steps)"
       >
-        <DmsEyebrow :label="t('page.marketing.funnels.empty.template')" />
+        <DmsEyebrowLabel :label="t('page.marketing.funnels.empty.template')" />
         <span
           class="max-w-full truncate font-mono text-sm font-semibold text-highlighted"
         >

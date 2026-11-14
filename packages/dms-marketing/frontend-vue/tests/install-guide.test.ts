@@ -68,9 +68,9 @@ async function render(): Promise<string> {
   )
   app.component('DmsAutoLink', link('DmsAutoLink'))
   for (const name of [
-    'DmsBanner',
+    'DmsNoticeBanner',
     'DmsEmptyState',
-    'DmsEyebrow',
+    'DmsEyebrowLabel',
     'DmsFieldError',
     'DmsFieldRow',
     'DmsFormRequiredLegend',

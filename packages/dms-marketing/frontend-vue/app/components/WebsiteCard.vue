@@ -104,7 +104,9 @@ async function runCardAction(
       fallbackKey: conflict
         ? 'page.marketing.errors.duplicate_host_named'
         : errorTitle,
-      params: conflict ? { host: conflict.host, site: conflict.site } : undefined,
+      params: conflict
+        ? { host: conflict.host, site: conflict.site }
+        : undefined,
     })
   } finally {
     busy.value = null
@@ -183,7 +185,7 @@ function resume(): Promise<void> {
       v-if="card.state === 'paused' || card.rejected.length > 0"
       class="flex flex-col gap-2 px-4 pb-3"
     >
-      <DmsBanner
+      <DmsNoticeBanner
         v-if="card.state === 'paused'"
         tone="info"
         size="sm"
@@ -201,8 +203,8 @@ function resume(): Promise<void> {
             @click="resume"
           />
         </template>
-      </DmsBanner>
-      <DmsBanner
+      </DmsNoticeBanner>
+      <DmsNoticeBanner
         v-for="refused in card.rejected"
         :key="refused.hostname"
         tone="warning"
@@ -226,7 +228,7 @@ function resume(): Promise<void> {
             @click="allowHost(refused.hostname)"
           />
         </template>
-      </DmsBanner>
+      </DmsNoticeBanner>
     </div>
 
     <template v-if="card.state !== 'waiting'">
@@ -243,7 +245,9 @@ function resume(): Promise<void> {
             class="min-w-0 border-default px-4 pt-0.5 pb-3 not-first:border-l @max-[20rem]:px-3"
           >
             <dt>
-              <DmsEyebrow :label="t(`page.marketing.websites.stats.${stat}`)" />
+              <DmsEyebrowLabel
+                :label="t(`page.marketing.websites.stats.${stat}`)"
+              />
             </dt>
             <dd
               class="mt-1 font-mono text-lg font-semibold tabular-nums text-highlighted @max-[20rem]:text-base"
