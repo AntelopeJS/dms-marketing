@@ -385,8 +385,8 @@ Release(c) ==
 
 (* The catch of a call whose renewal saw another token leaves the row to  *)
 (* the taker: release() has no token to delete, and the call answers      *)
-(* "in_progress" (import.ts:371-374). Otherwise it sets the import row    *)
-(* failed (import.ts:375-377).                                            *)
+(* "in_progress" (import.ts:372-375). Otherwise it sets the import row    *)
+(* failed (import.ts:376-378).                                            *)
 MarkFailed(c) ==
   /\ pc[c] = "markFailed"
   /\ IF holds[c]
@@ -395,7 +395,7 @@ MarkFailed(c) ==
   /\ UNCHANGED <<claim, ledger, raw, everDone, holds, seen, moved, resuming,
                  counted, day, failed, failures, crashes, lost>>
 
-(* then releases, errors ignored, and rejects (import.ts:378-382).        *)
+(* then releases, errors ignored, and rejects (import.ts:379-383).        *)
 ReleaseFailed(c) ==
   /\ pc[c] = "releaseFailed"
   /\ ReleaseApplies(c)
