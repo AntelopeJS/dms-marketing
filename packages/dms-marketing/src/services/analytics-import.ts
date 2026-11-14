@@ -377,6 +377,10 @@ export async function importAnalytics(
     await claim.release();
     return { importId, status: "imported", ...counts };
   } catch (err) {
+    if (!claim.isHeld()) {
+      await claim.release();
+      return claimed(row);
+    }
     await imports
       .update(rowId, { status: "failed", dropped, finishedAt: new Date() })
       .catch(() => {});
