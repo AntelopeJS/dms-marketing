@@ -12,7 +12,8 @@ const CLAIM_STALE_POLLS = 30;
 /**
  * How many claim inserts may lose to a row gone before the owner read. Each
  * loss needs another call to insert and release the claim in between; a row
- * the read cannot see, such as one under another tenant, fails every insert.
+ * the read cannot see, such as one under another tenant, fails every insert,
+ * and the attempt answers `unseen` once the tries run out.
  */
 const CLAIM_INSERT_TRIES = 3;
 
@@ -26,7 +27,8 @@ export interface ImportClaim {
 
 export type ClaimAttempt =
   | { kind: "held"; claim: ImportClaim }
-  | { kind: "owned"; owner: MarketingImport };
+  | { kind: "owned"; owner: MarketingImport }
+  | { kind: "unseen" };
 
 function holdClaim(
   imports: MarketingImportsModel,
@@ -131,12 +133,9 @@ export async function acquireClaim(
       failure = error;
     }
     const owner = await imports.get(claimRow._id);
-    if (
-      !owner &&
-      IsDuplicateKeyError(failure) &&
-      ++releasedBeforeRead < CLAIM_INSERT_TRIES
-    ) {
-      continue;
+    if (!owner && IsDuplicateKeyError(failure)) {
+      if (++releasedBeforeRead < CLAIM_INSERT_TRIES) continue;
+      return { kind: "unseen" };
     }
     if (!owner?.claimToken) throw failure;
     if (owner.claimToken === token) return held(token);
