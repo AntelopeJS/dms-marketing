@@ -31,7 +31,7 @@ importers:
         version: 0.14.0(1183000973ac86d33c63b2338e554d86)
       '@antelopejs/interface-dms-marketing':
         specifier: '>=0.6.0 <0.7.0'
-        version: link:../interface-dms-marketing
+        version: 0.6.1(@antelopejs/interface-core@0.5.1)
       defu:
         specifier: ^6.1.4
         version: 6.1.7
@@ -193,6 +193,11 @@ packages:
     resolution: {integrity: sha512-qNgJeAaCymkMUG2z0wNKGHAHsQXEnp1hU7zuEg+HPjtxHaHtMr6086nji82OEpQyt79VYSGata1tszm3L0/M9A==}
     peerDependencies:
       '@antelopejs/interface-core': '>=0.5.1 <1.0.0'
+
+  '@antelopejs/interface-dms-marketing@0.6.1':
+    resolution: {integrity: sha512-mWzApAWiIjqDZazQP02rQcTHTik52IVtutc5oi835Bo+qMpC7HUq1HyNF0NGAxyunwjbY0+1119pHoS3/OdLrw==}
+    peerDependencies:
+      '@antelopejs/interface-core': '>=0.2.4 <1.0.0'
 
   '@antelopejs/interface-dms@0.14.0':
     resolution: {integrity: sha512-ijkyQtL+ofdOf3VYRb6Ws/dPhERwL4Yhe088aiOMofb9c+zUtEv+tymDSRSCh40dC7xA8AVIC8IMjEhu1/gcMA==}
@@ -3220,6 +3225,10 @@ snapshots:
     optional: true
 
   '@antelopejs/interface-dms-builder@0.5.1(@antelopejs/interface-core@0.5.1)':
+    dependencies:
+      '@antelopejs/interface-core': 0.5.1
+
+  '@antelopejs/interface-dms-marketing@0.6.1(@antelopejs/interface-core@0.5.1)':
     dependencies:
       '@antelopejs/interface-core': 0.5.1
 
