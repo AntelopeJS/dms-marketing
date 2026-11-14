@@ -383,15 +383,19 @@ Release(c) ==
   /\ UNCHANGED <<holds, seen>>
   /\ Frozen
 
-(* The catch sets the import row failed (import.ts:372-374).              *)
+(* The catch of a call whose renewal saw another token leaves the row to  *)
+(* the taker: release() has no token to delete, and the call answers      *)
+(* "in_progress" (import.ts:371-374). Otherwise it sets the import row    *)
+(* failed (import.ts:375-377).                                            *)
 MarkFailed(c) ==
   /\ pc[c] = "markFailed"
-  /\ row' = "failed"
-  /\ Go(c, "releaseFailed")
+  /\ IF holds[c]
+     THEN row' = "failed" /\ Go(c, "releaseFailed") /\ UNCHANGED answer
+     ELSE Finish(c, "in_progress") /\ UNCHANGED row
   /\ UNCHANGED <<claim, ledger, raw, everDone, holds, seen, moved, resuming,
-                 counted, day, answer, failed, failures, crashes, lost>>
+                 counted, day, failed, failures, crashes, lost>>
 
-(* then releases, errors ignored, and rejects (import.ts:375-379).        *)
+(* then releases, errors ignored, and rejects (import.ts:378-382).        *)
 ReleaseFailed(c) ==
   /\ pc[c] = "releaseFailed"
   /\ ReleaseApplies(c)

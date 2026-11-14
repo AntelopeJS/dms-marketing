@@ -405,6 +405,36 @@ function useFakeModels() {
   });
 }
 
+/**
+ * @param {import("./analytics-import-fakes").TrackedSite} site
+ * @param {string} [importId]
+ */
+function batchFor(site, importId = "history") {
+  return {
+    tenantId: "default",
+    importId,
+    websiteId: site._id,
+    sessions: HISTORY,
+  };
+}
+
+function eventsOf(site) {
+  return store.events.filter((e) => e.websiteId === site._id);
+}
+
+/** Replaces the events' write with `write`, or restores the fake's own. */
+function interceptWrites(write) {
+  return mock.method(
+    models.GetModel(MarketingEventsModel),
+    "insertMany",
+    /** @param {object[]} docs */ async (docs) => {
+      await write(docs);
+      store.events.push(...docs);
+      return docs.length;
+    },
+  );
+}
+
 module.exports = {
   DAY,
   DAY_ONE,
@@ -412,9 +442,12 @@ module.exports = {
   NOW,
   ORIGIN,
   at,
+  batchFor,
   dayRows,
   drain,
+  eventsOf,
   fakeTimers,
+  interceptWrites,
   runCount: () => runCount,
   store: () => store,
   useFakeModels,
