@@ -32,7 +32,7 @@ const { t, locale } = useI18n()
     <header
       class="flex items-center justify-between border-b border-default px-4 py-3"
     >
-      <DmsEyebrow :label="t('page.marketing.builder.preview')" />
+      <DmsEyebrowLabel :label="t('page.marketing.builder.preview')" />
       <UIcon
         v-if="previewing"
         name="i-ph-circle-notch"

@@ -44,7 +44,7 @@ const items = computed(() =>
 
 <template>
   <div class="flex flex-col gap-3">
-    <DmsSegmented
+    <DmsSegmentedControl
       v-model="flavor"
       :items="items"
       size="sm"
@@ -54,7 +54,7 @@ const items = computed(() =>
       <div
         class="flex items-center justify-between border-b border-default px-3 py-1.5"
       >
-        <DmsEyebrow :label="FILE_LABELS[flavor]" />
+        <DmsEyebrowLabel :label="FILE_LABELS[flavor]" />
         <DmsCopyButton :value="code" />
       </div>
       <pre

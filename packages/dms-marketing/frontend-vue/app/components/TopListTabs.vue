@@ -166,7 +166,7 @@ const TABS_UI = {
     <header
       class="flex flex-wrap items-center gap-x-4 border-b border-default px-4"
     >
-      <DmsEyebrow :label="processI18n(eyebrow)" class="shrink-0 py-3" />
+      <DmsEyebrowLabel :label="processI18n(eyebrow)" class="shrink-0 py-3" />
       <!-- UTabs cannot name its tablist: the group around it carries the name. -->
       <div
         v-if="tabs.length > 1"
@@ -193,7 +193,7 @@ const TABS_UI = {
           <USkeleton class="h-3.5 w-24" />
         </span>
       </div>
-      <DmsEyebrow
+      <DmsEyebrowLabel
         :label="processI18n(valueLabel)"
         class="ms-auto shrink-0 py-3"
       />

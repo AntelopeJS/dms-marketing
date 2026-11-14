@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from '#dms/frontend-module'
-import { useMarketingApi, type MarketingWebsite } from '../composables/useMarketingApi'
+import {
+  useMarketingApi,
+  type MarketingWebsite,
+} from '../composables/useMarketingApi'
 import { formatNumber } from '../utils/format'
 import type { LayoutPreset, PagePreviewProps } from '../build/types/pagePreview'
 import PagePreviewStrip from '../build/components/page-preview/PagePreviewStrip.vue'
@@ -59,7 +62,6 @@ const emit = defineEmits<{
   'website-updated': [website: MarketingWebsite]
 }>()
 
-
 /**
  * Layouts offered for inspection; a mobile layout is a different page. The
  * tablet is upright on purpose: lying flat it is 1024+ wide, a width most
@@ -100,7 +102,23 @@ const DARK_CANVAS = '#111111'
 const api = useMarketingApi()
 const { t, locale } = useI18n()
 
-const { heatmapRead, heatmap, loading, failed, points, maxWeight, totalClicks, overlayMode, scrollRead, scrollDepth, loadingScroll, scrollFailed, scrollViews, scrollReached, medianDepth } = usePreviewReads(props)
+const {
+  heatmapRead,
+  heatmap,
+  loading,
+  failed,
+  points,
+  maxWeight,
+  totalClicks,
+  overlayMode,
+  scrollRead,
+  scrollDepth,
+  loadingScroll,
+  scrollFailed,
+  scrollViews,
+  scrollReached,
+  medianDepth,
+} = usePreviewReads(props)
 
 /**
  * Where depth 0 sits on the drawn page: the bottom of the first screen.
@@ -114,21 +132,152 @@ const scrollFoldRatio = computed(() =>
     : 1,
 )
 
-const { confirm, resetting, resetPageHeatmap } = usePreviewReset(props, t, locale, api)
+const { confirm, resetting, resetPageHeatmap } = usePreviewReset(
+  props,
+  t,
+  locale,
+  api,
+)
 
-const { layoutWidth, layout, snapshotsEnabled, snapshotSettled, snapshot, backdrop, frameDocument, noSnapshotYet, tooHeavy, snapshotScheme, mebibytes, savingOptions, updateSnapshotOptions } = usePreviewSnapshot(DEFAULT_LAYOUT_WIDTH, LAYOUT_PRESETS, foreign, props, locale, confirm, t, emit, api)
+const {
+  layoutWidth,
+  layout,
+  snapshotsEnabled,
+  snapshotSettled,
+  snapshot,
+  backdrop,
+  frameDocument,
+  noSnapshotYet,
+  tooHeavy,
+  snapshotScheme,
+  mebibytes,
+  savingOptions,
+  updateSnapshotOptions,
+} = usePreviewSnapshot(
+  DEFAULT_LAYOUT_WIDTH,
+  LAYOUT_PRESETS,
+  foreign,
+  props,
+  locale,
+  confirm,
+  t,
+  emit,
+  api,
+)
 
-const { frame, measuredWidth, frameKey, probeHeight, renderHeight, frameHeight, overlayWidth, anchorBoxes, anchorKey, drawnPoints, drift, oversized, overflowing } = usePreviewFrame(props, snapshot, layoutWidth, PROBE_VIEWPORT_HEIGHT, points, OVERFLOW_TOLERANCE)
+const {
+  frame,
+  measuredWidth,
+  frameKey,
+  probeHeight,
+  renderHeight,
+  frameHeight,
+  overlayWidth,
+  anchorBoxes,
+  anchorKey,
+  drawnPoints,
+  drift,
+  oversized,
+  overflowing,
+} = usePreviewFrame(
+  props,
+  snapshot,
+  layoutWidth,
+  PROBE_VIEWPORT_HEIGHT,
+  points,
+  OVERFLOW_TOLERANCE,
+)
 
-const { container, containerWidth, scale, surfaceWidth, scrolledHeight, filled, paneStyle } = usePreviewScale(layoutWidth, renderHeight, props)
+const {
+  container,
+  containerWidth,
+  scale,
+  surfaceWidth,
+  scrolledHeight,
+  filled,
+  paneStyle,
+} = usePreviewScale(layoutWidth, renderHeight, props)
 
-const { emptyState, activeFailed, activeLoading, retryActive, truncatedState } = usePreviewEmptiness(props, t, scrollViews, overlayMode, loading, heatmap, totalClicks, loadingScroll, scrollDepth, failed, scrollFailed, heatmapRead, scrollRead)
+const { emptyState, activeFailed, activeLoading, retryActive, truncatedState } =
+  usePreviewEmptiness(
+    props,
+    t,
+    scrollViews,
+    overlayMode,
+    loading,
+    heatmap,
+    totalClicks,
+    loadingScroll,
+    scrollDepth,
+    failed,
+    scrollFailed,
+    heatmapRead,
+    scrollRead,
+  )
 
-const { externalUrl, snapshotSettingsLink, statusStrip, statusLine, capturedUrl, maskLine } = usePreviewStatus(props, snapshot, foreign, t, snapshotsEnabled, updateSnapshotOptions, noSnapshotYet, tooHeavy, mebibytes, DEFAULT_SNAPSHOT_BYTE_CAP, overlayMode, drift, locale, resetPageHeatmap, truncatedState, oversized, layoutWidth, overflowing, measuredWidth)
+const {
+  externalUrl,
+  snapshotSettingsLink,
+  statusStrip,
+  statusLine,
+  capturedUrl,
+  maskLine,
+} = usePreviewStatus(
+  props,
+  snapshot,
+  foreign,
+  t,
+  snapshotsEnabled,
+  updateSnapshotOptions,
+  noSnapshotYet,
+  tooHeavy,
+  mebibytes,
+  DEFAULT_SNAPSHOT_BYTE_CAP,
+  overlayMode,
+  drift,
+  locale,
+  resetPageHeatmap,
+  truncatedState,
+  oversized,
+  layoutWidth,
+  overflowing,
+  measuredWidth,
+)
 
-const { mostClicked, pins } = usePreviewPins(points, anchorKey, anchorBoxes, overlayMode, scale, layoutWidth)
+const { mostClicked, pins } = usePreviewPins(
+  points,
+  anchorKey,
+  anchorBoxes,
+  overlayMode,
+  scale,
+  layoutWidth,
+)
 
-const { overlayItems, layoutItems, layoutSwitch, moreItems, surface, surfaceEmpty } = usePreviewToolbar(t, LAYOUT_PRESETS, locale, foreign, props, updateSnapshotOptions, snapshotSettingsLink, externalUrl, resetPageHeatmap, activeFailed, snapshot, backdrop, emptyState, snapshotsEnabled, snapshotSettled, overlayMode)
+const {
+  overlayItems,
+  layoutItems,
+  layoutSwitch,
+  moreItems,
+  surface,
+  surfaceEmpty,
+} = usePreviewToolbar(
+  t,
+  LAYOUT_PRESETS,
+  locale,
+  foreign,
+  props,
+  updateSnapshotOptions,
+  snapshotSettingsLink,
+  externalUrl,
+  resetPageHeatmap,
+  activeFailed,
+  snapshot,
+  backdrop,
+  emptyState,
+  snapshotsEnabled,
+  snapshotSettled,
+  overlayMode,
+)
 </script>
 
 <template>
@@ -181,14 +330,14 @@ const { overlayItems, layoutItems, layoutSwitch, moreItems, surface, surfaceEmpt
         </p>
       </div>
       <div class="flex shrink-0 flex-wrap items-center gap-2">
-        <DmsSegmented
+        <DmsSegmentedControl
           v-model="overlayMode"
           :items="overlayItems"
           size="xs"
           :aria-label="t('page.marketing.pages.overlay.label')"
         />
         <span ref="layoutSwitch" class="contents">
-          <DmsSegmented
+          <DmsSegmentedControl
             v-model="layoutWidth"
             :items="layoutItems"
             size="xs"

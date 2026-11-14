@@ -57,7 +57,7 @@ const { t, locale } = useI18n()
         {{ t('page.marketing.builder.steps_hint', { max: MAX_STEPS }) }}
       </span>
     </div>
-    <DmsBanner
+    <DmsNoticeBanner
       v-if="objectiveChanged"
       tone="warning"
       size="sm"
@@ -161,7 +161,7 @@ const { t, locale } = useI18n()
             class="absolute inset-x-0 top-full z-20 mt-1 overflow-hidden rounded-lg border border-default bg-default shadow-lg"
           >
             <div class="px-3 pt-2 pb-1">
-              <DmsEyebrow
+              <DmsEyebrowLabel
                 :label="
                   t(
                     step.kind === 'url'

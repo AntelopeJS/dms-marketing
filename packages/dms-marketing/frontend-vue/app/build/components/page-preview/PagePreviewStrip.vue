@@ -13,7 +13,7 @@ const { t } = useI18n()
 
 <template>
   <div class="px-3 pt-3">
-    <DmsBanner
+    <DmsNoticeBanner
       :tone="statusStrip.tone"
       size="sm"
       :icon="statusStrip.icon"
@@ -60,6 +60,6 @@ const { t } = useI18n()
           @click="statusStrip.secondary.run?.()"
         />
       </template>
-    </DmsBanner>
+    </DmsNoticeBanner>
   </div>
 </template>

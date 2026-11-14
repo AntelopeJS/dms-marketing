@@ -190,7 +190,9 @@ async function allow(hostname: string): Promise<void> {
       fallbackKey: conflict
         ? 'page.marketing.errors.duplicate_host_named'
         : 'page.marketing.install.allow_error',
-      params: conflict ? { host: conflict.host, site: conflict.site } : undefined,
+      params: conflict
+        ? { host: conflict.host, site: conflict.site }
+        : undefined,
     })
   } finally {
     allowing.value = null
@@ -439,13 +441,7 @@ const stepTwoState = computed(() =>
           </div>
         </li>
 
-        <InstallGuideTag
-
-          :step-two-state="stepTwoState"
-
-          :website="website"
-
-        />
+        <InstallGuideTag :step-two-state="stepTwoState" :website="website" />
 
         <li class="grid grid-cols-[2.5rem_minmax(0,1fr)] gap-3">
           <span class="flex flex-col items-center">
@@ -474,7 +470,7 @@ const stepTwoState = computed(() =>
             <template v-if="website && status">
               <!-- The page's "collection paused" Banner block, when the module is paused. -->
               <slot />
-              <DmsBanner
+              <DmsNoticeBanner
                 v-if="website.state === 'paused'"
                 tone="info"
                 icon="i-ph-pause-circle"
@@ -492,7 +488,7 @@ const stepTwoState = computed(() =>
                     @click="resumeTracking"
                   />
                 </template>
-              </DmsBanner>
+              </DmsNoticeBanner>
               <InstallGuideVisit
                 :visit="visit"
                 :website="website"
@@ -544,7 +540,9 @@ const stepTwoState = computed(() =>
       <aside class="flex flex-col gap-4">
         <section class="dms-card p-0">
           <header class="border-b border-default px-4 py-3">
-            <DmsEyebrow :label="t('page.marketing.install.records_title')" />
+            <DmsEyebrowLabel
+              :label="t('page.marketing.install.records_title')"
+            />
           </header>
           <ul class="divide-y divide-default">
             <li
@@ -569,7 +567,7 @@ const stepTwoState = computed(() =>
         </section>
         <section class="dms-card p-0">
           <header class="border-b border-default px-4 py-3">
-            <DmsEyebrow :label="t('page.marketing.install.live_title')" />
+            <DmsEyebrowLabel :label="t('page.marketing.install.live_title')" />
           </header>
           <div class="flex flex-col gap-2 p-4">
             <p class="text-sm text-muted">

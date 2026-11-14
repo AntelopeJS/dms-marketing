@@ -345,7 +345,7 @@ async function remove(): Promise<void> {
       </span>
     </header>
 
-    <DmsSegmented
+    <DmsSegmentedControl
       v-model="tab"
       :items="tabItems"
       size="sm"
@@ -451,7 +451,7 @@ async function remove(): Promise<void> {
           :disabled="!draft.snapshots"
         />
       </DmsFieldRow>
-      <DmsBanner
+      <DmsNoticeBanner
         v-if="discardsSnapshots"
         tone="warning"
         size="sm"

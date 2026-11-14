@@ -18,7 +18,7 @@ const { t, locale } = useI18n()
 <template>
   <section class="dms-card p-0">
     <header class="border-b border-default px-4 py-3">
-      <DmsEyebrow :label="t('page.marketing.builder.events_title')" />
+      <DmsEyebrowLabel :label="t('page.marketing.builder.events_title')" />
     </header>
     <ul class="divide-y divide-default">
       <li v-for="event in suggestions.events.slice(0, 6)" :key="event.value">

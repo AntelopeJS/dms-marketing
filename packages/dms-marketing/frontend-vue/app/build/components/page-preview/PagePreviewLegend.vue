@@ -27,7 +27,7 @@ const { t, locale } = useI18n()
   >
     <template v-if="overlayMode === 'clicks'">
       <div class="flex flex-col gap-1.5">
-        <DmsEyebrow :label="t('page.marketing.pages.density')" />
+        <DmsEyebrowLabel :label="t('page.marketing.pages.density')" />
         <span
           class="h-2 rounded-full"
           :style="{ backgroundImage: heatLegendGradient() }"
@@ -38,7 +38,7 @@ const { t, locale } = useI18n()
         </span>
       </div>
       <div class="flex flex-col gap-2">
-        <DmsEyebrow :label="t('page.marketing.pages.most_clicked')" />
+        <DmsEyebrowLabel :label="t('page.marketing.pages.most_clicked')" />
         <p v-if="mostClicked.length === 0" class="text-xs text-muted">
           {{ t('page.marketing.pages.most_clicked_empty') }}
         </p>
@@ -78,7 +78,7 @@ const { t, locale } = useI18n()
       </div>
     </template>
     <div v-else class="flex flex-col gap-2">
-      <DmsEyebrow :label="t('page.marketing.pages.scroll.legend_title')" />
+      <DmsEyebrowLabel :label="t('page.marketing.pages.scroll.legend_title')" />
       <span
         class="h-2 rounded-full"
         :style="{ backgroundImage: heatLegendGradient(true) }"
@@ -110,7 +110,7 @@ const { t, locale } = useI18n()
       </p>
     </div>
     <div v-if="usedIn && usedIn.length > 0" class="flex flex-col gap-2">
-      <DmsEyebrow :label="t('page.marketing.pages.used_in')" />
+      <DmsEyebrowLabel :label="t('page.marketing.pages.used_in')" />
       <DmsAutoLink
         v-for="funnel in usedIn"
         :key="funnel._id"

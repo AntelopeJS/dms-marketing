@@ -141,14 +141,14 @@ async function mountExplorer(): Promise<HTMLElement> {
   })
   for (const name of [
     'DmsAutoLink',
-    'DmsBanner',
+    'DmsNoticeBanner',
     'DmsEmptyState',
-    'DmsEyebrow',
+    'DmsEyebrowLabel',
     'DmsIconWell',
     'DmsMarketingHeatmapCanvas',
     'DmsMarketingScrollDepthOverlay',
     'DmsMarketingWorkspaceScope',
-    'DmsSegmented',
+    'DmsSegmentedControl',
     'UButton',
     'UDropdownMenu',
     'UIcon',

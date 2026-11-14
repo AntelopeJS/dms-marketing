@@ -61,7 +61,7 @@ const experimentKey = defineModel<string>('experimentKey', { required: true })
       />
     </div>
     <template v-if="splitEnabled">
-      <DmsBanner
+      <DmsNoticeBanner
         v-if="frozen"
         tone="info"
         size="sm"
@@ -208,7 +208,7 @@ const experimentKey = defineModel<string>('experimentKey', { required: true })
         <div
           class="flex items-center justify-between gap-2 border-b border-default px-3 py-1.5"
         >
-          <DmsEyebrow
+          <DmsEyebrowLabel
             class="min-w-0 truncate"
             :label="
               t('page.marketing.builder.snippet_title', {
@@ -222,7 +222,7 @@ const experimentKey = defineModel<string>('experimentKey', { required: true })
           class="overflow-x-auto px-3 py-2.5 font-mono text-xs leading-relaxed text-toned"
           >{{ snippet }}</pre>
       </div>
-      <DmsBanner
+      <DmsNoticeBanner
         v-if="!frozen"
         tone="primary"
         size="sm"

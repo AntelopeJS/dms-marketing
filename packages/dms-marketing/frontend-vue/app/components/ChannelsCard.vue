@@ -111,7 +111,7 @@ function showCampaigns(channel: string): void {
 <template>
   <section class="dms-card flex h-full flex-col overflow-hidden p-0">
     <header class="flex items-center gap-4 border-b border-default px-4 py-3">
-      <DmsEyebrow
+      <DmsEyebrowLabel
         :label="
           t(
             'page.marketing.acquisition.channels.title',

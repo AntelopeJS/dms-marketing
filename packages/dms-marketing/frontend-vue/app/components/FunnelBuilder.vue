@@ -562,7 +562,7 @@ const {
             </span>
           </div>
           <div class="flex flex-wrap items-center gap-3">
-            <DmsSegmented
+            <DmsSegmentedControl
               v-model="windowHours"
               :items="windowItems"
               variant="mono"

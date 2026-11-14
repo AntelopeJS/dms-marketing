@@ -267,7 +267,7 @@ const coverageDate = computed(() =>
 
 <template>
   <div class="flex flex-col gap-4">
-    <DmsBanner
+    <DmsNoticeBanner
       v-if="isDraft"
       tone="info"
       size="sm"
@@ -275,7 +275,7 @@ const coverageDate = computed(() =>
       :title="t('page.marketing.funnel.draft_title')"
       :description="t('page.marketing.funnel.draft_description')"
     />
-    <DmsBanner
+    <DmsNoticeBanner
       v-if="results.truncated"
       tone="warning"
       size="sm"
@@ -283,7 +283,7 @@ const coverageDate = computed(() =>
       :title="t('page.marketing.funnel.truncated_title')"
       :description="t('page.marketing.funnel.truncated_description')"
     />
-    <DmsBanner
+    <DmsNoticeBanner
       v-if="
         coverage && coverage.since && (coverage.period || coverage.previous)
       "
@@ -307,7 +307,7 @@ const coverageDate = computed(() =>
         })
       "
     />
-    <DmsBanner
+    <DmsNoticeBanner
       v-for="step in unseen"
       :key="step"
       tone="warning"
@@ -376,8 +376,8 @@ const coverageDate = computed(() =>
       <header
         class="flex flex-wrap items-center justify-between gap-3 border-b border-default px-4 py-3"
       >
-        <DmsEyebrow :label="t('page.marketing.funnel.figure_title')" />
-        <DmsSegmented v-model="basis" :items="basisItems" size="xs" />
+        <DmsEyebrowLabel :label="t('page.marketing.funnel.figure_title')" />
+        <DmsSegmentedControl v-model="basis" :items="basisItems" size="xs" />
       </header>
       <ol class="flex flex-col px-4 py-3">
         <template v-for="(row, index) in steps" :key="index">

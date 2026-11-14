@@ -28,7 +28,7 @@ const { t, locale } = useI18n()
     <header
       class="flex items-center justify-between gap-3 border-b border-default px-4 py-3"
     >
-      <DmsEyebrow :label="t('page.marketing.experiment.steps_title')" />
+      <DmsEyebrowLabel :label="t('page.marketing.experiment.steps_title')" />
       <span class="flex gap-1">
         <span
           v-for="(arm, index) in arms"
