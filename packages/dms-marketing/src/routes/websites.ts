@@ -1,3 +1,4 @@
+import type { QueryParameter } from "@/services/query-param";
 import { randomUUID } from "node:crypto";
 import {
   Context,
@@ -147,7 +148,7 @@ export class WebsitesController extends Controller(
     @AuthTenantMember() _user: User,
     @Parameter("id") id: string,
     @Context() context: RequestContext,
-    @Parameter("since", "query") since?: string,
+    @Parameter("since", "query") since?: QueryParameter,
   ) {
     const from = Number(since);
     return connectionStatus(

@@ -24,6 +24,9 @@
     "incremental": false,
     "experimentalDecorators": true,
     "paths": {
+      "@antelopejs/interface-core/*": [
+        "../../../packages/dms-marketing/node_modules/@antelopejs/interface-core/dist/*"
+      ],
       "@antelopejs/interface-dms/*": [
         "../../../packages/dms-marketing/node_modules/@antelopejs/interface-dms/dist/*"
       ],

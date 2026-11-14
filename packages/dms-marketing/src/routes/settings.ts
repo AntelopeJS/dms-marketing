@@ -1,3 +1,4 @@
+import type { QueryParameter } from "@/services/query-param";
 import {
   Context,
   Controller,
@@ -117,7 +118,7 @@ export class MarketingSettingsController extends Controller(
   @Get("glance")
   async glance(
     @AuthOwnerOnly() _user: User,
-    @Parameter("item", "query") item?: string,
+    @Parameter("item", "query") item?: QueryParameter,
   ) {
     await reloadSettings(GetModel(MarketingSettingsModel));
     const meter = retentionGlance(item);

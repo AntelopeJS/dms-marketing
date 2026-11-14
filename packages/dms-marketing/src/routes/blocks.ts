@@ -117,8 +117,8 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
   async kpi(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("metric", "query") metric?: string,
-    @Parameter("website", "query") website?: string,
+    @Parameter("metric", "query") metric?: QueryParameter,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     if (!isKpiMetric(metric)) {
       throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_METRIC_MESSAGE);
@@ -131,8 +131,8 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
   async traffic(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("metric", "query") metric?: string,
-    @Parameter("website", "query") website?: string,
+    @Parameter("metric", "query") metric?: QueryParameter,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const wanted = metric ?? "sessions";
     if (!isKpiMetric(wanted)) {
@@ -146,7 +146,7 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
   async quality(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const { read, comparison } = await readScope(context, user, website);
     return { items: qualityItems(read, comparison) };
@@ -156,7 +156,7 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
   async devices(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const { read } = await readScope(context, user, website);
     return { items: devicesPayload(read) };
@@ -166,8 +166,8 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
   async tops(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("group", "query") group?: string,
-    @Parameter("website", "query") website?: string,
+    @Parameter("group", "query") group?: QueryParameter,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     if (!isTopGroup(group)) {
       throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_METRIC_MESSAGE);
@@ -193,9 +193,9 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
   async top(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("dimension", "query") dimension?: string,
-    @Parameter("limit", "query") limit?: string,
-    @Parameter("website", "query") website?: string,
+    @Parameter("dimension", "query") dimension?: QueryParameter,
+    @Parameter("limit", "query") limit?: QueryParameter,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     if (!isTopDimension(dimension) || !TOP_LIST_DIMENSIONS.has(dimension)) {
       throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_METRIC_MESSAGE);
@@ -223,7 +223,7 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
   async channels(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const { read } = await readScope(context, user, website);
     return channelsPayload(read);
@@ -238,7 +238,7 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
   async campaignRows(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const params = context.url.searchParams;
     const number = (name: string) =>
@@ -260,8 +260,8 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
   async campaignNoticeBanner(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("kind", "query") kind?: string,
-    @Parameter("website", "query") website?: string,
+    @Parameter("kind", "query") kind?: QueryParameter,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     if (!isCampaignNoticeKind(kind)) {
       throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_METRIC_MESSAGE);
@@ -280,7 +280,7 @@ export class BlocksController extends Controller(`${API_BASE_PATH}/blocks`) {
   async websiteNotice(
     @AuthTenantMember() user: User,
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const resolved = await resolveContextWebsite(context, user, website);
     const activity = await loadWebsiteActivity(resolved.tenantId, [resolved]);

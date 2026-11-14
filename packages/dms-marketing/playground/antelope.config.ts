@@ -26,7 +26,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/dms",
-        version: ">=0.13.1 <1.0.0",
+        version: ">=0.20.0 <0.21.0",
       },
       config: {
         homepage: "/modules/marketing/overview",
@@ -41,7 +41,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/mongodb",
-        version: "^1.5.0",
+        version: "~1.8.0",
       },
       config: {
         url: process.env.MONGO_URL ?? "mongodb://localhost:27017",
@@ -54,7 +54,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/auth-jwt",
-        version: "^1.0.3",
+        version: "~1.1.0",
       },
       config: {
         secret: "dev",
@@ -66,7 +66,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/file-storage-local",
-        version: ">=0.1.13 <1.0.0",
+        version: ">=0.2.0 <0.3.0",
       },
       config: {
         storagePath: ".antelope/file-storage",
@@ -80,7 +80,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/nodemailer",
-        version: ">=0.0.6 <1.0.0",
+        version: ">=0.0.12 <0.1.0",
       },
       config: {
         ethereal: true,
@@ -92,7 +92,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/api",
-        version: "^1.5.0",
+        version: "~1.7.0",
       },
       config: {
         servers: [

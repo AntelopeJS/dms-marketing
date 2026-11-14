@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       '@antelopejs/tooling-configs':
-        specifier: ^0.5.1
-        version: 0.5.1(knip@6.36.0)(mongodb-memory-server@11.3.0(bare-buffer@3.7.1))(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))(pixelmatch@8.0.0)(playwright-core@1.65.0)(sharp@0.35.5)
+        specifier: '>=0.7.0 <0.8.0'
+        version: 0.7.1(knip@6.36.0)(mongodb-memory-server@11.3.0(bare-buffer@3.7.1))(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))(pixelmatch@8.0.0)(playwright-core@1.65.0)(sharp@0.35.5)
       knip:
         specifier: ^6.34.0
         version: 6.36.0
@@ -33,7 +33,7 @@ importers:
         specifier: ^8.0.0
         version: 8.0.0
       playwright-core:
-        specifier: ^1.56.1
+        specifier: ^1.65.0
         version: 1.65.0
       sharp:
         specifier: ^0.35.5
@@ -41,8 +41,8 @@ importers:
 
 packages:
 
-  '@antelopejs/tooling-configs@0.5.1':
-    resolution: {integrity: sha512-Q1JWAsMIDy8f6KaTFPAakT+ChWDhQCzJjdszFFam/pUFqBVMgY+Lp1I7bc8SwcWL3CMdHBzgUUEId2od2cB7hQ==}
+  '@antelopejs/tooling-configs@0.7.1':
+    resolution: {integrity: sha512-X/mr/nQEgmFI2dMr3ThMS7HcPaU1amsTU/RNfEnQv46+l7au8cv7unpypCZ0BggnfJHjpk2QG2CTOOllpwj3cw==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
@@ -774,6 +774,10 @@ packages:
   '@types/whatwg-url@13.0.0':
     resolution: {integrity: sha512-N8WXpbE6Wgri7KUSvrmQcqrMllKZ9uxkYWMt+mCSGwNc0Hsw9VQTW7ApqI4XNrx6/SaM2QQJCzMPDEXE058s+Q==}
 
+  '@typescript/typescript6@6.0.2':
+    resolution: {integrity: sha512-mbCddXd+jm7hfx7w2YU64/Av4/NqqeG3GoRZgxPcgoTxYjhrcfJRw9ULch71SS4G+Q3bOXFhRvPqjguN0Hyp5w==}
+    hasBin: true
+
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
@@ -1237,6 +1241,11 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
+  typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
   unbash@4.0.11:
     resolution: {integrity: sha512-FoSOKV7NEofQSkAefMVHam4ZPKYMxjAydxiV72UFEDNV/YofxjGfiZ2A9pZjdL/lRJzTjcu4PABo1JYJX8N5iQ==}
     engines: {node: '>=14'}
@@ -1283,12 +1292,13 @@ packages:
 
 snapshots:
 
-  '@antelopejs/tooling-configs@0.5.1(knip@6.36.0)(mongodb-memory-server@11.3.0(bare-buffer@3.7.1))(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))(pixelmatch@8.0.0)(playwright-core@1.65.0)(sharp@0.35.5)':
+  '@antelopejs/tooling-configs@0.7.1(knip@6.36.0)(mongodb-memory-server@11.3.0(bare-buffer@3.7.1))(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))(pixelmatch@8.0.0)(playwright-core@1.65.0)(sharp@0.35.5)':
     dependencies:
       '@oxlint/plugins': 1.81.0
+      '@typescript/typescript6': 6.0.2
       dts-bundle-generator: 9.5.1
       minimatch: 10.2.6
-      typescript: 5.9.3
+      semver: 7.8.6
       yaml: 2.9.1
     optionalDependencies:
       knip: 6.36.0
@@ -1701,6 +1711,10 @@ snapshots:
   '@types/whatwg-url@13.0.0':
     dependencies:
       '@types/webidl-conversions': 7.0.3
+
+  '@typescript/typescript6@6.0.2':
+    dependencies:
+      '@typescript/old': typescript@6.0.3
 
   agent-base@7.1.4: {}
 
@@ -2222,6 +2236,8 @@ snapshots:
   tslib@2.8.1: {}
 
   typescript@5.9.3: {}
+
+  typescript@6.0.3: {}
 
   unbash@4.0.11: {}
 

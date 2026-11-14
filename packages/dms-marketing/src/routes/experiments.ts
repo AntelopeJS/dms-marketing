@@ -10,7 +10,7 @@ import {
 import { getConfig } from "@/config";
 import { servableExperiments } from "@/services/experiment-definitions";
 import { type AssignmentMap, assignAll } from "@/services/experiments";
-import { queryString } from "@/services/query-param";
+import { queryString, type QueryParameter } from "@/services/query-param";
 import { userAgentOf } from "@/services/request-meta";
 import { getVisitorHashSecret } from "@/services/settings";
 import { computeVisitorId } from "@/services/visitor-id";
@@ -54,7 +54,7 @@ export class PublicExperimentsController extends Controller(API_BASE_PATH) {
   @Get("experiments.js")
   async assignments(
     @Context() context: RequestContext,
-    @Parameter("website", "query") website?: string,
+    @Parameter("website", "query") website?: QueryParameter,
   ) {
     const id = queryString(website);
     if (id === undefined) {
