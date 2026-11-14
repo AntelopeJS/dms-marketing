@@ -84,8 +84,8 @@ async function watchClaim(
 }
 
 /**
- * A claim whose import finished: its holder stopped between recording the
- * import done and releasing the claim.
+ * A claim whose import finished, whose holder stopped or has yet to release
+ * it: a holder ignores a failed release once the import row says done.
  */
 async function ownerFinished(
   imports: MarketingImportsModel,

@@ -329,7 +329,7 @@ export async function importAnalytics(
     const current = await imports.get(rowId);
     resuming = current !== undefined;
     if (current && !isResumable(current)) {
-      await claim.release();
+      await claim.release().catch(() => {});
       return claimed(current);
     }
     importedThrough = chronologyBoundary(
@@ -374,7 +374,7 @@ export async function importAnalytics(
       importedThrough: new Date(Math.max(importedThrough, latest)),
       finishedAt: new Date(),
     });
-    await claim.release();
+    await claim.release().catch(() => {});
     return { importId, status: "imported", ...counts };
   } catch (err) {
     if (!claim.isHeld()) {
