@@ -45,7 +45,7 @@ VARIABLES
   holds,     \* holdClaim's `token` is set (claim.ts:38, 59)
   seen,      \* the holder of the claim the call read as `owner` (claim.ts:135)
   moved,     \* the claim's token changed since the call read `owner`
-  resuming,  \* `current !== undefined` (import.ts:399)
+  resuming,  \* `current !== undefined` (import.ts:405)
   counted,   \* the days the ledger named when the call read it (replay.ts:268)
   day,       \* the day the call replays next
   answer,    \* what the call returned, or "error" when it rejected
@@ -146,8 +146,8 @@ NewFence(c) ==
 (* ------------------------------ acquiring ------------------------------ *)
 
 (* `applied = get(rowId)`: a done import answers "skipped" before it      *)
-(* touches the claim (import.ts:356-359, 201-220). A running or failed    *)
-(* one is resumable, since every row here is ledgered (import.ts:196-199).*)
+(* touches the claim (import.ts:362-365, 202-221). A running or failed    *)
+(* one is resumable, since every row here is ledgered (import.ts:197-200).*)
 Begin(c) ==
   /\ pc[c] = "idle"
   /\ IF row = "done"
@@ -171,7 +171,7 @@ InsertClaim(c) ==
 (* `owner = get(claimRow._id)`; no row means the holder whose row the     *)
 (* insert hit has released it since, so the call inserts again            *)
 (* (claim.ts:135-140). The third such loss answers `unseen`, refused by   *)
-(* importAnalytics (import.ts:390-391); each loss needs another call's    *)
+(* importAnalytics (import.ts:396-397); each loss needs another call's    *)
 (* claim to come and go, so a call with two others never gets there.      *)
 ReadOwner(c) ==
   /\ pc[c] = "readOwner"
@@ -205,7 +205,7 @@ ReleaseOwner(c) ==
 
 (* One poll of watchClaim: the row is gone, so insert again; its token    *)
 (* changed, so the owner is alive and the call answers "in_progress"      *)
-(* (claim.ts:79-81, 148, import.ts:387-389).                              *)
+(* (claim.ts:79-81, 148, import.ts:393-395).                              *)
 Poll(c) ==
   /\ pc[c] = "watch"
   /\ \/ /\ claim = None
@@ -253,7 +253,7 @@ Renew(c) ==
   /\ Frozen
 
 (* `current = get(rowId)`: done, release and answer "skipped"; otherwise  *)
-(* resume from its fence when the row exists (import.ts:398-403).         *)
+(* resume from its fence when the row exists (import.ts:404-409).         *)
 ReadCurrent(c) ==
   /\ pc[c] = "current"
   /\ IF row = "done"
@@ -265,7 +265,7 @@ ReadCurrent(c) ==
                  counted, day, answer, failed, failures, crashes, lost, fence>>
 
 (* The release's error is ignored: another call's ownerFinished may have *)
-(* deleted the claim of this done import (import.ts:401).                 *)
+(* deleted the claim of this done import (import.ts:407).                 *)
 ReleaseSkip(c) ==
   /\ pc[c] = "releaseSkip"
   /\ ReleaseApplies(c)
@@ -274,7 +274,7 @@ ReleaseSkip(c) ==
   /\ Frozen
 
 (* A resume sets the row running while it carries the fence read; a new *)
-(* one inserts it, failing on an existing row (import.ts:411, 306-327).   *)
+(* one inserts it, failing on an existing row (import.ts:417, 312-333).   *)
 WriteRow(c) ==
   /\ pc[c] = "writeRow"
   /\ LET wins == IF resuming[c] THEN Fenced(c) ELSE row = "none"
@@ -286,8 +286,8 @@ WriteRow(c) ==
                  counted, day, answer, failed, failures, crashes>>
 
 (* A call whose row insert or fenced write lost reads the row back: none *)
-(* rethrows; a found row answers "skipped" when done, else "in_progress"  *)
-(* since it is ledgered (import.ts:274-298, 201-220).                     *)
+(* throws; a found row answers "skipped" when done, else "in_progress"    *)
+(* since it is ledgered (import.ts:280-304, 202-221).                     *)
 ReadBack(c) ==
   /\ pc[c] = "readBack"
   /\ IF row = "none"
@@ -300,7 +300,7 @@ ReadBack(c) ==
 
 (* The release is tried twice and its error ignored, also when another    *)
 (* call took the claim over before this one renewed; the call returns     *)
-(* what it read back (import.ts:281-285).                                 *)
+(* what it read back (import.ts:287-291).                                 *)
 ReleaseFound(c) ==
   /\ pc[c] = "releaseFound"
   /\ ReleaseApplies(c)
@@ -308,7 +308,7 @@ ReleaseFound(c) ==
   /\ UNCHANGED <<holds, seen, answer>>
   /\ Frozen
 
-(* The catch releases and rethrows (import.ts:413-416).                   *)
+(* The catch releases, then throws (import.ts:419-424).                  *)
 ReleaseErr(c) ==
   /\ pc[c] = "releaseErr"
   /\ ReleaseApplies(c)
@@ -387,7 +387,7 @@ StorageFails(c) ==
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
                  resuming, counted, day, answer, crashes, lost, fence, fenceOf>>
 
-(* The import row is set done under the call's fence (import.ts:427-433).*)
+(* The import row is set done under the call's fence (import.ts:435-441).*)
 MarkDone(c) ==
   /\ pc[c] = "markDone"
   /\ IF Fenced(c)
@@ -399,7 +399,7 @@ MarkDone(c) ==
 
 (* release(), its error ignored, then "imported": another call's          *)
 (* ownerFinished may have deleted the claim of this done import           *)
-(* (import.ts:434-435, claim.ts:142-143).                                 *)
+(* (import.ts:442-443, claim.ts:142-143).                                 *)
 Release(c) ==
   /\ pc[c] = "release"
   /\ ReleaseApplies(c)
@@ -409,8 +409,8 @@ Release(c) ==
 
 (* The catch of a call whose renewal saw another token leaves the row to  *)
 (* the taker: release() has no token to delete, and the call answers      *)
-(* "in_progress" (import.ts:437-440). Otherwise it sets the import row    *)
-(* failed under its fence (import.ts:441-451).                            *)
+(* "in_progress" (import.ts:445-448). Otherwise it sets the import row    *)
+(* failed under its fence (import.ts:449-459).                            *)
 MarkFailed(c) ==
   /\ pc[c] = "markFailed"
   /\ IF ~holds[c]
@@ -422,7 +422,7 @@ MarkFailed(c) ==
   /\ UNCHANGED <<claim, ledger, raw, everDone, holds, seen, moved, resuming,
                  counted, day, failed, failures, crashes, lost>>
 
-(* then releases, errors ignored, and rejects (import.ts:452-456).        *)
+(* then releases, errors ignored, and rejects (import.ts:460-464).        *)
 ReleaseFailed(c) ==
   /\ pc[c] = "releaseFailed"
   /\ ReleaseApplies(c)
