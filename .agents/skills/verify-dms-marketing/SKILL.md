@@ -81,7 +81,7 @@ Write `$RUN/evidence/judgement.json` (`doors`, `docs`, `notVerified`, `attention
 ## Gotchas
 
 - Every dashboard page renders on the server and hydrates after `load`; a click that lands first does nothing. The journeys click again until what the click opens shows (`clickUntil`), and `tab.signIn` waits for the sign-in form to hydrate.
-- The run's headless browser announces itself as `HeadlessChrome`, and the collector drops declared automation: the visitor-site journeys give the browser context a plain Chrome user agent (`journeys/parts/tracker-helpers.mjs`).
+- The run's headless browser announces itself as `HeadlessChrome`, and the collector drops declared automation: the visitor-site journeys open their pages in a browser of their own launched with a plain Chrome user agent (`journeys/parts/tracker-helpers.mjs`). A context's user agent or extra headers would not do: they miss the beacon a page sends as it unloads.
 - The tracker sends its batches every 5 seconds, so a journey waits for the stored rows (`waitFor`) instead of for time.
 - Visitors are told apart by the user agent (the visitor hash is the website, the address and the agent), so journeys that need several visitors give each its own agent.
 - Rollups are written after the events: a read of the Overview waits for the figure (`eventually`).

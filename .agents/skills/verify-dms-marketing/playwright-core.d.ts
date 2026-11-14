@@ -97,8 +97,14 @@ declare module "playwright-core" {
     };
   }
 
+  interface BrowserType {
+    launch(options: { headless: boolean; args: string[] }): Promise<Browser>;
+  }
+
   interface Browser {
-    newContext(): Promise<BrowserContext>;
+    browserType(): BrowserType;
+    newContext(options?: { viewport: { width: number; height: number }; locale: string; colorScheme: "light" | "dark" }): Promise<BrowserContext>;
+    on(event: "disconnected", listener: () => void): void;
     close(): Promise<void>;
   }
 }
