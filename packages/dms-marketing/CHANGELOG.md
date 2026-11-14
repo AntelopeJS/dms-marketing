@@ -1,6 +1,58 @@
 # Changelog
 
 
+## v0.10.0
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.9.2...v0.10.0)
+
+### 🩹 Fixes
+
+- **import:** Answer a takeover's lost import-row insert instead of rethrowing it ([#149](https://github.com/AntelopeJS/dms-marketing/pull/149))
+- **stats:** Refuse an unknown snapshot layout instead of reading it as desktop ([#151](https://github.com/AntelopeJS/dms-marketing/pull/151))
+- **import:** Answer in_progress when a holder that never renewed loses its import row ([#152](https://github.com/AntelopeJS/dms-marketing/pull/152))
+- **import:** Insert the claim again when its holder released before the owner read ([#154](https://github.com/AntelopeJS/dms-marketing/pull/154))
+- **import:** Refuse an import whose claim row sits under another tenant ([#157](https://github.com/AntelopeJS/dms-marketing/pull/157))
+- **import:** Answer in_progress when a holder's renewal saw the takeover ([#155](https://github.com/AntelopeJS/dms-marketing/pull/155))
+- **import:** Keep a done import done when another call deletes its claim before release ([#156](https://github.com/AntelopeJS/dms-marketing/pull/156))
+- **import:** Fence an import holder's writes to its import row by a compare-and-set ([#158](https://github.com/AntelopeJS/dms-marketing/pull/158))
+- **import:** Refuse an import whose import row sits under another tenant ([#160](https://github.com/AntelopeJS/dms-marketing/pull/160))
+- **dms-marketing:** Accept any zod 3.x from 3.24.2 so a project shares one zod copy ([#163](https://github.com/AntelopeJS/dms-marketing/pull/163))
+- **frontend:** Name the DMS components by their dms 0.20 names ([#164](https://github.com/AntelopeJS/dms-marketing/pull/164))
+- **release:** Move the module's interface range in the interface's release commit ([#165](https://github.com/AntelopeJS/dms-marketing/pull/165))
+
+### 💅 Refactors
+
+- Burn down lint suppressions to the import claim's one ([#148](https://github.com/AntelopeJS/dms-marketing/pull/148))
+
+### 📖 Documentation
+
+- **formal:** Resync the import-claim skill with the code after #155 to #160 ([#159](https://github.com/AntelopeJS/dms-marketing/pull/159), [#155](https://github.com/AntelopeJS/dms-marketing/issues/155), [#160](https://github.com/AntelopeJS/dms-marketing/issues/160))
+- **marketing:** Drop the Vue major version from prose ([#161](https://github.com/AntelopeJS/dms-marketing/pull/161))
+
+### 📦 Build
+
+- **deps:** ⚠️  Move to dms 0.20 and interface-dms 0.14 ([#162](https://github.com/AntelopeJS/dms-marketing/pull/162))
+
+### 🏡 Chore
+
+- **release:** @antelopejs/interface-dms-marketing v0.7.0 ([a56046c](https://github.com/AntelopeJS/dms-marketing/commit/a56046c))
+
+### ✅ Tests
+
+- **formal:** Check that a call whose import-row insert lost only answers ([#153](https://github.com/AntelopeJS/dms-marketing/pull/153))
+
+### 🤖 CI
+
+- Run the CI on Windows in parallel with Linux ([#150](https://github.com/AntelopeJS/dms-marketing/pull/150))
+
+#### ⚠️ Breaking Changes
+
+- **deps:** ⚠️  Move to dms 0.20 and interface-dms 0.14 ([#162](https://github.com/AntelopeJS/dms-marketing/pull/162))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli ([@Upd4ting](http://github.com/Upd4ting))
+
 ## v0.9.2
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.9.1...v0.9.2)
