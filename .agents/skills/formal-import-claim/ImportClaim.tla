@@ -170,9 +170,9 @@ InsertClaim(c) ==
 
 (* `owner = get(claimRow._id)`; no row means the holder whose row the     *)
 (* insert hit has released it since, so the call inserts again            *)
-(* (claim.ts:135-140). The code rethrows after its third such loss; each  *)
-(* loss needs another call's claim to come and go, so a call with at most *)
-(* two others never reaches that bound.                                   *)
+(* (claim.ts:135-140). The third such loss answers `unseen`, refused by   *)
+(* importAnalytics (import.ts:390-391); each loss needs another call's    *)
+(* claim to come and go, so a call with two others never gets there.      *)
 ReadOwner(c) ==
   /\ pc[c] = "readOwner"
   /\ IF claim = None
