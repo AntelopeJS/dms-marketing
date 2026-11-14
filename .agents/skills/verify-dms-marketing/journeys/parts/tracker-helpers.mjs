@@ -21,7 +21,7 @@ export async function local(ctx) {
 const visitorBrowsers = new WeakMap();
 
 /**
- * A visitor's browser context, one per account, in a browser of the journey's own that announces a desktop Chrome on every request.
+ * A visitor's browser context, one per account, in a browser of the journey's own that sends a desktop Chrome `User-Agent` on every request.
  * A context's user agent or extra headers reach only the requests of a live page: the beacon a page sends as it unloads leaves with
  * `HeadlessChrome`, which the collector drops. The browser closes with the journey's.
  *
@@ -35,7 +35,7 @@ function visitorContext(ctx, account) {
     const browser = ctx.browser.browserType().launch({ headless: true, args: [`--user-agent=${BROWSER_UA}`] });
     ctx.browser.on("disconnected", () => {
       void browser.then(
-        (launched) => launched.close(),
+        (launched) => launched.close().catch(() => undefined),
         () => undefined,
       );
     });
