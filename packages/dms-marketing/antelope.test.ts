@@ -51,7 +51,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/dms",
-        version: "0.20.0",
+        version: "0.20.2",
       },
       config: {
         clientBaseUrl: "http://127.0.0.1",
@@ -64,7 +64,7 @@ export default defineConfig({
       source: { type: "local", path: "node_modules/@antelopejs/mongodb" },
     },
     api: {
-      source: { type: "package", package: "@antelopejs/api", version: "1.7.4" },
+      source: { type: "package", package: "@antelopejs/api", version: "1.7.5" },
       config: {
         servers: [{ protocol: "http", host: "127.0.0.1", port: 0 }],
         publicBaseUrl: "http://127.0.0.1",

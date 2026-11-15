@@ -3,8 +3,14 @@ const { mock } = require("node:test");
 const test = it;
 const models = require("@antelopejs/interface-database-decorators/model");
 const { EnsureWebsite } = require("@antelopejs/interface-dms-marketing");
-const { generateAccessToken } = require("@antelopejs/interface-dms/auth");
-const { UserModel } = require("@antelopejs/interface-dms/auth/db");
+const {
+  createSession,
+  generateAccessToken,
+} = require("@antelopejs/interface-dms/auth");
+const {
+  SessionModel,
+  UserModel,
+} = require("@antelopejs/interface-dms/auth/db");
 const {
   resolveRequestTenantId,
 } = require("@antelopejs/interface-dms/request-tenant");
@@ -41,7 +47,13 @@ async function requestOf(tenantId) {
     isValidated: true,
   });
   const user = await users.get(userId);
-  const { token } = await generateAccessToken(tenantId, user);
+  const sessionId = await createSession(
+    realGetModel(SessionModel),
+    userId,
+    "test",
+    "127.0.0.1",
+  );
+  const { token } = await generateAccessToken(tenantId, user, sessionId);
   const ctx = { rawRequest: { headers: { authorization: `Bearer ${token}` } } };
   assert.equal(await resolveRequestTenantId(ctx), tenantId);
   return ctx;
