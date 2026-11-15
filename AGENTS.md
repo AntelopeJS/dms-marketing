@@ -25,10 +25,6 @@ The module implements the interface, so it depends on it as `>=<floor> <0.<minor
 - `packages/dms-marketing/antelope-lock/` records the lockfile of each package module `antelope.test.ts` installs, so every run, cached or not, installs the same dependencies. After you change a version there, delete the records of the old versions, run `test:backend` once, and commit the new records it writes.
 - `pnpm --dir packages/dms-marketing knip:all` also reports unused files and exports. The exports of `src/frontend-module.ts` are reached through `dmsFrontend` in `package.json`; confirm every other finding before you remove it.
 
-## Orb
-
-`.agents/setup` belongs to the guardrail pack. The MongoDB install, the build and the playground's module install live in `.agents/playground`, which the `dms-backend` service runs before it starts.
-
 <!-- antelopejs-guardrails:start -->
 <!-- Managed by @antelopejs/tooling-configs. `antelopejs-sync` rewrites everything between these markers; write repository-specific guidance outside them. -->
 
