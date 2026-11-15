@@ -15,7 +15,7 @@ Each package keeps its own `pnpm-lock.yaml` (`shared-workspace-lockfile=false`).
 
 ## Versioning
 
-The module implements the interface, so it depends on it as `>=<floor> <0.<minor+1>.0`, and the interface version in the tree must satisfy that range. `release.yml` refuses any other shape, and refuses to release the module until the tree's interface version is on npm: run "Release DMS marketing interface" first.
+The module implements the interface, so it depends on it as `>=<floor> <0.<minor+1>.0`, and the interface version in the tree must satisfy that range. Release the interface before the module. Its release commit runs `sync`, which moves the module's range to the new minor. `release.yml` releases each package through the shared `release-npm-public.yml@v2`.
 
 ## Tests
 
