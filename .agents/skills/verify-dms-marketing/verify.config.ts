@@ -120,7 +120,7 @@ const config: VerifyConfig = {
       why: "these routes answer without a session for any site on the internet, and the origin and rate guards decide whose events are stored",
     },
     publish: {
-      globs: [`${MODULE}/package.json`, `${INTERFACE}/package.json`, `${MODULE}/.release-it.json`, `${INTERFACE}/.release-it.json`,".github/workflows/release.yml", ".github/workflows/release-interface.yml"],
+      globs: [`${MODULE}/package.json`, `${INTERFACE}/package.json`, `${MODULE}/.release-it.json`, `${INTERFACE}/.release-it.json`,".github/workflows/release.yml"],
       funnels: [],
       why: "the package names, their files and the release workflows claim @antelopejs/dms-marketing and @antelopejs/interface-dms-marketing in the npm registry",
     },
