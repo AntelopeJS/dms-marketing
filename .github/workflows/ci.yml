@@ -1,12 +1,13 @@
 name: ci
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
-
-  workflow_dispatch: null
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [next]
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
 permissions:
   contents: read
 
@@ -20,7 +21,7 @@ concurrency:
 # the branch protection knows.
 jobs:
   ci:
-    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v1
+    uses: AntelopeJS/.github/.github/workflows/ci-node.yml@v2
     with:
       docs-files: |
         README.md
@@ -32,17 +33,77 @@ jobs:
       docs-typescript-project: packages/interface-dms-marketing/docs/tsconfig.json
       renovate-sync: false
       test-job: true
-      windows: true
     permissions:
       contents: read
 
+  # ci-node.yml exposes no outputs, so this copies its tier rule for the jobs
+  # declared here: none on a draft or on the `next` to default branch pull
+  # request, Windows only in the nightly.
+  select:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tier: ${{ steps.tier.outputs.tier }}
+      os: ${{ steps.tier.outputs.os }}
+      run: ${{ steps.tier.outputs.run }}
+    steps:
+      - name: Pick the tier from the event, the target branch and the draft flag
+        id: tier
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REPOSITORY: ${{ github.repository }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          case "$EVENT" in
+            pull_request)
+              if [[ "$BASE_REF" == "$DEFAULT_BRANCH" && "$HEAD_REPOSITORY" == "$REPOSITORY" && "$HEAD_REF" =~ ^(next|develop)$ ]]; then
+                tier=none
+              elif [[ "$DRAFT" == true ]]; then
+                tier=draft
+              elif [[ "$BASE_REF" == "$DEFAULT_BRANCH" ]]; then
+                tier=full
+              else
+                tier=fast
+              fi
+              ;;
+            push)
+              if [[ "$REF_NAME" == "$DEFAULT_BRANCH" ]]; then tier=none; else tier=full; fi
+              ;;
+            schedule) tier=nightly ;;
+            *) tier=full ;;
+          esac
+
+          run=true
+          if [[ "$tier" == none || "$tier" == draft ]]; then
+            run=false
+          fi
+
+          os='["ubuntu-latest"]'
+          if [[ "$tier" == nightly ]]; then
+            os='["ubuntu-latest","windows-latest"]'
+          fi
+
+          {
+            echo "tier=${tier}"
+            echo "run=${run}"
+            echo "os=${os}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Tier \`${tier}\`" >> "$GITHUB_STEP_SUMMARY"
+
   backend:
+    needs: select
+    if: needs.select.outputs.run == 'true'
     name: backend${{ matrix.os == 'windows-latest' && ' on Windows' || '' }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: ${{ fromJSON(needs.select.outputs.os) }}
     defaults:
       run:
         shell: bash
@@ -108,6 +169,8 @@ jobs:
   # (.agents/skills/formal-import-claim). Only the root package is installed:
   # the runner is @antelopejs/tooling-configs/formal.
   formal-import-claim:
+    needs: select
+    if: needs.select.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -135,20 +198,26 @@ jobs:
 
       - run: node .agents/skills/formal-import-claim/check.mjs
 
-  # The job name the branch protection requires; it passes only when every
-  # job above passed.
+  # The job name the branch protection requires: green only when every job
+  # above is, a job the tier skipped excepted. A draft pull request fails it,
+  # so merge-when-green cannot merge on the draft run.
   ubuntu:
     if: always()
-    needs: [ci, backend, formal-import-claim]
+    needs: [select, ci, backend, formal-import-claim]
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - run: |
-          echo '${{ toJSON(needs) }}'
-          [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped') }}" = "false" ]
+      - if: >-
+          needs.select.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.ci.result == 'skipped' || (needs.select.outputs.run == 'true' && (needs.backend.result == 'skipped' || needs.formal-import-claim.result == 'skipped'))
+        run: exit 1
+      - if: needs.select.outputs.tier == 'draft'
+        run: |
+          echo "::error::Draft pull request: only lint and typecheck ran. Mark it ready for review to run the tests."
+          exit 1
   renovate-sync:
     if: >-
       github.event_name == 'pull_request' && startsWith(github.head_ref, 'renovate/') && github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       contents: write
       actions: write
-    uses: AntelopeJS/.github/.github/workflows/ci-renovate-sync.yml@v1
+    uses: AntelopeJS/.github/.github/workflows/ci-renovate-sync.yml@v2
