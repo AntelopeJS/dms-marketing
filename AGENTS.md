@@ -15,7 +15,7 @@ Each package keeps its own `pnpm-lock.yaml` (`shared-workspace-lockfile=false`).
 
 ## Versioning
 
-The module implements the interface, so it depends on it as `>=<floor> <0.<minor+1>.0`, and the interface version in the tree must satisfy that range. Release the interface before the module. Its release commit runs `sync`, which moves the module's range to the new minor. `release.yml` releases each package through the shared `release-npm-public.yml@v2`.
+The module names the interface as `workspace:^`, so `pnpm pack` writes `^<interface version in the tree>` and no release hook rewrites it. Release the interface before the module. The interface's release commit runs `sync`, which refreshes the README compatibility table. `release.yml` releases each package through the shared `release-npm-public.yml@v2`.
 
 ## Tests
 
