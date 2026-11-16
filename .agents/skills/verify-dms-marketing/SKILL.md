@@ -88,7 +88,7 @@ Write `$RUN/evidence/judgement.json` (`doors`, `docs`, `notVerified`, `attention
 - History of past days comes from `ImportAnalytics` through the fixture (`history`, `split`): no request ages an event, and an import replays through the live pipeline with its own timestamps.
 - `mongod` comes from `DMS_CONTROL_MONGOD`, `PATH`, or the mongodb-memory-server cache (`~/.cache/mongodb-binaries`).
 - A step whose check fails because the backend or the dashboard stopped answering ends the journey with a `NOT VERIFIED` error and no failing check (`e2e/guard.mjs`).
-- `trackerEnabled: false` in the module options is not asserted: the master switch is copied into the settings row at the first start, so an option changed after that start has no effect, while the Settings page and the retention options follow the configuration (`dms-marketing-config-tracker-enabled-frozen`, a draft).
+- `trackerEnabled` in the module options holds until a person pauses or resumes the collection on the Settings page; a save that leaves the switch out keeps it (`config/the-config-collection-switch-holds-across-restarts-and-settings-saves`).
 - The tenant-owner and platform-owner levels of the access matrix meet in a single-tenant DMS (the owner of the default tenant is the platform owner), so `access/every-route-answers-only-the-roles-its-level-names` lists them together.
 
 ## Not driven
