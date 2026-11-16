@@ -1,6 +1,23 @@
 # Changelog
 
 
+## v0.7.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.7.0...interface-v0.7.1)
+
+### 🔥 Performance
+
+- **heatmap:** Count the click heatmap's cells in the database query ([#174](https://github.com/AntelopeJS/dms-marketing/pull/174))
+
+### 🩹 Fixes
+
+- **release:** Move the module's interface range in the interface's release commit ([#165](https://github.com/AntelopeJS/dms-marketing/pull/165))
+- **release:** Build the interface before its own release lint ([#176](https://github.com/AntelopeJS/dms-marketing/pull/176))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.7.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.6.1...v0.7.0)
