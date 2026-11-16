@@ -30,7 +30,7 @@ importers:
         specifier: '>=0.14.0 <0.15.0'
         version: 0.14.0(054df5714ab731f742f9dd37170531c8)
       '@antelopejs/interface-dms-marketing':
-        specifier: '>=0.7.0 <0.8.0'
+        specifier: workspace:^
         version: link:../interface-dms-marketing
       defu:
         specifier: ^6.1.4
