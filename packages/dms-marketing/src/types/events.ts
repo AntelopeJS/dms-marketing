@@ -52,7 +52,7 @@ const TRACKED_URL_PATTERN = /^(https?:\/\/|\/)/i;
 /** 0-1 coordinate; NaN and infinities fail the bounds. */
 const fraction = z.number().min(0).max(1);
 
-/** The `data` of a click event, as collect validates it and the heatmap re-checks it on read. */
+/** The `data` of a click event, as collect validates it. The heatmap query applies the same checks to the rows it counts. */
 export const clickDataSchema = z.object({
   x: fraction,
   y: fraction,

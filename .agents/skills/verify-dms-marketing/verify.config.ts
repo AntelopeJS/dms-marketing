@@ -43,6 +43,8 @@ export interface VerifyConfig {
   notUserFacing: string[];
   smoke: string;
   smokeJourney: string;
+  /** The folder of the journeys modules, relative to the repository root. Absent: `journeys/` in the skill folder. */
+  journeys?: string;
   doors: Record<DoorKind, DoorRule | null>;
   formal: FormalCheck[];
 }
@@ -56,7 +58,6 @@ const config: VerifyConfig = {
   prepare: [
     ["pnpm", "install", "--frozen-lockfile", "--prefer-offline", "--ignore-scripts"],
     ["pnpm", "run", "build"],
-    ["npm", "install", "--no-save", "--no-package-lock", "--no-audit", "--no-fund", "--prefix", SKILL, "playwright-core@1.56.1"],
     ["ln", "-sfn", `../../../../${MODULE}/node_modules`, `${SKILL}/playground/node_modules`],
     [`${MODULE}/node_modules/.bin/tsc`, "-p", `${SKILL}/playground/tsconfig.build.json`],
   ],
@@ -70,6 +71,7 @@ const config: VerifyConfig = {
   ],
   smoke: "smoke",
   smokeJourney: "onboard, add a website, send a visit to the collector, read the pageview in the Overview",
+  journeys: "e2e/journeys",
   doors: {
     data: {
       globs: [
@@ -120,7 +122,7 @@ const config: VerifyConfig = {
       why: "these routes answer without a session for any site on the internet, and the origin and rate guards decide whose events are stored",
     },
     publish: {
-      globs: [`${MODULE}/package.json`, `${INTERFACE}/package.json`, `${MODULE}/.release-it.json`, `${INTERFACE}/.release-it.json`, `${MODULE}/scripts/publish.mjs`, ".github/workflows/release.yml", ".github/workflows/release-interface.yml"],
+      globs: [`${MODULE}/package.json`, `${INTERFACE}/package.json`, `${MODULE}/.release-it.json`, `${INTERFACE}/.release-it.json`, ".github/workflows/release.yml"],
       funnels: [],
       why: "the package names, their files and the release workflows claim @antelopejs/dms-marketing and @antelopejs/interface-dms-marketing in the npm registry",
     },

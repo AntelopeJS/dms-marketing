@@ -6,10 +6,13 @@ import {
   type ScrollEventData,
 } from "@/types";
 import {
+  HEATMAP_DIVISIONS_PER_AXIS,
+  MAX_CLICK_SELECTOR_LENGTH,
   MS_PER_HOUR,
   MS_PER_SECOND,
   SCROLL_DEPTH_SCALE,
 } from "@/types/constants";
+import { z } from "zod";
 import {
   MarketingEvent,
   marketingEventsTableName,
@@ -19,6 +22,7 @@ import {
 const EPOCH_LOWER_BOUND = new Date(0);
 const SCROLL_KIND: EventKind = "scroll";
 const PAGEVIEW_KIND: EventKind = "pageview";
+const CLICK_KIND: EventKind = "click";
 
 type PageviewRow = Pick<MarketingEvent, "timestamp" | "url" | "sessionId">;
 
@@ -53,6 +57,147 @@ export interface ScrollDepthBucket {
 }
 
 export type SampleRateQuery = Omit<ScrollDepthQuery, "url">;
+
+/** The clicks of one path over one window, the same read as the scroll histogram. */
+export type ClickCellQuery = ScrollDepthQuery;
+
+/** Grid indexes of a normalized point, `HEATMAP_DIVISIONS_PER_AXIS` per axis. */
+export interface ClickGridCell {
+  gx: number;
+  gy: number;
+}
+
+/** Clicks of one document-grid cell: those without a usable element anchor. */
+export interface DocumentClickCell extends ClickGridCell {
+  weight: number;
+  /** Epoch seconds of the cell's earliest click. */
+  firstAt: number;
+}
+
+/** Clicks of one element cell: an anchor's selector, rank and offset grid cell. */
+export interface AnchoredClickCell extends ClickGridCell {
+  selector: string;
+  nth: number;
+  weight: number;
+  /** The earliest click, whose document point is the cell's fallback. */
+  first: { at: number; x: number; y: number };
+}
+
+/** Both kinds of click cells of a window, each click in exactly one. */
+export interface ClickCells {
+  documents: DocumentClickCell[];
+  anchored: AnchoredClickCell[];
+}
+
+/** A click `data` as stored: every field is checked before it is read. */
+interface StoredClickData {
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  selector: string;
+  ox: number;
+  oy: number;
+  nth: number;
+}
+
+/** `$min` over `{ at, x, y }` objects compares `at` first and returns the
+ * earliest click whole, but `Stream.min` is typed as a number: the object is
+ * parsed back. */
+const firstClickSchema = z.object({
+  at: z.number(),
+  x: z.number(),
+  y: z.number(),
+});
+
+/**
+ * Number in [0, 1]. BSON orders null and missing below numbers and strings,
+ * objects, arrays and booleans above them, so the range admits exactly the
+ * finite numbers in it: the type guard and the bound are one predicate.
+ */
+function isFraction(value: ValueProxy<number>): ValueProxy<boolean> {
+  return value.ge(0).and(value.le(1));
+}
+
+/** Number in [0, Number.MAX_VALUE], by the ordering {@link isFraction} reads. */
+function isNonNegative(value: ValueProxy<number>): ValueProxy<boolean> {
+  return value.ge(0).and(value.le(Number.MAX_VALUE));
+}
+
+/** Strings sort between numbers and objects, and `{}` is the least object. */
+function isString(value: ValueProxy<string>): ValueProxy<boolean> {
+  return value.ge("").and(value.lt(ValueProxy.constant({}).cast<string>()));
+}
+
+/** An absent field sorts below null; a stored null does not. */
+function isMissing(value: ValueProxy<number | string>): ValueProxy<boolean> {
+  return value.lt(ValueProxy.constant(null).cast<number | string>());
+}
+
+/** A field the click may omit, and must otherwise pass `check`. */
+function isOptional<T extends number | string>(
+  value: ValueProxy<T>,
+  check: (value: ValueProxy<T>) => ValueProxy<boolean>,
+): ValueProxy<boolean> {
+  return isMissing(value.cast<number | string>()).or(check(value));
+}
+
+/**
+ * The types and bounds `clickDataSchema` sets, from comparisons alone: the
+ * planner evaluates a filter on every row, whatever `$and` already rejected,
+ * so a filter that throws on one row aborts the read.
+ */
+function hasClickTypes(data: ValueProxy<StoredClickData>): ValueProxy<boolean> {
+  return isFraction(data.key("x"))
+    .and(isFraction(data.key("y")))
+    .and(isOptional(data.key("dx"), isFraction))
+    .and(isOptional(data.key("dy"), isFraction))
+    .and(isOptional(data.key("ox"), isFraction))
+    .and(isOptional(data.key("oy"), isFraction))
+    .and(isOptional(data.key("nth"), isNonNegative))
+    .and(isOptional(data.key("selector"), isString));
+}
+
+/**
+ * The rest of `clickDataSchema`, which needs `$strLenCP` and `$floor`: both
+ * throw on a value of another type, so they run in a projection, on the rows
+ * {@link hasClickTypes} let through.
+ */
+function hasClickBounds(
+  data: ValueProxy<StoredClickData>,
+): ValueProxy<boolean> {
+  const nth = data.key("nth").default(0);
+  return data
+    .key("selector")
+    .default("")
+    .strlen()
+    .le(MAX_CLICK_SELECTOR_LENGTH)
+    .and(nth.floor().eq(nth));
+}
+
+/** A click that names its element and its offset in it; a click with an
+ * empty selector, or without an offset, falls to the document grid. */
+function isAnchored(data: ValueProxy<StoredClickData>): ValueProxy<boolean> {
+  return data
+    .key("selector")
+    .gt("")
+    .and(data.key("ox").ge(0))
+    .and(data.key("oy").ge(0));
+}
+
+/** Normalized coordinate → grid index, rounding half up as `Math.round`
+ * does: `$round` rounds half to even. */
+function gridIndex(normalized: ValueProxy<number>): ValueProxy<number> {
+  return normalized.mul(HEATMAP_DIVISIONS_PER_AXIS).add(0.5).floor();
+}
+
+/** The click's document point: page coordinates win over viewport ones. */
+function documentPoint(data: ValueProxy<StoredClickData>) {
+  return {
+    x: data.key("dx", data.key("x")),
+    y: data.key("dy", data.key("y")),
+  };
+}
 
 /** One kind over one window, cut in hours from `since`. */
 export interface HourlyCountQuery {
@@ -156,6 +301,84 @@ export class MarketingEventsModel extends BasicDataModel(
         views: stream.count(),
       }))
       .run();
+  }
+
+  /**
+   * Click cells of one path, counted where the rows live: one row per cell
+   * comes back, whatever the number of clicks. The query layer has no
+   * conditional, so the anchored and the document cells are two reads over
+   * complementary filters.
+   */
+  async countClickCells(query: ClickCellQuery): Promise<ClickCells> {
+    if (query.websiteIds.length === 0) {
+      return { documents: [], anchored: [] };
+    }
+    const clicks = () =>
+      this.table
+        .getAll(query.websiteIds, "websiteId")
+        .filter((doc) => doc.key("timestamp").ge(query.since))
+        .filter((doc) => doc.key("timestamp").le(query.until))
+        .filter((doc) => doc.key("url").eq(query.url))
+        .filter((doc) => doc.key("kind").eq(CLICK_KIND))
+        .filter((doc) => hasClickTypes(doc.key("data").cast<StoredClickData>()))
+        .map((doc) => {
+          const data = doc.key("data").cast<StoredClickData>();
+          return {
+            at: doc.key("timestamp").epoch(),
+            data,
+            fits: hasClickBounds(data),
+          };
+        })
+        .filter((click) => click.key("fits"));
+    const [documents, anchored] = await Promise.all([
+      clicks()
+        .filter((click) => isAnchored(click.key("data")).not())
+        .map((click) => {
+          const point = documentPoint(click.key("data"));
+          return {
+            cell: { gx: gridIndex(point.x), gy: gridIndex(point.y) },
+            at: click.key("at"),
+          };
+        })
+        .group("cell", (stream, cell) => ({
+          cell,
+          weight: stream.count(),
+          firstAt: stream.min("at"),
+        }))
+        .run(),
+      clicks()
+        .filter((click) => isAnchored(click.key("data")))
+        .map((click) => {
+          const data = click.key("data");
+          return {
+            cell: {
+              selector: data.key("selector"),
+              nth: data.key("nth").default(0),
+              gx: gridIndex(data.key("ox")),
+              gy: gridIndex(data.key("oy")),
+            },
+            first: { at: click.key("at"), ...documentPoint(data) },
+          };
+        })
+        .group("cell", (stream, cell) => ({
+          cell,
+          weight: stream.count(),
+          first: stream.min("first"),
+        }))
+        .run(),
+    ]);
+    return {
+      documents: documents.map(({ cell, weight, firstAt }) => ({
+        ...cell,
+        weight,
+        firstAt,
+      })),
+      anchored: anchored.map(({ cell, weight, first }) => ({
+        ...cell,
+        weight,
+        first: firstClickSchema.parse(first),
+      })),
+    };
   }
 
   /**

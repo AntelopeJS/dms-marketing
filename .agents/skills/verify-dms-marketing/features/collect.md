@@ -13,7 +13,6 @@ covers:
   - packages/dms-marketing/src/services/website-cache.ts
   - packages/dms-marketing/src/services/rollup-write.ts
   - packages/dms-marketing/src/types/events.ts
-  - packages/dms-marketing/src/types/ua-parser-js-helpers.d.ts
   - packages/dms-marketing/src/db/models/marketing_events.model.ts
   - packages/dms-marketing/src/db/models/marketing_sessions.model.ts
   - packages/dms-marketing/src/db/tables/marketing_events.table.ts
