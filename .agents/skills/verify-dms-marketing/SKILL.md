@@ -5,16 +5,14 @@ description: "Drive the AntelopeJS dms-marketing module (the collector, the trac
 
 # Verify dms-marketing
 
-Every deterministic step is a `dms-control` command. You choose which journeys to run and judge what they show; you never write a multi-step shell recipe. When a journey you need does not exist, add it to `journeys/<feature>.mjs`, describe it in its feature file, and run it.
+Every deterministic step is a `dms-control` command. You choose which journeys to run and judge what they show; you never write a multi-step shell recipe. When a journey you need does not exist, add it to `e2e/journeys/<feature>.mjs`, describe it in its feature file, and run it.
 
-`dms-control` is the bin of `@antelopejs/dms`, a devDependency of `packages/dms-marketing`. Run it with Node 24 after `pnpm install`, through that package:
+`dms-control` is the bin of `@antelopejs/dms`, a devDependency of the workspace root. Run it with Node 24 after `pnpm install`, from the root:
 
 ```bash
-C="pnpm --dir packages/dms-marketing exec dms-control"
+C="pnpm exec dms-control"
 $C                       # lists every command
 ```
-
-Give `doors` and `--skill` absolute paths: the command runs in `packages/dms-marketing`.
 
 ## Launch
 
@@ -22,7 +20,7 @@ Give `doors` and `--skill` absolute paths: the command runs in `packages/dms-mar
 RUN=$($C up --prepare --base origin/main)   # installs, builds, starts; prints the run folder
 ```
 
-`--prepare` runs the `prepare` commands of `verify.config.ts`: the frozen install, the build of the interface and the module, `playwright-core` into this folder, the link of the verification playground's `node_modules` to `packages/dms-marketing/node_modules`, and the TypeScript build of the playground's fixture module. Without it `up` uses the builds already there, and `doctor` fails on a stale one. `up` reads the playground from `verify.config.ts` (`playground/` in this folder: the DMS, the api, MongoDB, auth, file storage and mail modules, the module under verification as a `local` source at `packages/dms-marketing`, and a fixture module of its own) and starts an isolated DMS:
+`--prepare` runs the `prepare` commands of `verify.config.ts`: the frozen install, the build of the interface and the module, the link of the verification playground's `node_modules` to `packages/dms-marketing/node_modules`, and the TypeScript build of the playground's fixture module. Without it `up` uses the builds already there, and `doctor` fails on a stale one. `up` reads the playground from `verify.config.ts` (`playground/` in this folder: the DMS, the api, MongoDB, auth, file storage and mail modules, the module under verification as a `local` source at `packages/dms-marketing`, and a fixture module of its own) and starts an isolated DMS:
 
 - the checkout is laid out again under `$RUN/root`, every sibling linked, and the playground copied without `node_modules`, so the run's build, `.antelope/` and stored data are its own;
 - the API, the dashboard and the mail sink get free ports from the kernel, and `HOME` is `$RUN/home`;
@@ -49,7 +47,9 @@ $C journey "$RUN" smoke
 $C journey "$RUN" collect [journey-id...]
 ```
 
-- Each feature file in [features/](features/README.md) lists its source globs (`covers:`), its docs pages (`docs:`) and its journeys; the journeys are in `journeys/<feature>.mjs` and `journeys/parts/`, with the helpers they share in `marketing.mjs` (requests, checks, `clickUntil`), `site.mjs` (websites, the collector as a browser, `withConfig`, members) and `store.mjs` (the module's stored rows, read and aged with the MongoDB driver dms-control resolves).
+- Each feature file in [features/](features/README.md) lists its source globs (`covers:`), its docs pages (`docs:`) and its journeys; the journeys are in `e2e/journeys/<feature>.mjs` and `e2e/journeys/parts/` (the `journeys` folder of `verify.config.ts`), with the helpers they share in `e2e/marketing.mjs` (requests, checks, `clickUntil`), `site.mjs` (websites, the collector as a browser, `withConfig`, members) and `store.mjs` (the module's stored rows, read and aged with the MongoDB driver dms-control resolves).
+- A journey may set `tag` (Playwright tags such as `"@smoke"`, the set the full CI tier runs) and `knownFailures`, which maps the name of each check that fails today to the finding that makes it fail. A listed check that fails is `known` and does not fail the journey. A listed check that passes is `fixed` and fails the journey until the entry is removed.
+- The same journeys run as the Playwright suite of `e2e/`, which CI runs (`@smoke` on the full tier: a push to `next`, a ready pull request to `main` and a manual dispatch; every journey nightly): `pnpm e2e` prepares and starts a run, runs every journey on it and stops it; `pnpm e2e -g <feature or journey id>` or `--grep @smoke` narrows it. `DMS_E2E_PREBUILT=1` skips the prepare commands, and `DMS_E2E_RUN=$RUN` drives a run you started with `up`, which it leaves running. Failed journeys keep their evidence under the run, and the report attaches each failed step's screenshot and ARIA snapshot and the backend log.
 - A journey starts on an empty database with the administrator onboarded and the backend restarted on it. It reads every mutation back through a second view: the API, a stored row, a reload, an anonymous request, a member's account, or a backend restart.
 - `withConfig(ctx, { <module option>: ... }, body)` restarts the backend with module options set (`VERIFY_MKT_CONFIG`, plus the DMS `auth.trustedProxies` and `auth.clientIpHeader`) and restarts it again without them.
 - To look at the product yourself: `$C onboard "$RUN"`, `$C browser "$RUN" login`, `goto --path`, `snapshot`, `click --role --name`, `fill`, `press`, `screenshot`, `$C api "$RUN" <method> <path> [--as anon] [--body <json>]`, `$C reset "$RUN"`. Each writes its evidence under `$RUN/evidence/`.
@@ -81,14 +81,14 @@ Write `$RUN/evidence/judgement.json` (`doors`, `docs`, `notVerified`, `attention
 ## Gotchas
 
 - Every dashboard page renders on the server and hydrates after `load`; a click that lands first does nothing. The journeys click again until what the click opens shows (`clickUntil`), and `tab.signIn` waits for the sign-in form to hydrate.
-- The run's headless browser announces itself as `HeadlessChrome`, and the collector drops declared automation: the visitor-site journeys open their pages in a browser of their own launched with a plain Chrome user agent (`journeys/parts/tracker-helpers.mjs`). A context's user agent or extra headers would not do: they miss the beacon a page sends as it unloads.
+- The run's headless browser announces itself as `HeadlessChrome`, and the collector drops declared automation: the visitor-site journeys open their pages in a browser of their own launched with a plain Chrome user agent (`e2e/journeys/parts/tracker-helpers.mjs`). A context's user agent or extra headers would not do: they miss the beacon a page sends as it unloads.
 - The tracker sends its batches every 5 seconds, so a journey waits for the stored rows (`waitFor`) instead of for time.
 - Visitors are told apart by the user agent (the visitor hash is the website, the address and the agent), so journeys that need several visitors give each its own agent.
 - Rollups are written after the events: a read of the Overview waits for the figure (`eventually`).
 - History of past days comes from `ImportAnalytics` through the fixture (`history`, `split`): no request ages an event, and an import replays through the live pipeline with its own timestamps.
 - `mongod` comes from `DMS_CONTROL_MONGOD`, `PATH`, or the mongodb-memory-server cache (`~/.cache/mongodb-binaries`).
-- A step whose check fails because the backend or the dashboard stopped answering ends the journey with a `NOT VERIFIED` error and no failing check (`guard.mjs`).
-- `trackerEnabled: false` in the module options is not asserted: the master switch is copied into the settings row at the first start, so an option changed after that start has no effect, while the Settings page and the retention options follow the configuration (`dms-marketing-config-tracker-enabled-frozen`, a draft).
+- A step whose check fails because the backend or the dashboard stopped answering ends the journey with a `NOT VERIFIED` error and no failing check (`e2e/guard.mjs`).
+- `trackerEnabled` in the module options holds until a person pauses or resumes the collection on the Settings page; a save that leaves the switch out keeps it (`config/the-config-collection-switch-holds-across-restarts-and-settings-saves`).
 - The tenant-owner and platform-owner levels of the access matrix meet in a single-tenant DMS (the owner of the default tenant is the platform owner), so `access/every-route-answers-only-the-roles-its-level-names` lists them together.
 
 ## Not driven

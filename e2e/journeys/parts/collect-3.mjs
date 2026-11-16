@@ -9,6 +9,7 @@ import { FIVE_MINUTES, site, storedEvents, storedSessions } from "./collect-help
 export const journeys = [
   {
     id: "visitors-are-anonymous-hashes-of-the-website-the-address-and-the-agent",
+    tag: "@smoke",
     title: "the same website, address and agent make one visitor; another agent, another website or another address make another; the hash is not the address",
     entryPoint: "POST /api/marketing/collect",
     async run(/** @type {Ctx} */ ctx) {

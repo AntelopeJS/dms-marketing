@@ -17,30 +17,43 @@ export async function local(ctx) {
   return created;
 }
 
-/** @type {WeakMap<Ctx, { browser: Promise<import("playwright-core").Browser>, contexts: Map<string, Promise<import("playwright-core").BrowserContext>> }>} */
-const visitorBrowsers = new WeakMap();
+/** @typedef {{ ctx: Ctx, browser: Promise<import("playwright-core").Browser>, contexts: Map<string, Promise<import("playwright-core").BrowserContext>> }} Visitor */
+
+/** @type {Visitor | undefined} */
+let visitor;
+
+/**
+ * @param {Visitor} done The visitor browser of a journey that ended
+ * @returns {void}
+ */
+function closeVisitor(done) {
+  void done.browser.then(
+    (launched) => launched.close().catch(() => undefined),
+    () => undefined,
+  );
+}
 
 /**
  * A visitor's browser context, one per account, in a browser of the journey's own that sends a desktop Chrome `User-Agent` on every request.
  * A context's user agent or extra headers reach only the requests of a live page: the beacon a page sends as it unloads leaves with
- * `HeadlessChrome`, which the collector drops. The browser closes with the journey's.
+ * `HeadlessChrome`, which the collector drops. The browser closes with the journey's, or when the next journey opens its own: under
+ * Playwright Test the journey's browser is the worker's and outlives the journey.
  *
  * @param {Ctx} ctx The journey
  * @param {string} account The visitor's name
  * @returns {Promise<import("playwright-core").BrowserContext>} The context
  */
 function visitorContext(ctx, account) {
-  let visitor = visitorBrowsers.get(ctx);
-  if (!visitor) {
-    const browser = ctx.browser.browserType().launch({ headless: true, args: [`--user-agent=${BROWSER_UA}`] });
-    ctx.browser.on("disconnected", () => {
-      void browser.then(
-        (launched) => launched.close().catch(() => undefined),
-        () => undefined,
-      );
-    });
-    visitor = { browser, contexts: new Map() };
-    visitorBrowsers.set(ctx, visitor);
+  if (visitor?.ctx !== ctx) {
+    const previous = visitor;
+    if (previous) closeVisitor(previous);
+    const opened = { ctx, browser: ctx.browser.browserType().launch({ headless: true, args: [`--user-agent=${BROWSER_UA}`] }), contexts: new Map() };
+    if (previous?.ctx.browser !== ctx.browser) {
+      ctx.browser.on("disconnected", () => {
+        if (visitor) closeVisitor(visitor);
+      });
+    }
+    visitor = opened;
   }
   let context = visitor.contexts.get(account);
   if (!context) {

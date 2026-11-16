@@ -1,6 +1,7 @@
 ---
 covers:
   - packages/dms-marketing/src/config.ts
+  - packages/dms-marketing/src/services/settings.ts
   - packages/dms-marketing/src/routes/dashboard-tracking.ts
   - packages/dms-marketing/src/services/dashboard-tracking.ts
   - packages/dms-marketing/src/services/geoip.ts
@@ -20,6 +21,7 @@ The module options: retentions, sampling, the collection option, the visitor has
 ## Sub-features
 
 - `retention-and-sampling-options-set-what-settings-start-from`
+- `the-config-collection-switch-holds-across-restarts-and-settings-saves`
 - `the-visitor-hash-secret-feeds-the-visitor-identity`
 - `dashboard-tracking-is-off-until-enabled-and-provisions-one-website`
 - `the-collector-refuses-the-module-area-of-the-dashboards-website`

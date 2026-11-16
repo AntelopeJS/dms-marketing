@@ -2,7 +2,7 @@
 
 ## Layout
 
-A pnpm workspace with two published packages. The root holds the tool configs and the CI workflows; no source code.
+A pnpm workspace with two published packages. The root holds the tool configs, the CI workflows and `e2e/`, the Playwright suite of the verify skill's journeys, with the dependencies they run on (`@antelopejs/dms` for `dms-control` and its `e2e` kit, `@playwright/test`); no source code.
 
 | Path                                  | What it is                                                                         |
 | ------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -23,6 +23,7 @@ The module implements the interface, so it depends on it as `>=<floor> <0.<minor
 
 - `pnpm --dir packages/dms-marketing test:backend` builds the interface and the module, then `ajs module test .` boots the module against a real DMS and an in-memory MongoDB replica set (`antelope.test.ts`). Set `DMS_PREBUILT=1` to reuse an existing build.
 - `packages/dms-marketing/antelope-lock/` records the lockfile of each package module `antelope.test.ts` installs, so every run, cached or not, installs the same dependencies. After you change a version there, delete the records of the old versions, run `test:backend` once, and commit the new records it writes.
+- `pnpm e2e` runs the verify skill's journeys (`e2e/journeys/`) as a Playwright suite: its global setup runs the skill's `prepare` and one `dms-control up`, every journey runs on that run, and the run stops after the last. `pnpm e2e --grep @smoke` runs the journeys tagged `@smoke`, as the `e2e` job of `ci.yml` does on the full tier; the nightly tier runs every journey in two shards, and a draft or the fast tier runs none. `pnpm e2e -g <feature or journey id>` runs a part of it.
 - `pnpm --dir packages/dms-marketing knip:all` also reports unused files and exports. The exports of `src/frontend-module.ts` are reached through `dmsFrontend` in `package.json`; confirm every other finding before you remove it.
 
 <!-- antelopejs-guardrails:start -->

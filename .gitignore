@@ -8,4 +8,7 @@ dist
 .DS_Store
 
 /.agents/skills/verify-dms-marketing/playground/dist
-/.agents/skills/verify-dms-marketing/node_modules
+e2e/playwright-report
+e2e/test-results
+e2e/blob-report
+e2e/blob-reports

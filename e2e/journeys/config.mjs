@@ -1,5 +1,5 @@
 import { guarded } from "../guard.mjs";
-import { check, list, mkt, raw, same, text } from "../marketing.mjs";
+import { check, list, mkt, pick, raw, same, text } from "../marketing.mjs";
 import { collect, collected, createSite, pageview, withConfig } from "../site.mjs";
 import { rows } from "../store.mjs";
 
@@ -33,6 +33,45 @@ export const journeys = guarded([
         await ctx.verify("the options are the defaults", [
           same("settings", settings.body, { trackerEnabled: true, rawEventsRetentionDays: 10, statisticsRetentionDays: 20, snapshotRetentionDays: 5, heatmapSamplePercent: 50 }),
           check("the tracker serves the configured rate", script.text.includes('"heatmapSampleRate":0.5') && script.text.includes('"paused":false'), script.text.slice(0, 100)),
+        ]);
+      });
+    },
+  },
+  {
+    id: "the-config-collection-switch-holds-across-restarts-and-settings-saves",
+    title: "trackerEnabled false in the config pauses a database that already started and was saved from Settings without the switch under the defaults: the collector drops every event and tracker.js is the paused stub, also after another such save and a restart, until a person resumes the collection, whose choice outlives a restart",
+    entryPoint: "antelope.config.ts trackerEnabled, POST /api/marketing/collect, GET /api/marketing/tracker.js, PUT /api/marketing/settings, POST /api/marketing/settings/collection",
+    async run(/** @type {Ctx} */ ctx) {
+      const shop = await createSite(ctx);
+      await collected(ctx, "a visit under the defaults is collected", shop, [pageview(shop, "/defaults")]);
+      const savedUnderDefaults = await mkt(ctx, "save the Settings without the switch under the defaults", "PUT", "/settings", { body: { heatmapSamplePercent: 50 } });
+      await ctx.verify("the save under the defaults answers", [same("status", savedUnderDefaults.status, 200)]);
+      /** @param {string} label When the collection is read */
+      const collection = async (label) => {
+        const answer = await collect(ctx, `a visit ${label}`, shop, [pageview(shop, `/${label.replaceAll(" ", "-")}`)]);
+        const script = await raw(ctx, `the tracker ${label}`, { path: "/api/marketing/tracker.js" });
+        const settings = await mkt(ctx, `read the settings ${label}`, "GET", "/settings");
+        return { answer, script, settings };
+      };
+      /** @param {Awaited<ReturnType<typeof collection>>} read What the collection answered */
+      const paused = (read) => [
+        same("the collector drops the visit", [read.answer.status, read.answer.accepted, read.answer.dropped], [200, 0, 1]),
+        check("tracker.js is the paused stub", read.script.text.includes('"paused":true'), read.script.text.slice(0, 120)),
+        same("the Settings page shows the collection off", pick(read.settings.body, "trackerEnabled"), false),
+      ];
+      await withConfig(ctx, { trackerEnabled: false }, async () => {
+        await ctx.verify("the config pauses a database that started and was saved under the defaults", paused(await collection("after the restart with the config off")));
+        const saved = await mkt(ctx, "save the Settings without the switch", "PUT", "/settings", { body: { heatmapSamplePercent: 25 } });
+        await ctx.verify("the save answers", [same("status", saved.status, 200)]);
+        await ctx.restartBackend();
+        await ctx.verify("a save without the switch keeps the config in force after a restart", paused(await collection("after the save and a restart")));
+        const resumed = await mkt(ctx, "a person resumes the collection", "POST", "/settings/collection", { body: { enabled: true } });
+        await ctx.restartBackend();
+        const read = await collection("after a person resumed it and a restart");
+        await ctx.verify("a person's switch takes over from the config", [
+          same("the switch", resumed.status, 200),
+          same("the collector accepts the visit", [read.answer.status, read.answer.accepted], [200, 1]),
+          check("tracker.js is live", read.script.text.includes('"paused":false'), read.script.text.slice(0, 120)),
         ]);
       });
     },
