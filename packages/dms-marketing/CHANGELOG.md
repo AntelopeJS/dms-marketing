@@ -1,6 +1,36 @@
 # Changelog
 
 
+## v0.10.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.10.0...v0.10.1)
+
+### 🔥 Performance
+
+- **heatmap:** Count the click heatmap's cells in the database query ([#174](https://github.com/AntelopeJS/dms-marketing/pull/174))
+
+### 🩹 Fixes
+
+- **release:** Build the interface before the release lint ([#175](https://github.com/AntelopeJS/dms-marketing/pull/175))
+- **deps:** Depend on the stable @antelopejs/tooling-configs
+
+### 📦 Build
+
+- Move to @antelopejs/tooling-configs 0.8 and the three-tier CI ([#168](https://github.com/AntelopeJS/dms-marketing/pull/168))
+- **release:** Publish the module through the shared release hook ([#170](https://github.com/AntelopeJS/dms-marketing/pull/170))
+
+### 🏡 Chore
+
+- **deps:** Run on the batch drivers and the 15 November releases ([#167](https://github.com/AntelopeJS/dms-marketing/pull/167))
+
+### ✅ Tests
+
+- **e2e:** Run the verify skill's journeys as a Playwright suite in CI ([#172](https://github.com/AntelopeJS/dms-marketing/pull/172))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.10.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.9.2...v0.10.0)
