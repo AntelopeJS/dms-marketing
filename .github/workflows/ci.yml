@@ -231,8 +231,7 @@ jobs:
           path: |
             ~/.cache/mongodb-binaries
             ~/.cache/ms-playwright
-            .agents/skills/verify-dms-marketing/playground/.antelope/cache
-          key: e2e-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', '.agents/skills/verify-dms-marketing/playground/antelope.config.ts') }}
+          key: e2e-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
       - uses: actions/cache@v4
         with:
           path: ~/.cache/dms-control/frontend
@@ -251,7 +250,7 @@ jobs:
         run: pnpm e2e --shard=${{ matrix.shard }}/2 --reporter=blob
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: e2e/blob-report
-      # The declarations @antelopejs/dms/e2e publishes, built by the run's prepare.
+      # The journeys' types come from the declarations @antelopejs/dms/e2e publishes.
       - if: success() || failure()
         run: pnpm exec tsc --noEmit -p e2e
       - if: always() && env.TIER == 'nightly'

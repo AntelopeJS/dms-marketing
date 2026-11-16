@@ -39,11 +39,13 @@ export const journeys = guarded([
   },
   {
     id: "the-config-collection-switch-holds-across-restarts-and-settings-saves",
-    title: "trackerEnabled false in the config pauses a database that already started with the defaults: the collector drops every event and tracker.js is the paused stub, after a restart and after a Settings save that leaves the switch out, until a person resumes the collection",
+    title: "trackerEnabled false in the config pauses a database that already started and was saved from Settings without the switch under the defaults: the collector drops every event and tracker.js is the paused stub, also after another such save and a restart, until a person resumes the collection, whose choice outlives a restart",
     entryPoint: "antelope.config.ts trackerEnabled, POST /api/marketing/collect, GET /api/marketing/tracker.js, PUT /api/marketing/settings, POST /api/marketing/settings/collection",
     async run(/** @type {Ctx} */ ctx) {
       const shop = await createSite(ctx);
       await collected(ctx, "a visit under the defaults is collected", shop, [pageview(shop, "/defaults")]);
+      const savedUnderDefaults = await mkt(ctx, "save the Settings without the switch under the defaults", "PUT", "/settings", { body: { heatmapSamplePercent: 50 } });
+      await ctx.verify("the save under the defaults answers", [same("status", savedUnderDefaults.status, 200)]);
       /** @param {string} label When the collection is read */
       const collection = async (label) => {
         const answer = await collect(ctx, `a visit ${label}`, shop, [pageview(shop, `/${label.replaceAll(" ", "-")}`)]);
@@ -58,13 +60,14 @@ export const journeys = guarded([
         same("the Settings page shows the collection off", pick(read.settings.body, "trackerEnabled"), false),
       ];
       await withConfig(ctx, { trackerEnabled: false }, async () => {
-        await ctx.verify("the config pauses a database that started with the defaults", paused(await collection("after the restart with the config off")));
+        await ctx.verify("the config pauses a database that started and was saved under the defaults", paused(await collection("after the restart with the config off")));
         const saved = await mkt(ctx, "save the Settings without the switch", "PUT", "/settings", { body: { heatmapSamplePercent: 25 } });
         await ctx.verify("the save answers", [same("status", saved.status, 200)]);
         await ctx.restartBackend();
         await ctx.verify("a save without the switch keeps the config in force after a restart", paused(await collection("after the save and a restart")));
         const resumed = await mkt(ctx, "a person resumes the collection", "POST", "/settings/collection", { body: { enabled: true } });
-        const read = await collection("after a person resumed it");
+        await ctx.restartBackend();
+        const read = await collection("after a person resumed it and a restart");
         await ctx.verify("a person's switch takes over from the config", [
           same("the switch", resumed.status, 200),
           same("the collector accepts the visit", [read.answer.status, read.answer.accepted], [200, 1]),
