@@ -38,7 +38,7 @@ export interface MarketingHeatmapPayload {
   points: MarketingHeatmapPoint[];
   maxWeight: number;
   totalClicks: number;
-  /** True when the window hit the implementer's event cap and older clicks were cut. */
+  /** True when the window hit the implementer's event cap and older clicks were cut. The module counts every click of the window and returns false. */
   truncated: boolean;
 }
 

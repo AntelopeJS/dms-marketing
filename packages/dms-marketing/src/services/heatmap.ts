@@ -1,6 +1,5 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import type {
-  MarketingHeatmapAnchor,
   MarketingHeatmapPayload,
   MarketingHeatmapPoint,
   MarketingHeatmapQuery,
@@ -11,19 +10,14 @@ import {
   type ScrollDepthBucket,
   WebsitesModel,
 } from "@/db";
-import type { MarketingEvent } from "@/db/tables/marketing_events.table";
-import { type ClickEventData, clickDataSchema, type EventKind } from "@/types";
+import type { EventKind } from "@/types";
 import {
   HEATMAP_DIVISIONS_PER_AXIS,
   MAX_ANCHORED_HEATMAP_CELLS,
-  MAX_HEATMAP_EVENTS,
   SCROLL_DEPTH_SCALE,
 } from "@/types/constants";
 import { type QueryWindow, resolveQueryWindow } from "./period";
 import { deleteSnapshots } from "./snapshots";
-import { isNumber } from "@/utils/guards";
-
-const CLICK_FIELDS = ["data"] as const;
 
 /**
  * Pageviews under which a measured sampling share is noise: 1 sampled view
@@ -94,22 +88,6 @@ function addToDocumentCell(
   cells.set(key, cell);
 }
 
-/** Element anchor of a click, when the tracker recorded one. */
-function anchorOf(data: ClickEventData): MarketingHeatmapAnchor | null {
-  if (!data.selector) {
-    return null;
-  }
-  if (!isNumber(data.ox) || !isNumber(data.oy)) {
-    return null;
-  }
-  return {
-    selector: data.selector,
-    ox: data.ox,
-    oy: data.oy,
-    nth: data.nth ?? 0,
-  };
-}
-
 /** The key a cell was bucketed under: its anchor and document fractions
  * are grid values already, so the key comes back from the cell alone. */
 function cellKey(cell: MarketingHeatmapPoint): string {
@@ -141,54 +119,6 @@ function capAnchoredCells(cells: Map<string, MarketingHeatmapPoint>): void {
   }
 }
 
-/**
- * Add a click to the cell of its anchored element, so one element stays one
- * cell whatever window it was clicked through. The first click fixes the
- * cell's document-fraction fallback (x/y) for consumers that cannot resolve
- * the selector.
- */
-function addToAnchoredCell(
-  cells: Map<string, MarketingHeatmapPoint>,
-  anchor: MarketingHeatmapAnchor,
-  x: number,
-  y: number,
-): void {
-  const gx = toGridIndex(anchor.ox);
-  const gy = toGridIndex(anchor.oy);
-  const key = `a:${anchor.selector}:${anchor.nth}:${gx}:${gy}`;
-  const cell = cells.get(key) ?? {
-    x,
-    y,
-    weight: 0,
-    anchor: { ...anchor, ox: toFraction(gx), oy: toFraction(gy) },
-  };
-  cell.weight++;
-  cells.set(key, cell);
-}
-
-/**
- * Bucket one click — per element when anchored, per document cell otherwise,
- * never mixed. False when the click carries no usable coordinates (dx/dy
- * winning over viewport x/y).
- */
-function bucketClick(
-  cells: Map<string, MarketingHeatmapPoint>,
-  data: ClickEventData,
-): boolean {
-  const x = data.dx ?? data.x;
-  const y = data.dy ?? data.y;
-  if (!isNumber(x) || !isNumber(y)) {
-    return false;
-  }
-  const anchor = anchorOf(data);
-  if (anchor) {
-    addToAnchoredCell(cells, anchor, x, y);
-  } else {
-    addToDocumentCell(cells, x, y, 1);
-  }
-  return true;
-}
-
 /** Cells and totals from their cells: the anchored cap first, since
  * re-bucketing merges weights into document cells. */
 function heatmapOf(
@@ -204,22 +134,6 @@ function heatmapOf(
     totalClicks,
     truncated,
   };
-}
-
-/** Fold click payloads into heatmap cells and totals. */
-function bucketClicks(
-  payloads: ClickPayload[],
-  truncated: boolean,
-): MarketingHeatmapPayload {
-  const cells = new Map<string, MarketingHeatmapPoint>();
-  let totalClicks = 0;
-  for (const payload of payloads) {
-    const click = clickDataSchema.safeParse(payload.data);
-    if (click.success && bucketClick(cells, click.data)) {
-      totalClicks++;
-    }
-  }
-  return heatmapOf(cells, totalClicks, truncated);
 }
 
 /**
@@ -251,20 +165,11 @@ export function mergeClickHeatmaps(
 }
 
 /**
- * All a click contributes to the map. Unlike the scroll histogram, the
- * bucketing stays here: a click lands either in its element's cell or in a
- * document cell depending on whether the payload carries a usable anchor, and
- * the anchored cells are capped by re-bucketing the lightest ones — a branch
- * and a second pass the query layer cannot express (no conditional in the
- * ValueProxy, and `data` is an unvalidated record, so an arithmetic stage over
- * it would abort the aggregation on the first forged payload). Each payload is
- * checked against the click schema as it is read, and a row that does not fit,
- * such as one written by an earlier release, is skipped. What the
- * projection does buy is that only `data` travels, never the whole row.
+ * Click heatmap of one path over an explicit, already-authorized website set.
+ * The clicks are counted per cell in the database. The cells are laid out in
+ * the order of their earliest click, the order the anchored cap breaks
+ * weight ties in.
  */
-type ClickPayload = Pick<MarketingEvent, "data">;
-
-/** Click heatmap of one path over an explicit, already-authorized website set. */
 export async function computeClickHeatmap(
   tenantId: string,
   websiteIds: string[],
@@ -274,16 +179,47 @@ export async function computeClickHeatmap(
   if (websiteIds.length === 0) {
     return EMPTY_HEATMAP;
   }
-  const events = await GetModel(MarketingEventsModel, tenantId).queryRange({
+  const { documents, anchored } = await GetModel(
+    MarketingEventsModel,
+    tenantId,
+  ).countClickCells({
     websiteIds,
     since: window.since,
     until: window.until,
-    kinds: ["click"],
     url: path,
-    limit: MAX_HEATMAP_EVENTS,
-    fields: CLICK_FIELDS,
   });
-  return bucketClicks(events, events.length >= MAX_HEATMAP_EVENTS);
+  const placed = [
+    ...documents.map((cell) => ({
+      firstAt: cell.firstAt,
+      point: {
+        x: toFraction(cell.gx),
+        y: toFraction(cell.gy),
+        weight: cell.weight,
+      },
+    })),
+    ...anchored.map((cell) => ({
+      firstAt: cell.first.at,
+      point: {
+        x: cell.first.x,
+        y: cell.first.y,
+        weight: cell.weight,
+        anchor: {
+          selector: cell.selector,
+          ox: toFraction(cell.gx),
+          oy: toFraction(cell.gy),
+          nth: cell.nth,
+        },
+      },
+    })),
+  ].sort((a, b) => a.firstAt - b.firstAt);
+  const cells = new Map(
+    placed.map(({ point }): [string, MarketingHeatmapPoint] => [
+      cellKey(point),
+      point,
+    ]),
+  );
+  const totalClicks = placed.reduce((sum, { point }) => sum + point.weight, 0);
+  return heatmapOf(cells, totalClicks, false);
 }
 
 /**
