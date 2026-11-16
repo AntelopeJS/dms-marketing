@@ -102,6 +102,7 @@ export const journeys = guarded([
   },
   {
     id: "the-assignment-script-serves-running-splits-per-visitor",
+    tag: "@smoke",
     title: "experiments.js answers the arm of every running split, the same visitor gets the same arm, a weight of 0 never serves, the answer is private and uncached, and a draft, a stopped split or a paused module serve nothing",
     entryPoint: "GET /api/marketing/experiments.js",
     async run(/** @type {Ctx} */ ctx) {

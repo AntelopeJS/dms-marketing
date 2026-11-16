@@ -31,6 +31,7 @@ const BUY = { x: 0.2, y: 0.3, dx: 0.2, dy: 0.1, selector: "#buy", ox: 0.5, oy: 0
 export const journeys = guarded([
   {
     id: "the-pages-list-gives-views-clicks-and-sorts",
+    tag: "@smoke",
     title: "each observed path gives its views and clicks, sort=clicks orders by clicks and anything else by views, search narrows the paths, the default page holds 100 paths and says it is truncated",
     entryPoint: "GET /api/marketing/stats/pages",
     async run(/** @type {Ctx} */ ctx) {

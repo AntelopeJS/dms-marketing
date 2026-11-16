@@ -7,6 +7,7 @@ covers:
   - packages/dms-marketing/src/services/analytics-import.ts
   - packages/dms-marketing/src/services/analytics-import-claim.ts
   - packages/dms-marketing/src/services/analytics-import-replay.ts
+  - packages/dms-marketing/src/services/modules-stopping.ts
   - packages/dms-marketing/src/db/models/marketing_imports.model.ts
   - packages/dms-marketing/src/db/tables/marketing_imports.table.ts
   - packages/dms-marketing/src/hooks/index.ts

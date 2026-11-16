@@ -18,10 +18,14 @@
     "format:check": "oxfmt --check .",
     "lint:fix": "oxlint --fix && pnpm --dir packages/dms-marketing/frontend-vue lint:fix",
     "suppressions": "antelopejs-suppressions",
-    "suppressions:update": "antelopejs-suppressions --update"
+    "suppressions:update": "antelopejs-suppressions --update",
+    "e2e": "playwright test -c e2e"
   },
   "devDependencies": {
-    "@antelopejs/tooling-configs": ">=0.8.0 <0.9.0",
+    "@antelopejs/dms": "0.20.8-next.936.g1313dd7",
+    "@antelopejs/tooling-configs": "0.8.1-next.372.g1d7ef26",
+    "@playwright/test": "~1.65.0",
+    "@types/node": "^22.20.5",
     "knip": "^6.34.0",
     "lefthook": "^2.2.2",
     "mongodb-memory-server": "^11.3.0",
@@ -29,8 +33,9 @@
     "oxlint": "1.81.0",
     "oxlint-tsgolint": "^7.0.2001",
     "pixelmatch": "^8.0.0",
-    "playwright-core": "^1.65.0",
-    "sharp": "^0.35.5"
+    "playwright-core": "^1.65.1",
+    "sharp": "^0.35.5",
+    "typescript": "^6.0.3"
   },
   "packageManager": "pnpm@10.33.0",
   "antelopeJs": {

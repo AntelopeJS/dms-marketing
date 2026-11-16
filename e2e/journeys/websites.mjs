@@ -117,6 +117,7 @@ export const journeys = guarded([
   },
   {
     id: "a-website-is-waiting-then-live-and-its-connection-is-readable",
+    tag: "@smoke",
     title: "a website waits for its first pageview, is live while its last event is under 5 minutes old, and the install guide's check reports its last visit",
     entryPoint: "GET /api/marketing/websites/:id/connection, GET /api/marketing/context",
     async run(/** @type {Ctx} */ ctx) {

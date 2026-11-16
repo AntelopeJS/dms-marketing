@@ -8,6 +8,7 @@ import { collected, createSite, eventually, overview, pageview } from "../site.m
 export const journeys = guarded([
   {
     id: "smoke",
+    tag: "@smoke",
     title: "an owner adds a website, a visit reaches the collector and the Overview counts its pageview",
     entryPoint: "/modules/marketing/websites, POST /api/marketing/collect, /modules/marketing/overview",
     async run(/** @type {Ctx} */ ctx) {

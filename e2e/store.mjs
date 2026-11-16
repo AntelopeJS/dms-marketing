@@ -1,6 +1,5 @@
 import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 
 /**
  * @typedef {import("./marketing.mjs").Ctx} Ctx
@@ -11,8 +10,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
  * @typedef {{ MongoClient: new (url: string, options?: Record<string, unknown>) => Client }} Driver
  */
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const DMS_PACKAGE = join(HERE, "../../../packages/dms-marketing/node_modules/@antelopejs/dms/package.json");
+const DMS_PACKAGE = createRequire(import.meta.url).resolve("@antelopejs/dms/package.json");
 
 /** Milliseconds in a day. */
 export const DAY_MS = 24 * 60 * 60 * 1000;
