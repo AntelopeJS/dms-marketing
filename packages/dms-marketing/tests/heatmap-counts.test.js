@@ -388,4 +388,5 @@ test("the click heatmap counts every click of the window, past the 50,000 rows a
     heatmap.points.map((point) => point.weight).sort((a, b) => a - b),
     [25_000, 25_001],
   );
+  await collection("marketing_events").drop();
 });
