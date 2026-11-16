@@ -108,7 +108,6 @@ export const TOP_MAPS_RETENTION_DAYS = DAYS_PER_YEAR + MAX_QUERY_PERIOD_DAYS;
 export const DEFAULT_PAGES_LIST_LIMIT = 100;
 export const MAX_PAGES_LIST_LIMIT = 200;
 export const MAX_FUNNEL_EVENTS = 200_000;
-export const MAX_HEATMAP_EVENTS = 50_000;
 export const HEATMAP_DIVISIONS_PER_AXIS = 50;
 /** Scroll depths arrive as integer percent (tracker PERCENT_SCALE). */
 export const SCROLL_DEPTH_SCALE = 100;
