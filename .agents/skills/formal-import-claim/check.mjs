@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
  * Model-checks the website claim of ImportAnalytics in
- * @antelopejs/dms-marketing, and the day-by-day replay it guards, with TLC
- * through the shared runner of @antelopejs/tooling-configs: the rules of
- * ImportClaimRules.tla on ImportClaim.tla, where a call's process can die,
- * then where a live holder can stop for 30 s and resume.
+ * @antelopejs/dms-marketing, the day-by-day replay it guards and the funnel
+ * trail writes beside it, with TLC through the shared runner of
+ * @antelopejs/tooling-configs: the rules of ImportClaimRules.tla on
+ * ImportClaim.tla, where a call's process can die, then where a live holder
+ * can stop for 30 s and resume, then where neither happens.
  *
  * With no argument it runs the CI configuration of each (`<config>.ci.cfg`);
  * with `--full` it runs the full one (`<config>.cfg`). Exits 0 when both
@@ -20,12 +21,13 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 
 /** The findings of each configuration, with the states in TLC's shortest counterexample, in run order. */
 const CONFIGS = {
-  Crash: { ci: {}, full: {} },
+  Crash: { ci: { TrailsFollowRaw: 23 }, full: { TrailsFollowRaw: 23 } },
   Stall: {
     ci: {
       OneWriter: 16,
       CountedOnce: 22,
       StoredOnce: 27,
+      TrailsFollowRaw: 26,
     },
     full: {
       OneWriter: 16,
@@ -34,6 +36,7 @@ const CONFIGS = {
       NothingLost: 38,
     },
   },
+  Trails: { ci: {}, full: {} },
 };
 
 const args = process.argv.slice(2);

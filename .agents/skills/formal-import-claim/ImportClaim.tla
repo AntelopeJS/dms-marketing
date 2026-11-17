@@ -13,7 +13,7 @@
 (* holder's token and takes the claim over once the token stays           *)
 (* unchanged (claim.ts:106-155). The holder replaces its token every 5 s  *)
 (* (claim.ts:33-66) and replays the history one UTC day at a time         *)
-(* (replay.ts:256-296).                                                   *)
+(* (replay.ts:268-308).                                                   *)
 (*                                                                         *)
 (* One database round trip is one step, and Node runs other calls at     *)
 (* every await, so steps of different calls interleave in any order. A    *)
@@ -22,6 +22,14 @@
 (* the token itself. When Stalls is FALSE, a holder either renews within  *)
 (* the 30 s a watcher waits or has died; when it is TRUE, a holder may    *)
 (* stop for 30 s and then resume.                                         *)
+(*                                                                         *)
+(* The funnel trails index the funnel events of `marketing_events` per   *)
+(* session (db/models/funnel_trails.model.ts). A replay's raw write adds  *)
+(* its events to them, and a backfill walk adds the events it reads, under *)
+(* a generation that `discardUncommitted` moves before and after it deletes*)
+(* events (services/funnels/trail-backfill.ts). These steps change only   *)
+(* the trail variables, so the rules on the other variables keep their    *)
+(* paths.                                                                  *)
 (***************************************************************************)
 EXTENDS Integers, FiniteSets, TLC
 
@@ -30,7 +38,9 @@ CONSTANTS
   Days,         \* UTC days of the history, 1..Days, each with events
   MaxFailures,  \* storage writes that fail in one behaviour
   MaxCrashes,   \* calls whose process dies in one behaviour
-  Stalls        \* whether a holder can stop for 30 s and resume
+  Stalls,       \* whether a holder can stop for 30 s and resume
+  Walks,        \* backfill walks of the website in one behaviour
+  TrailsTracked \* whether the trail steps run at all
 
 None == "none"
 DaySet == 1..Days
@@ -46,7 +56,7 @@ VARIABLES
   seen,      \* the holder of the claim the call read as `owner` (claim.ts:135)
   moved,     \* the claim's token changed since the call read `owner`
   resuming,  \* `current !== undefined` (import.ts:405)
-  counted,   \* the days the ledger named when the call read it (replay.ts:268)
+  counted,   \* the days the ledger named when the call read it (replay.ts:280)
   day,       \* the day the call replays next
   answer,    \* what the call returned, or "error" when it rejected
   failed,    \* the call met a storage failure
@@ -54,11 +64,22 @@ VARIABLES
   crashes,
   lost,      \* its import-row insert or fenced resume failed
   fence,     \* the import row's fence: the count of fenced writes
-  fenceOf    \* the fence the call last read or wrote
+  fenceOf,   \* the fence the call last read or wrote
+  trail,     \* per day, the calls whose raw rows the funnel trails hold
+  gen,       \* the website's backfill generation
+  listed,    \* per call, per day, the raw rows its discard listed
+  tail,      \* per call, the discard's steps left after its deletes
+  walks,     \* backfill walks begun
+  wpc,       \* where the backfill walk is
+  wgen,      \* the generation the walk began in
+  wread,     \* per day, the raw rows the walk read
+  wrote      \* per day, the trail entries the walk's flush added
+
+trailVars == <<trail, gen, listed, tail, walks, wpc, wgen, wread, wrote>>
 
 vars == <<claim, row, ledger, raw, everDone, pc, holds, seen, moved, resuming,
           counted, day, answer, failed, failures, crashes, lost, fence,
-          fenceOf>>
+          fenceOf, trail, gen, listed, tail, walks, wpc, wgen, wread, wrote>>
 
 PCs == {"idle", "insert", "readOwner", "ownerFinished", "releaseOwner", "watch",
         "takeover", "current", "releaseSkip", "writeRow", "readBack",
@@ -93,6 +114,15 @@ Init ==
   /\ lost = [c \in Calls |-> FALSE]
   /\ fence = 0
   /\ fenceOf = [c \in Calls |-> 0]
+  /\ trail = [d \in DaySet |-> {}]
+  /\ gen = 0
+  /\ listed = [c \in Calls |-> [d \in DaySet |-> {}]]
+  /\ tail = [c \in Calls |-> "none"]
+  /\ walks = 0
+  /\ wpc = "idle"
+  /\ wgen = 0
+  /\ wread = [d \in DaySet |-> {}]
+  /\ wrote = [d \in DaySet |-> {}]
 
 TypeOK ==
   /\ claim \in Calls \cup {None}
@@ -107,6 +137,13 @@ TypeOK ==
        /\ answer[c] \in Answers
        /\ lost[c] \in BOOLEAN
        /\ fenceOf[c] \in Nat
+       /\ tail[c] \in {"none", "fence", "forget"}
+       /\ \A d \in DaySet : listed[c][d] \subseteq Calls
+  /\ gen \in Nat
+  /\ walks \in 0..Walks
+  /\ wpc \in {"idle", "read", "flush", "write", "check", "forget"}
+  /\ \A d \in DaySet :
+       trail[d] \cup wread[d] \cup wrote[d] \subseteq Calls
 
 (* The first day from `from` on that the ledger read did not name.       *)
 NextDay(from, named) ==
@@ -132,8 +169,9 @@ ReleaseApplies(c) ==
   THEN claim' = None /\ Touch
   ELSE UNCHANGED <<claim, moved>>
 
-Frozen == UNCHANGED <<row, ledger, raw, everDone, resuming, counted, day,
-                      failed, failures, crashes, lost, fence, fenceOf>>
+Frozen == /\ UNCHANGED <<row, ledger, raw, everDone, resuming, counted, day,
+                         failed, failures, crashes, lost, fence, fenceOf>>
+          /\ UNCHANGED trailVars
 
 (* A fenced write applies while the row still carries the fence    *)
 (* the call last read or wrote, and installs a fresh one (model.ts:72-101).*)
@@ -263,6 +301,7 @@ ReadCurrent(c) ==
   /\ fenceOf' = [fenceOf EXCEPT ![c] = fence]
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
                  counted, day, answer, failed, failures, crashes, lost, fence>>
+  /\ UNCHANGED trailVars
 
 (* The release's error is ignored: another call's ownerFinished may have *)
 (* deleted the claim of this done import (import.ts:407).                 *)
@@ -284,6 +323,7 @@ WriteRow(c) ==
         /\ lost' = [lost EXCEPT ![c] = ~wins]
   /\ UNCHANGED <<claim, ledger, raw, everDone, holds, seen, moved, resuming,
                  counted, day, answer, failed, failures, crashes>>
+  /\ UNCHANGED trailVars
 
 (* A call whose row insert or fenced write lost reads the row back: none *)
 (* throws; a found row answers "skipped" when done, else "in_progress"    *)
@@ -318,35 +358,50 @@ ReleaseErr(c) ==
 
 (* ------------------------------ replaying ------------------------------ *)
 
-(* A resumed replay reads which days the ledger names (replay.ts:268-270, *)
-(* 237-254); a new one starts from the first day.                         *)
+(* A resumed replay reads which days the ledger names (replay.ts:280-282, *)
+(* 237-254); a new one starts from the first day. A resume also lists the *)
+(* raw rows of the days the ledger does not name, then, when it found any, *)
+(* moves the backfill generation and takes those rows out of the trails   *)
+(* (replay.ts:216-218, 235-238). The model does this here, before the     *)
+(* isHeld() check that Discard holds: a call that fails that check took   *)
+(* entries out that the raw rows keep, which no trail rule reads.         *)
 ReadLedger(c) ==
   /\ pc[c] = "ledger"
   /\ IF resuming[c]
-     THEN /\ counted' = [counted EXCEPT ![c] = {d \in DaySet : ledger[d] > 0}]
-          /\ Go(c, "discard") /\ UNCHANGED day
+     THEN LET named == {d \in DaySet : ledger[d] > 0}
+              rows == [d \in DaySet |->
+                         IF d \in named \/ ~TrailsTracked THEN {} ELSE raw[d]]
+              found == \E d \in DaySet : rows[d] # {}
+          IN /\ counted' = [counted EXCEPT ![c] = named]
+             /\ listed' = [listed EXCEPT ![c] = rows]
+             /\ gen' = IF found THEN gen + 1 ELSE gen
+             /\ trail' = [d \in DaySet |-> trail[d] \ rows[d]]
+             /\ Go(c, "discard") /\ UNCHANGED day
      ELSE /\ day' = [day EXCEPT ![c] = 1]
-          /\ Go(c, "check") /\ UNCHANGED counted
+          /\ Go(c, "check") /\ UNCHANGED <<counted, listed, gen, trail>>
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
                  resuming, answer, failed, failures, crashes, lost, fence,
-                 fenceOf>>
+                 fenceOf, tail, walks, wpc, wgen, wread, wrote>>
 
 (* discardUncommitted deletes the import's raw rows on every day that    *)
-(* ledger read did not name (replay.ts:271-274, 200-235), after an       *)
-(* isHeld() check that throws once it is false (replay.ts:272).           *)
+(* ledger read did not name (replay.ts:283-286, 202-247), after an       *)
+(* isHeld() check that throws once it is false (replay.ts:284).           *)
 Discard(c) ==
   /\ pc[c] = "discard"
   /\ IF holds[c]
      THEN /\ raw' = [d \in DaySet |-> IF d \in counted[c] THEN raw[d] ELSE {}]
           /\ day' = [day EXCEPT ![c] = NextDay(1, counted[c])]
           /\ Go(c, "check")
-     ELSE Go(c, "markFailed") /\ UNCHANGED <<raw, day>>
+          /\ tail' = [tail EXCEPT ![c] =
+                         IF \E d \in DaySet : listed[c][d] # {}
+                         THEN "fence" ELSE "none"]
+     ELSE Go(c, "markFailed") /\ UNCHANGED <<raw, day, tail>>
   /\ UNCHANGED <<claim, row, ledger, everDone, holds, seen, moved, resuming,
                  counted, answer, failed, failures, crashes, lost, fence,
-                 fenceOf>>
+                 fenceOf, trail, gen, listed, walks, wpc, wgen, wread, wrote>>
 
 (* A worker checks isHeld() before each visitor and throws once it is     *)
-(* false (replay.ts:163, 187-192). With no day left, the replay returns.  *)
+(* false (replay.ts:165, 189-194). With no day left, the replay returns.  *)
 Check(c) ==
   /\ pc[c] = "check"
   /\ Go(c, IF day[c] > Days THEN "markDone"
@@ -355,7 +410,7 @@ Check(c) ==
   /\ Frozen
 
 (* replayVisitor writes the day's raw events and sessions through        *)
-(* ingestPreparedBatch and holds the rollup in memory (replay.ts:165-170).*)
+(* ingestPreparedBatch and holds the rollup in memory (replay.ts:167-172).*)
 WriteRaw(c) ==
   /\ pc[c] = "write"
   /\ raw' = [raw EXCEPT ![day[c]] = @ \cup {c}]
@@ -363,9 +418,10 @@ WriteRaw(c) ==
   /\ UNCHANGED <<claim, row, ledger, everDone, holds, seen, moved, resuming,
                  counted, day, answer, failed, failures, crashes, lost, fence,
                  fenceOf>>
+  /\ UNCHANGED trailVars
 
 (* commitImportedDay adds the day's counters and its ledger entry in one  *)
-(* write to the day row, with no look at the claim (replay.ts:288-293,    *)
+(* write to the day row, with no look at the claim (replay.ts:300-305,    *)
 (* rollup.ts:121-157, 183-193). Then the next day the ledger read did not *)
 (* name.                                                                  *)
 Commit(c) ==
@@ -376,6 +432,7 @@ Commit(c) ==
   /\ UNCHANGED <<claim, row, raw, everDone, holds, seen, moved, resuming,
                  counted, answer, failed, failures, crashes, lost, fence,
                  fenceOf>>
+  /\ UNCHANGED trailVars
 
 (* A raw write or a day commit fails in storage, and replayAll throws.    *)
 StorageFails(c) ==
@@ -386,6 +443,7 @@ StorageFails(c) ==
   /\ Go(c, "markFailed")
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
                  resuming, counted, day, answer, crashes, lost, fence, fenceOf>>
+  /\ UNCHANGED trailVars
 
 (* The import row is set done under the call's fence (import.ts:435-441).*)
 MarkDone(c) ==
@@ -396,6 +454,7 @@ MarkDone(c) ==
      ELSE Go(c, "readBack") /\ UNCHANGED <<row, everDone, fence, fenceOf>>
   /\ UNCHANGED <<claim, ledger, raw, holds, seen, moved, resuming, counted,
                  day, answer, failed, failures, crashes, lost>>
+  /\ UNCHANGED trailVars
 
 (* release(), its error ignored, then "imported": another call's          *)
 (* ownerFinished may have deleted the claim of this done import           *)
@@ -421,6 +480,7 @@ MarkFailed(c) ==
      ELSE Go(c, "readBack") /\ UNCHANGED <<row, fence, fenceOf, answer>>
   /\ UNCHANGED <<claim, ledger, raw, everDone, holds, seen, moved, resuming,
                  counted, day, failed, failures, crashes, lost>>
+  /\ UNCHANGED trailVars
 
 (* then releases, errors ignored, and rejects (import.ts:460-464).        *)
 ReleaseFailed(c) ==
@@ -442,16 +502,100 @@ Crash(c) ==
   /\ UNCHANGED <<claim, row, ledger, raw, everDone, holds, seen, moved,
                  resuming, counted, day, answer, failed, failures, lost, fence,
                  fenceOf>>
+  /\ UNCHANGED trailVars
+
+(* ------------------------------ funnel trails -------------------------- *)
+
+callVars == <<claim, row, ledger, raw, everDone, pc, holds, seen, moved,
+              resuming, counted, day, answer, failed, failures, crashes, lost,
+              fence, fenceOf>>
+
+(* ingestPreparedBatch writes the day's events, then adds them to their  *)
+(* session's trail before it returns (collect.ts:174-185, 197-211). A    *)
+(* trail write that never lands, as when the call dies first, leaves the  *)
+(* entry to the backfill.                                                 *)
+TrailWrite(c) ==
+  /\ TrailsTracked
+  /\ pc[c] = "commit"
+  /\ c \notin trail[day[c]]
+  /\ trail' = [trail EXCEPT ![day[c]] = @ \cup {c}]
+  /\ UNCHANGED <<gen, listed, tail, walks, wpc, wgen, wread, wrote>>
+  /\ UNCHANGED callVars
+
+(* Once its deletes are done, discardUncommitted moves the generation     *)
+(* again, then takes the rows it listed out of the trails once more       *)
+(* (replay.ts:242-245). The model lets these two steps run at any later  *)
+(* point, which covers the code's order, and a call that dies first never *)
+(* runs them.                                                             *)
+TailFence(c) ==
+  /\ tail[c] = "fence" /\ pc[c] # "crashed"
+  /\ gen' = gen + 1
+  /\ tail' = [tail EXCEPT ![c] = "forget"]
+  /\ UNCHANGED <<trail, listed, walks, wpc, wgen, wread, wrote>>
+  /\ UNCHANGED callVars
+
+TailForget(c) ==
+  /\ tail[c] = "forget" /\ pc[c] # "crashed"
+  /\ trail' = [d \in DaySet |-> trail[d] \ listed[c][d]]
+  /\ tail' = [tail EXCEPT ![c] = "none"]
+  /\ UNCHANGED <<gen, listed, walks, wpc, wgen, wread, wrote>>
+  /\ UNCHANGED callVars
+
+(* A backfill walk of the website reads the generation, then its events, *)
+(* then flushes: it checks the generation, adds what the trails did not  *)
+(* hold, checks the generation again and takes its own additions back    *)
+(* when it moved (trail-backfill.ts:87, 129-161, 163-192).              *)
+WalkBegin ==
+  /\ wpc = "idle" /\ walks < Walks
+  /\ walks' = walks + 1 /\ wgen' = gen /\ wpc' = "read"
+  /\ UNCHANGED <<trail, gen, listed, tail, wread, wrote>>
+  /\ UNCHANGED callVars
+
+WalkRead ==
+  /\ wpc = "read"
+  /\ wread' = raw /\ wpc' = "flush"
+  /\ UNCHANGED <<trail, gen, listed, tail, walks, wgen, wrote>>
+  /\ UNCHANGED callVars
+
+WalkCheck ==
+  /\ wpc = "flush"
+  /\ wpc' = IF gen = wgen THEN "write" ELSE "idle"
+  /\ UNCHANGED <<trail, gen, listed, tail, walks, wgen, wread, wrote>>
+  /\ UNCHANGED callVars
+
+WalkWrite ==
+  /\ wpc = "write"
+  /\ wrote' = [d \in DaySet |-> wread[d] \ trail[d]]
+  /\ trail' = [d \in DaySet |-> trail[d] \cup wread[d]]
+  /\ wpc' = "check"
+  /\ UNCHANGED <<gen, listed, tail, walks, wgen, wread>>
+  /\ UNCHANGED callVars
+
+WalkRecheck ==
+  /\ wpc = "check"
+  /\ wpc' = IF gen = wgen THEN "idle" ELSE "forget"
+  /\ UNCHANGED <<trail, gen, listed, tail, walks, wgen, wread, wrote>>
+  /\ UNCHANGED callVars
+
+WalkForget ==
+  /\ wpc = "forget"
+  /\ trail' = [d \in DaySet |-> trail[d] \ wrote[d]]
+  /\ wpc' = "idle"
+  /\ UNCHANGED <<gen, listed, tail, walks, wgen, wread, wrote>>
+  /\ UNCHANGED callVars
 
 Busy ==
-  \E c \in Calls :
-    \/ Begin(c) \/ InsertClaim(c) \/ ReadOwner(c) \/ OwnerFinished(c)
-    \/ ReleaseOwner(c) \/ Poll(c) \/ GiveUp(c) \/ TakeOver(c) \/ Renew(c)
-    \/ ReadCurrent(c) \/ ReleaseSkip(c) \/ WriteRow(c) \/ ReadBack(c)
-    \/ ReleaseFound(c) \/ ReleaseErr(c)
-    \/ ReadLedger(c) \/ Discard(c) \/ Check(c) \/ WriteRaw(c) \/ Commit(c)
-    \/ StorageFails(c) \/ MarkDone(c) \/ Release(c) \/ MarkFailed(c)
-    \/ ReleaseFailed(c) \/ Crash(c)
+  \/ \E c \in Calls :
+       \/ Begin(c) \/ InsertClaim(c) \/ ReadOwner(c) \/ OwnerFinished(c)
+       \/ ReleaseOwner(c) \/ Poll(c) \/ GiveUp(c) \/ TakeOver(c) \/ Renew(c)
+       \/ ReadCurrent(c) \/ ReleaseSkip(c) \/ WriteRow(c) \/ ReadBack(c)
+       \/ ReleaseFound(c) \/ ReleaseErr(c)
+       \/ ReadLedger(c) \/ Discard(c) \/ Check(c) \/ WriteRaw(c) \/ Commit(c)
+       \/ StorageFails(c) \/ MarkDone(c) \/ Release(c) \/ MarkFailed(c)
+       \/ ReleaseFailed(c) \/ Crash(c)
+       \/ TrailWrite(c) \/ TailFence(c) \/ TailForget(c)
+  \/ WalkBegin \/ WalkRead \/ WalkCheck \/ WalkWrite \/ WalkRecheck
+  \/ WalkForget
 
 (* Once nothing can happen, the system stays as it is. This step keeps   *)
 (* /statechart from reading the end as a deadlock.                       *)
