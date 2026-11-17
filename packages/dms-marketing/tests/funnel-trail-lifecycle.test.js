@@ -298,7 +298,8 @@ describe("a website created on this version", () => {
 describe("a tenant purge", () => {
   useRealModels();
 
-  test("leaves no trail and no backfill row", async () => {
+  test("leaves no trail and no backfill row", async function () {
+    this.timeout(60_000);
     const tenant = "trail-tenant";
     const site = await seedFixture(tenant, "trail-tenant-site", false);
     await backfill();

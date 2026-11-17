@@ -1,6 +1,8 @@
 const assert = require("node:assert/strict");
 const test = it;
+const { mock } = require("node:test");
 const { GetModel } = require("@antelopejs/interface-database-decorators");
+const models = require("@antelopejs/interface-database-decorators/model");
 const {
   FunnelTrailBackfillsModel,
   FunnelTrailsModel,
@@ -11,6 +13,7 @@ const {
   prepareEvents,
 } = require("../dist/services/collect");
 const { funnelResultsIn } = require("../dist/services/funnels");
+const { purgeWebsiteTrackingData } = require("../dist/services/tenant-website");
 const {
   MAX_COLLECT_BATCH_SIZE,
   MAX_TRAIL_EVENTS,
@@ -20,6 +23,7 @@ const { backfill, useRealModels } = require("./helpers/funnel-trail-checks");
 const { referenceFunnelResults } = require("./helpers/raw-funnel-reference");
 
 const TENANT = "funnel-trail-cap";
+const realGetModel = models.GetModel;
 const DAY = 86_400_000;
 const HEAVY_EVENTS = 6000;
 
@@ -200,6 +204,15 @@ describe("a session past its funnel trail's cap", () => {
     backfilled = await seedFixture(TENANT, "cap-backfilled", false);
     await collectCrowd(backfilled.website);
     await storeHeavyForTheBackfill(backfilled.website);
+  });
+
+  after(async function () {
+    this.timeout(60_000);
+    const real = mock.method(models, "GetModel", realGetModel);
+    for (const site of [collected, backfilled]) {
+      await purgeWebsiteTrackingData(TENANT, site.website._id);
+    }
+    real.mock.restore();
   });
 
   for (const site of ["collected", "backfilled"]) {
