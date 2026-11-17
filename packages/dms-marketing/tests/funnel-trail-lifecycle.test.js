@@ -10,6 +10,7 @@ const {
   FunnelTrailsModel,
   MarketingEventsModel,
 } = require("../dist/db");
+const { WebsitesController } = require("../dist/routes/websites");
 const { importAnalytics } = require("../dist/services/analytics-import");
 const { funnelResultsIn } = require("../dist/services/funnels");
 const { pruneFunnelTrails, pruneRawEvents } = require("../dist/services/prune");
@@ -135,6 +136,29 @@ describe("a website purge", () => {
       undefined,
     );
     assert.deepEqual(await trailSizes(tenant, site.website._id), {});
+  });
+});
+
+describe("a website created on this version", () => {
+  useRealModels();
+
+  test("reads complete before any backfill pass", async () => {
+    const website = await new WebsitesController().create(
+      { _id: "owner" },
+      { name: "Created today", domain: "created-today.example" },
+      { rawRequest: { headers: {} } },
+    );
+    const results = await funnelResultsIn(
+      {
+        websiteId: website._id,
+        steps: [{ kind: "url", value: "/a" }],
+        conversionWindowMs: DAY,
+        experiment: null,
+      },
+      website.tenantId,
+      { since: new Date(0), until: new Date() },
+    );
+    assert.equal(results.incomplete, false);
   });
 });
 

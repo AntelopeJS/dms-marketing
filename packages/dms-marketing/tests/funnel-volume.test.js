@@ -2,7 +2,10 @@ const assert = require("node:assert/strict");
 const test = it;
 const { GetModel } = require("@antelopejs/interface-database-decorators");
 const { EnsureWebsite } = require("@antelopejs/interface-dms-marketing");
-const { MarketingEventsModel } = require("../dist/db");
+const {
+  FunnelTrailBackfillsModel,
+  MarketingEventsModel,
+} = require("../dist/db");
 const { funnelResultsIn } = require("../dist/services/funnels");
 const { backfill, useRealModels } = require("./helpers/funnel-trail-checks");
 
@@ -49,6 +52,9 @@ describe("a funnel over more than 200,000 events", () => {
       name: WEBSITE_ID,
       domain: "volume.example",
     });
+    await GetModel(FunnelTrailBackfillsModel, TENANT).deleteByWebsite(
+      WEBSITE_ID,
+    );
     const events = GetModel(MarketingEventsModel, TENANT);
     let chunk = [];
     for (const row of rows()) {

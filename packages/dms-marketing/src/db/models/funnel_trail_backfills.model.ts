@@ -92,6 +92,28 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
     return { coverage: { kind: "none" }, generation: 0 };
   }
 
+  /**
+   * A website was just created: it has no event yet, so its trails cover
+   * everything from the start, with no walk. A row already there is kept.
+   */
+  async created(websiteId: string): Promise<void> {
+    try {
+      await this.table
+        .insert({
+          _id: websiteId,
+          version: TRAIL_BACKFILL_VERSION,
+          through: null,
+          done: true,
+          generation: 0,
+        })
+        .run();
+    } catch (error) {
+      if (!IsDuplicateKeyError(error)) {
+        throw error;
+      }
+    }
+  }
+
   /** Undefined once the row is gone: the website was deleted. */
   async generationOf(websiteId: string): Promise<number | undefined> {
     return (await this.get(websiteId))?.generation;

@@ -1,6 +1,10 @@
 const { EnsureWebsite } = require("@antelopejs/interface-dms-marketing");
 const { GetModel } = require("@antelopejs/interface-database-decorators");
-const { MarketingEventsModel, WebsitesModel } = require("../../dist/db");
+const {
+  FunnelTrailBackfillsModel,
+  MarketingEventsModel,
+  WebsitesModel,
+} = require("../../dist/db");
 const {
   ingestPreparedBatch,
   prepareEvents,
@@ -466,8 +470,9 @@ async function insertHistory(website, session, shift) {
 
 /**
  * A website of `tenantId` holding every fixture session twice: once through
- * live ingestion, once as rows inserted straight into the events table. With
- * `history` false, only the live copies.
+ * live ingestion, once as rows inserted straight into the events table, as a
+ * website created before the trails, which has no backfill row. With
+ * `history` false, only the live copies, on a website created today.
  * @param {string} tenantId
  * @param {string} websiteId
  * @param {boolean} [history]
@@ -482,6 +487,11 @@ async function seedFixture(tenantId, websiteId, history = true) {
   const website = await GetModel(WebsitesModel).get(websiteId);
   if (!website) {
     throw new Error(`website ${websiteId} was not created`);
+  }
+  if (history) {
+    await GetModel(FunnelTrailBackfillsModel, tenantId).deleteByWebsite(
+      websiteId,
+    );
   }
   for (const session of SESSIONS) {
     await ingestLive(website, session);

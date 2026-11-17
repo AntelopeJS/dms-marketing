@@ -2,7 +2,11 @@ const assert = require("node:assert/strict");
 const { mock } = require("node:test");
 const test = it;
 const models = require("@antelopejs/interface-database-decorators/model");
-const { FunnelsModel, WebsitesModel } = require("../dist/db");
+const {
+  FunnelTrailBackfillsModel,
+  FunnelsModel,
+  WebsitesModel,
+} = require("../dist/db");
 const { ensureWebsite } = require("../dist/services/declared-website");
 const { ensureFunnel } = require("../dist/services/declared-funnel");
 const { dashboardWebsiteId } = require("../dist/services/dashboard-tracking");
@@ -121,6 +125,9 @@ function useFakeModels() {
         }
         if (Model === FunnelsModel) {
           return funnelsOf(tenantId);
+        }
+        if (Model === FunnelTrailBackfillsModel) {
+          return { async created() {} };
         }
         throw new Error(`unexpected model ${Model.name}`);
       },

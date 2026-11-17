@@ -4,7 +4,7 @@ import type {
   MarketingWebsiteDeclaration,
 } from "@antelopejs/interface-dms-marketing";
 import { z } from "zod";
-import { WebsitesModel } from "@/db";
+import { FunnelTrailBackfillsModel, WebsitesModel } from "@/db";
 import type { Website } from "@/db/tables/websites.table";
 import {
   declaredTenant,
@@ -129,6 +129,7 @@ export async function ensureWebsite(
     }
     return keptWebsite(raced, tenantId);
   }
+  await GetModel(FunnelTrailBackfillsModel, tenantId).created(id);
   invalidateWebsiteCache(id);
   return { id, status: "created" };
 }
