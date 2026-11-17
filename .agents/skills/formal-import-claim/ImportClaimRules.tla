@@ -3,7 +3,7 @@
 (* The rules TLC checks on ImportClaim, the model of the ImportAnalytics  *)
 (* claim and replay. Every configuration names its rules from here.      *)
 (***************************************************************************)
-EXTENDS ImportClaim
+EXTENDS ImportClaimReplay
 
 (* No call is running: every call is yet to start, has returned, or died. *)
 Quiet == \A c \in Calls : pc[c] \in {"idle", "end", "crashed"}
@@ -20,7 +20,7 @@ OneWriter ==
 CountedOnce == \A d \in DaySet : ledger[d] <= 1
 
 (* Once no call runs, the raw rows of a counted day come from one replay: *)
-(* a resume never discards a counted day's rows (replay.ts:214-220).      *)
+(* a resume never discards a counted day's rows (replay.ts:216-222).      *)
 StoredOnce ==
   Quiet => \A d \in DaySet : ledger[d] >= 1 => Cardinality(raw[d]) <= 1
 
@@ -38,6 +38,17 @@ LoserWritesNothing ==
   \A c \in Calls :
     lost[c] => pc[c] \in {"readBack", "releaseSkip", "releaseFound", "releaseErr",
                          "end", "crashed"}
+
+(* No call runs, no walk is midway, and every discard that is still alive *)
+(* has finished taking its rows out of the trails.                        *)
+TrailQuiet ==
+  /\ Quiet
+  /\ wpc = "idle"
+  /\ \A c \in Calls : tail[c] = "none" \/ pc[c] = "crashed"
+
+(* Once nothing runs, the funnel trails hold no entry whose raw rows are *)
+(* gone: funnels and A/B tests never count a deleted event.              *)
+TrailsFollowRaw == TrailQuiet => \A d \in DaySet : trail[d] \subseteq raw[d]
 
 (* A call that met no storage failure answers imported, in_progress or    *)
 (* skipped.                                                               *)

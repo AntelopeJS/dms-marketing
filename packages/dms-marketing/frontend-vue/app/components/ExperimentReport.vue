@@ -101,7 +101,7 @@ const noExposure = computed(
 const insufficient = computed(
   () =>
     !noExposure.value &&
-    !props.results.truncated &&
+    !props.results.incomplete &&
     arms.value.length > 0 &&
     arms.value.slice(1).every((arm) => arm.significant === null),
 )
@@ -278,11 +278,11 @@ const withheldCounts = computed(() =>
       :description="srmLine"
     />
     <DmsNoticeBanner
-      v-if="results.truncated"
+      v-if="results.incomplete"
       tone="warning"
       icon="i-ph-hourglass"
-      :title="t('page.marketing.experiment.truncated_title')"
-      :description="t('page.marketing.experiment.truncated_description')"
+      :title="t('page.marketing.experiment.incomplete_title')"
+      :description="t('page.marketing.experiment.incomplete_description')"
     />
 
     <section v-if="noExposure" class="dms-card flex flex-col gap-3 p-5">

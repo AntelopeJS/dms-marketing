@@ -16,6 +16,7 @@ const {
   fakeTimers,
   interceptWrites,
   store,
+  storeEvents,
   useFakeModels,
   website,
 } = require("./helpers/analytics-import-fakes");
@@ -206,13 +207,15 @@ describe("an analytics import resumed by a holder whose renewal saw the takeover
     mock.method(
       models.GetModel(MarketingEventsModel),
       "insertMany",
-      /** @param {object[]} docs */ async (docs) => {
-        store().events.push(...docs);
+      /** @param {import("../dist/db").NewMarketingEvent[]} docs */ async (
+        docs,
+      ) => {
+        const ids = storeEvents(docs);
         if (++inserts === 2) {
           takerWriting.resolve();
           await takerResumes.promise;
         }
-        return docs.length;
+        return ids;
       },
     );
     fakeTimers();

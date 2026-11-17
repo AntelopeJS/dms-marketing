@@ -21,7 +21,7 @@ import {
 import { PublishMessage } from "@antelopejs/interface-dms/realtime";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { z } from "zod";
-import { WebsitesModel } from "@/db";
+import { FunnelTrailBackfillsModel, WebsitesModel } from "@/db";
 import type { Website } from "@/db/tables/websites.table";
 import { setSnapshotsByOwner } from "@/services/dashboard-tracking";
 import { invalidateExperimentDefinitions } from "@/services/experiment-definitions";
@@ -213,6 +213,9 @@ export class WebsitesController extends Controller(
     };
     await assertHostsFree(website);
     await GetModel(WebsitesModel).insert(website);
+    await GetModel(FunnelTrailBackfillsModel, website.tenantId).created(
+      website._id,
+    );
     publishWebsiteChange("created", website._id);
     return website;
   }

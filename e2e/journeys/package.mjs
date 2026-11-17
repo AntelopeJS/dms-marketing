@@ -8,7 +8,7 @@ import { check, isRow, parseJson, pick } from "../marketing.mjs";
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
 /**
- * Packs one package of the checkout the way a release would and lists the tarball.
+ * Packs one package of the checkout with pnpm, as a release does, so workspace ranges are resolved, and lists the tarball.
  *
  * @param {Ctx} ctx The journey
  * @param {string} dir The package folder, from the checkout root
@@ -17,8 +17,8 @@ import { check, isRow, parseJson, pick } from "../marketing.mjs";
 function packed(ctx, dir) {
   const folder = mkdtempSync(join(tmpdir(), "verify-dms-marketing-pack-"));
   try {
-    const pack = spawnSync("npm", ["pack", "--ignore-scripts", "--silent", "--pack-destination", folder], { cwd: join(ctx.state.repo ?? ".", dir), encoding: "utf8" });
-    const tarball = join(folder, pack.stdout.trim().split("\n").at(-1) ?? "");
+    const pack = spawnSync("pnpm", ["--config.ignore-scripts=true", "pack", "--pack-destination", folder], { cwd: join(ctx.state.repo ?? ".", dir), encoding: "utf8" });
+    const tarball = pack.stdout.trim().split("\n").at(-1) ?? "";
     const listed = spawnSync("tar", ["-tzf", tarball], { encoding: "utf8" });
     const manifest = parseJson(spawnSync("tar", ["-xzOf", tarball, "package/package.json"], { encoding: "utf8" }).stdout);
     return { files: listed.stdout.split("\n").map((line) => line.replace(/^package\//, "")).filter(Boolean), manifest };
@@ -52,7 +52,7 @@ export const journeys = guarded([
   {
     id: "the-module-tarball-holds-what-its-manifest-names",
     title: "the module's tarball holds the build, the dashboard layer, the agent skill and every path its manifest points at, without build info",
-    entryPoint: "npm pack of packages/dms-marketing",
+    entryPoint: "pnpm pack of packages/dms-marketing",
     database: "shared",
     onboard: false,
     async run(/** @type {Ctx} */ ctx) {
@@ -72,7 +72,7 @@ export const journeys = guarded([
   {
     id: "the-interface-tarball-exports-the-contract",
     title: "the interface's tarball holds its build and its consumer reference, and its root export carries the heatmap read, the four content calls and their types",
-    entryPoint: "npm pack of packages/interface-dms-marketing",
+    entryPoint: "pnpm pack of packages/interface-dms-marketing",
     database: "shared",
     onboard: false,
     async run(/** @type {Ctx} */ ctx) {
@@ -88,7 +88,7 @@ export const journeys = guarded([
   },
   {
     id: "ranges-match-the-compatibility-table",
-    title: "the README compatibility table lists the interface ranges the module depends on, its interface-dms-marketing range accepts the interface in the tree, and the dashboard layer pins its renderer minor",
+    title: "the README compatibility table lists the interface ranges the module depends on as packed, its interface-dms-marketing range accepts the interface in the tree, and the dashboard layer pins its renderer minor",
     entryPoint: "packages/dms-marketing/README.md, package.json files",
     database: "shared",
     onboard: false,
@@ -101,15 +101,12 @@ export const journeys = guarded([
       const interfaces = isRow(dependencies) ? Object.entries(dependencies).filter(([name]) => name.startsWith("@antelopejs/interface-")) : [];
       const range = String(pick(dependencies, "@antelopejs/interface-dms-marketing"));
       const version = String(pick(iface, "version"));
-      const [floor, ceiling] = [/>=(\d+)\.(\d+)\.(\d+)/.exec(range), /<(\d+)\.(\d+)\.(\d+)/.exec(range)];
-      /** @param {RegExpExecArray | null} match @returns {number} */
-      const asNumber = (match) => (match ? Number(match[1]) * 1e6 + Number(match[2]) * 1e3 + Number(match[3]) : Number.NaN);
-      const [major = "0", minor = "0", patch = "0"] = version.split(".");
-      const current = Number(major) * 1e6 + Number(minor) * 1e3 + Number(patch);
-      await ctx.verify("the ranges", [
-        ...interfaces.map(([name, spec]) => check(`${name} is in the table with the same range`, table.get(name) === spec, [table.get(name), spec])),
-        check("the interface-dms-marketing range accepts the tree's interface", current >= asNumber(floor) && current < asNumber(ceiling), [range, version]),
-        check("the range stops below the next minor", ceiling !== null && Number(ceiling[2]) === Number(minor) + 1, range),
+      const { manifest: packedModule } = packed(ctx, "packages/dms-marketing");
+      const packedRange = pick(pick(packedModule, "dependencies"), "@antelopejs/interface-dms-marketing");
+            await ctx.verify("the ranges", [
+        ...interfaces.map(([name, spec]) => check(`${name} is in the table with the same range`, table.get(name) === pick(pick(packedModule, "dependencies"), name), [table.get(name), pick(pick(packedModule, "dependencies"), name), spec])),
+        check("the module names the interface as a workspace sibling", range === "workspace:^", range),
+        check("the packed module depends on the caret of the interface in the tree", packedRange === `^${version}`, [packedRange, version]),
         check("the dashboard layer pins one renderer minor", /^>=\d+\.\d+\.\d+ <\d+\.\d+\.0$/.test(String(pick(frontend, "engines", "@antelopejs/dms-frontend"))), pick(frontend, "engines")),
       ]);
     },

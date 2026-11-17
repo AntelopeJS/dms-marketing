@@ -1,4 +1,5 @@
 import type { Table } from "@antelopejs/interface-database";
+import type { IndexBound } from "@antelopejs/interface-database/common";
 
 interface RetentionRow {
   _id: string;
@@ -12,8 +13,13 @@ export const EPOCH_LOWER_BOUND = new Date(0);
  */
 export async function deleteExpiredRows<
   F extends string,
-  T extends RetentionRow & Record<F, Date>,
->(table: Table<T>, field: F, lowerBound: T[F], cutoff: T[F]): Promise<number> {
+  T extends RetentionRow & Record<F, Date | number>,
+>(
+  table: Table<T>,
+  field: F,
+  lowerBound: T[F] & IndexBound,
+  cutoff: T[F] & IndexBound,
+): Promise<number> {
   const candidates = await table
     .between(field, lowerBound, cutoff)
     .pluck<"_id" | F>("_id", field)

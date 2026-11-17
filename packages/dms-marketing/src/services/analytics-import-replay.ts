@@ -1,5 +1,7 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import {
+  FunnelTrailBackfillsModel,
+  FunnelTrailsModel,
   MarketingEventsModel,
   MarketingSessionsModel,
   WebsiteStatisticsModel,
@@ -228,8 +230,21 @@ async function discardUncommitted(
     );
     await sessions.restoreActivity(sessionId, kept);
   }
-  for (const day of discardedDays) {
-    await events.deleteImportedOnDay(website._id, importId, day);
+  const backfills = GetModel(FunnelTrailBackfillsModel, website.tenantId);
+  const trails = GetModel(FunnelTrailsModel, website.tenantId);
+  if (discarded.length > 0) {
+    await backfills.fence(website._id);
+    await trails.forgetEvents(discarded);
+  }
+  try {
+    for (const day of discardedDays) {
+      await events.deleteImportedOnDay(website._id, importId, day);
+    }
+  } finally {
+    if (discarded.length > 0) {
+      await backfills.fence(website._id);
+      await trails.forgetEvents(discarded);
+    }
   }
   await sessions.deleteMany(opened);
 }

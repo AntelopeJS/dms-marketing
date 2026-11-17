@@ -6,6 +6,8 @@ const { GetMetadata } = require("@antelopejs/interface-core");
 const models = require("@antelopejs/interface-database-decorators/model");
 const { EnsureWebsite } = require("@antelopejs/interface-dms-marketing");
 const {
+  FunnelTrailBackfillsModel,
+  FunnelTrailsModel,
   FunnelsModel,
   MarketingEventsModel,
   MarketingImportsModel,
@@ -88,6 +90,11 @@ function fakeStore() {
   /** @type {Map<ModelClass, FakeTable | FakeWebsitesTable>} */
   const byModel = new Map([
     [MarketingEventsModel, table("events")],
+    [FunnelTrailsModel, table("trails")],
+    [
+      FunnelTrailBackfillsModel,
+      { ...table("coverage"), async purged() {}, async fence() {} },
+    ],
     [MarketingSessionsModel, table("sessions")],
     [WebsiteStatisticsModel, table("days")],
     [PageSnapshotsModel, table("snapshots")],
