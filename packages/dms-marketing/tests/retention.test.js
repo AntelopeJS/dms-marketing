@@ -21,13 +21,12 @@ const {
 } = require("../dist/db/models/website_statistics.model");
 const { setConfig } = require("../dist/config");
 const {
-  pruneFunnelTrails,
-  pruneRawEvents,
   pruneSessions,
   pruneSnapshots,
   pruneStatistics,
   pruneStatisticsTops,
   pruneAllTenants,
+  rawEventsCutoff,
 } = require("../dist/services/prune");
 const { TOP_MAPS_RETENTION_DAYS } = require("../dist/types/constants");
 
@@ -339,8 +338,7 @@ test("retention services keep their separate windows and snapshot minimum", asyn
       return 0;
     },
   };
-  await pruneRawEvents(model);
-  await pruneFunnelTrails(model);
+  cutoffs.push(+rawEventsCutoff());
   await pruneSnapshots(model);
   await pruneSessions(model);
   await pruneStatistics(model);
@@ -350,13 +348,46 @@ test("retention services keep their separate windows and snapshot minimum", asyn
   assert.deepEqual(cutoffs, [
     NOW - 5 * DAY,
     NOW - 5 * DAY,
-    NOW - 5 * DAY,
     NOW - 180 * DAY,
     NOW - 180 * DAY,
     NOW - TOP_MAPS_RETENTION_DAYS * DAY,
     NOW - 2 * DAY,
   ]);
   setConfig();
+});
+
+test("one pass cuts the raw events and their funnel trails at one instant", async () => {
+  let clock = NOW;
+  mock.method(Date, "now", () => (clock += 1));
+  /** @type {Map<string, number>} */
+  const cutoffs = new Map();
+  /**
+   * @param {ModelClass} Model
+   * @param {string} [tenantId]
+   */
+  const fakeGetModel = (Model, tenantId) => {
+    if (!tenantId) {
+      return { listTenantIds: async () => [TENANT, OTHER_TENANT] };
+    }
+    /** @param {Date | number} cutoff */
+    const prune = async (cutoff) => {
+      cutoffs.set(`${tenantId} ${Model.name}`, +cutoff);
+      return 0;
+    };
+    return {
+      deleteOlderThan: prune,
+      deleteDaysBefore: prune,
+      emptyTopsBefore: prune,
+    };
+  };
+  mock.method(models, "GetModel", fakeGetModel);
+  await pruneAllTenants((error) => assert.fail(error));
+  const events = cutoffs.get(`${TENANT} MarketingEventsModel`);
+  assert.ok(events !== undefined);
+  for (const tenantId of [TENANT, OTHER_TENANT]) {
+    assert.equal(cutoffs.get(`${tenantId} MarketingEventsModel`), events);
+    assert.equal(cutoffs.get(`${tenantId} FunnelTrailsModel`), events);
+  }
 });
 
 test("a failed cleanup does not skip other retention effects or tenants", async () => {

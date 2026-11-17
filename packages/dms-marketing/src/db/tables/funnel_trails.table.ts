@@ -43,8 +43,9 @@ export type StoredTrailEvent =
  * `_id` is the session id. `events` holds each event once, in the order it
  * was written, up to `MAX_TRAIL_EVENTS`. `firstAt` and `lastAt` bound the
  * timestamps of the events written to it, in epoch milliseconds, the dropped
- * ones included: each write widens them to the events it adds, and a write
- * that takes events out recomputes them from the events left.
+ * ones included: each write widens them to the events it adds, a write that
+ * takes events out recomputes them from the events left, and the retention
+ * trim moves `firstAt` up to its cutoff.
  */
 @RegisterTable(funnelTrailsTableName, TENANT_SCHEMA_NAME)
 export class FunnelTrail extends Table {
@@ -58,6 +59,8 @@ export class FunnelTrail extends Table {
   @Field("number")
   declare lastAt: number;
 
+  /** Indexed: the retention trim bounds on it. */
+  @Index()
   @Field("number")
   declare firstAt: number;
 

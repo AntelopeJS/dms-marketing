@@ -8,7 +8,6 @@ import {
   ExperimentTally,
 } from "@/services/experiments/results";
 import type { QueryWindow } from "@/services/period";
-import { rawEventsCutoff } from "@/services/prune";
 import { type FunnelComputation, FunnelTally } from "./compute";
 
 export interface FunnelResults {
@@ -123,10 +122,9 @@ function servedMs(runs: EventWindow[]): number {
  * rather than the requested period, and the plain funnel figure follows it
  * (the pane shows the arms, not the merged funnel, as soon as a split runs).
  *
- * The read starts no earlier than the raw events' retention cutoff, so a
- * trail still holding events the hourly prune has deleted counts what the
- * events table holds. Memory holds one session and the counters, whatever
- * the period holds.
+ * The hourly prune cuts the trails at the instant it cuts the raw events, so
+ * the read counts what the events table holds. Memory holds one session and
+ * the counters, whatever the period holds.
  */
 export async function funnelResultsIn(
   funnel: ReadableFunnel,
@@ -139,7 +137,7 @@ export async function funnelResultsIn(
   const read = runs
     ? readWindow(runs, funnel, until)
     : { since: window.since.getTime(), until };
-  const since = Math.max(read.since, rawEventsCutoff().getTime());
+  const since = read.since;
   const indexed = coversSince(
     await GetModel(FunnelTrailBackfillsModel, tenantId).coverage(
       funnel.websiteId,

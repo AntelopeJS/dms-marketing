@@ -292,12 +292,24 @@ export class FunnelTrailsModel extends BasicDataModel(
   }
 
   /**
-   * The raw events' retention, applied to the trails: a trail goes once its
-   * newest event is older than `cutoff`. A trail that straddles it keeps its
-   * older events until then, and the reads start at the cutoff.
+   * The raw events' retention, applied to the trails at the instant it cut
+   * the events at: a trail whose newest event is older than `cutoff` goes,
+   * and a trail that straddles it loses its older events in one update, its
+   * `firstAt` moved up to the cutoff, a lower bound of the events left.
+   * Resolves to the number of trails deleted.
    */
   async deleteOlderThan(cutoff: Date): Promise<number> {
-    return deleteExpiredRows(this.table, "lastAt", 0, cutoff.getTime());
+    const at = cutoff.getTime();
+    const deleted = await deleteExpiredRows(this.table, "lastAt", 0, at);
+    await this.table
+      .between("firstAt", 0, at)
+      .filter((doc) => doc.key("lastAt").ge(at))
+      .update((doc) => ({
+        events: doc.key("events").filter((event) => event.key("t").ge(at)),
+        firstAt: at,
+      }))
+      .run();
+    return deleted;
   }
 
   async deleteByWebsite(websiteId: string): Promise<number> {

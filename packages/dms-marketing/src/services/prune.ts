@@ -16,19 +16,6 @@ export function rawEventsCutoff(): Date {
   return new Date(Date.now() - getConfig().rawEventsRetention);
 }
 
-export async function pruneRawEvents(
-  model: MarketingEventsModel,
-): Promise<number> {
-  return model.deleteOlderThan(rawEventsCutoff());
-}
-
-/** The funnel trails index the raw events, and follow their retention. */
-export async function pruneFunnelTrails(
-  model: FunnelTrailsModel,
-): Promise<number> {
-  return model.deleteOlderThan(rawEventsCutoff());
-}
-
 /**
  * Sessions follow the long statistics retention, not the raw-events one:
  * retention cohorts (first-seen week × returning weeks) read sessions alone,
@@ -133,13 +120,21 @@ export async function countStatisticsBefore(
   return { sessions, days };
 }
 
-const TENANT_PRUNES = [
-  (id: string) => pruneRawEvents(GetModel(MarketingEventsModel, id)),
-  (id: string) => pruneFunnelTrails(GetModel(FunnelTrailsModel, id)),
-  (id: string) => pruneSnapshots(GetModel(PageSnapshotsModel, id)),
-  (id: string) => pruneSessions(GetModel(MarketingSessionsModel, id)),
-  (id: string) => pruneStatistics(GetModel(WebsiteStatisticsModel, id)),
-  (id: string) => pruneStatisticsTops(GetModel(WebsiteStatisticsModel, id)),
+/** One retention effect on one tenant, given the pass's raw-events cutoff. */
+type TenantPrune = (tenantId: string, rawCutoff: Date) => Promise<number>;
+
+/**
+ * The funnel trails index the raw events: both are cut at the pass's one
+ * raw-events cutoff, so the trails keep what the events table keeps.
+ */
+const TENANT_PRUNES: TenantPrune[] = [
+  (id, rawCutoff) =>
+    GetModel(MarketingEventsModel, id).deleteOlderThan(rawCutoff),
+  (id, rawCutoff) => GetModel(FunnelTrailsModel, id).deleteOlderThan(rawCutoff),
+  (id) => pruneSnapshots(GetModel(PageSnapshotsModel, id)),
+  (id) => pruneSessions(GetModel(MarketingSessionsModel, id)),
+  (id) => pruneStatistics(GetModel(WebsiteStatisticsModel, id)),
+  (id) => pruneStatisticsTops(GetModel(WebsiteStatisticsModel, id)),
 ];
 
 /**
@@ -151,10 +146,11 @@ const TENANT_PRUNES = [
 export async function pruneAllTenants(
   onError: (failure: Error) => void,
 ): Promise<void> {
+  const rawCutoff = rawEventsCutoff();
   const tenantIds = await GetModel(WebsitesModel).listTenantIds();
   for (const tenantId of tenantIds) {
     for (const prune of TENANT_PRUNES) {
-      await prune(tenantId).catch((reason: unknown) => {
+      await prune(tenantId, rawCutoff).catch((reason: unknown) => {
         onError(
           reason instanceof Error
             ? reason

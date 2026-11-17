@@ -13,7 +13,6 @@ const {
 const { WebsitesController } = require("../dist/routes/websites");
 const { importAnalytics } = require("../dist/services/analytics-import");
 const { funnelResultsIn } = require("../dist/services/funnels");
-const { pruneFunnelTrails, pruneRawEvents } = require("../dist/services/prune");
 const {
   purgeWebsiteCollectedData,
   purgeWebsiteTrackingData,
@@ -36,15 +35,16 @@ describe("the raw events' retention", () => {
   useRealModels();
   afterEach(() => setConfig());
 
-  test("leaves the trails counting what the events table keeps", async function () {
+  test("counts an event just past it until the prune, which drops it from both reads", async function () {
     this.timeout(60_000);
     const tenant = "trail-retention";
     const site = await seedFixture(tenant, "trail-retention-site");
     await backfill();
-    const cutoff = at(99.5);
-    setConfig({ rawEventsRetention: Date.now() - cutoff });
-    await pruneRawEvents(GetModel(MarketingEventsModel, tenant));
-    await pruneFunnelTrails(GetModel(FunnelTrailsModel, tenant));
+    const cutoff = new Date(at(99.5));
+    setConfig({ rawEventsRetention: Date.now() - cutoff.getTime() });
+    await assertSameAsReference(tenant, site);
+    await GetModel(MarketingEventsModel, tenant).deleteOlderThan(cutoff);
+    await GetModel(FunnelTrailsModel, tenant).deleteOlderThan(cutoff);
     await assertSameAsReference(tenant, site);
     const trails = GetModel(FunnelTrailsModel, tenant).sessionsIn({
       websiteId: site.website._id,
@@ -53,10 +53,9 @@ describe("the raw events' retention", () => {
       withExposures: true,
     });
     for await (const session of trails) {
-      const newest = session.events.at(-1)?.at ?? 0;
       assert.ok(
-        newest >= cutoff,
-        `${session.sessionId} ends before the cutoff`,
+        session.events.every((event) => event.at >= cutoff.getTime()),
+        `${session.sessionId} holds an event before the cutoff`,
       );
     }
   });

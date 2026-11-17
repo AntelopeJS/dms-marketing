@@ -4,7 +4,6 @@ import type { TrailEvent, TrailSession } from "@/db/models/funnel_trails.model";
 import type { FunnelStep } from "@/db/tables/funnels.table";
 import type { Website } from "@/db/tables/websites.table";
 import type { QueryWindow } from "@/services/period";
-import { rawEventsCutoff } from "@/services/prune";
 
 /** A funnel the site's own journeys suggest, with the sessions it would score. */
 export interface FunnelTemplate {
@@ -121,7 +120,7 @@ export async function funnelTemplates(
   const sessions = () =>
     GetModel(FunnelTrailsModel, website.tenantId).sessionsIn({
       websiteId: website._id,
-      since: Math.max(window.since.getTime(), rawEventsCutoff().getTime()),
+      since: window.since.getTime(),
       until: window.until.getTime(),
       withExposures: false,
     });
