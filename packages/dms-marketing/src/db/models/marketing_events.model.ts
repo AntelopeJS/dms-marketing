@@ -18,11 +18,14 @@ import {
   marketingEventsTableName,
   type NewMarketingEvent,
 } from "../tables/marketing_events.table";
+import type { TrailedEvent } from "./funnel_trails.model";
 
 const EPOCH_LOWER_BOUND = new Date(0);
 const SCROLL_KIND: EventKind = "scroll";
 const PAGEVIEW_KIND: EventKind = "pageview";
 const CLICK_KIND: EventKind = "click";
+/** The kinds a funnel trail keeps. */
+const FUNNEL_EVENT_KINDS: EventKind[] = ["pageview", "custom", "exposure"];
 
 type PageviewRow = Pick<MarketingEvent, "timestamp" | "url" | "sessionId">;
 
@@ -41,6 +44,13 @@ export interface EventRangeQuery<F extends keyof MarketingEvent> {
    * on it.
    */
   fields: readonly F[];
+}
+
+/** The span of one website's events {@link MarketingEventsModel.walkFunnelEvents} reads. */
+export interface FunnelEventWalk {
+  websiteId: string;
+  below: Date | null;
+  floor: Date | null;
 }
 
 /** One path over one window — the scroll histogram needs no other axis. */
@@ -496,6 +506,51 @@ export class MarketingEventsModel extends BasicDataModel(
 
   async deleteByWebsite(websiteId: string): Promise<number> {
     return this.table.getAll([websiteId], "websiteId").delete().run();
+  }
+
+  /**
+   * One website's pageviews, custom events and exposures, newest first, from
+   * `below` down to `floor` (both included, each open when null), streamed
+   * through the cursor with no cap: the funnel trail backfill's read. Only
+   * what a trail keeps comes back, `data` narrowed to an exposure's
+   * variation.
+   *
+   * Rows sharing a timestamp come back in the reverse of their insertion
+   * order, the index's own order read backwards; the projection comes after
+   * the sort, so that plan stays (see {@link queryRange}).
+   */
+  walkFunnelEvents(
+    query: FunnelEventWalk,
+  ): AsyncGenerator<TrailedEvent & Pick<MarketingEvent, "sessionId">> {
+    let events = this.table
+      .getAll([query.websiteId], "websiteId")
+      .filter((doc) =>
+        ValueProxy.constant(FUNNEL_EVENT_KINDS).includes(doc.key("kind")),
+      );
+    const { below, floor } = query;
+    if (below) {
+      events = events.filter((doc) => doc.key("timestamp").le(below));
+    }
+    if (floor) {
+      events = events.filter((doc) => doc.key("timestamp").ge(floor));
+    }
+    return events
+      .orderBy("timestamp", "desc")
+      .map((doc) => ({
+        _id: doc.key("_id"),
+        sessionId: doc.key("sessionId"),
+        kind: doc.key("kind"),
+        timestamp: doc.key("timestamp"),
+        url: doc.key("url"),
+        name: doc.key("name"),
+        data: {
+          variation: doc
+            .key("data")
+            .cast<{ variation?: unknown }>()
+            .key("variation"),
+        },
+      }))
+      .cursor();
   }
 
   /** Every event an import wrote. Only read to resume a stopped import. */

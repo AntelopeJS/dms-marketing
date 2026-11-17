@@ -159,7 +159,70 @@ export class FunnelTrailsModel extends BasicDataModel(
     sessionId: string,
     events: readonly TrailedEvent[],
   ): Promise<void> {
-    const stored = events.map(toStored).filter(isStored);
+    await this.recordStored(
+      websiteId,
+      sessionId,
+      events.map(toStored).filter(isStored),
+    );
+  }
+
+  /**
+   * Adds events of many sessions to their trails: the backfill's write, with
+   * each session's events in time order. The same union as {@link record},
+   * in fewer round trips: one read of the event ids the trails already hold,
+   * one insert of the sessions that have no trail yet, and a union per
+   * session that has one and misses some of its events. Losing an insert to
+   * another writer falls back to the per-session union.
+   */
+  async recordMany(
+    websiteId: string,
+    sessions: ReadonlyMap<string, readonly TrailedEvent[]>,
+  ): Promise<void> {
+    const held = await this.heldEventIds([...sessions.keys()]);
+    const fresh = new Map<string, StoredTrailEvent[]>();
+    for (const [sessionId, events] of sessions) {
+      const known = held.get(sessionId);
+      const stored = events
+        .map(toStored)
+        .filter(isStored)
+        .filter((event) => !known?.has(event.i));
+      if (stored.length === 0) {
+        continue;
+      }
+      if (known) {
+        await this.recordStored(websiteId, sessionId, stored);
+      } else {
+        fresh.set(sessionId, stored);
+      }
+    }
+    if (fresh.size === 0) {
+      return;
+    }
+    const trails = [...fresh].map(([sessionId, stored]) =>
+      newTrail(websiteId, sessionId, stored),
+    );
+    try {
+      await this.table.insert(trails).run();
+    } catch (error) {
+      if (!IsDuplicateKeyError(error)) {
+        throw error;
+      }
+      for (const [sessionId, stored] of fresh) {
+        await this.recordStored(websiteId, sessionId, stored);
+      }
+    }
+  }
+
+  /**
+   * The union of {@link record}: the update first, then the insert of a
+   * session with no trail, then the update again when another writer
+   * inserted it first.
+   */
+  private async recordStored(
+    websiteId: string,
+    sessionId: string,
+    stored: StoredTrailEvent[],
+  ): Promise<void> {
     if (stored.length === 0 || (await this.union(sessionId, stored)) > 0) {
       return;
     }
@@ -171,6 +234,20 @@ export class FunnelTrailsModel extends BasicDataModel(
       }
       await this.union(sessionId, stored);
     }
+  }
+
+  /** The event ids each existing trail of `sessionIds` holds. */
+  private async heldEventIds(
+    sessionIds: readonly string[],
+  ): Promise<Map<string, Set<string>>> {
+    const rows = await this.table
+      .getAll([...sessionIds])
+      .map((doc) => ({
+        sessionId: doc.key("_id"),
+        ids: doc.key("events").map((event) => event.key("i")),
+      }))
+      .run();
+    return new Map(rows.map((row) => [row.sessionId, new Set(row.ids)]));
   }
 
   /**

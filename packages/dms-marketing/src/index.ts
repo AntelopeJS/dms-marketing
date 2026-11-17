@@ -13,6 +13,7 @@ import { type DmsMarketingConfigInput, setConfig } from "./config";
 import { registerMarketingHookListeners } from "./hooks";
 import { frontendModule } from "./frontend-module";
 import {
+  backfillAllTenants,
   loadGeoipDatabase,
   loadSettings,
   pruneAllTenants,
@@ -27,6 +28,7 @@ const HOURLY_CRON = "0 * * * *";
 const SETTINGS_RELOAD_MS = 30 * MS_PER_SECOND;
 
 const PRUNE_FAILED_MESSAGE = "[dms-marketing] retention prune failed:";
+const BACKFILL_FAILED_MESSAGE = "[dms-marketing] funnel trail backfill failed:";
 
 let pruneTask: ScheduledTask | null = null;
 let settingsReload: NodeJS.Timeout | null = null;
@@ -77,6 +79,7 @@ async function onDatabaseInitialized(): Promise<void> {
     });
   }, SETTINGS_RELOAD_MS);
   settingsReload.unref();
+  void backfillTrails();
   pruneTask ??= cron.schedule(HOURLY_CRON, () => {
     void reloadSettings(settings)
       .then(() =>
@@ -86,7 +89,20 @@ async function onDatabaseInitialized(): Promise<void> {
       )
       .catch((err: unknown) => {
         Logging.Error(PRUNE_FAILED_MESSAGE, err);
-      });
+      })
+      .then(backfillTrails);
+  });
+}
+
+/**
+ * Brings the funnel trails up to the raw events: the history written before
+ * them, and what the last hours' live writes missed.
+ */
+function backfillTrails(): Promise<void> {
+  return backfillAllTenants((failure) => {
+    Logging.Error(BACKFILL_FAILED_MESSAGE, failure);
+  }).catch((err: unknown) => {
+    Logging.Error(BACKFILL_FAILED_MESSAGE, err);
   });
 }
 

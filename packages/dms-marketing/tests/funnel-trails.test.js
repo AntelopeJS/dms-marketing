@@ -1,12 +1,23 @@
 const assert = require("node:assert/strict");
+const { mock } = require("node:test");
 const test = it;
 const { GetModel } = require("@antelopejs/interface-database-decorators");
-const { MarketingEventsModel } = require("../dist/db");
 const {
+  FunnelTrailBackfillsModel,
+  FunnelTrailsModel,
+  MarketingEventsModel,
+} = require("../dist/db");
+const {
+  backfillAllTenants,
   funnelResultsIn,
   funnelTemplates,
 } = require("../dist/services/funnels");
-const { WINDOWS, seedFixture } = require("./helpers/funnel-fixture");
+const {
+  WINDOWS,
+  at,
+  ingestWave,
+  seedFixture,
+} = require("./helpers/funnel-fixture");
 const {
   referenceFunnelResults,
   referenceTemplates,
@@ -42,35 +53,24 @@ function funnelNamed(site, name) {
 }
 
 /**
- * What a read reports apart from the tests of a split, which an incomplete
- * read withholds.
- * @param {Omit<Awaited<ReturnType<typeof funnelResultsIn>>, "incomplete">} results
- */
-function counts(results) {
-  return {
-    computation: results.computation,
-    arms: results.experiment?.variations.map((arm) => ({
-      key: arm.key,
-      exposedSessions: arm.exposedSessions,
-      conversions: arm.conversions,
-      computation: arm.computation,
-    })),
-    window: results.window,
-  };
-}
-
-/**
  * Every funnel over every window, and the templates, against the frozen raw
- * read, but for the tests of a split.
+ * read: a complete read, and the same answer.
  * @param {Fixture} site
  */
-async function assertSameCountsAsReference(site) {
+async function assertSameAsReference(site) {
   for (const funnel of site.funnels) {
     for (const window of WINDOWS) {
+      const { incomplete, ...results } = await funnelResultsIn(
+        funnel,
+        TENANT,
+        window,
+      );
+      const label = `${funnel.name} over ${window.name}`;
+      assert.equal(incomplete, false, label);
       assert.deepEqual(
-        counts(await funnelResultsIn(funnel, TENANT, window)),
-        counts(await referenceFunnelResults(events(), funnel, window)),
-        `${funnel.name} over ${window.name}`,
+        results,
+        await referenceFunnelResults(events(), funnel, window),
+        label,
       );
     }
   }
@@ -81,6 +81,62 @@ async function assertSameCountsAsReference(site) {
       `templates over ${window.name}`,
     );
   }
+}
+
+/** One backfill pass that reports no failure. */
+async function backfill() {
+  /** @type {Error[]} */
+  const failures = [];
+  await backfillAllTenants((failure) => failures.push(failure));
+  assert.deepEqual(failures, []);
+}
+
+/**
+ * Per session of the site, how many events its trail holds.
+ * @param {Fixture} site
+ */
+async function trailSizes(site) {
+  /** @type {Record<string, number>} */
+  const sizes = {};
+  for await (const session of GetModel(FunnelTrailsModel, TENANT).sessionsIn({
+    websiteId: site.website._id,
+    since: 0,
+    until: Number.MAX_SAFE_INTEGER,
+    withExposures: true,
+  })) {
+    sizes[session.sessionId] = session.events.length;
+  }
+  return sizes;
+}
+
+/**
+ * The backfill's flushes write session by session, and the second flush of
+ * `websiteId` stops after half of its sessions, as a crash would leave it.
+ * @param {string} websiteId
+ */
+function stopSecondFlushHalfWay(websiteId) {
+  let flushes = 0;
+  mock.method(
+    FunnelTrailsModel.prototype,
+    "recordMany",
+    /**
+     * @this {InstanceType<typeof FunnelTrailsModel>}
+     * @param {string} site
+     * @param {Map<string, import("../dist/db").TrailedEvent[]>} sessions
+     */
+    async function (site, sessions) {
+      const stops = site === websiteId && ++flushes === 2;
+      const written = stops
+        ? [...sessions].slice(0, Math.floor(sessions.size / 2))
+        : [...sessions];
+      for (const [sessionId, events] of written) {
+        await this.record(site, sessionId, events);
+      }
+      if (stops) {
+        throw new Error("the flush stopped half-way");
+      }
+    },
+  );
 }
 
 describe("funnel results over sessions that skip, repeat and reorder steps", () => {
@@ -151,7 +207,52 @@ describe("funnel results over sessions that skip, repeat and reorder steps", () 
     }
   });
 
-  test("live sessions count as the raw read counts them", async () => {
-    await assertSameCountsAsReference(live);
+  test("a backfill stopped in its second flush resumes to the raw read", async function () {
+    this.timeout(30_000);
+    stopSecondFlushHalfWay(fixture.website._id);
+    /** @type {string[]} */
+    const failures = [];
+    await backfillAllTenants((failure) => failures.push(failure.message));
+    mock.restoreAll();
+    assert.deepEqual(failures, ["the flush stopped half-way"]);
+    const newest = { since: new Date(at(700)), until: new Date(at(900)) };
+    const ordered = funnelNamed(fixture, "prefix and event");
+    assert.equal(
+      (await funnelResultsIn(ordered, TENANT, newest)).incomplete,
+      false,
+    );
+    assert.equal(
+      (await funnelResultsIn(ordered, TENANT, WINDOWS[0])).incomplete,
+      true,
+    );
+    await backfill();
+    await assertSameAsReference(fixture);
+    await assertSameAsReference(live);
+  });
+
+  test("a second backfill adds nothing", async () => {
+    const before = await trailSizes(fixture);
+    const raw = await events().queryRange({
+      websiteIds: [fixture.website._id],
+      since: new Date(0),
+      until: new Date(Date.now()),
+      kinds: ["pageview", "custom", "exposure"],
+      limit: Number.MAX_SAFE_INTEGER,
+      fields: [],
+    });
+    assert.equal(
+      Object.values(before).reduce((sum, size) => sum + size, 0),
+      raw.length,
+    );
+    await backfill();
+    assert.deepEqual(await trailSizes(fixture), before);
+  });
+
+  test("live batches during a backfill still read as the raw read", async () => {
+    await GetModel(FunnelTrailBackfillsModel, TENANT).deleteByWebsite(
+      fixture.website._id,
+    );
+    await Promise.all([backfill(), ingestWave(fixture.website)]);
+    await assertSameAsReference(fixture);
   });
 });

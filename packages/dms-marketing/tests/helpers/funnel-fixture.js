@@ -348,31 +348,92 @@ const WINDOWS = [
 
 /**
  * @param {import("../../dist/db").Website} website
+ * @param {string} visitor
+ * @param {FixtureBatch} batch
+ */
+async function ingestBatch(website, visitor, batch) {
+  const outcome = await ingestPreparedBatch(
+    website,
+    prepareEvents(
+      website._id,
+      batch.events.map((event) => ({
+        kind: event.kind,
+        url: ORIGIN + event.path,
+        name: event.name,
+        data: event.data,
+        at: event.at,
+      })),
+    ),
+    {
+      visitorId: `${website._id}-${visitor}`,
+      now: new Date(batch.at),
+      device: {},
+      trustTimestamps: true,
+    },
+  );
+  await outcome?.rollup;
+}
+
+/**
+ * @param {import("../../dist/db").Website} website
  * @param {FixtureSession} session
  */
 async function ingestLive(website, session) {
   for (const batch of session.batches) {
-    const outcome = await ingestPreparedBatch(
-      website,
-      prepareEvents(
-        website._id,
-        batch.events.map((event) => ({
-          kind: event.kind,
-          url: ORIGIN + event.path,
-          name: event.name,
-          data: event.data,
-          at: event.at,
-        })),
-      ),
-      {
-        visitorId: `${website._id}-${session.name}`,
-        now: new Date(batch.at),
-        device: {},
-        trustTimestamps: true,
-      },
-    );
-    await outcome?.rollup;
+    await ingestBatch(website, session.name, batch);
   }
+}
+
+/**
+ * A second wave of live traffic, every beacon sent at once: two tabs of one
+ * visit racing, and a visit whose batches arrive out of order.
+ * @param {import("../../dist/db").Website} website
+ */
+async function ingestWave(website) {
+  const racing = beacons([page("/a", 460), page("/b", 461), page("/c", 462)]);
+  const late = beacons([page("/a", 470), page("/c", 472), page("/b", 471)]);
+  await ingestBatch(website, "wave-racing", racing[0]);
+  await ingestBatch(website, "wave-late", late[0]);
+  await Promise.all([
+    ...racing
+      .slice(1)
+      .map((batch) => ingestBatch(website, "wave-racing", batch)),
+    ...late.slice(1).map((batch) => ingestBatch(website, "wave-late", batch)),
+  ]);
+}
+
+/** Sessions of raw history added to the full fixture, past one flush of the backfill. */
+const FILLER_SESSIONS = 1700;
+
+/**
+ * History newer than the rest of the fixture, one batch of three events
+ * sharing a timestamp per session: more events than one flush of the
+ * backfill, so the flush boundary falls inside a batch.
+ * @param {import("../../dist/db").Website} website
+ */
+async function insertFiller(website) {
+  const rows = [];
+  for (let index = 0; index < FILLER_SESSIONS; index++) {
+    const timestamp = new Date(at(600) + index * 10_000);
+    const sessionId = `${website._id}-filler-${index}`;
+    for (const event of [
+      page(`/shop/${index % 7}`),
+      custom("signup"),
+      page("/pricing"),
+    ]) {
+      rows.push({
+        websiteId: website._id,
+        timestamp,
+        day: Math.floor(timestamp.getTime() / DAY) * DAY,
+        kind: event.kind,
+        sessionId,
+        visitorId: `${sessionId}-visitor`,
+        url: event.path,
+        name: event.name,
+      });
+    }
+  }
+  await GetModel(MarketingEventsModel, website.tenantId).insertMany(rows);
 }
 
 /**
@@ -430,8 +491,9 @@ async function seedFixture(tenantId, websiteId, history = true) {
   }
   if (history) {
     await insertHistory(website, ODD_HISTORY, 0);
+    await insertFiller(website);
   }
   return { website, funnels: funnelsOf(websiteId) };
 }
 
-module.exports = { MINUTE, WINDOWS, at, seedFixture };
+module.exports = { WINDOWS, at, ingestWave, seedFixture };
