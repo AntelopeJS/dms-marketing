@@ -29,7 +29,10 @@ export class FunnelTrailBackfill extends Table {
   @Field("boolean")
   declare done: boolean;
 
-  /** Moved by every purge of the website: a walk that sees it move stops. */
+  /**
+   * Moved before events of the website are deleted (a purge, an import
+   * discard): a walk that sees it move stops.
+   */
   @Field("number")
   declare generation: number;
 }

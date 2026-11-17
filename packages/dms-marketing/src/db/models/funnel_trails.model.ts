@@ -55,6 +55,9 @@ export type TrailedEvent = Pick<
   "_id" | "kind" | "timestamp" | "url" | "name" | "data"
 >;
 
+/** An event of a trail, named by its id and its session. */
+export type TrailEventRef = Pick<MarketingEvent, "_id" | "sessionId">;
+
 const FUNNEL_KINDS: StoredTrailEvent["k"][] = ["p", "c"];
 const SPLIT_KINDS: StoredTrailEvent["k"][] = [...FUNNEL_KINDS, "x"];
 
@@ -173,12 +176,17 @@ export class FunnelTrailsModel extends BasicDataModel(
    * one insert of the sessions that have no trail yet, and a union per
    * session that has one and misses some of its events. Losing an insert to
    * another writer falls back to the per-session union.
+   *
+   * Resolves to the events it wrote: those the trails did not hold when it
+   * read their ids. An event another writer held already is not among them,
+   * so {@link forgetEvents} on the result never takes that write back.
    */
   async recordMany(
     websiteId: string,
     sessions: ReadonlyMap<string, readonly TrailedEvent[]>,
-  ): Promise<void> {
+  ): Promise<TrailEventRef[]> {
     const held = await this.heldEventIds([...sessions.keys()]);
+    const written: TrailEventRef[] = [];
     const fresh = new Map<string, StoredTrailEvent[]>();
     for (const [sessionId, events] of sessions) {
       const known = held.get(sessionId);
@@ -189,6 +197,7 @@ export class FunnelTrailsModel extends BasicDataModel(
       if (stored.length === 0) {
         continue;
       }
+      written.push(...stored.map((event) => ({ _id: event.i, sessionId })));
       if (known) {
         await this.recordStored(websiteId, sessionId, stored);
       } else {
@@ -196,7 +205,7 @@ export class FunnelTrailsModel extends BasicDataModel(
       }
     }
     if (fresh.size === 0) {
-      return;
+      return written;
     }
     const trails = [...fresh].map(([sessionId, stored]) =>
       newTrail(websiteId, sessionId, stored),
@@ -211,6 +220,7 @@ export class FunnelTrailsModel extends BasicDataModel(
         await this.recordStored(websiteId, sessionId, stored);
       }
     }
+    return written;
   }
 
   /**
@@ -241,9 +251,7 @@ export class FunnelTrailsModel extends BasicDataModel(
    * the trails left empty: run before the events themselves are deleted, so
    * a stop in between leaves the events to be found and forgotten again.
    */
-  async forgetEvents(
-    events: readonly Pick<MarketingEvent, "_id" | "sessionId">[],
-  ): Promise<void> {
+  async forgetEvents(events: readonly TrailEventRef[]): Promise<void> {
     const bySession = new Map<string, string[]>();
     for (const event of events) {
       bySession.set(event.sessionId, [

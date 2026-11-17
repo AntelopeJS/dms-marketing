@@ -1,5 +1,6 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import {
+  FunnelTrailBackfillsModel,
   FunnelTrailsModel,
   MarketingEventsModel,
   MarketingSessionsModel,
@@ -203,7 +204,9 @@ function addCounts(total: ReplayCounts, counts: ReplayCounts): void {
  * Their rollups were only held in that attempt's memory, so the raw rows are all
  * there is to undo. A visit that crossed into such a day keeps its session,
  * recounted from the events that stay. Each write is derived from the rows that
- * exist, so repeating this after another stop converges.
+ * exist, so repeating this after another stop converges. The funnel trails'
+ * fence moves before they forget the discarded events, so a backfill walk that
+ * read them stops and takes back what it wrote.
  */
 async function discardUncommitted(
   website: Website,
@@ -229,7 +232,12 @@ async function discardUncommitted(
     );
     await sessions.restoreActivity(sessionId, kept);
   }
-  await GetModel(FunnelTrailsModel, website.tenantId).forgetEvents(discarded);
+  if (discarded.length > 0) {
+    await GetModel(FunnelTrailBackfillsModel, website.tenantId).fence(
+      website._id,
+    );
+    await GetModel(FunnelTrailsModel, website.tenantId).forgetEvents(discarded);
+  }
   for (const day of discardedDays) {
     await events.deleteImportedOnDay(website._id, importId, day);
   }

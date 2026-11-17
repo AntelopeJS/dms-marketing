@@ -3,6 +3,7 @@ const { DuplicateKeyError } = require("@antelopejs/interface-database");
 const models = require("@antelopejs/interface-database-decorators/model");
 const { setConfig } = require("../../dist/config");
 const {
+  FunnelTrailBackfillsModel,
   FunnelTrailsModel,
   FunnelsModel,
   MarketingEventsModel,
@@ -279,6 +280,7 @@ function fakeModels() {
     [MarketingSessionsModel, fakeSessions()],
     [MarketingEventsModel, fakeEvents()],
     [FunnelTrailsModel, { async record() {}, async forgetEvents() {} }],
+    [FunnelTrailBackfillsModel, { async fence() {} }],
     [WebsiteStatisticsModel, fakeStatistics()],
     [MarketingImportsModel, fakeImports()],
     [

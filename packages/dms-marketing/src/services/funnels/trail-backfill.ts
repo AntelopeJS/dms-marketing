@@ -162,9 +162,11 @@ async function walkEvents(walk: Walk, span: WalkSpan): Promise<boolean> {
 
 /**
  * Records a flush of events, newest first, unless the modules are stopping or
- * a purge moved the website's generation (or deleted it) since the walk
- * began: it must not write the purged events back. Resolves to false when it
- * wrote nothing for that reason.
+ * the website's generation moved (or its row went) since the walk began:
+ * events of the website are being deleted, and it must not write them back.
+ * The generation is read again once the flush is written; when it moved
+ * meanwhile, the flush takes back the events it wrote. Resolves to false when
+ * the walk must stop.
  */
 async function flush(
   walk: Walk,
@@ -172,16 +174,20 @@ async function flush(
   widens: boolean,
 ): Promise<boolean> {
   const backfills = GetModel(FunnelTrailBackfillsModel, walk.tenantId);
-  if (
-    isModulesStopping() ||
-    (await backfills.generationOf(walk.websiteId)) !== walk.generation
-  ) {
+  const fenced = async () =>
+    (await backfills.generationOf(walk.websiteId)) !== walk.generation;
+  if (isModulesStopping() || (await fenced())) {
     return false;
   }
-  await GetModel(FunnelTrailsModel, walk.tenantId).recordMany(
+  const trails = GetModel(FunnelTrailsModel, walk.tenantId);
+  const written = await trails.recordMany(
     walk.websiteId,
     bySessionInTimeOrder(newestFirst),
   );
+  if (await fenced()) {
+    await trails.forgetEvents(written);
+    return false;
+  }
   const oldest = newestFirst.at(-1);
   if (widens && oldest) {
     await backfills.widen(

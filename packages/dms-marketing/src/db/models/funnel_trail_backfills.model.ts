@@ -121,22 +121,19 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
   }
 
   /**
-   * A purge left the website no event: everything is covered, and the moved
-   * generation stops a walk of the purged events on any instance at its next
-   * flush.
+   * Moves the website's generation, its coverage untouched, before events of
+   * the website are deleted: a walk on any instance that read them stops at
+   * its next flush, and takes back what a flush in flight wrote (see
+   * `services/funnels/trail-backfill`). A website with no row gets one,
+   * covering nothing, so a walk that begins meanwhile stops too.
    */
-  async purged(websiteId: string): Promise<void> {
-    const purge = () =>
+  async fence(websiteId: string): Promise<void> {
+    const move = () =>
       this.table
         .get(websiteId)
-        .update((doc) => ({
-          version: TRAIL_BACKFILL_VERSION,
-          through: null,
-          done: true,
-          generation: doc.key("generation").add(1),
-        }))
+        .update((doc) => ({ generation: doc.key("generation").add(1) }))
         .run();
-    if ((await purge()) > 0) {
+    if ((await move()) > 0) {
       return;
     }
     try {
@@ -145,7 +142,7 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
           _id: websiteId,
           version: TRAIL_BACKFILL_VERSION,
           through: null,
-          done: true,
+          done: false,
           generation: 1,
         })
         .run();
@@ -153,8 +150,20 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
       if (!IsDuplicateKeyError(error)) {
         throw error;
       }
-      await purge();
+      await move();
     }
+  }
+
+  /**
+   * A purge is deleting every event of the website: its {@link fence}, then
+   * everything is covered, since the website is left no event.
+   */
+  async purged(websiteId: string): Promise<void> {
+    await this.fence(websiteId);
+    await this.table
+      .get(websiteId)
+      .update({ version: TRAIL_BACKFILL_VERSION, through: null, done: true })
+      .run();
   }
 
   async deleteByWebsite(websiteId: string): Promise<number> {
