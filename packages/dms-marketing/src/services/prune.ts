@@ -120,13 +120,8 @@ export async function countStatisticsBefore(
   return { sessions, days };
 }
 
-/** One retention effect on one tenant, given the pass's raw-events cutoff. */
 type TenantPrune = (tenantId: string, rawCutoff: Date) => Promise<number>;
 
-/**
- * The funnel trails index the raw events: both are cut at the pass's one
- * raw-events cutoff, so the trails keep what the events table keeps.
- */
 const TENANT_PRUNES: TenantPrune[] = [
   (id, rawCutoff) =>
     GetModel(MarketingEventsModel, id).deleteOlderThan(rawCutoff),

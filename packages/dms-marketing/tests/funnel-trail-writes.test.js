@@ -58,7 +58,6 @@ function trails() {
 }
 
 /**
- * Each session of the website, in a sorted list, as `sessionsIn` reads it.
  * @param {string} websiteId
  * @param {{ since: number, until: number, withExposures?: boolean }} [window]
  */

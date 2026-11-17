@@ -107,19 +107,19 @@ export const CAMPAIGN_KEY_SEPARATOR = "\u001f";
 export const TOP_MAPS_RETENTION_DAYS = DAYS_PER_YEAR + MAX_QUERY_PERIOD_DAYS;
 export const DEFAULT_PAGES_LIST_LIMIT = 100;
 export const MAX_PAGES_LIST_LIMIT = 200;
-/** MongoDB's limit on the size of one document. */
 const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
-/**
- * The BSON size of one entry of a funnel trail at its largest: a pageview
- * whose path kept MAX_URL_LENGTH UTF-16 units of 3 UTF-8 bytes each, as a
- * path that failed URL parsing can. The other 84 bytes are the entry's type
- * and array index key (7), its length and end (5), `i` holding a 36-character
- * event id (44), `t` (11), `k` (9), and `v`'s type, key, length and end (8).
- * An exposure (`v` and `a` of MAX_EXPERIMENT_KEY_LENGTH units each, 476
- * bytes) and a custom event (`v` of MAX_EVENT_NAME_LENGTH units, 234 bytes)
- * are smaller.
- */
-const MAX_TRAIL_ENTRY_BYTES = 84 + 3 * MAX_URL_LENGTH;
+const MAX_UTF8_BYTES_PER_UTF16_UNIT = 3;
+const TRAIL_ENTRY_BSON_BYTES = {
+  typeAndArrayKey: 7,
+  documentLengthAndEnd: 5,
+  eventIdField: 44,
+  timestampField: 11,
+  kindField: 9,
+  valueFieldOverhead: 8,
+} as const;
+const MAX_TRAIL_ENTRY_BYTES =
+  Object.values(TRAIL_ENTRY_BSON_BYTES).reduce((sum, bytes) => sum + bytes, 0) +
+  MAX_UTF8_BYTES_PER_UTF16_UNIT * MAX_URL_LENGTH;
 /**
  * Funnel events one session's trail keeps: largest entries fill half of
  * MongoDB's document limit, and the other half is the margin for the rest of

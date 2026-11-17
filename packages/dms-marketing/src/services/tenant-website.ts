@@ -73,9 +73,7 @@ export interface WebsitePurge {
  * The all scope deletes everything collected for the site — raw events
  * (pageviews, clicks and scrolls, A/B exposures and goals) and the funnel
  * trails that index them, sessions, daily statistics, page snapshots and
- * imported history. The trails' coverage first moves to a new generation,
- * which stops a backfill walking the site's events on any instance before it
- * writes them back.
+ * imported history.
  *
  * Either way the site, its settings and its funnels stay: funnel and A/B
  * results are read off the events, so they start again from zero. Running

@@ -26,8 +26,7 @@ type StepMatcher = (event: TrailEvent) => boolean;
 /**
  * A page step matches its path whatever was pasted around it (see
  * normalizeStepPath), ignoring the case and a trailing slash, or as a prefix
- * when it ends in `*`; an event step matches its name exactly. An exposure
- * matches no step.
+ * when it ends in `*`; an event step matches its name exactly.
  */
 function stepMatcher(step: FunnelStep): StepMatcher {
   if (step.kind === "custom") {
@@ -73,7 +72,6 @@ export class FunnelTally {
     }
   }
 
-  /** Steps must match in order; the window counts from the first-step match. */
   #progress(events: readonly TrailEvent[]): number {
     const { steps, conversionWindowMs } = this.#funnel;
     let reached = 0;

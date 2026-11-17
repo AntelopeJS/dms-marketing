@@ -204,9 +204,7 @@ function addCounts(total: ReplayCounts, counts: ReplayCounts): void {
  * Their rollups were only held in that attempt's memory, so the raw rows are all
  * there is to undo. A visit that crossed into such a day keeps its session,
  * recounted from the events that stay. Each write is derived from the rows that
- * exist, so repeating this after another stop converges. The funnel trails'
- * fence moves before they forget the discarded events, so a backfill walk that
- * read them stops and takes back what it wrote.
+ * exist, so repeating this after another stop converges.
  */
 async function discardUncommitted(
   website: Website,

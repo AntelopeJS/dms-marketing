@@ -24,7 +24,6 @@ const funnel = {
   experiment: null,
 };
 
-/** Every session views /a, /b and /c, each event on its own millisecond. */
 function* rows() {
   for (let session = 0; session < SESSIONS; session++) {
     for (const [index, url] of PAGES.entries()) {

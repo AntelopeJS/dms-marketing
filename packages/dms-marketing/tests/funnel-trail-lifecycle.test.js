@@ -224,8 +224,6 @@ describe("a tenant purge", () => {
 });
 
 /**
- * A website whose analytics import stopped on its second day, after it wrote
- * some of that day's events: what a resumed import discards.
  * @param {string} tenant
  * @param {string} websiteId
  */
@@ -287,8 +285,6 @@ async function importStoppedOnSecondDay(tenant, websiteId) {
 }
 
 /**
- * The trails hold every funnel event of the website and nothing else, and
- * read as the raw events do.
  * @param {string} tenant
  * @param {string} websiteId
  * @param {Date} since

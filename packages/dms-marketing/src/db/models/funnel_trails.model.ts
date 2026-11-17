@@ -107,7 +107,6 @@ function toTrailEvent(stored: StoredTrailEvent): TrailEvent {
   }
 }
 
-/** Stable: events sharing a timestamp keep their stored order. */
 function inTimeOrder(stored: readonly StoredTrailEvent[]): TrailEvent[] {
   return stored.map(toTrailEvent).sort((a, b) => a.at - b.at);
 }
@@ -118,7 +117,6 @@ function isStored(
   return stored !== undefined;
 }
 
-/** The oldest and newest timestamps of a non-empty list of events. */
 function spanOf(stored: readonly StoredTrailEvent[]): [number, number] {
   return stored.reduce<[number, number]>(
     ([first, last], event) => [
@@ -154,11 +152,9 @@ export class FunnelTrailsModel extends BasicDataModel(
    * Adds events of one session to its trail: the ingestion write. Events of
    * other kinds are skipped, and a call left with none writes nothing.
    *
-   * A set union on the event ids, in one native update: an event the trail
-   * already holds is not added again, so a retried or repeated call changes
-   * nothing, and concurrent calls from any instance each land whole. The
-   * first write of a session finds no row and inserts it; losing that insert
-   * to another writer falls back to the update.
+   * A set union on the event ids: an event the trail already holds is not
+   * added again, so a retried or repeated call changes nothing, and
+   * concurrent calls from any instance each land whole.
    */
   async record(
     websiteId: string,
@@ -174,11 +170,7 @@ export class FunnelTrailsModel extends BasicDataModel(
 
   /**
    * Adds events of many sessions to their trails: the backfill's write, with
-   * each session's events in time order. The same union as {@link record},
-   * in fewer round trips: one read of the event ids the trails already hold,
-   * one insert of the sessions that have no trail yet, and a union per
-   * session that has one and misses some of its events. Losing an insert to
-   * another writer falls back to the per-session union.
+   * each session's events in time order. The same union as {@link record}.
    *
    * Resolves to the events it wrote: those the trails did not hold when it
    * read their ids. An event another writer held already is not among them,
@@ -226,11 +218,6 @@ export class FunnelTrailsModel extends BasicDataModel(
     return written;
   }
 
-  /**
-   * The union of {@link record}: the update first, then the insert of a
-   * session with no trail, then the update again when another writer
-   * inserted it first.
-   */
   private async recordStored(
     websiteId: string,
     sessionId: string,
@@ -316,7 +303,6 @@ export class FunnelTrailsModel extends BasicDataModel(
     return this.table.getAll([websiteId], "websiteId").delete().run();
   }
 
-  /** The event ids each existing trail of `sessionIds` holds. */
   private async heldEventIds(
     sessionIds: readonly string[],
   ): Promise<Map<string, Set<string>>> {
@@ -330,16 +316,6 @@ export class FunnelTrailsModel extends BasicDataModel(
     return new Map(rows.map((row) => [row.sessionId, new Set(row.ids)]));
   }
 
-  /**
-   * Unions `stored` into an existing row, cut at `MAX_TRAIL_EVENTS`; resolves
-   * to 0 when no row exists or it already held every event.
-   *
-   * The update has no variables, so it binds them through one-element lists:
-   * the ids the row holds, read once rather than once per incoming event;
-   * the events it misses, since the adapter repeats the operand of `add` in
-   * each of its type branches and would send `stored` three times; and the
-   * merged events, built once and read by both fields that need them.
-   */
   private union(
     sessionId: string,
     stored: StoredTrailEvent[],
@@ -380,8 +356,7 @@ export class FunnelTrailsModel extends BasicDataModel(
   /**
    * The sessions with at least one event inside the window, or that dropped
    * events at or before its end, streamed through the table cursor: one row
-   * in memory at a time, whatever the window holds. The window and the kinds
-   * are filtered on the server, so only the events read come back.
+   * in memory at a time, whatever the window holds.
    */
   async *sessionsIn(query: TrailWindowQuery): AsyncGenerator<TrailSession> {
     const kinds = ValueProxy.constant(

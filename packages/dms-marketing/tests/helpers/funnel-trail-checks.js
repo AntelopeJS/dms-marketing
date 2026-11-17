@@ -16,13 +16,8 @@ const {
 
 /** @typedef {Awaited<ReturnType<typeof import("./funnel-fixture").seedFixture>>} Fixture */
 
-/**
- * Read while the files load, before any test has mocked it: other files mock
- * GetModel and the harness never gets the original back.
- */
 const realGetModel = models.GetModel;
 
-/** The module reads the real models in the hooks and tests of this suite. */
 function useRealModels() {
   before(() => {
     mock.method(models, "GetModel", realGetModel);
@@ -36,8 +31,6 @@ function useRealModels() {
 }
 
 /**
- * Every funnel of the fixture over every window, and the templates, against
- * the frozen raw read: a complete read, and the same answer.
  * @param {string} tenantId
  * @param {Fixture} site
  */
@@ -68,7 +61,6 @@ async function assertSameAsReference(tenantId, site) {
   }
 }
 
-/** One backfill pass that reports no failure. */
 async function backfill() {
   /** @type {Error[]} */
   const failures = [];
@@ -77,7 +69,6 @@ async function backfill() {
 }
 
 /**
- * Per session of the website, how many events its trail holds.
  * @param {string} tenantId
  * @param {string} websiteId
  */
@@ -96,8 +87,6 @@ async function trailSizes(tenantId, websiteId) {
 }
 
 /**
- * How many pageviews, custom events and exposures the website's raw events
- * hold: what its trails hold together, once they cover it.
  * @param {string} tenantId
  * @param {string} websiteId
  */

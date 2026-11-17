@@ -18,14 +18,6 @@ import {
 } from "@/db";
 import { MARKETING_MODULE_ID } from "@/types/constants";
 
-/**
- * Every marketing model living in the per-tenant schema — the set both hooks
- * walk. Events, the funnel trails that index them and their backfill rows,
- * sessions, page snapshots, member preferences and the record of applied
- * analytics imports are deleted with the rest but excluded from the export:
- * retention-bounded captures, per-member choices and bookkeeping, not the
- * durable data a workspace owns.
- */
 const TENANT_MODELS: ReadonlyArray<Parameters<typeof GetModel>[0]> = [
   MarketingEventsModel,
   FunnelTrailsModel,

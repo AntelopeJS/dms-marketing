@@ -29,10 +29,8 @@ const TENANT = "funnel-trails";
 /** @typedef {Fixture["funnels"][number]} FixtureFunnel */
 /** @typedef {(typeof WINDOWS)[number]} FixtureWindow */
 
-/** Every session written live and again as raw history. */
 /** @type {Fixture} */
 let fixture;
-/** The live copies alone, on a website of their own. */
 /** @type {Fixture} */
 let live;
 
@@ -49,8 +47,6 @@ function funnelNamed(site, name) {
 }
 
 /**
- * The backfill's flushes write session by session, and the second flush of
- * `websiteId` stops after half of its sessions, as a crash would leave it.
  * @param {string} websiteId
  */
 function stopSecondFlushHalfWay(websiteId) {

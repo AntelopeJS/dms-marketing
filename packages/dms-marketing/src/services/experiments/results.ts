@@ -111,7 +111,6 @@ export class ExperimentTally {
     }
   }
 
-  /** Undefined without an exposure to an arm of the split, MIXED with two. */
   #armOf(events: readonly TrailEvent[]): string | typeof MIXED | undefined {
     let arm: string | typeof MIXED | undefined;
     for (const event of events) {
@@ -173,7 +172,6 @@ export class ExperimentTally {
   }
 }
 
-/** One arm against the control; `untested` on the control itself. */
 function variationResult(
   arm: ArmCount,
   control: ArmCount,

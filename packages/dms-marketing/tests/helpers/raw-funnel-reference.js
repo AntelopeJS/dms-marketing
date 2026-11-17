@@ -13,17 +13,6 @@ const {
 } = require("../../dist/types/constants");
 const { isObject, isString } = require("../../dist/utils/guards");
 
-/**
- * The funnel read as it was before the per-session trails, frozen as the
- * oracle the trail read is compared to: one `queryRange` over the read window
- * with no cap, exposures bounded to the runs, arms assigned across the whole
- * window, events grouped by session in read order, the per-session walk, the
- * per-arm assembly and the templates. It shares with the module only the step
- * path matcher, the stats functions and the arm weights, none of which the
- * trails change, so a fault in the trail write, the window filter, the
- * ordering, the walk or the arm assignment shows up as a difference.
- */
-
 /** @typedef {import("../../dist/db").MarketingEventsModel} EventsModel */
 /** @typedef {import("../../dist/db").FunnelStep} FunnelStep */
 /** @typedef {import("../../dist/db").FunnelExperiment} FunnelExperiment */
@@ -333,9 +322,6 @@ function servedMs(runs) {
 }
 
 /**
- * Today's results of `funnel` over `window`, minus the flag that says whether
- * the read was cut: the caller asserts that flag on its own.
- *
  * @param {EventsModel} events
  * @param {ReadableFunnel} funnel
  * @param {EventWindow} window
@@ -414,8 +400,6 @@ function leadPage(sessions, name) {
 }
 
 /**
- * Today's `funnelTemplates`, over a read with no cap.
- *
  * @param {EventsModel} events
  * @param {{ _id: string }} website
  * @param {EventWindow} window

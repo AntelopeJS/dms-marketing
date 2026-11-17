@@ -123,7 +123,6 @@ function fakeSessions() {
 }
 
 /**
- * Stores `docs` as the events table would, and answers their new ids.
  * @param {NewMarketingEvent[]} docs
  */
 function storeEvents(docs) {

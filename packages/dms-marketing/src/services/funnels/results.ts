@@ -35,7 +35,6 @@ export type ReadableFunnel = Pick<
   "websiteId" | "steps" | "conversionWindowMs" | "experiment"
 >;
 
-/** Epoch milliseconds, both bounds included. */
 interface EventWindow {
   since: number;
   until: number;
@@ -72,8 +71,7 @@ function runWindows(
  * may still be converting in: a session exposed a minute before the stop has
  * the funnel's whole conversion window to reach the goal, and cutting the
  * read at the stop would drop those conversions — and move the numbers at the
- * moment of stopping, which is the opposite of freezing them. What the pause
- * between two runs holds is discarded by `withinRuns`.
+ * moment of stopping, which is the opposite of freezing them.
  */
 function readWindow(
   runs: EventWindow[],

@@ -24,7 +24,6 @@ const EPOCH_LOWER_BOUND = new Date(0);
 const SCROLL_KIND: EventKind = "scroll";
 const PAGEVIEW_KIND: EventKind = "pageview";
 const CLICK_KIND: EventKind = "click";
-/** The kinds a funnel trail keeps. */
 const FUNNEL_EVENT_KINDS: EventKind[] = ["pageview", "custom", "exposure"];
 
 type PageviewRow = Pick<MarketingEvent, "timestamp" | "url" | "sessionId">;
@@ -515,9 +514,7 @@ export class MarketingEventsModel extends BasicDataModel(
    * what a trail keeps comes back, `data` narrowed to an exposure's
    * variation.
    *
-   * Rows sharing a timestamp come back in the reverse of their insertion
-   * order, the index's own order read backwards; the projection comes after
-   * the sort, so that plan stays (see {@link queryRange}).
+   * Rows sharing a timestamp come back in the reverse of their insertion order.
    */
   walkFunnelEvents(
     query: FunnelEventWalk,

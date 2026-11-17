@@ -94,10 +94,6 @@ async function onDatabaseInitialized(): Promise<void> {
   });
 }
 
-/**
- * Brings the funnel trails up to the raw events: the history written before
- * them, and what the last hours' live writes missed.
- */
 function backfillTrails(): Promise<void> {
   return backfillAllTenants((failure) => {
     Logging.Error(BACKFILL_FAILED_MESSAGE, failure);

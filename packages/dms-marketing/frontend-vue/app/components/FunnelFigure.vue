@@ -54,8 +54,6 @@ const endToEnd = computed(() =>
 /** The site sent no page view nor event at all over the period. */
 const noTraffic = computed(() => props.results.computation.events === 0)
 
-/** Steps no event of the period matched, while the site sent others; an
- * incomplete read concludes nothing. */
 const unseen = computed(() =>
   noTraffic.value || props.results.incomplete
     ? []

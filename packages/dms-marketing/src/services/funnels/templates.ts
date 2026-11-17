@@ -14,11 +14,6 @@ export interface FunnelTemplate {
 
 const MAX_TEMPLATES = 2;
 
-/**
- * Where a value was first seen: the session's first event of the window,
- * then the session id, then the value's position in the session. Ranks
- * values with equal counts, earliest first.
- */
 type FirstSeen = readonly [
   sessionAt: number,
   sessionId: string,
@@ -36,11 +31,9 @@ function compareFirstSeen(a: FirstSeen, b: FirstSeen): number {
   return a[0] - b[0] || compareText(a[1], b[1]) || a[2] - b[2];
 }
 
-/** Sessions per value, each session counted once per value. */
 class SessionCounts {
   readonly #counts = new Map<string, { count: number; first: FirstSeen }>();
 
-  /** `values` in the session's event order. */
   add(session: TrailSession, values: readonly string[]): void {
     const sessionAt = session.events[0]?.at ?? 0;
     new Set(values).forEach((value) => {
@@ -65,7 +58,6 @@ class SessionCounts {
     return this.#counts.get(value)?.count ?? 0;
   }
 
-  /** Most sessions first; equal counts by where they were first seen. */
   ranked(): string[] {
     return [...this.#counts.entries()]
       .sort(
@@ -88,7 +80,6 @@ function namesOf(events: readonly TrailEvent[]): string[] {
   );
 }
 
-/** The pages each session viewed before its first `name`, for one name. */
 interface LeadPages {
   name: string;
   pages: SessionCounts;

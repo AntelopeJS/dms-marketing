@@ -191,8 +191,6 @@ async function writeStatus(target: MarketingExperimentStatus): Promise<void> {
   }
 }
 
-/** Steps the site never sent over the period, while it sent other events;
- * an incomplete read concludes nothing. */
 const unseenSteps = computed(() => {
   const computation = current.value?.computation
   if (!computation || computation.events === 0 || current.value?.incomplete) {

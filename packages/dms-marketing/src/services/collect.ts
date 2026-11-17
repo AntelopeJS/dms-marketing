@@ -177,7 +177,7 @@ export async function ingestPreparedBatch(
   const previous = snapshotSession(resolution.session);
   await Promise.all([
     touchSession(context, resolution, docs),
-    recordTrail(
+    recordTrailOrLogFailure(
       website,
       resolution.session._id,
       docs.map((doc, index) => ({ ...doc, _id: ids[index] })),
@@ -194,12 +194,7 @@ export async function ingestPreparedBatch(
   };
 }
 
-/**
- * Adds a batch's events to its session's funnel trail. The raw events are
- * stored already, so a failure is logged and the batch stands: the backfill's
- * reconcile walk writes the events the trail misses.
- */
-async function recordTrail(
+async function recordTrailOrLogFailure(
   website: Website,
   sessionId: string,
   events: TrailedEvent[],

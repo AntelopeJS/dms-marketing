@@ -8,15 +8,10 @@ import { TENANT_SCHEMA_NAME } from "@antelopejs/interface-dms/constants";
 
 export const funnelTrailsTableName = "marketing_funnel_trails";
 
-/**
- * The window read narrows a website, then the sessions still active at the
- * window's start. Field order follows declaration order below.
- */
 const WEBSITE_LAST_AT_INDEX = "websiteId_lastAt";
 
 /**
- * One event of a trail as stored, under short keys: a row holds every funnel
- * event of a session, and BSON repeats each key in every element.
+ * One event of a trail as stored, under short keys.
  *
  * - `i`: the event's `_id`, the key every write unions on.
  * - `t`: the event's timestamp, epoch milliseconds.
@@ -24,8 +19,6 @@ const WEBSITE_LAST_AT_INDEX = "websiteId_lastAt";
  * - `v`: the pageview's path, the custom event's name, the exposure's
  *   experiment key.
  * - `a`: the exposure's variation, when its `data.variation` is a string.
- *
- * Only `funnel_trails.model.ts` reads this shape.
  */
 export type StoredTrailEvent =
   | { i: string; t: number; k: "p"; v: string }
@@ -53,13 +46,11 @@ export class FunnelTrail extends Table {
   @Field("string")
   declare websiteId: string;
 
-  /** Indexed alone as well: the retention delete bounds on it. */
   @Index({ group: WEBSITE_LAST_AT_INDEX })
   @Index()
   @Field("number")
   declare lastAt: number;
 
-  /** Indexed: the retention trim bounds on it. */
   @Index()
   @Field("number")
   declare firstAt: number;

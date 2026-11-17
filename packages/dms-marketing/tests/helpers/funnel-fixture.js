@@ -13,9 +13,7 @@ const {
 const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
 const ORIGIN = "https://trails.example";
-/** Two days back, on a minute: inside every retention, and in the past. */
 const T0 = Math.floor((Date.now() - 2 * DAY) / MINUTE) * MINUTE;
-/** The history copy of a session runs this much later than its live copy. */
 const HISTORY_SHIFT_MS = 250;
 
 /** @param {number} minutes */
@@ -65,7 +63,6 @@ const exposure = (variation, minute, experiment = "hero") => ({
 });
 
 /**
- * One beacon per event, each at its own time.
  * @param {FixtureEvent[]} events
  * @returns {FixtureBatch[]}
  */
@@ -73,7 +70,6 @@ const beacons = (events) =>
   events.map((event) => ({ at: event.at ?? T0, events: [event] }));
 
 /**
- * One batch whose events carry no clock: all of them share its instant.
  * @param {number} minute
  * @param {FixtureEvent[]} events
  * @returns {FixtureBatch}
@@ -81,7 +77,6 @@ const beacons = (events) =>
 const tie = (minute, events) => ({ at: at(minute), events });
 
 /**
- * A visit of a split: a landing pageview opens it, then its events.
  * @param {string} name
  * @param {number} minute
  * @param {FixtureEvent[]} events
@@ -93,9 +88,6 @@ const visit = (name, minute, events) => ({
 });
 
 /**
- * Every rule the read has. Gaps inside a session stay under the 30-minute
- * idle timeout, so each live copy stays one session; `/x` pageviews keep long
- * visits alive.
  * @type {FixtureSession[]}
  */
 const SESSIONS = [
@@ -246,8 +238,6 @@ const SESSIONS = [
 ];
 
 /**
- * Raw rows no tracker sends today: an exposure without data, a variation that
- * is not a string, a custom event without a name.
  * @type {FixtureSession}
  */
 const ODD_HISTORY = {
@@ -389,8 +379,6 @@ async function ingestLive(website, session) {
 }
 
 /**
- * A second wave of live traffic, every beacon sent at once: two tabs of one
- * visit racing, and a visit whose batches arrive out of order.
  * @param {import("../../dist/db").Website} website
  */
 async function ingestWave(website) {
@@ -406,13 +394,9 @@ async function ingestWave(website) {
   ]);
 }
 
-/** Sessions of raw history added to the full fixture, past one flush of the backfill. */
 const FILLER_SESSIONS = 1700;
 
 /**
- * History newer than the rest of the fixture, one batch of three events
- * sharing a timestamp per session: more events than one flush of the
- * backfill, so the flush boundary falls inside a batch.
  * @param {import("../../dist/db").Website} website
  */
 async function insertFiller(website) {
@@ -441,7 +425,6 @@ async function insertFiller(website) {
 }
 
 /**
- * Rows written straight to the events table: history from before the trails.
  * @param {import("../../dist/db").Website} website
  * @param {FixtureSession} session
  * @param {number} shift
@@ -469,10 +452,6 @@ async function insertHistory(website, session, shift) {
 }
 
 /**
- * A website of `tenantId` holding every fixture session twice: once through
- * live ingestion, once as rows inserted straight into the events table, as a
- * website created before the trails, which has no backfill row. With
- * `history` false, only the live copies, on a website created today.
  * @param {string} tenantId
  * @param {string} websiteId
  * @param {boolean} [history]

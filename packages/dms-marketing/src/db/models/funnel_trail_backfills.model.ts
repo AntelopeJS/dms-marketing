@@ -5,13 +5,6 @@ import {
   funnelTrailBackfillsTableName,
 } from "../tables/funnel_trail_backfills.table";
 
-/**
- * Bumped when what a trail keeps of an event changes (`toStored` in
- * `funnel_trails.model.ts`): every website's coverage then reads `none`, and
- * the next pass deletes the website's trails and walks its events again.
- * Live writes recreate the trails of the sessions they reach meanwhile. A row
- * of a newer version is left to the instances that run it.
- */
 const TRAIL_BACKFILL_VERSION = 1;
 
 /** What one website's funnel trails cover, parsed from its backfill row. */
