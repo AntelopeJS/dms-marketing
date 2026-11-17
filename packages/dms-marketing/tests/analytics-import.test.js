@@ -17,6 +17,7 @@ const {
   drain,
   runCount,
   store,
+  storeEvents,
   useFakeModels,
   website,
 } = require("./helpers/analytics-import-fakes");
@@ -116,10 +117,11 @@ describe("an analytics import while the modules stop", () => {
     const stopping = mock.method(
       models.GetModel(MarketingEventsModel),
       "insertMany",
-      /** @param {object[]} docs */ async (docs) => {
+      /** @param {import("../dist/db").NewMarketingEvent[]} docs */ async (
+        docs,
+      ) => {
         Events.ModulesStopping.emit();
-        store().events.push(...docs);
-        return docs.length;
+        return storeEvents(docs);
       },
     );
     await assert.rejects(
@@ -154,10 +156,11 @@ describe("an analytics import while the modules stop", () => {
     const stopping = mock.method(
       models.GetModel(MarketingEventsModel),
       "insertMany",
-      /** @param {object[]} docs */ async (docs) => {
+      /** @param {import("../dist/db").NewMarketingEvent[]} docs */ async (
+        docs,
+      ) => {
         Events.ModulesStopping.emit();
-        store().events.push(...docs);
-        return docs.length;
+        return storeEvents(docs);
       },
     );
     await assert.rejects(

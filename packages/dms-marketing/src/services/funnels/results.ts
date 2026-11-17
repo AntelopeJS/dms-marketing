@@ -1,26 +1,27 @@
-import type { MarketingEventsModel } from "@/db";
+import { GetModel } from "@antelopejs/interface-database-decorators";
+import { FunnelTrailBackfillsModel, FunnelTrailsModel } from "@/db";
+import { coversSince } from "@/db/models/funnel_trail_backfills.model";
+import type { TrailEvent } from "@/db/models/funnel_trails.model";
 import type { Funnel, FunnelExperiment } from "@/db/tables/funnels.table";
 import {
-  computeExperimentResults,
   type ExperimentResults,
-  type ResultEvent,
+  ExperimentTally,
 } from "@/services/experiments/results";
-import type { EventKind } from "@/types";
-import { MAX_FUNNEL_EVENTS } from "@/types/constants";
-import {
-  computeFunnelOverSessions,
-  type FunnelComputation,
-  groupBySession,
-} from "./compute";
+import type { QueryWindow } from "@/services/period";
+import { type FunnelComputation, FunnelTally } from "./compute";
 
 export interface FunnelResults {
   computation: FunnelComputation;
   /** Present when the funnel carries an experiment past draft. */
   experiment?: ExperimentResults;
-  /** The event window hit its cap: numbers cover the oldest part of the
-   * period only, and experiment verdicts are withheld — a p-value on a
-   * silently truncated sample is wrong, not approximate. */
-  truncated: boolean;
+  /**
+   * The website's history is still being indexed below the period's start,
+   * so some events of the period are not in the numbers. Experiment verdicts
+   * are then withheld, and no step is called unseen. A session past
+   * `MAX_TRAIL_EVENTS` counts its earliest events and leaves the read
+   * complete.
+   */
+  incomplete: boolean;
   /** The window the numbers cover, epoch milliseconds: the requested period
    * on a plain funnel, else the experiment's first start to its last stop —
    * a pause inside it counts for nothing. The read itself reaches one
@@ -36,20 +37,9 @@ export type ReadableFunnel = Pick<
 >;
 
 interface EventWindow {
-  since: Date;
-  until: Date;
+  since: number;
+  until: number;
 }
-
-const FUNNEL_EVENT_KINDS: EventKind[] = ["pageview", "custom"];
-/** Plus the exposures, which map sessions to arms. */
-const EXPERIMENT_EVENT_KINDS: EventKind[] = [...FUNNEL_EVENT_KINDS, "exposure"];
-
-const EXPOSURE_KIND: EventKind = "exposure";
-
-const FUNNEL_FIELDS = ["sessionId", "kind", "url", "name"] as const;
-/** Plus `data`, which only the exposure events use — the variation an arm
- * was served is read off it and nowhere else. */
-const EXPERIMENT_FIELDS = [...FUNNEL_FIELDS, "data"] as const;
 
 /**
  * The stretches of time a split served traffic. An experiment is read over
@@ -66,118 +56,112 @@ const EXPERIMENT_FIELDS = [...FUNNEL_FIELDS, "data"] as const;
  */
 function runWindows(
   experiment: FunnelExperiment,
-  until: Date,
+  until: number,
 ): EventWindow[] | null {
   if (experiment.status === "draft") {
     return null;
   }
   return experiment.runs.map((run) => ({
-    since: new Date(run.startedAt),
-    until: run.stoppedAt === null ? until : new Date(run.stoppedAt),
+    since: run.startedAt,
+    until: run.stoppedAt ?? until,
   }));
 }
 
 /**
- * One fetch covering every run, plus the tail the last one's exposed sessions
+ * One read covering every run, plus the tail the last one's exposed sessions
  * may still be converting in: a session exposed a minute before the stop has
  * the funnel's whole conversion window to reach the goal, and cutting the
  * read at the stop would drop those conversions — and move the numbers at the
- * moment of stopping, which is the opposite of freezing them. The pause
- * between two runs is fetched with the rest and costs one range scan less
- * than a fetch per run; what it holds is discarded by `withinRuns`.
+ * moment of stopping, which is the opposite of freezing them.
  */
 function readWindow(
   runs: EventWindow[],
   funnel: ReadableFunnel,
-  until: Date,
+  until: number,
 ): EventWindow {
-  const since = Math.min(...runs.map((run) => run.since.getTime()));
-  const last = Math.max(...runs.map((run) => run.until.getTime()));
+  const { since, until: last } = coveredWindow(runs);
   return {
-    since: new Date(since),
-    until: new Date(
-      Math.min(last + funnel.conversionWindowMs, until.getTime()),
-    ),
+    since,
+    until: Math.min(last + funnel.conversionWindowMs, until),
   };
 }
 
 /** Exposures outside every run never count; funnel events are kept whole —
  * the conversion tail is exactly what they are read for. */
-function withinRuns(events: ResultEvent[], runs: EventWindow[]): ResultEvent[] {
-  const bounds = runs.map((run) => [run.since.getTime(), run.until.getTime()]);
-  return events.filter((event) => {
-    if (event.kind !== EXPOSURE_KIND) {
-      return true;
-    }
-    const at = event.timestamp.getTime();
-    return bounds.some(([since, until]) => at >= since && at <= until);
-  });
+function withinRuns(
+  events: readonly TrailEvent[],
+  runs: EventWindow[],
+): TrailEvent[] {
+  return events.filter(
+    (event) =>
+      event.kind !== "exposure" ||
+      runs.some((run) => event.at >= run.since && event.at <= run.until),
+  );
 }
 
 /** What the numbers cover, end to end: the pause inside is the price of one
  * line instead of a list the pane would have to explain. */
 function coveredWindow(runs: EventWindow[]): EventWindow {
   return {
-    since: new Date(Math.min(...runs.map((run) => run.since.getTime()))),
-    until: new Date(Math.max(...runs.map((run) => run.until.getTime()))),
+    since: Math.min(...runs.map((run) => run.since)),
+    until: Math.max(...runs.map((run) => run.until)),
   };
 }
 
 /** How long the runs served traffic: the pauses between them count for nothing. */
 function servedMs(runs: EventWindow[]): number {
-  return runs.reduce(
-    (sum, run) => sum + Math.max(0, run.until.getTime() - run.since.getTime()),
-    0,
-  );
+  return runs.reduce((sum, run) => sum + Math.max(0, run.until - run.since), 0);
 }
 
 /**
- * Read-time computation over the raw event window, so a definition change
- * re-reads history — precomputed counters could not. One bounded fetch feeds
- * the funnel and, when the row carries a started experiment, the per-arm
- * read; the window is then the experiment's runs rather than the requested
- * period, and the plain funnel figure follows it (the pane shows the arms,
- * not the merged funnel, as soon as a split runs).
+ * Read-time computation over the funnel trails of the period, so a
+ * definition change re-reads history — precomputed counters could not. One
+ * streamed pass feeds the funnel and, when the row carries a started
+ * experiment, the per-arm read; the window is then the experiment's runs
+ * rather than the requested period, and the plain funnel figure follows it
+ * (the pane shows the arms, not the merged funnel, as soon as a split runs).
+ *
+ * The hourly prune cuts the trails at the instant it cuts the raw events, so
+ * the read counts what the events table holds. Memory holds one session and
+ * the counters, whatever the period holds.
  */
-export async function computeFunnelResults(
-  eventsModel: MarketingEventsModel,
+export async function funnelResultsIn(
   funnel: ReadableFunnel,
-  since: Date,
-  until: Date,
+  tenantId: string,
+  window: Pick<QueryWindow, "since" | "until">,
 ): Promise<FunnelResults> {
+  const until = window.until.getTime();
   const experiment = funnel.experiment;
   const runs = experiment ? runWindows(experiment, until) : null;
-  const read = runs ? readWindow(runs, funnel, until) : { since, until };
-  const events = await eventsModel.queryRange({
-    websiteIds: [funnel.websiteId],
-    since: read.since,
-    until: read.until,
-    kinds: runs ? EXPERIMENT_EVENT_KINDS : FUNNEL_EVENT_KINDS,
-    limit: MAX_FUNNEL_EVENTS,
-    fields: runs ? EXPERIMENT_FIELDS : FUNNEL_FIELDS,
-  });
-  const truncated = events.length >= MAX_FUNNEL_EVENTS;
-  const usable = runs ? withinRuns(events, runs) : events;
-  const reported = runs ? coveredWindow(runs) : read;
-  return {
-    computation: computeFunnelOverSessions(
-      funnel,
-      groupBySession(usable).values(),
+  const read = runs
+    ? readWindow(runs, funnel, until)
+    : { since: window.since.getTime(), until };
+  const since = read.since;
+  const indexed = coversSince(
+    await GetModel(FunnelTrailBackfillsModel, tenantId).coverage(
+      funnel.websiteId,
     ),
+    since,
+  );
+  const plain = new FunnelTally(funnel);
+  const arms =
+    runs && experiment ? new ExperimentTally(funnel, experiment) : null;
+  for await (const session of GetModel(FunnelTrailsModel, tenantId).sessionsIn({
+    websiteId: funnel.websiteId,
+    since,
+    until: read.until,
+    withExposures: runs !== null,
+  })) {
+    const usable = runs ? withinRuns(session.events, runs) : session.events;
+    plain.add(usable);
+    arms?.add(usable);
+  }
+  const incomplete = !indexed;
+  return {
+    computation: plain.result(),
     experiment:
-      runs && experiment
-        ? computeExperimentResults(
-            usable,
-            funnel,
-            experiment,
-            truncated,
-            servedMs(runs),
-          )
-        : undefined,
-    truncated,
-    window: {
-      since: reported.since.getTime(),
-      until: reported.until.getTime(),
-    },
+      runs && arms ? arms.result(incomplete, servedMs(runs)) : undefined,
+    incomplete,
+    window: runs ? coveredWindow(runs) : read,
   };
 }

@@ -163,13 +163,14 @@ test("one website id per tenant, which does not reveal the tenant", () => {
 
 test("the first visit creates the tenant's dashboard website", async () => {
   const store = fakeStore();
-  const { website, changed } = await provisionDashboardWebsite(
+  const { website, changed, created } = await provisionDashboardWebsite(
     store,
     "tenant-a",
     "localhost",
     ENABLED,
   );
   assert.equal(changed, true);
+  assert.equal(created, true);
   assert.equal(website._id, dashboardWebsiteId("tenant-a"));
   assert.equal(website.tenantId, "tenant-a");
   assert.equal(website.name, "Back office");
@@ -197,6 +198,7 @@ test("later visits change nothing, and keep what an owner edited", async () => {
     { ...ENABLED, websiteName: "Other" },
   );
   assert.equal(again.changed, false);
+  assert.equal(again.created, false);
   assert.equal(again.website.name, "Renamed");
   assert.equal(again.website.trackingEnabled, false);
   assert.equal(store.inserts, 1);
@@ -206,13 +208,14 @@ test("later visits change nothing, and keep what an owner edited", async () => {
 test("a new host the dashboard answers on joins the extra domains", async () => {
   const store = fakeStore();
   await provisionDashboardWebsite(store, "tenant-a", "localhost", ENABLED);
-  const { website, changed } = await provisionDashboardWebsite(
+  const { website, changed, created } = await provisionDashboardWebsite(
     store,
     "tenant-a",
     "admin.example.com",
     ENABLED,
   );
   assert.equal(changed, true);
+  assert.equal(created, false);
   assert.deepEqual(website.extraDomains, ["admin.example.com"]);
   const sub = await provisionDashboardWebsite(
     store,

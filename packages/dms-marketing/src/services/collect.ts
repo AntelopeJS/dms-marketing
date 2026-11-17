@@ -2,10 +2,12 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { getConfig } from "@/config";
 import {
+  FunnelTrailsModel,
   MarketingEventsModel,
   MarketingSessionsModel,
   WebsiteStatisticsModel,
 } from "@/db";
+import type { TrailedEvent } from "@/db/models/funnel_trails.model";
 import type { NewMarketingEvent } from "@/db/tables/marketing_events.table";
 import type { MarketingSession } from "@/db/tables/marketing_sessions.table";
 import type { Website } from "@/db/tables/websites.table";
@@ -169,9 +171,18 @@ export async function ingestPreparedBatch(
     buildEventDoc(context, resolution.session, event),
   );
 
-  await GetModel(MarketingEventsModel, website.tenantId).insertMany(docs);
+  const ids = await GetModel(MarketingEventsModel, website.tenantId).insertMany(
+    docs,
+  );
   const previous = snapshotSession(resolution.session);
-  await touchSession(context, resolution, docs);
+  await Promise.all([
+    touchSession(context, resolution, docs),
+    recordTrailLoggingLiveFailures(
+      context,
+      resolution.session._id,
+      docs.map((doc, index) => ({ ...doc, _id: ids[index] })),
+    ),
+  ]);
 
   const rollup = recordRollup(context, resolution, docs, previous);
   const notify = () => noteCollected(website.tenantId, docs.length);
@@ -181,6 +192,24 @@ export async function ingestPreparedBatch(
     isNewSession: resolution.isNewSession,
     rollup,
   };
+}
+
+async function recordTrailLoggingLiveFailures(
+  context: BatchContext,
+  sessionId: string,
+  events: TrailedEvent[],
+): Promise<void> {
+  const write = GetModel(FunnelTrailsModel, context.website.tenantId).record(
+    context.website._id,
+    sessionId,
+    events,
+  );
+  if (context.identity.imported) {
+    return write;
+  }
+  return write.catch((err: unknown) => {
+    Logging.Error("[dms-marketing] funnel trail write failed:", err);
+  });
 }
 
 /** One warning per website per minute: enough to notice a page sending a

@@ -481,8 +481,8 @@
         "srm_passed": "Split check passed: {observed} observed for {expected} configured",
         "srm_title": "Sample ratio mismatch",
         "steps_title": "Each arm, step by step · share of exposed sessions",
-        "truncated_description": "The run holds more raw events than one read covers; the numbers cover its oldest part only.",
-        "truncated_title": "Window truncated · verdict withheld",
+        "incomplete_description": "This site's history is still being indexed: the numbers cover the test's most recent events only, so no verdict is given until indexing reaches its start.",
+        "incomplete_title": "History still being indexed · verdict withheld",
         "variations": "Variations",
         "verdict": {
           "flat": "No difference you can trust yet",
@@ -618,8 +618,8 @@
         "subtitle_running": "Key {key} on {website} · running since {date} ({days}) · read over its own run, not the selected period",
         "subtitle_stopped": "Key {key} on {website} · ran {date} – {until} · read over its own run, not the selected period",
         "title": "Funnel",
-        "truncated_description": "The period holds more raw events than one read covers: these numbers cover its oldest part only. Narrow the period.",
-        "truncated_title": "Window truncated",
+        "incomplete_description": "This site's history is still being indexed: these numbers cover its most recent events only, and fill in on their own once indexing reaches the start of the period.",
+        "incomplete_title": "History still being indexed",
         "worst_step": "worst step",
         "duplicate": "Duplicate",
         "no_traffic": {

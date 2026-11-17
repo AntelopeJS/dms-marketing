@@ -1,5 +1,5 @@
+import type { TrailEvent } from "@/db/models/funnel_trails.model";
 import type { Funnel, FunnelStep } from "@/db/tables/funnels.table";
-import type { MarketingEvent } from "@/db/tables/marketing_events.table";
 import { stepPathMatcher } from "./step-path";
 
 /** What the counting core needs of a funnel. */
@@ -21,18 +21,7 @@ export interface FunnelComputation {
   steps: FunnelStepResult[];
 }
 
-/**
- * What the counting core reads off an event — and, through the results
- * loader's projection, all that travels back from the database. Kept as a
- * Pick so adding a field to the algorithm cannot silently forget the
- * projection.
- */
-export type FunnelEvent = Pick<
-  MarketingEvent,
-  "sessionId" | "kind" | "url" | "name" | "timestamp"
->;
-
-type StepMatcher = (event: FunnelEvent) => boolean;
+type StepMatcher = (event: TrailEvent) => boolean;
 
 /**
  * A page step matches its path whatever was pasted around it (see
@@ -44,91 +33,82 @@ function stepMatcher(step: FunnelStep): StepMatcher {
     return (event) => event.kind === "custom" && event.name === step.value;
   }
   const matchesPath = stepPathMatcher(step.value);
-  return (event) => event.kind === "pageview" && matchesPath(event.url);
-}
-
-export function groupBySession<T extends Pick<MarketingEvent, "sessionId">>(
-  events: T[],
-): Map<string, T[]> {
-  const sessions = new Map<string, T[]>();
-  for (const event of events) {
-    const bucket = sessions.get(event.sessionId);
-    if (bucket) {
-      bucket.push(event);
-    } else {
-      sessions.set(event.sessionId, [event]);
-    }
-  }
-  return sessions;
-}
-
-/** Steps must match in order; the window counts from the first-step match. */
-function sessionProgress(
-  events: FunnelEvent[],
-  funnel: FunnelDefinition,
-  matchers: StepMatcher[],
-): number {
-  let reached = 0;
-  let enteredAt: number | undefined;
-  for (const event of events) {
-    if (reached >= funnel.steps.length) {
-      break;
-    }
-    if (
-      enteredAt !== undefined &&
-      event.timestamp.getTime() - enteredAt > funnel.conversionWindowMs
-    ) {
-      break;
-    }
-    if (matchers[reached](event)) {
-      if (reached === 0) {
-        enteredAt = event.timestamp.getTime();
-      }
-      reached++;
-    }
-  }
-  return reached;
+  return (event) => event.kind === "pageview" && matchesPath(event.path);
 }
 
 /**
- * The counting core, decoupled from loading so the experiment read can run
- * it on session subsets (one per variation) of a single event fetch.
+ * The counting core as a fold over sessions: a read streams sessions in and
+ * holds only counters, per step the sessions that reached it and the events
+ * that matched it, and the events walked. Every count is a sum over
+ * sessions, so sessions may arrive in any order.
  */
-export function computeFunnelOverSessions(
-  funnel: FunnelDefinition,
-  sessions: Iterable<FunnelEvent[]>,
-): FunnelComputation {
-  if (funnel.steps.length === 0) {
-    return { totalSessions: 0, events: 0, steps: [] };
+export class FunnelTally {
+  readonly #funnel: FunnelDefinition;
+  readonly #matchers: StepMatcher[];
+  readonly #reached: number[];
+  readonly #matches: number[];
+  #events = 0;
+
+  constructor(funnel: FunnelDefinition) {
+    this.#funnel = funnel;
+    this.#matchers = funnel.steps.map(stepMatcher);
+    this.#reached = funnel.steps.map(() => 0);
+    this.#matches = funnel.steps.map(() => 0);
   }
-  const matchers = funnel.steps.map(stepMatcher);
-  const reachedCounts = funnel.steps.map(() => 0);
-  const matchCounts = funnel.steps.map(() => 0);
-  let events = 0;
-  for (const sessionEvents of sessions) {
-    const reached = sessionProgress(sessionEvents, funnel, matchers);
+
+  /** Counts one session, its events in time order. */
+  add(events: readonly TrailEvent[]): void {
+    const reached = this.#progress(events);
     for (let i = 0; i < reached; i++) {
-      reachedCounts[i]++;
+      this.#reached[i]++;
     }
-    events += sessionEvents.length;
-    for (const event of sessionEvents) {
-      matchers.forEach((matches, i) => {
+    this.#events += events.length;
+    for (const event of events) {
+      this.#matchers.forEach((matches, i) => {
         if (matches(event)) {
-          matchCounts[i]++;
+          this.#matches[i]++;
         }
       });
     }
   }
 
-  const entered = reachedCounts[0] ?? 0;
-  return {
-    totalSessions: entered,
-    events,
-    steps: funnel.steps.map((step, i) => ({
-      step,
-      sessions: reachedCounts[i],
-      conversionRate: entered > 0 ? reachedCounts[i] / entered : 0,
-      matches: matchCounts[i],
-    })),
-  };
+  #progress(events: readonly TrailEvent[]): number {
+    const { steps, conversionWindowMs } = this.#funnel;
+    let reached = 0;
+    let enteredAt: number | undefined;
+    for (const event of events) {
+      if (reached >= steps.length) {
+        break;
+      }
+      if (
+        enteredAt !== undefined &&
+        event.at - enteredAt > conversionWindowMs
+      ) {
+        break;
+      }
+      if (this.#matchers[reached](event)) {
+        enteredAt ??= event.at;
+        reached++;
+      }
+    }
+    return reached;
+  }
+
+  result(): FunnelComputation {
+    const steps = this.#funnel.steps;
+    if (steps.length === 0) {
+      return { totalSessions: 0, events: 0, steps: [] };
+    }
+    const entered = this.#reached[0];
+    return {
+      totalSessions: entered,
+      events: this.#events,
+      steps: steps.map((step, i) => ({
+        step,
+        sessions: this.#reached[i],
+        conversionRate: entered > 0 ? this.#reached[i] / entered : 0,
+        matches: this.#matches[i],
+      })),
+    };
+  }
 }

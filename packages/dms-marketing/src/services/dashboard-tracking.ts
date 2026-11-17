@@ -123,11 +123,11 @@ async function refreshWebsite(
   const snapshotsChanged = applyConfiguredSnapshots(website, config);
   const hostAdded = acceptHostname(website, hostname);
   if (!snapshotsChanged && !hostAdded) {
-    return { website, changed: false, snapshotsChanged };
+    return { website, changed: false, snapshotsChanged, created: false };
   }
   website.updatedAt = new Date();
   await store.update(website);
-  return { website, changed: true, snapshotsChanged };
+  return { website, changed: true, snapshotsChanged, created: false };
 }
 
 export interface DashboardProvisioning {
@@ -136,6 +136,8 @@ export interface DashboardProvisioning {
   changed: boolean;
   /** `snapshotsEnabled` changed on an existing record: its captures go. */
   snapshotsChanged: boolean;
+  /** This call created the record. */
+  created: boolean;
 }
 
 /**
@@ -182,5 +184,5 @@ export async function provisionDashboardWebsite(
     }
     return refreshWebsite(store, raced, hostname, config);
   }
-  return { website, changed: true, snapshotsChanged: false };
+  return { website, changed: true, snapshotsChanged: false, created: true };
 }
