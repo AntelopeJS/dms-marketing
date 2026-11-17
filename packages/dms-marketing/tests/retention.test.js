@@ -21,6 +21,7 @@ const {
 } = require("../dist/db/models/website_statistics.model");
 const { setConfig } = require("../dist/config");
 const {
+  pruneFunnelTrails,
   pruneRawEvents,
   pruneSessions,
   pruneSnapshots,
@@ -339,6 +340,7 @@ test("retention services keep their separate windows and snapshot minimum", asyn
     },
   };
   await pruneRawEvents(model);
+  await pruneFunnelTrails(model);
   await pruneSnapshots(model);
   await pruneSessions(model);
   await pruneStatistics(model);
@@ -346,6 +348,7 @@ test("retention services keep their separate windows and snapshot minimum", asyn
   setConfig({ rawEventsRetention: 5 * DAY, snapshotRetention: 2 * DAY });
   await pruneSnapshots(model);
   assert.deepEqual(cutoffs, [
+    NOW - 5 * DAY,
     NOW - 5 * DAY,
     NOW - 5 * DAY,
     NOW - 180 * DAY,
@@ -391,6 +394,7 @@ test("a failed cleanup does not skip other retention effects or tenants", async 
     [TENANT, OTHER_TENANT].flatMap((tenantId) =>
       [
         "MarketingEventsModel",
+        "FunnelTrailsModel",
         "PageSnapshotsModel",
         "MarketingSessionsModel",
         "WebsiteStatisticsModel",

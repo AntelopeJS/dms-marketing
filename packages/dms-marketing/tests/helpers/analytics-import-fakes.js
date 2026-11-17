@@ -278,7 +278,7 @@ function fakeModels() {
   const byModel = new Map([
     [MarketingSessionsModel, fakeSessions()],
     [MarketingEventsModel, fakeEvents()],
-    [FunnelTrailsModel, { async record() {} }],
+    [FunnelTrailsModel, { async record() {}, async forgetEvents() {} }],
     [WebsiteStatisticsModel, fakeStatistics()],
     [MarketingImportsModel, fakeImports()],
     [

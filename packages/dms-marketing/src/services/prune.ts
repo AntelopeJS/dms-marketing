@@ -1,6 +1,7 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { getConfig } from "@/config";
 import {
+  FunnelTrailsModel,
   MarketingEventsModel,
   MarketingSessionsModel,
   PageSnapshotsModel,
@@ -17,6 +18,13 @@ export function rawEventsCutoff(): Date {
 
 export async function pruneRawEvents(
   model: MarketingEventsModel,
+): Promise<number> {
+  return model.deleteOlderThan(rawEventsCutoff());
+}
+
+/** The funnel trails index the raw events, and follow their retention. */
+export async function pruneFunnelTrails(
+  model: FunnelTrailsModel,
 ): Promise<number> {
   return model.deleteOlderThan(rawEventsCutoff());
 }
@@ -127,6 +135,7 @@ export async function countStatisticsBefore(
 
 const TENANT_PRUNES = [
   (id: string) => pruneRawEvents(GetModel(MarketingEventsModel, id)),
+  (id: string) => pruneFunnelTrails(GetModel(FunnelTrailsModel, id)),
   (id: string) => pruneSnapshots(GetModel(PageSnapshotsModel, id)),
   (id: string) => pruneSessions(GetModel(MarketingSessionsModel, id)),
   (id: string) => pruneStatistics(GetModel(WebsiteStatisticsModel, id)),

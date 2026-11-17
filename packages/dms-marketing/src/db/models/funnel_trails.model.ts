@@ -11,6 +11,7 @@ import {
   type StoredTrailEvent,
 } from "../tables/funnel_trails.table";
 import type { MarketingEvent } from "../tables/marketing_events.table";
+import { deleteExpiredRows } from "./retention";
 
 /**
  * A funnel event as funnels, splits and templates read it. Each kind carries
@@ -234,6 +235,63 @@ export class FunnelTrailsModel extends BasicDataModel(
       }
       await this.union(sessionId, stored);
     }
+  }
+
+  /**
+   * Takes events back out of their sessions' trails, by event id, and deletes
+   * the trails left empty: run before the events themselves are deleted, so
+   * a stop in between leaves the events to be found and forgotten again.
+   */
+  async forgetEvents(
+    events: readonly Pick<MarketingEvent, "_id" | "sessionId">[],
+  ): Promise<void> {
+    const bySession = new Map<string, string[]>();
+    for (const event of events) {
+      bySession.set(event.sessionId, [
+        ...(bySession.get(event.sessionId) ?? []),
+        event._id,
+      ]);
+    }
+    for (const [sessionId, ids] of bySession) {
+      const gone = ValueProxy.constant(ids);
+      await this.table
+        .get(sessionId)
+        .update((doc) => {
+          const kept = () =>
+            doc
+              .key("events")
+              .default([])
+              .filter((event) => gone.includes(event.key("i")).not());
+          return {
+            events: kept(),
+            firstAt: kept()
+              .map((event) => event.key("t"))
+              .min(),
+            lastAt: kept()
+              .map((event) => event.key("t"))
+              .max(),
+          };
+        })
+        .run();
+    }
+    await this.table
+      .getAll([...bySession.keys()])
+      .filter((doc) => doc.key("events").default([]).isempty())
+      .delete()
+      .run();
+  }
+
+  /**
+   * The raw events' retention, applied to the trails: a trail goes once its
+   * newest event is older than `cutoff`. A trail that straddles it keeps its
+   * older events until then, and the reads start at the cutoff.
+   */
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    return deleteExpiredRows(this.table, "lastAt", 0, cutoff.getTime());
+  }
+
+  async deleteByWebsite(websiteId: string): Promise<number> {
+    return this.table.getAll([websiteId], "websiteId").delete().run();
   }
 
   /** The event ids each existing trail of `sessionIds` holds. */

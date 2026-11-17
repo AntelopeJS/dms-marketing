@@ -2,11 +2,7 @@ const assert = require("node:assert/strict");
 const { mock } = require("node:test");
 const test = it;
 const { GetModel } = require("@antelopejs/interface-database-decorators");
-const {
-  FunnelTrailBackfillsModel,
-  FunnelTrailsModel,
-  MarketingEventsModel,
-} = require("../dist/db");
+const { FunnelTrailBackfillsModel, FunnelTrailsModel } = require("../dist/db");
 const {
   backfillAllTenants,
   funnelResultsIn,
@@ -19,9 +15,12 @@ const {
   seedFixture,
 } = require("./helpers/funnel-fixture");
 const {
-  referenceFunnelResults,
-  referenceTemplates,
-} = require("./helpers/raw-funnel-reference");
+  assertSameAsReference,
+  backfill,
+  rawFunnelEventCount,
+  total,
+  trailSizes,
+} = require("./helpers/funnel-trail-checks");
 
 const TENANT = "funnel-trails";
 
@@ -36,10 +35,6 @@ let fixture;
 /** @type {Fixture} */
 let live;
 
-function events() {
-  return GetModel(MarketingEventsModel, TENANT);
-}
-
 /**
  * @param {Fixture} site
  * @param {string} name
@@ -50,63 +45,6 @@ function funnelNamed(site, name) {
     throw new Error(`no fixture funnel named ${name}`);
   }
   return funnel;
-}
-
-/**
- * Every funnel over every window, and the templates, against the frozen raw
- * read: a complete read, and the same answer.
- * @param {Fixture} site
- */
-async function assertSameAsReference(site) {
-  for (const funnel of site.funnels) {
-    for (const window of WINDOWS) {
-      const { incomplete, ...results } = await funnelResultsIn(
-        funnel,
-        TENANT,
-        window,
-      );
-      const label = `${funnel.name} over ${window.name}`;
-      assert.equal(incomplete, false, label);
-      assert.deepEqual(
-        results,
-        await referenceFunnelResults(events(), funnel, window),
-        label,
-      );
-    }
-  }
-  for (const window of WINDOWS) {
-    assert.deepEqual(
-      await funnelTemplates(site.website, window),
-      await referenceTemplates(events(), site.website, window),
-      `templates over ${window.name}`,
-    );
-  }
-}
-
-/** One backfill pass that reports no failure. */
-async function backfill() {
-  /** @type {Error[]} */
-  const failures = [];
-  await backfillAllTenants((failure) => failures.push(failure));
-  assert.deepEqual(failures, []);
-}
-
-/**
- * Per session of the site, how many events its trail holds.
- * @param {Fixture} site
- */
-async function trailSizes(site) {
-  /** @type {Record<string, number>} */
-  const sizes = {};
-  for await (const session of GetModel(FunnelTrailsModel, TENANT).sessionsIn({
-    websiteId: site.website._id,
-    since: 0,
-    until: Number.MAX_SAFE_INTEGER,
-    withExposures: true,
-  })) {
-    sizes[session.sessionId] = session.events.length;
-  }
-  return sizes;
 }
 
 /**
@@ -226,26 +164,18 @@ describe("funnel results over sessions that skip, repeat and reorder steps", () 
       true,
     );
     await backfill();
-    await assertSameAsReference(fixture);
-    await assertSameAsReference(live);
+    await assertSameAsReference(TENANT, fixture);
+    await assertSameAsReference(TENANT, live);
   });
 
   test("a second backfill adds nothing", async () => {
-    const before = await trailSizes(fixture);
-    const raw = await events().queryRange({
-      websiteIds: [fixture.website._id],
-      since: new Date(0),
-      until: new Date(Date.now()),
-      kinds: ["pageview", "custom", "exposure"],
-      limit: Number.MAX_SAFE_INTEGER,
-      fields: [],
-    });
+    const before = await trailSizes(TENANT, fixture.website._id);
     assert.equal(
-      Object.values(before).reduce((sum, size) => sum + size, 0),
-      raw.length,
+      total(before),
+      await rawFunnelEventCount(TENANT, fixture.website._id),
     );
     await backfill();
-    assert.deepEqual(await trailSizes(fixture), before);
+    assert.deepEqual(await trailSizes(TENANT, fixture.website._id), before);
   });
 
   test("live batches during a backfill still read as the raw read", async () => {
@@ -253,6 +183,6 @@ describe("funnel results over sessions that skip, repeat and reorder steps", () 
       fixture.website._id,
     );
     await Promise.all([backfill(), ingestWave(fixture.website)]);
-    await assertSameAsReference(fixture);
+    await assertSameAsReference(TENANT, fixture);
   });
 });
