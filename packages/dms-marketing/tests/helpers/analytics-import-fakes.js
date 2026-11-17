@@ -3,6 +3,7 @@ const { DuplicateKeyError } = require("@antelopejs/interface-database");
 const models = require("@antelopejs/interface-database-decorators/model");
 const { setConfig } = require("../../dist/config");
 const {
+  FunnelTrailsModel,
   FunnelsModel,
   MarketingEventsModel,
   MarketingImportsModel,
@@ -61,6 +62,7 @@ const COUNTERS = [
 ];
 let runCount = 0;
 let claimSwaps = 0;
+let eventCount = 0;
 /** @type {Store} */
 let store;
 
@@ -119,12 +121,23 @@ function fakeSessions() {
   };
 }
 
+/**
+ * Stores `docs` as the events table would, and answers their new ids.
+ * @param {NewMarketingEvent[]} docs
+ */
+function storeEvents(docs) {
+  store.events.push(...docs);
+  return docs.map(() => {
+    eventCount += 1;
+    return `event-${eventCount}`;
+  });
+}
+
 function fakeEvents() {
   return {
     /** @param {NewMarketingEvent[]} docs */
     async insertMany(docs) {
-      store.events.push(...docs);
-      return docs.length;
+      return storeEvents(docs);
     },
     /**
      * @param {string} websiteId
@@ -265,6 +278,7 @@ function fakeModels() {
   const byModel = new Map([
     [MarketingSessionsModel, fakeSessions()],
     [MarketingEventsModel, fakeEvents()],
+    [FunnelTrailsModel, { async record() {} }],
     [WebsiteStatisticsModel, fakeStatistics()],
     [MarketingImportsModel, fakeImports()],
     [
@@ -432,10 +446,9 @@ function interceptWrites(write) {
   return mock.method(
     models.GetModel(MarketingEventsModel),
     "insertMany",
-    /** @param {object[]} docs */ async (docs) => {
+    /** @param {NewMarketingEvent[]} docs */ async (docs) => {
       await write(docs);
-      store.events.push(...docs);
-      return docs.length;
+      return storeEvents(docs);
     },
   );
 }
@@ -454,6 +467,7 @@ module.exports = {
   fakeTimers,
   interceptWrites,
   runCount: () => runCount,
+  storeEvents,
   store: () => store,
   useFakeModels,
   website,

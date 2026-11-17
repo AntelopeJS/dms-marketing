@@ -451,14 +451,14 @@ export class MarketingEventsModel extends BasicDataModel(
 
   /**
    * Documents are built server-side from an already zod-validated payload,
-   * so skipping the per-document wrapper validation is safe.
+   * so skipping the per-document wrapper validation is safe. Resolves to the
+   * ids of the inserted events, in the order of `events`.
    */
-  async insertMany(events: NewMarketingEvent[]): Promise<number> {
+  async insertMany(events: NewMarketingEvent[]): Promise<string[]> {
     if (events.length === 0) {
-      return 0;
+      return [];
     }
-    const ids = await this.table.insert(events).run();
-    return ids.length;
+    return this.table.insert(events).run();
   }
 
   /**

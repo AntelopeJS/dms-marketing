@@ -2,6 +2,7 @@ import { Logging } from "@antelopejs/interface-core/logging";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { getConfig } from "@/config";
 import {
+  FunnelTrailsModel,
   MarketingEventsModel,
   MarketingSessionsModel,
   WebsiteStatisticsModel,
@@ -169,9 +170,18 @@ export async function ingestPreparedBatch(
     buildEventDoc(context, resolution.session, event),
   );
 
-  await GetModel(MarketingEventsModel, website.tenantId).insertMany(docs);
+  const ids = await GetModel(MarketingEventsModel, website.tenantId).insertMany(
+    docs,
+  );
   const previous = snapshotSession(resolution.session);
-  await touchSession(context, resolution, docs);
+  await Promise.all([
+    touchSession(context, resolution, docs),
+    GetModel(FunnelTrailsModel, website.tenantId).record(
+      website._id,
+      resolution.session._id,
+      docs.map((doc, index) => ({ ...doc, _id: ids[index] })),
+    ),
+  ]);
 
   const rollup = recordRollup(context, resolution, docs, previous);
   const notify = () => noteCollected(website.tenantId, docs.length);

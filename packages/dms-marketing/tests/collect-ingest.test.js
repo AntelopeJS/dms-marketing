@@ -3,7 +3,11 @@ const { mock } = require("node:test");
 const test = it;
 const models = require("@antelopejs/interface-database-decorators/model");
 const { setConfig } = require("../dist/config");
-const { MarketingEventsModel, MarketingSessionsModel } = require("../dist/db");
+const {
+  FunnelTrailsModel,
+  MarketingEventsModel,
+  MarketingSessionsModel,
+} = require("../dist/db");
 const { processCollectBatch } = require("../dist/services/collect");
 const { dashboardWebsiteId } = require("../dist/services/dashboard-tracking");
 const {
@@ -72,10 +76,11 @@ function fakeModels() {
   const events = {
     /** @param {NewMarketingEvent[]} docs */
     async insertMany(docs) {
-      store.events.push(...docs);
-      return docs.length;
+      const first = store.events.push(...docs) - docs.length;
+      return docs.map((_, index) => `event-${first + index}`);
     },
   };
+  const trails = { async record() {} };
   const statistics = {
     async get() {
       return undefined;
@@ -89,6 +94,9 @@ function fakeModels() {
   mock.method(models, "GetModel", (Model) => {
     if (Model === MarketingEventsModel) {
       return events;
+    }
+    if (Model === FunnelTrailsModel) {
+      return trails;
     }
     return Model === MarketingSessionsModel ? sessions : statistics;
   });

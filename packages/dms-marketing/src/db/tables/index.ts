@@ -1,4 +1,5 @@
 export * from "./funnels.table";
+export * from "./funnel_trails.table";
 export * from "./marketing_events.table";
 export * from "./marketing_imports.table";
 export * from "./marketing_preferences.table";
