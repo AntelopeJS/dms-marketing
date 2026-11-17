@@ -33,8 +33,9 @@ export type StoredTrailEvent =
  * written before it existed. It holds no funnel definition, so an edited
  * funnel, an unsaved draft and the templates read it as they read the events.
  *
- * `_id` is the session id. `events` holds each event once, in the order it
- * was written, up to `MAX_TRAIL_EVENTS`. `firstAt` and `lastAt` bound the
+ * `_id` is the session id. `events` holds each event once, at most
+ * `MAX_TRAIL_EVENTS` of them: past that, the session's earliest by
+ * timestamp then id, on every write path. `firstAt` and `lastAt` bound the
  * timestamps of the events written to it, in epoch milliseconds, the dropped
  * ones included: each write widens them to the events it adds, a write that
  * takes events out leaves them, and the retention trim moves `firstAt` up to
@@ -57,12 +58,4 @@ export class FunnelTrail extends Table {
 
   @Field("any")
   declare events: StoredTrailEvent[];
-
-  /**
-   * The oldest timestamp of an event dropped at `MAX_TRAIL_EVENTS`, epoch
-   * milliseconds; null while none was. A window ending before it holds every
-   * event of the session.
-   */
-  @Field("number")
-  declare firstDroppedAt: number | null;
 }
