@@ -145,9 +145,8 @@ export class FunnelTrailsModel extends BasicDataModel(
   funnelTrailsTableName,
 ) {
   /**
-   * Adds events of one session to its trail: the ingestion write, and the
-   * backfill's. Events of other kinds are skipped, and a call left with none
-   * writes nothing.
+   * Adds events of one session to its trail: the ingestion write. Events of
+   * other kinds are skipped, and a call left with none writes nothing.
    *
    * A set union on the event ids, in one native update: an event the trail
    * already holds is not added again, so a retried or repeated call changes

@@ -41,8 +41,9 @@ export type StoredTrailEvent =
  * funnel, an unsaved draft and the templates read it as they read the events.
  *
  * `_id` is the session id. `events` holds each event once, in the order it
- * was written. `firstAt` and `lastAt` are the epoch milliseconds of its
- * oldest and newest event, recomputed by every write that changes `events`.
+ * was written. `firstAt` and `lastAt` bound the timestamps of its events, in
+ * epoch milliseconds: each write widens them to the events it adds, and a
+ * write that takes events out recomputes them from the events left.
  */
 @RegisterTable(funnelTrailsTableName, TENANT_SCHEMA_NAME)
 export class FunnelTrail extends Table {
