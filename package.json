@@ -22,7 +22,7 @@
     "e2e": "playwright test -c e2e"
   },
   "devDependencies": {
-    "@antelopejs/dms": "0.20.8-next.936.g1313dd7",
+    "@antelopejs/dms": ">=0.20.8 <0.21.0",
     "@antelopejs/tooling-configs": "0.8.3-next.386.g90a4f74",
     "@playwright/test": "~1.65.0",
     "@types/node": "^22.20.5",
