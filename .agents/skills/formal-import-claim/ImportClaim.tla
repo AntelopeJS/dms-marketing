@@ -13,7 +13,7 @@
 (* holder's token and takes the claim over once the token stays           *)
 (* unchanged (claim.ts:106-155). The holder replaces its token every 5 s  *)
 (* (claim.ts:33-66) and replays the history one UTC day at a time         *)
-(* (replay.ts:268-308).                                                   *)
+(* (replay.ts:271-311).                                                   *)
 (*                                                                         *)
 (* One database round trip is one step, and Node runs other calls at     *)
 (* every await, so steps of different calls interleave in any order. A    *)
@@ -56,7 +56,7 @@ VARIABLES
   seen,      \* the holder of the claim the call read as `owner` (claim.ts:135)
   moved,     \* the claim's token changed since the call read `owner`
   resuming,  \* `current !== undefined` (import.ts:405)
-  counted,   \* the days the ledger named when the call read it (replay.ts:280)
+  counted,   \* the days the ledger named when the call read it (replay.ts:284)
   day,       \* the day the call replays next
   answer,    \* what the call returned, or "error" when it rejected
   failed,    \* the call met a storage failure
@@ -358,8 +358,8 @@ ReleaseErr(c) ==
 
 (* ------------------------------ replaying ------------------------------ *)
 
-(* A resumed replay reads which days the ledger names (replay.ts:280-282, *)
-(* 237-254); a new one starts from the first day. A resume also lists the *)
+(* A resumed replay reads which days the ledger names (replay.ts:284-286, *)
+(* 253-269); a new one starts from the first day. A resume also lists the *)
 (* raw rows of the days the ledger does not name, then, when it found any, *)
 (* moves the backfill generation and takes those rows out of the trails   *)
 (* (replay.ts:216-218, 235-238). The model does this here, before the     *)
@@ -384,8 +384,8 @@ ReadLedger(c) ==
                  fenceOf, tail, walks, wpc, wgen, wread, wrote>>
 
 (* discardUncommitted deletes the import's raw rows on every day that    *)
-(* ledger read did not name (replay.ts:283-286, 202-247), after an       *)
-(* isHeld() check that throws once it is false (replay.ts:284).           *)
+(* ledger read did not name (replay.ts:286-289, 202-250), after an       *)
+(* isHeld() check that throws once it is false (replay.ts:287).           *)
 Discard(c) ==
   /\ pc[c] = "discard"
   /\ IF holds[c]
@@ -421,7 +421,7 @@ WriteRaw(c) ==
   /\ UNCHANGED trailVars
 
 (* commitImportedDay adds the day's counters and its ledger entry in one  *)
-(* write to the day row, with no look at the claim (replay.ts:300-305,    *)
+(* write to the day row, with no look at the claim (replay.ts:303-308,    *)
 (* rollup.ts:121-157, 183-193). Then the next day the ledger read did not *)
 (* name.                                                                  *)
 Commit(c) ==
@@ -524,7 +524,7 @@ TrailWrite(c) ==
 
 (* Once its deletes are done, discardUncommitted moves the generation     *)
 (* again, then takes the rows it listed out of the trails once more       *)
-(* (replay.ts:242-245). The model lets these two steps run at any later  *)
+(* (replay.ts:243-248). The model lets these two steps run at any later  *)
 (* point, which covers the code's order, and a call that dies first never *)
 (* runs them.                                                             *)
 TailFence(c) ==

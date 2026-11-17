@@ -236,12 +236,15 @@ async function discardUncommitted(
     await backfills.fence(website._id);
     await trails.forgetEvents(discarded);
   }
-  for (const day of discardedDays) {
-    await events.deleteImportedOnDay(website._id, importId, day);
-  }
-  if (discarded.length > 0) {
-    await backfills.fence(website._id);
-    await trails.forgetEvents(discarded);
+  try {
+    for (const day of discardedDays) {
+      await events.deleteImportedOnDay(website._id, importId, day);
+    }
+  } finally {
+    if (discarded.length > 0) {
+      await backfills.fence(website._id);
+      await trails.forgetEvents(discarded);
+    }
   }
   await sessions.deleteMany(opened);
 }
