@@ -185,6 +185,29 @@ describe("a collect batch", () => {
     );
   });
 
+  test("stands when its funnel trail write fails", async () => {
+    mock.method(models.GetModel(FunnelTrailsModel), "record", async () => {
+      throw new Error("the trail write failed");
+    });
+    const outcome = await processCollectBatch(
+      WEBSITE,
+      [pageview(), { kind: "custom", url: PAGE, name: "signup" }],
+      newVisitor(),
+    );
+    assert.deepEqual(outcome, { accepted: 2, dropped: 0 });
+    assert.deepEqual(
+      store.sessions.map((session) => [
+        session.pageviewsCount,
+        session.eventsCount,
+      ]),
+      [[1, 2]],
+    );
+    for (let tick = 0; tick < 20 && store.rows.length === 0; tick += 1) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.equal(store.rows.length, 1);
+  });
+
   test("any other website keeps a page of its own under /modules", async () => {
     const outcome = await processCollectBatch(
       WEBSITE,

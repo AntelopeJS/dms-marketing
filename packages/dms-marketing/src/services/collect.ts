@@ -7,6 +7,7 @@ import {
   MarketingSessionsModel,
   WebsiteStatisticsModel,
 } from "@/db";
+import type { TrailedEvent } from "@/db/models/funnel_trails.model";
 import type { NewMarketingEvent } from "@/db/tables/marketing_events.table";
 import type { MarketingSession } from "@/db/tables/marketing_sessions.table";
 import type { Website } from "@/db/tables/websites.table";
@@ -176,8 +177,8 @@ export async function ingestPreparedBatch(
   const previous = snapshotSession(resolution.session);
   await Promise.all([
     touchSession(context, resolution, docs),
-    GetModel(FunnelTrailsModel, website.tenantId).record(
-      website._id,
+    recordTrail(
+      website,
       resolution.session._id,
       docs.map((doc, index) => ({ ...doc, _id: ids[index] })),
     ),
@@ -191,6 +192,27 @@ export async function ingestPreparedBatch(
     isNewSession: resolution.isNewSession,
     rollup,
   };
+}
+
+/**
+ * Adds a batch's events to its session's funnel trail. The raw events are
+ * stored already, so a failure is logged and the batch stands: the backfill's
+ * reconcile walk writes the events the trail misses.
+ */
+async function recordTrail(
+  website: Website,
+  sessionId: string,
+  events: TrailedEvent[],
+): Promise<void> {
+  try {
+    await GetModel(FunnelTrailsModel, website.tenantId).record(
+      website._id,
+      sessionId,
+      events,
+    );
+  } catch (err) {
+    Logging.Error("[dms-marketing] funnel trail write failed:", err);
+  }
 }
 
 /** One warning per website per minute: enough to notice a page sending a
