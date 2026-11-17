@@ -10,7 +10,7 @@ import type { User } from "@antelopejs/interface-dms/auth/db";
 import { AuthTenantMember } from "@antelopejs/interface-dms/guards";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import { getConfig } from "@/config";
-import { WebsitesModel } from "@/db";
+import { FunnelTrailBackfillsModel, WebsitesModel } from "@/db";
 import { provisionDashboardWebsite } from "@/services/dashboard-tracking";
 import {
   forgetAcceptedSources,
@@ -56,13 +56,18 @@ export class DashboardTrackingController extends Controller(
     if (!isValidHostname(hostname)) {
       throw new HTTPResult(HTTP_BAD_REQUEST, INVALID_HOSTNAME_MESSAGE);
     }
-    const { website, changed, snapshotsChanged } =
+    const { website, changed, snapshotsChanged, created } =
       await provisionDashboardWebsite(
         GetModel(WebsitesModel),
         getRequestTenantId(context),
         hostname,
         config,
       );
+    if (created) {
+      await GetModel(FunnelTrailBackfillsModel, website.tenantId).created(
+        website._id,
+      );
+    }
     if (snapshotsChanged) {
       await deleteSnapshots(website.tenantId, website._id);
     }

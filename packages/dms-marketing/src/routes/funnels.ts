@@ -21,9 +21,7 @@ import { resolveContextWebsite } from "@/services/context";
 import {
   coversWindow,
   experimentVerdict,
-  funnelResultsIn,
   funnelSuggestions,
-  funnelTemplates,
   type FunnelSummaryRow,
   rawCoverageStart,
   readsPeriod,
@@ -44,7 +42,11 @@ import {
   resolveQueryWindow,
   trailingWindow,
 } from "@/services/period";
-import type { ReadableFunnel } from "@/services/funnels";
+import {
+  funnelResultsIn,
+  funnelTemplates,
+  type ReadableFunnel,
+} from "@/services/funnels";
 import { queryString, type QueryParameter } from "@/services/query-param";
 import { requireTenantFunnel } from "@/services/tenant-funnel";
 import {
@@ -225,7 +227,10 @@ export class FunnelsController extends Controller(`${API_BASE_PATH}/funnels`) {
       site.tenantId,
       trailingWindow(BUILDER_WINDOW_DAYS),
     );
-    return { computation: results.computation, truncated: results.truncated };
+    return {
+      computation: results.computation,
+      incomplete: results.incomplete,
+    };
   }
 
   /**

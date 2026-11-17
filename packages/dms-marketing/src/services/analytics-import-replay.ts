@@ -1,5 +1,7 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import {
+  FunnelTrailBackfillsModel,
+  FunnelTrailsModel,
   MarketingEventsModel,
   MarketingSessionsModel,
   WebsiteStatisticsModel,
@@ -227,6 +229,12 @@ async function discardUncommitted(
       (event) => !discardedDays.has(event.day),
     );
     await sessions.restoreActivity(sessionId, kept);
+  }
+  if (discarded.length > 0) {
+    await GetModel(FunnelTrailBackfillsModel, website.tenantId).fence(
+      website._id,
+    );
+    await GetModel(FunnelTrailsModel, website.tenantId).forgetEvents(discarded);
   }
   for (const day of discardedDays) {
     await events.deleteImportedOnDay(website._id, importId, day);

@@ -2,6 +2,8 @@ import { HTTPResult, type RequestContext } from "@antelopejs/interface-api";
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import {
+  FunnelTrailBackfillsModel,
+  FunnelTrailsModel,
   FunnelsModel,
   MarketingEventsModel,
   MarketingImportsModel,
@@ -69,8 +71,9 @@ export interface WebsitePurge {
  * to zero; the traffic (pageviews, sessions, daily statistics) stays.
  *
  * The all scope deletes everything collected for the site — raw events
- * (pageviews, clicks and scrolls, A/B exposures and goals), sessions, daily
- * statistics, page snapshots and imported history.
+ * (pageviews, clicks and scrolls, A/B exposures and goals) and the funnel
+ * trails that index them, sessions, daily statistics, page snapshots and
+ * imported history.
  *
  * Either way the site, its settings and its funnels stay: funnel and A/B
  * results are read off the events, so they start again from zero. Running
@@ -85,9 +88,11 @@ export async function purgeWebsiteCollectedData(
     const heatmaps = await resetHeatmap(tenantId, websiteId);
     return { ...heatmaps, sessions: 0, days: 0, imports: 0 };
   }
+  await GetModel(FunnelTrailBackfillsModel, tenantId).purged(websiteId);
   const events = await GetModel(MarketingEventsModel, tenantId).deleteByWebsite(
     websiteId,
   );
+  await GetModel(FunnelTrailsModel, tenantId).deleteByWebsite(websiteId);
   const sessions = await GetModel(
     MarketingSessionsModel,
     tenantId,
@@ -117,6 +122,9 @@ export async function purgeWebsiteTrackingData(
 ): Promise<void> {
   await purgeWebsiteCollectedData(tenantId, websiteId);
   await GetModel(FunnelsModel, tenantId).deleteByWebsite(websiteId);
+  await GetModel(FunnelTrailBackfillsModel, tenantId).deleteByWebsite(
+    websiteId,
+  );
 }
 
 /**

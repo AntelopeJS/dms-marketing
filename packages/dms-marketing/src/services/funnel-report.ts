@@ -5,18 +5,12 @@ import type { Funnel, FunnelStep } from "@/db/tables/funnels.table";
 import type { Website } from "@/db/tables/websites.table";
 import {
   FUNNEL_SUMMARY_CACHE_TTL_MS,
-  MAX_FUNNEL_EVENTS,
   MS_PER_DAY,
   MS_PER_HOUR,
   RAW_COVERAGE_CACHE_TTL_MS,
 } from "@/types/constants";
 import { BoundedCache } from "./bounded-cache";
-import {
-  computeFunnelResults,
-  type FunnelResults,
-  groupBySession,
-  type ReadableFunnel,
-} from "./funnels";
+import { type FunnelResults, funnelResultsIn } from "./funnels";
 import type { QueryWindow } from "./period";
 import {
   mergeDimension,
@@ -95,12 +89,12 @@ function conversionOf(results: FunnelResults | null): number | null {
 /**
  * The first step no event of the window matched, while the site did send
  * something: an event nobody tracks yet, or a path that matches no page. A
- * site that sent nothing at all has no traffic, not a broken step, and a
- * read cut at its cap may have stopped before the step's first event.
+ * site that sent nothing at all has no traffic, not a broken step, and an
+ * incomplete read may be missing the step's first event.
  */
 export function unseenStepOf(results: FunnelResults): string | null {
   const computation = results.computation;
-  if (computation.events === 0 || results.truncated) {
+  if (computation.events === 0 || results.incomplete) {
     return null;
   }
   return (
@@ -129,7 +123,7 @@ function pickLeader(arms: ArmResult[]): number {
 
 /**
  * What a started test says: `withheld` when a warning voids the reading
- * (truncated window, sample ratio mismatch, no challenger scored), `flat`
+ * (incomplete read, sample ratio mismatch, no challenger scored), `flat`
  * when the leader is not significant, `early` when it is but the decision
  * rule (a week, a conversions floor) is not met yet.
  */
@@ -164,7 +158,7 @@ export function experimentVerdict(
   const unscored = arms.slice(1).every((arm) => arm.significant === null);
   const best = leader === null ? undefined : arms[leader];
   let kind: ExperimentVerdictKind;
-  if (results.truncated || read.srm.mismatch || unscored || !best) {
+  if (results.incomplete || read.srm.mismatch || unscored || !best) {
     kind = "withheld";
   } else if (!best.significant) {
     kind = "flat";
@@ -224,19 +218,6 @@ function experimentSummary(
     upliftHigh: percentOrNull(best?.upliftHigh),
     days: read?.decision.days ?? 0,
   };
-}
-
-export async function funnelResultsIn(
-  funnel: ReadableFunnel,
-  tenantId: string,
-  window: QueryWindow,
-): Promise<FunnelResults> {
-  return computeFunnelResults(
-    GetModel(MarketingEventsModel, tenantId),
-    funnel,
-    window.since,
-    window.until,
-  );
 }
 
 /** A split read over its runs has no "previous window"; a draft is still a
@@ -401,101 +382,4 @@ export async function funnelSuggestions(
       toSuggestion,
     ),
   };
-}
-
-/** A funnel the site's own journeys suggest, with the sessions it would score. */
-export interface FunnelTemplate {
-  steps: FunnelStep[];
-  /** Sessions of the window that would enter it (that matched step 1). */
-  entering: number;
-}
-
-const MAX_TEMPLATES = 2;
-
-function increment(counts: Map<string, number>, key: string): void {
-  counts.set(key, (counts.get(key) ?? 0) + 1);
-}
-
-function mostFrequent(counts: Map<string, number>): string | null {
-  let best: string | null = null;
-  for (const [key, count] of counts) {
-    if (best === null || count > (counts.get(best) ?? 0)) {
-      best = key;
-    }
-  }
-  return best;
-}
-
-/**
- * Templates for a site without funnels, from real journeys: its custom
- * events triggered by the most sessions, each led by the page those sessions
- * viewed most often before it. `entering` counts the sessions that viewed
- * that page, the ones the funnel would see enter.
- */
-export async function funnelTemplates(
-  website: Website,
-  window: QueryWindow,
-): Promise<FunnelTemplate[]> {
-  const events = await GetModel(
-    MarketingEventsModel,
-    website.tenantId,
-  ).queryRange({
-    websiteIds: [website._id],
-    since: window.since,
-    until: window.until,
-    kinds: ["pageview", "custom"],
-    limit: MAX_FUNNEL_EVENTS,
-    fields: ["sessionId", "kind", "url", "name"],
-  });
-  const sessions = [...groupBySession(events).values()];
-  const sessionsByEvent = new Map<string, number>();
-  const sessionsByPage = new Map<string, number>();
-  for (const session of sessions) {
-    const names = new Set<string>();
-    const pages = new Set<string>();
-    for (const event of session) {
-      if (event.kind === "custom" && event.name) {
-        names.add(event.name);
-      } else if (event.kind === "pageview") {
-        pages.add(event.url);
-      }
-    }
-    names.forEach((name) => increment(sessionsByEvent, name));
-    pages.forEach((page) => increment(sessionsByPage, page));
-  }
-  const topEvents = [...sessionsByEvent.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, MAX_TEMPLATES)
-    .map(([name]) => name);
-  return topEvents.map((name) => {
-    const before = new Map<string, number>();
-    for (const session of sessions) {
-      const at = session.findIndex(
-        (event) => event.kind === "custom" && event.name === name,
-      );
-      if (at <= 0) {
-        continue;
-      }
-      const pages = new Set(
-        session
-          .slice(0, at)
-          .filter((event) => event.kind === "pageview")
-          .map((event) => event.url),
-      );
-      pages.forEach((page) => increment(before, page));
-    }
-    const page = mostFrequent(before);
-    return page
-      ? {
-          steps: [
-            { kind: "url", value: page },
-            { kind: "custom", value: name },
-          ],
-          entering: sessionsByPage.get(page) ?? 0,
-        }
-      : {
-          steps: [{ kind: "custom", value: name }],
-          entering: sessionsByEvent.get(name) ?? 0,
-        };
-  });
 }

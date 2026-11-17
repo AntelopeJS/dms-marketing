@@ -6,23 +6,31 @@ import {
   type ScrollEventData,
 } from "@/types";
 import {
-  HEATMAP_DIVISIONS_PER_AXIS,
-  MAX_CLICK_SELECTOR_LENGTH,
   MS_PER_HOUR,
   MS_PER_SECOND,
   SCROLL_DEPTH_SCALE,
 } from "@/types/constants";
-import { z } from "zod";
 import {
   MarketingEvent,
   marketingEventsTableName,
   type NewMarketingEvent,
 } from "../tables/marketing_events.table";
+import type { TrailedEvent } from "./funnel_trails.model";
+import {
+  documentPoint,
+  firstClickSchema,
+  gridIndex,
+  hasClickBounds,
+  hasClickTypes,
+  isAnchored,
+  type StoredClickData,
+} from "./stored-click-data";
 
 const EPOCH_LOWER_BOUND = new Date(0);
 const SCROLL_KIND: EventKind = "scroll";
 const PAGEVIEW_KIND: EventKind = "pageview";
 const CLICK_KIND: EventKind = "click";
+const FUNNEL_EVENT_KINDS: EventKind[] = ["pageview", "custom", "exposure"];
 
 type PageviewRow = Pick<MarketingEvent, "timestamp" | "url" | "sessionId">;
 
@@ -41,6 +49,13 @@ export interface EventRangeQuery<F extends keyof MarketingEvent> {
    * on it.
    */
   fields: readonly F[];
+}
+
+/** The span of one website's events {@link MarketingEventsModel.walkFunnelEvents} reads. */
+export interface FunnelEventWalk {
+  websiteId: string;
+  below: Date | null;
+  floor: Date | null;
 }
 
 /** One path over one window — the scroll histogram needs no other axis. */
@@ -87,116 +102,6 @@ export interface AnchoredClickCell extends ClickGridCell {
 export interface ClickCells {
   documents: DocumentClickCell[];
   anchored: AnchoredClickCell[];
-}
-
-/** A click `data` as stored: every field is checked before it is read. */
-interface StoredClickData {
-  x: number;
-  y: number;
-  dx: number;
-  dy: number;
-  selector: string;
-  ox: number;
-  oy: number;
-  nth: number;
-}
-
-/** `$min` over `{ at, x, y }` objects compares `at` first and returns the
- * earliest click whole, but `Stream.min` is typed as a number: the object is
- * parsed back. */
-const firstClickSchema = z.object({
-  at: z.number(),
-  x: z.number(),
-  y: z.number(),
-});
-
-/**
- * Number in [0, 1]. BSON orders null and missing below numbers and strings,
- * objects, arrays and booleans above them, so the range admits exactly the
- * finite numbers in it: the type guard and the bound are one predicate.
- */
-function isFraction(value: ValueProxy<number>): ValueProxy<boolean> {
-  return value.ge(0).and(value.le(1));
-}
-
-/** Number in [0, Number.MAX_VALUE], by the ordering {@link isFraction} reads. */
-function isNonNegative(value: ValueProxy<number>): ValueProxy<boolean> {
-  return value.ge(0).and(value.le(Number.MAX_VALUE));
-}
-
-/** Strings sort between numbers and objects, and `{}` is the least object. */
-function isString(value: ValueProxy<string>): ValueProxy<boolean> {
-  return value.ge("").and(value.lt(ValueProxy.constant({}).cast<string>()));
-}
-
-/** An absent field sorts below null; a stored null does not. */
-function isMissing(value: ValueProxy<number | string>): ValueProxy<boolean> {
-  return value.lt(ValueProxy.constant(null).cast<number | string>());
-}
-
-/** A field the click may omit, and must otherwise pass `check`. */
-function isOptional<T extends number | string>(
-  value: ValueProxy<T>,
-  check: (value: ValueProxy<T>) => ValueProxy<boolean>,
-): ValueProxy<boolean> {
-  return isMissing(value.cast<number | string>()).or(check(value));
-}
-
-/**
- * The types and bounds `clickDataSchema` sets, from comparisons alone: the
- * planner evaluates a filter on every row, whatever `$and` already rejected,
- * so a filter that throws on one row aborts the read.
- */
-function hasClickTypes(data: ValueProxy<StoredClickData>): ValueProxy<boolean> {
-  return isFraction(data.key("x"))
-    .and(isFraction(data.key("y")))
-    .and(isOptional(data.key("dx"), isFraction))
-    .and(isOptional(data.key("dy"), isFraction))
-    .and(isOptional(data.key("ox"), isFraction))
-    .and(isOptional(data.key("oy"), isFraction))
-    .and(isOptional(data.key("nth"), isNonNegative))
-    .and(isOptional(data.key("selector"), isString));
-}
-
-/**
- * The rest of `clickDataSchema`, which needs `$strLenCP` and `$floor`: both
- * throw on a value of another type, so they run in a projection, on the rows
- * {@link hasClickTypes} let through.
- */
-function hasClickBounds(
-  data: ValueProxy<StoredClickData>,
-): ValueProxy<boolean> {
-  const nth = data.key("nth").default(0);
-  return data
-    .key("selector")
-    .default("")
-    .strlen()
-    .le(MAX_CLICK_SELECTOR_LENGTH)
-    .and(nth.floor().eq(nth));
-}
-
-/** A click that names its element and its offset in it; a click with an
- * empty selector, or without an offset, falls to the document grid. */
-function isAnchored(data: ValueProxy<StoredClickData>): ValueProxy<boolean> {
-  return data
-    .key("selector")
-    .gt("")
-    .and(data.key("ox").ge(0))
-    .and(data.key("oy").ge(0));
-}
-
-/** Normalized coordinate → grid index, rounding half up as `Math.round`
- * does: `$round` rounds half to even. */
-function gridIndex(normalized: ValueProxy<number>): ValueProxy<number> {
-  return normalized.mul(HEATMAP_DIVISIONS_PER_AXIS).add(0.5).floor();
-}
-
-/** The click's document point: page coordinates win over viewport ones. */
-function documentPoint(data: ValueProxy<StoredClickData>) {
-  return {
-    x: data.key("dx", data.key("x")),
-    y: data.key("dy", data.key("y")),
-  };
 }
 
 /** One kind over one window, cut in hours from `since`. */
@@ -451,14 +356,14 @@ export class MarketingEventsModel extends BasicDataModel(
 
   /**
    * Documents are built server-side from an already zod-validated payload,
-   * so skipping the per-document wrapper validation is safe.
+   * so skipping the per-document wrapper validation is safe. Resolves to the
+   * ids of the inserted events, in the order of `events`.
    */
-  async insertMany(events: NewMarketingEvent[]): Promise<number> {
+  async insertMany(events: NewMarketingEvent[]): Promise<string[]> {
     if (events.length === 0) {
-      return 0;
+      return [];
     }
-    const ids = await this.table.insert(events).run();
-    return ids.length;
+    return this.table.insert(events).run();
   }
 
   /**
@@ -496,6 +401,49 @@ export class MarketingEventsModel extends BasicDataModel(
 
   async deleteByWebsite(websiteId: string): Promise<number> {
     return this.table.getAll([websiteId], "websiteId").delete().run();
+  }
+
+  /**
+   * One website's pageviews, custom events and exposures, newest first, from
+   * `below` down to `floor` (both included, each open when null), streamed
+   * through the cursor with no cap: the funnel trail backfill's read. Only
+   * what a trail keeps comes back, `data` narrowed to an exposure's
+   * variation.
+   *
+   * Rows sharing a timestamp come back in the reverse of their insertion order.
+   */
+  walkFunnelEvents(
+    query: FunnelEventWalk,
+  ): AsyncGenerator<TrailedEvent & Pick<MarketingEvent, "sessionId">> {
+    let events = this.table
+      .getAll([query.websiteId], "websiteId")
+      .filter((doc) =>
+        ValueProxy.constant(FUNNEL_EVENT_KINDS).includes(doc.key("kind")),
+      );
+    const { below, floor } = query;
+    if (below) {
+      events = events.filter((doc) => doc.key("timestamp").le(below));
+    }
+    if (floor) {
+      events = events.filter((doc) => doc.key("timestamp").ge(floor));
+    }
+    return events
+      .orderBy("timestamp", "desc")
+      .map((doc) => ({
+        _id: doc.key("_id"),
+        sessionId: doc.key("sessionId"),
+        kind: doc.key("kind"),
+        timestamp: doc.key("timestamp"),
+        url: doc.key("url"),
+        name: doc.key("name"),
+        data: {
+          variation: doc
+            .key("data")
+            .cast<{ variation?: unknown }>()
+            .key("variation"),
+        },
+      }))
+      .cursor();
   }
 
   /** Every event an import wrote. Only read to resume a stopped import. */

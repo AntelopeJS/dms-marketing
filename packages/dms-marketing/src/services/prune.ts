@@ -1,6 +1,7 @@
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { getConfig } from "@/config";
 import {
+  FunnelTrailsModel,
   MarketingEventsModel,
   MarketingSessionsModel,
   PageSnapshotsModel,
@@ -10,11 +11,9 @@ import {
 import { MS_PER_DAY, TOP_MAPS_RETENTION_DAYS } from "@/types/constants";
 import { forgetCaptureTimes } from "./snapshots";
 
-export async function pruneRawEvents(
-  model: MarketingEventsModel,
-): Promise<number> {
-  const cutoff = new Date(Date.now() - getConfig().rawEventsRetention);
-  return model.deleteOlderThan(cutoff);
+/** The oldest instant the raw events' retention keeps, as of now. */
+export function rawEventsCutoff(): Date {
+  return new Date(Date.now() - getConfig().rawEventsRetention);
 }
 
 /**
@@ -121,12 +120,16 @@ export async function countStatisticsBefore(
   return { sessions, days };
 }
 
-const TENANT_PRUNES = [
-  (id: string) => pruneRawEvents(GetModel(MarketingEventsModel, id)),
-  (id: string) => pruneSnapshots(GetModel(PageSnapshotsModel, id)),
-  (id: string) => pruneSessions(GetModel(MarketingSessionsModel, id)),
-  (id: string) => pruneStatistics(GetModel(WebsiteStatisticsModel, id)),
-  (id: string) => pruneStatisticsTops(GetModel(WebsiteStatisticsModel, id)),
+type TenantPrune = (tenantId: string, rawCutoff: Date) => Promise<number>;
+
+const TENANT_PRUNES: TenantPrune[] = [
+  (id, rawCutoff) =>
+    GetModel(MarketingEventsModel, id).deleteOlderThan(rawCutoff),
+  (id, rawCutoff) => GetModel(FunnelTrailsModel, id).deleteOlderThan(rawCutoff),
+  (id) => pruneSnapshots(GetModel(PageSnapshotsModel, id)),
+  (id) => pruneSessions(GetModel(MarketingSessionsModel, id)),
+  (id) => pruneStatistics(GetModel(WebsiteStatisticsModel, id)),
+  (id) => pruneStatisticsTops(GetModel(WebsiteStatisticsModel, id)),
 ];
 
 /**
@@ -138,10 +141,11 @@ const TENANT_PRUNES = [
 export async function pruneAllTenants(
   onError: (failure: Error) => void,
 ): Promise<void> {
+  const rawCutoff = rawEventsCutoff();
   const tenantIds = await GetModel(WebsitesModel).listTenantIds();
   for (const tenantId of tenantIds) {
     for (const prune of TENANT_PRUNES) {
-      await prune(tenantId).catch((reason: unknown) => {
+      await prune(tenantId, rawCutoff).catch((reason: unknown) => {
         onError(
           reason instanceof Error
             ? reason

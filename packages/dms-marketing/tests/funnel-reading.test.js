@@ -43,7 +43,7 @@ function arm(key, conversionRate, test = {}) {
 }
 
 /** Control at 10 %, B at 12 % (significant), C at 11 % (not). */
-function split({ ready = true, mismatch = false, truncated = false } = {}) {
+function split({ ready = true, mismatch = false, incomplete = false } = {}) {
   /**
    * @param {number} uplift
    * @param {boolean} significant
@@ -55,7 +55,7 @@ function split({ ready = true, mismatch = false, truncated = false } = {}) {
   });
   return {
     computation: computation([10, 3]),
-    truncated,
+    incomplete,
     window: { since: 0, until: 1 },
     experiment: {
       control: "a",
@@ -74,11 +74,11 @@ function split({ ready = true, mismatch = false, truncated = false } = {}) {
 test("a step never received is only concluded from a complete read", () => {
   const results = {
     computation: computation([10, 0, 0]),
-    truncated: false,
+    incomplete: false,
     window: { since: 0, until: 1 },
   };
   assert.equal(unseenStepOf(results), "/step-1");
-  assert.equal(unseenStepOf({ ...results, truncated: true }), null);
+  assert.equal(unseenStepOf({ ...results, incomplete: true }), null);
 });
 
 test("a significant leader short of the decision rule is too early, not a winner", () => {
@@ -91,11 +91,11 @@ test("a significant leader short of the decision rule is too early, not a winner
 
 test("a warning withholds the verdict, and a plain funnel has none", () => {
   assert.equal(experimentVerdict(split({ mismatch: true })).kind, "withheld");
-  const truncated = split({ truncated: true });
-  for (const variation of truncated.experiment.variations) {
+  const incomplete = split({ incomplete: true });
+  for (const variation of incomplete.experiment.variations) {
     Object.assign(variation, { pValue: null, significant: null });
   }
-  assert.deepEqual(experimentVerdict(truncated), {
+  assert.deepEqual(experimentVerdict(incomplete), {
     kind: "withheld",
     leader: null,
   });
