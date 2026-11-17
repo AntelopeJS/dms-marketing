@@ -20,6 +20,7 @@ const {
   rawFunnelEventCount,
   total,
   trailSizes,
+  useRealModels,
 } = require("./helpers/funnel-trail-checks");
 
 const TENANT = "funnel-trails";
@@ -54,7 +55,7 @@ function funnelNamed(site, name) {
  */
 function stopSecondFlushHalfWay(websiteId) {
   let flushes = 0;
-  mock.method(
+  return mock.method(
     FunnelTrailsModel.prototype,
     "recordMany",
     /**
@@ -78,6 +79,7 @@ function stopSecondFlushHalfWay(websiteId) {
 }
 
 describe("funnel results over sessions that skip, repeat and reorder steps", () => {
+  useRealModels();
   before(async function () {
     this.timeout(60_000);
     fixture = await seedFixture(TENANT, "funnel-trails-site");
@@ -147,11 +149,11 @@ describe("funnel results over sessions that skip, repeat and reorder steps", () 
 
   test("a backfill stopped in its second flush resumes to the raw read", async function () {
     this.timeout(30_000);
-    stopSecondFlushHalfWay(fixture.website._id);
+    const stopping = stopSecondFlushHalfWay(fixture.website._id);
     /** @type {string[]} */
     const failures = [];
     await backfillAllTenants((failure) => failures.push(failure.message));
-    mock.restoreAll();
+    stopping.mock.restore();
     assert.deepEqual(failures, ["the flush stopped half-way"]);
     const newest = { since: new Date(at(700)), until: new Date(at(900)) };
     const ordered = funnelNamed(fixture, "prefix and event");

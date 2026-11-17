@@ -8,6 +8,7 @@ const {
   prepareEvents,
 } = require("../dist/services/collect");
 const { MAX_TRAIL_EVENTS } = require("../dist/types/constants");
+const { useRealModels } = require("./helpers/funnel-trail-checks");
 
 const TENANT = "funnel-trail-writes";
 const DAY = 86_400_000;
@@ -79,6 +80,7 @@ function labels(events) {
 }
 
 describe("a session's funnel trail", () => {
+  useRealModels();
   test("holds each event once, by time, ties in the order they were written", async () => {
     const replayed = [pageview(10, "/b", "replayed-b")];
     await trails().record("order-site", "order", replayed);
@@ -168,6 +170,7 @@ describe("a session's funnel trail", () => {
 });
 
 describe("a collect batch", () => {
+  useRealModels();
   test("lands in its session's funnel trail", async () => {
     await EnsureWebsite({
       id: "live-site",

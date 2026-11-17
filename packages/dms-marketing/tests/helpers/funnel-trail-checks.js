@@ -1,5 +1,7 @@
 const assert = require("node:assert/strict");
+const { mock } = require("node:test");
 const { GetModel } = require("@antelopejs/interface-database-decorators");
+const models = require("@antelopejs/interface-database-decorators/model");
 const { FunnelTrailsModel, MarketingEventsModel } = require("../../dist/db");
 const {
   backfillAllTenants,
@@ -13,6 +15,25 @@ const {
 } = require("./raw-funnel-reference");
 
 /** @typedef {Awaited<ReturnType<typeof import("./funnel-fixture").seedFixture>>} Fixture */
+
+/**
+ * Read while the files load, before any test has mocked it: other files mock
+ * GetModel and the harness never gets the original back.
+ */
+const realGetModel = models.GetModel;
+
+/** The module reads the real models in the hooks and tests of this suite. */
+function useRealModels() {
+  before(() => {
+    mock.method(models, "GetModel", realGetModel);
+  });
+  beforeEach(() => {
+    mock.method(models, "GetModel", realGetModel);
+  });
+  afterEach(() => {
+    mock.restoreAll();
+  });
+}
 
 /**
  * Every funnel of the fixture over every window, and the templates, against
@@ -103,4 +124,5 @@ module.exports = {
   rawFunnelEventCount,
   total,
   trailSizes,
+  useRealModels,
 };

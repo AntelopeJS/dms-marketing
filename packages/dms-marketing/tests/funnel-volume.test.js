@@ -4,7 +4,7 @@ const { GetModel } = require("@antelopejs/interface-database-decorators");
 const { EnsureWebsite } = require("@antelopejs/interface-dms-marketing");
 const { MarketingEventsModel } = require("../dist/db");
 const { funnelResultsIn } = require("../dist/services/funnels");
-const { backfill } = require("./helpers/funnel-trail-checks");
+const { backfill, useRealModels } = require("./helpers/funnel-trail-checks");
 
 const TENANT = "funnel-volume";
 const WEBSITE_ID = "funnel-volume-site";
@@ -40,6 +40,7 @@ function* rows() {
 }
 
 describe("a funnel over more than 200,000 events", () => {
+  useRealModels();
   before(async function () {
     this.timeout(120_000);
     await EnsureWebsite({

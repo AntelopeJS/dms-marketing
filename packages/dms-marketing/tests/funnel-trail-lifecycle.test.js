@@ -24,12 +24,14 @@ const {
   rawFunnelEventCount,
   total,
   trailSizes,
+  useRealModels,
 } = require("./helpers/funnel-trail-checks");
 const { referenceFunnelResults } = require("./helpers/raw-funnel-reference");
 
 const DAY = 86_400_000;
 
 describe("the raw events' retention", () => {
+  useRealModels();
   afterEach(() => setConfig());
 
   test("leaves the trails counting what the events table keeps", async function () {
@@ -59,7 +61,7 @@ describe("the raw events' retention", () => {
 });
 
 describe("a website purge", () => {
-  afterEach(() => mock.restoreAll());
+  useRealModels();
 
   test("stops a backfill walking the site, and leaves no trail behind", async function () {
     this.timeout(60_000);
@@ -101,25 +103,29 @@ describe("a website purge", () => {
   });
 });
 
-test("a deleted tenant leaves no trail and no backfill row", async () => {
-  const tenant = "trail-tenant";
-  const site = await seedFixture(tenant, "trail-tenant-site", false);
-  await backfill();
-  assert.notDeepEqual(await trailSizes(tenant, site.website._id), {});
-  const marketing = GetRegisteredHooks(Hook.TENANT_DELETED).filter(
-    (hook) => hook.handler.name === "purgeTenantMarketingData",
-  );
-  assert.equal(marketing.length, 1);
-  await marketing[0].handler(tenant);
-  assert.deepEqual(await trailSizes(tenant, site.website._id), {});
-  assert.deepEqual(
-    await GetModel(FunnelTrailBackfillsModel, tenant).getAll(),
-    [],
-  );
+describe("a tenant purge", () => {
+  useRealModels();
+
+  test("leaves no trail and no backfill row", async () => {
+    const tenant = "trail-tenant";
+    const site = await seedFixture(tenant, "trail-tenant-site", false);
+    await backfill();
+    assert.notDeepEqual(await trailSizes(tenant, site.website._id), {});
+    const marketing = GetRegisteredHooks(Hook.TENANT_DELETED).filter(
+      (hook) => hook.handler.name === "purgeTenantMarketingData",
+    );
+    assert.equal(marketing.length, 1);
+    await marketing[0].handler(tenant);
+    assert.deepEqual(await trailSizes(tenant, site.website._id), {});
+    assert.deepEqual(
+      await GetModel(FunnelTrailBackfillsModel, tenant).getAll(),
+      [],
+    );
+  });
 });
 
 describe("an analytics import resumed after a stop", () => {
-  afterEach(() => mock.restoreAll());
+  useRealModels();
 
   test("leaves the trails holding the events it kept", async function () {
     this.timeout(60_000);
@@ -154,7 +160,7 @@ describe("an analytics import resumed after a stop", () => {
       })),
     };
     let stopped = false;
-    mock.method(
+    const stopping = mock.method(
       GetModel(FunnelTrailsModel, tenant),
       "record",
       /**
@@ -180,7 +186,7 @@ describe("an analytics import resumed after a stop", () => {
       },
     );
     await assert.rejects(importAnalytics(batch), /the import stopped/);
-    mock.restoreAll();
+    stopping.mock.restore();
     const resumed = await importAnalytics(batch);
     assert.equal(resumed.status, "imported");
     await backfill();
