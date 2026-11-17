@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.10.3
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.10.2...v0.10.3)
+
+### 🩹 Fixes
+
+- **deps:** Run the e2e stack on @antelopejs/dms 0.21 ([#185](https://github.com/AntelopeJS/dms-marketing/pull/185))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.10.2
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.10.1...v0.10.2)
