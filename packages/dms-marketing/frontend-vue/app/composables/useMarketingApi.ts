@@ -332,7 +332,7 @@ export interface MarketingVariationResult {
   upliftLow: number | null
   upliftHigh: number | null
   /** Two-sided p-value vs the control; null on the control, when the sample
-   * is too small, or when the window is truncated. */
+   * is too small, or when the read is incomplete. */
   pValue: number | null
   significant: boolean | null
 }
@@ -381,7 +381,7 @@ export interface MarketingFunnelTemplate {
 
 /** What a started test says, read once by the server for the report, its
  * stop dialog and the list: `early` is significant but short of the decision
- * rule, `withheld` voided by a warning (truncated read, SRM, nothing scored). */
+ * rule, `withheld` voided by a warning (incomplete read, SRM, nothing scored). */
 export interface MarketingExperimentVerdict {
   kind: 'winner' | 'loser' | 'flat' | 'early' | 'withheld'
   /** Index of the arm the verdict names, the control being 0; null when no
@@ -395,8 +395,10 @@ export interface MarketingFunnelResults {
   computation: MarketingFunnelComputation
   /** Present when the funnel carries an experiment past draft. */
   experiment?: MarketingExperimentResults
-  /** The raw-event window hit its cap; verdicts are withheld. */
-  truncated: boolean
+  /** Some events of the period are not counted yet: the site's history is
+   * still being indexed, or a visit was too long to keep whole. Verdicts are
+   * withheld. */
+  incomplete: boolean
   /** Null on a funnel without a started experiment. */
   verdict?: MarketingExperimentVerdict | null
   /** Epoch ms bounds the numbers cover: the selected period on a plain
@@ -413,7 +415,7 @@ export interface MarketingFunnelResults {
 
 export interface MarketingFunnelPreview {
   computation: MarketingFunnelComputation
-  truncated: boolean
+  incomplete: boolean
 }
 
 /**

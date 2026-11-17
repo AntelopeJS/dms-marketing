@@ -111,7 +111,7 @@ export function useDraftPreview(
       row &&
       row.matches === 0 &&
       (preview.value?.computation.events ?? 0) > 0 &&
-      !preview.value?.truncated
+      !preview.value?.incomplete
     ) {
       return { text: t('page.marketing.builder.step_unseen'), warning: true }
     }

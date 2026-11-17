@@ -54,10 +54,10 @@ const endToEnd = computed(() =>
 /** The site sent no page view nor event at all over the period. */
 const noTraffic = computed(() => props.results.computation.events === 0)
 
-/** Steps no event of the period matched, while the site sent others; a
- * read cut at its cap concludes nothing. */
+/** Steps no event of the period matched, while the site sent others; an
+ * incomplete read concludes nothing. */
 const unseen = computed(() =>
-  noTraffic.value || props.results.truncated
+  noTraffic.value || props.results.incomplete
     ? []
     : steps.value
         .filter((row) => row.matches === 0)
@@ -276,12 +276,12 @@ const coverageDate = computed(() =>
       :description="t('page.marketing.funnel.draft_description')"
     />
     <DmsNoticeBanner
-      v-if="results.truncated"
+      v-if="results.incomplete"
       tone="warning"
       size="sm"
       icon="i-ph-hourglass"
-      :title="t('page.marketing.funnel.truncated_title')"
-      :description="t('page.marketing.funnel.truncated_description')"
+      :title="t('page.marketing.funnel.incomplete_title')"
+      :description="t('page.marketing.funnel.incomplete_description')"
     />
     <DmsNoticeBanner
       v-if="

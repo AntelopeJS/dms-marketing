@@ -481,8 +481,8 @@
         "srm_passed": "Répartition vérifiée : {observed} observé pour {expected} configuré",
         "srm_title": "Déséquilibre de répartition",
         "steps_title": "Chaque variante, étape par étape · part des sessions exposées",
-        "truncated_description": "Le test contient plus d'événements bruts qu'une lecture n'en couvre ; les chiffres ne couvrent que sa partie la plus ancienne.",
-        "truncated_title": "Fenêtre tronquée · verdict suspendu",
+        "incomplete_description": "L'historique de ce site est en cours d'indexation : les chiffres ne couvrent que les événements les plus récents du test, et aucun verdict n'est donné avant que l'indexation n'atteigne son début.",
+        "incomplete_title": "Historique en cours d'indexation · verdict suspendu",
         "variations": "Variantes",
         "verdict": {
           "flat": "Pas encore de différence fiable",
@@ -618,8 +618,8 @@
         "subtitle_running": "Clé {key} sur {website} · en cours depuis le {date} ({days}) · lu sur sa propre durée, pas sur la période choisie",
         "subtitle_stopped": "Clé {key} sur {website} · du {date} au {until} · lu sur sa propre durée, pas sur la période choisie",
         "title": "Funnel",
-        "truncated_description": "La période contient plus d'événements bruts qu'une lecture n'en couvre : ces chiffres ne couvrent que sa partie la plus ancienne. Réduisez la période.",
-        "truncated_title": "Fenêtre tronquée",
+        "incomplete_description": "L'historique de ce site est en cours d'indexation : ces chiffres ne couvrent que ses événements les plus récents, et se complètent d'eux-mêmes une fois l'indexation arrivée au début de la période.",
+        "incomplete_title": "Historique en cours d'indexation",
         "worst_step": "pire étape",
         "duplicate": "Dupliquer",
         "no_traffic": {
