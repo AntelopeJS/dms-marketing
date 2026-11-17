@@ -8,7 +8,9 @@ import {
 /**
  * Bumped when what a trail keeps of an event changes (`toStored` in
  * `funnel_trails.model.ts`): every website's coverage then reads `none`, and
- * the next pass walks its events again.
+ * the next pass deletes the website's trails and walks its events again.
+ * Live writes recreate the trails of the sessions they reach meanwhile. A row
+ * of a newer version is left to the instances that run it.
  */
 const TRAIL_BACKFILL_VERSION = 1;
 
@@ -43,13 +45,23 @@ function coverageOf(row: FunnelTrailBackfill | undefined): TrailCoverage {
     : { kind: "above", through: row.through };
 }
 
-/** Where a walk of one website starts, and the purge generation it walks in. */
-export interface TrailWalkStart {
-  coverage: TrailCoverage;
-  generation: number;
-  /** See `FunnelTrailBackfill.reconcileStartedAt`. */
-  reconcileStartedAt: number | null;
-}
+/**
+ * Where a walk of one website starts, and the generation it walks in.
+ * `outdated` is a row of an older version: its trails hold entries a walk
+ * would skip as held, so they go first (see
+ * {@link FunnelTrailBackfillsModel.restart}). `newer` is a row of a newer
+ * version, which this instance does not walk.
+ */
+export type TrailWalkStart =
+  | {
+      kind: "walk";
+      coverage: TrailCoverage;
+      generation: number;
+      /** See `FunnelTrailBackfill.reconcileStartedAt`. */
+      reconcileStartedAt: number | null;
+    }
+  | { kind: "outdated" }
+  | { kind: "newer" };
 
 export class FunnelTrailBackfillsModel extends BasicDataModel(
   FunnelTrailBackfill,
@@ -60,33 +72,23 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
   }
 
   /**
-   * The website's row of the current version, created covering nothing when
-   * it has none, and reset to cover nothing when it is of an older version.
+   * The walk the website's row allows, the row created covering nothing when
+   * the website has none.
    */
   async begin(websiteId: string): Promise<TrailWalkStart> {
     const row = await this.get(websiteId);
-    if (row?.version === TRAIL_BACKFILL_VERSION) {
+    if (row && row.version > TRAIL_BACKFILL_VERSION) {
+      return { kind: "newer" };
+    }
+    if (row && row.version < TRAIL_BACKFILL_VERSION) {
+      return { kind: "outdated" };
+    }
+    if (row) {
       return {
+        kind: "walk",
         coverage: coverageOf(row),
         generation: row.generation,
         reconcileStartedAt: row.reconcileStartedAt ?? null,
-      };
-    }
-    if (row) {
-      await this.table
-        .getAll([websiteId])
-        .filter((doc) => doc.key("version").ne(TRAIL_BACKFILL_VERSION))
-        .update({
-          version: TRAIL_BACKFILL_VERSION,
-          through: null,
-          done: false,
-          reconcileStartedAt: null,
-        })
-        .run();
-      return {
-        coverage: { kind: "none" },
-        generation: row.generation,
-        reconcileStartedAt: null,
       };
     }
     try {
@@ -106,10 +108,32 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
       }
     }
     return {
+      kind: "walk",
       coverage: { kind: "none" },
       generation: 0,
       reconcileStartedAt: null,
     };
+  }
+
+  /**
+   * The trails of an `outdated` website were deleted: its row moves to the
+   * current version covering nothing, behind a {@link fence} that stops a
+   * walk another instance began on the row meanwhile, and the walk starts
+   * from it.
+   */
+  async restart(websiteId: string): Promise<TrailWalkStart> {
+    await this.fence(websiteId);
+    await this.table
+      .getAll([websiteId])
+      .filter((doc) => doc.key("version").le(TRAIL_BACKFILL_VERSION))
+      .update({
+        version: TRAIL_BACKFILL_VERSION,
+        through: null,
+        done: false,
+        reconcileStartedAt: null,
+      })
+      .run();
+    return this.begin(websiteId);
   }
 
   /**

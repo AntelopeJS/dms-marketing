@@ -95,7 +95,8 @@ async function backfillPass(onError: (failure: Error) => void): Promise<void> {
 }
 
 /**
- * A website with no coverage is walked whole, from its newest event. A
+ * A website whose row is of an older backfill version has its trails deleted
+ * first. A website with no coverage is walked whole, from its newest event. A
  * covered one is reconciled from its newest event down to TRAIL_RECONCILE_MS
  * before the start of its last complete walk, or of this one when that is
  * later, then walked on below its coverage. A complete walk from the newest
@@ -106,8 +107,15 @@ async function backfillWebsite(
   websiteId: string,
 ): Promise<void> {
   const backfills = GetModel(FunnelTrailBackfillsModel, tenantId);
-  const { coverage, generation, reconcileStartedAt } =
-    await backfills.begin(websiteId);
+  let start = await backfills.begin(websiteId);
+  if (start.kind === "outdated") {
+    await GetModel(FunnelTrailsModel, tenantId).deleteByWebsite(websiteId);
+    start = await backfills.restart(websiteId);
+  }
+  if (start.kind !== "walk") {
+    return;
+  }
+  const { coverage, generation, reconcileStartedAt } = start;
   const walk: Walk = { tenantId, websiteId, generation };
   const startedAt = Date.now();
   const fromNewest =

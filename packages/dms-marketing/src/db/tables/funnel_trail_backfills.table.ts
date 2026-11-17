@@ -39,7 +39,8 @@ export class FunnelTrailBackfill extends Table {
 
   /**
    * Moved before events of the website are deleted (a purge, an import
-   * discard): a walk that sees it move stops.
+   * discard), and once its trails are deleted at a version bump: a walk that
+   * sees it move stops.
    */
   @Field("number")
   declare generation: number;

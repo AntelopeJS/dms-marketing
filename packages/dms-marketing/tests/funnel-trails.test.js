@@ -188,3 +188,30 @@ describe("funnel results over sessions that skip, repeat and reorder steps", () 
     await assertSameAsReference(TENANT, fixture);
   });
 });
+
+describe("a backfill version bump", () => {
+  useRealModels();
+
+  test("rewrites the trail entries an older version wrote", async function () {
+    this.timeout(60_000);
+    const bumped = await seedFixture(TENANT, "funnel-trails-bump");
+    await backfill();
+    const site = bumped.website._id;
+    const trails = GetModel(FunnelTrailsModel, TENANT);
+    const sessionId = `${site}-repeat-history`;
+    const trail = await trails.get(sessionId);
+    assert.ok(trail);
+    await trails.table
+      .get(sessionId)
+      .update({
+        events: trail.events.map((event) => ({ ...event, v: "/older" })),
+      })
+      .run();
+    await GetModel(FunnelTrailBackfillsModel, TENANT)
+      .table.get(site)
+      .update({ version: 0 })
+      .run();
+    await backfill();
+    await assertSameAsReference(TENANT, bumped);
+  });
+});
