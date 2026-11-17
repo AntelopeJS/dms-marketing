@@ -51,7 +51,7 @@ function pauseTheNextFlush(tenant) {
     release = () => resolve(undefined);
   });
   let paused = false;
-  mock.method(
+  const pausing = mock.method(
     GetModel(FunnelTrailBackfillsModel, tenant),
     "generationOf",
     /**
@@ -70,7 +70,7 @@ function pauseTheNextFlush(tenant) {
       );
     },
   );
-  return { reached, release };
+  return { reached, release, pausing };
 }
 
 /**
@@ -220,7 +220,7 @@ describe("a website purge racing a backfill walk", () => {
     const walk = pauseTheNextFlush(tenant);
     /** @type {Promise<void> | undefined} */
     let walking;
-    mock.method(
+    const deleting = mock.method(
       GetModel(MarketingEventsModel, tenant),
       "deleteByWebsite",
       /**
@@ -233,7 +233,7 @@ describe("a website purge racing a backfill walk", () => {
         return MarketingEventsModel.prototype.deleteByWebsite.call(this, site);
       },
     );
-    mock.method(
+    const cleaning = mock.method(
       GetModel(FunnelTrailsModel, tenant),
       "deleteByWebsite",
       /**
@@ -251,7 +251,9 @@ describe("a website purge racing a backfill walk", () => {
       },
     );
     await purgeWebsiteCollectedData(tenant, websiteId);
-    mock.restoreAll();
+    for (const mocked of [walk.pausing, deleting, cleaning]) {
+      mocked.mock.restore();
+    }
     assert.equal(await rawFunnelEventCount(tenant, websiteId), 0);
     assert.deepEqual(await trailSizes(tenant, websiteId), {});
     const results = await funnelResultsIn(
@@ -506,7 +508,7 @@ describe("an analytics import resumed after a stop", () => {
     const walk = pauseTheNextFlush(tenant);
     /** @type {Promise<void> | undefined} */
     let walking;
-    mock.method(
+    const deleting = mock.method(
       GetModel(MarketingEventsModel, tenant),
       "deleteImportedOnDay",
       /**
@@ -528,7 +530,7 @@ describe("an analytics import resumed after a stop", () => {
         );
       },
     );
-    mock.method(
+    const cleaning = mock.method(
       GetModel(MarketingSessionsModel, tenant),
       "deleteMany",
       /**
@@ -546,7 +548,9 @@ describe("an analytics import resumed after a stop", () => {
       },
     );
     const resumed = await importAnalytics(batch);
-    mock.restoreAll();
+    for (const mocked of [walk.pausing, deleting, cleaning]) {
+      mocked.mock.restore();
+    }
     assert.equal(resumed.status, "imported");
     assert.ok(walking, "the discard deleted events");
     await backfill();

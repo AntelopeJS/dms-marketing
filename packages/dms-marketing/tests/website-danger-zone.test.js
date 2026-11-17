@@ -91,7 +91,10 @@ function fakeStore() {
   const byModel = new Map([
     [MarketingEventsModel, table("events")],
     [FunnelTrailsModel, table("trails")],
-    [FunnelTrailBackfillsModel, { ...table("coverage"), async purged() {} }],
+    [
+      FunnelTrailBackfillsModel,
+      { ...table("coverage"), async purged() {}, async fence() {} },
+    ],
     [MarketingSessionsModel, table("sessions")],
     [WebsiteStatisticsModel, table("days")],
     [PageSnapshotsModel, table("snapshots")],
