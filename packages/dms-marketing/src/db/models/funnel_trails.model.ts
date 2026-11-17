@@ -177,8 +177,8 @@ export class FunnelTrailsModel extends BasicDataModel(
    * A set union on the event ids: an event the trail already holds is not
    * added again, so a retried or repeated call changes nothing, and
    * concurrent calls from any instance each land whole. Past
-   * `MAX_TRAIL_EVENTS` the trail keeps the session's earliest events, by
-   * timestamp then id, whatever order they were written in.
+   * `MAX_TRAIL_EVENTS` the trail keeps the session's earliest events by
+   * timestamp, whatever order they were written in.
    */
   async record(
     websiteId: string,

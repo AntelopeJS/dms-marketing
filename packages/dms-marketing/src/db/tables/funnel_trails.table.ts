@@ -35,7 +35,8 @@ export type StoredTrailEvent =
  *
  * `_id` is the session id. `events` holds each event once, at most
  * `MAX_TRAIL_EVENTS` of them: past that, the session's earliest by
- * timestamp then id, on every write path. `firstAt` and `lastAt` bound the
+ * timestamp, those written first among events sharing the last timestamp
+ * kept, on every write path. `firstAt` and `lastAt` bound the
  * timestamps of the events written to it, in epoch milliseconds, the dropped
  * ones included: each write widens them to the events it adds, a write that
  * takes events out leaves them, and the retention trim moves `firstAt` up to
