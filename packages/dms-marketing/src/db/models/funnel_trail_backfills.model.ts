@@ -177,8 +177,9 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
 
   /**
    * A walk of `generation` that started at `startedAt` (epoch ms) went down
-   * from the newest event to its floor: the next reconcile walk reaches back
-   * to that start.
+   * from the newest event to its floor, or a first walk from the newest event
+   * starts: the next reconcile walk reaches back to that start, so the events
+   * a walk stopped partway never read are walked again.
    */
   async reconciled(
     websiteId: string,

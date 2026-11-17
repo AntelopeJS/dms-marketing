@@ -148,9 +148,17 @@ describe("funnel results over sessions that skip, repeat and reorder steps", () 
     const stopping = stopSecondFlushHalfWay(fixture.website._id);
     /** @type {string[]} */
     const failures = [];
+    const passStart = Date.now();
     await backfillAllTenants((failure) => failures.push(failure.message));
     stopping.mock.restore();
     assert.deepEqual(failures, ["the flush stopped half-way"]);
+    const stoppedRow = await GetModel(FunnelTrailBackfillsModel, TENANT).get(
+      fixture.website._id,
+    );
+    assert.ok(
+      (stoppedRow?.reconcileStartedAt ?? 0) >= passStart,
+      "the next reconcile reaches back to the start of the stopped walk",
+    );
     const newest = { since: new Date(at(700)), until: new Date(at(900)) };
     const ordered = funnelNamed(fixture, "prefix and event");
     assert.equal(

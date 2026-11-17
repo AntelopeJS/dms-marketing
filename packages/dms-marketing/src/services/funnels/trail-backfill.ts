@@ -95,6 +95,9 @@ async function backfillWebsite(
   const { coverage, generation, reconcileStartedAt } = start;
   const walk: Walk = { tenantId, websiteId, generation };
   const startedAt = Date.now();
+  if (coverage.kind === "none") {
+    await backfills.reconciled(websiteId, generation, startedAt);
+  }
   const fromNewest =
     coverage.kind === "none"
       ? await walkEvents(walk, {
