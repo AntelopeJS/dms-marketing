@@ -36,11 +36,6 @@ export interface TrailSession {
    * which for one collect batch is the order of its events.
    */
   events: TrailEvent[];
-  /**
-   * The trail dropped events past `MAX_TRAIL_EVENTS` at or before the
-   * window's end: some of the session inside the window may be missing.
-   */
-  incomplete: boolean;
 }
 
 export interface TrailWindowQuery {
@@ -127,20 +122,47 @@ function spanOf(stored: readonly StoredTrailEvent[]): [number, number] {
   );
 }
 
+/** By timestamp, a stable sort: events sharing one keep their write order. */
+function byTime(events: readonly StoredTrailEvent[]): StoredTrailEvent[] {
+  return [...events].sort((a, b) => a.t - b.t);
+}
+
+/**
+ * What a trail keeps of `events`, given in write order: each id once, the
+ * earliest `MAX_TRAIL_EVENTS` by timestamp, those written first among events
+ * sharing the last timestamp kept.
+ */
+function kept(events: readonly StoredTrailEvent[]): StoredTrailEvent[] {
+  const unique = new Map<string, StoredTrailEvent>();
+  for (const event of events) {
+    if (!unique.has(event.i)) {
+      unique.set(event.i, event);
+    }
+  }
+  return byTime([...unique.values()]).slice(0, MAX_TRAIL_EVENTS);
+}
+
+function sameIds(
+  a: readonly StoredTrailEvent[],
+  b: readonly StoredTrailEvent[],
+): boolean {
+  return (
+    a.length === b.length && a.every((event, index) => event.i === b[index].i)
+  );
+}
+
 function newTrail(
   websiteId: string,
   sessionId: string,
   stored: readonly StoredTrailEvent[],
 ): FunnelTrail {
   const [firstAt, lastAt] = spanOf(stored);
-  const dropped = stored.slice(MAX_TRAIL_EVENTS);
   return {
     _id: sessionId,
     websiteId,
-    events: stored.slice(0, MAX_TRAIL_EVENTS),
+    events: kept(stored),
     firstAt,
     lastAt,
-    firstDroppedAt: dropped.length > 0 ? spanOf(dropped)[0] : null,
   };
 }
 
@@ -154,7 +176,9 @@ export class FunnelTrailsModel extends BasicDataModel(
    *
    * A set union on the event ids: an event the trail already holds is not
    * added again, so a retried or repeated call changes nothing, and
-   * concurrent calls from any instance each land whole.
+   * concurrent calls from any instance each land whole. Past
+   * `MAX_TRAIL_EVENTS` the trail keeps the session's earliest events by
+   * timestamp, whatever order they were written in.
    */
   async record(
     websiteId: string,
@@ -218,27 +242,77 @@ export class FunnelTrailsModel extends BasicDataModel(
     return written;
   }
 
+  /**
+   * One update of the row when the earliest events are plain to it: the row
+   * and `stored` fit under the cap, or `stored` is later than every event
+   * written to the row. Otherwise the kept events are computed from a read
+   * of the row and written while the row still holds the events read, and a
+   * row that changed in between is read again.
+   */
   private async recordStored(
     websiteId: string,
     sessionId: string,
-    stored: StoredTrailEvent[],
+    stored: readonly StoredTrailEvent[],
   ): Promise<void> {
-    if (stored.length === 0 || (await this.union(sessionId, stored)) > 0) {
+    if (stored.length === 0) {
       return;
     }
+    const sorted = byTime(stored);
+    while ((await this.union(sessionId, sorted)) === 0) {
+      const row = await this.get(sessionId);
+      const settled = row
+        ? await this.replaceEvents(row, sorted)
+        : await this.insertNew(newTrail(websiteId, sessionId, sorted));
+      if (settled) {
+        return;
+      }
+    }
+  }
+
+  private async insertNew(trail: FunnelTrail): Promise<boolean> {
     try {
-      await this.table.insert(newTrail(websiteId, sessionId, stored)).run();
+      await this.table.insert(trail).run();
+      return true;
     } catch (error) {
       if (!IsDuplicateKeyError(error)) {
         throw error;
       }
-      await this.union(sessionId, stored);
+      return false;
     }
+  }
+
+  private async replaceEvents(
+    row: FunnelTrail,
+    sorted: readonly StoredTrailEvent[],
+  ): Promise<boolean> {
+    const events = kept([...row.events, ...sorted]);
+    const [first, last] = spanOf(sorted);
+    const firstAt = Math.min(row.firstAt, first);
+    const lastAt = Math.max(row.lastAt, last);
+    if (
+      sameIds(events, row.events) &&
+      firstAt === row.firstAt &&
+      lastAt === row.lastAt
+    ) {
+      return true;
+    }
+    const held = ValueProxy.constant(row.events.map((event) => event.i));
+    const replaced = await this.table
+      .getAll([row._id])
+      .filter((doc) =>
+        doc
+          .key("events")
+          .map((event) => event.key("i"))
+          .eq(held),
+      )
+      .update({ events, firstAt, lastAt })
+      .run();
+    return replaced > 0;
   }
 
   /**
    * Takes events back out of their sessions' trails, by event id, and deletes
-   * the trails left empty that never dropped an event: run before the events themselves are deleted, so
+   * the trails left empty: run before the events themselves are deleted, so
    * a stop in between leaves the events to be found and forgotten again.
    */
   async forgetEvents(events: readonly TrailEventRef[]): Promise<void> {
@@ -264,7 +338,6 @@ export class FunnelTrailsModel extends BasicDataModel(
     await this.table
       .getAll([...bySession.keys()])
       .filter((doc) => doc.key("events").default([]).isempty())
-      .filter((doc) => doc.key("firstDroppedAt").default(null).eq(null))
       .delete()
       .run();
   }
@@ -309,35 +382,37 @@ export class FunnelTrailsModel extends BasicDataModel(
 
   private union(
     sessionId: string,
-    stored: StoredTrailEvent[],
+    sorted: readonly StoredTrailEvent[],
   ): Promise<number> {
-    const [first, last] = spanOf(stored);
+    const [first, last] = spanOf(sorted);
     return this.table
-      .get(sessionId)
+      .getAll([sessionId])
+      .filter((doc) =>
+        doc
+          .key("events")
+          .default([])
+          .count()
+          .add(sorted.length)
+          .le(MAX_TRAIL_EVENTS)
+          .or(doc.key("lastAt").lt(first)),
+      )
       .update((doc) => {
         const held = doc.key("events").default([]);
         return ValueProxy.constant([held.map((entry) => entry.key("i"))])
           .cast<string[][]>()
           .map((heldIds) =>
-            ValueProxy.constant(stored).filter((event) =>
+            ValueProxy.constant([...sorted]).filter((event) =>
               heldIds.includes(event.key("i")).not(),
             ),
           )
-          .map((missing) => held.add(missing))
-          .map((merged) => ({
-            events: merged.slice(0, MAX_TRAIL_EVENTS),
+          .map((missing) => ({
+            events: held.add(missing).slice(0, MAX_TRAIL_EVENTS),
             firstAt: ValueProxy.constant([doc.key("firstAt"), first])
               .cast<number[]>()
               .min(),
             lastAt: ValueProxy.constant([doc.key("lastAt"), last])
               .cast<number[]>()
               .max(),
-            firstDroppedAt: ValueProxy.constant([doc.key("firstDroppedAt")])
-              .cast<number[]>()
-              .add(
-                merged.slice(MAX_TRAIL_EVENTS).map((event) => event.key("t")),
-              )
-              .min(),
           }))
           .index(0);
       })
@@ -345,9 +420,8 @@ export class FunnelTrailsModel extends BasicDataModel(
   }
 
   /**
-   * The sessions with at least one event inside the window, or that dropped
-   * events at or before its end, streamed through the table cursor: one row
-   * in memory at a time, whatever the window holds.
+   * The sessions with at least one event inside the window, streamed through
+   * the table cursor: one row in memory at a time, whatever the window holds.
    */
   async *sessionsIn(query: TrailWindowQuery): AsyncGenerator<TrailSession> {
     const kinds = ValueProxy.constant(
@@ -359,7 +433,6 @@ export class FunnelTrailsModel extends BasicDataModel(
       .filter((doc) => doc.key("firstAt").le(query.until))
       .map((doc) => ({
         sessionId: doc.key("_id"),
-        firstDroppedAt: doc.key("firstDroppedAt"),
         events: doc.key("events").filter((event) =>
           event
             .key("t")
@@ -369,14 +442,8 @@ export class FunnelTrailsModel extends BasicDataModel(
         ),
       }));
     for await (const row of rows.cursor()) {
-      const incomplete =
-        row.firstDroppedAt !== null && row.firstDroppedAt <= query.until;
-      if (row.events.length > 0 || incomplete) {
-        yield {
-          sessionId: row.sessionId,
-          incomplete,
-          events: inTimeOrder(row.events),
-        };
+      if (row.events.length > 0) {
+        yield { sessionId: row.sessionId, events: inTimeOrder(row.events) };
       }
     }
   }

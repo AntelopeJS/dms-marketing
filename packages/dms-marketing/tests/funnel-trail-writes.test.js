@@ -101,7 +101,6 @@ describe("a session's funnel trail", () => {
       "/pricing",
       "/b",
     ]);
-    assert.equal(session.incomplete, false);
   });
 
   test("keeps every batch of concurrent first writes", async () => {
@@ -154,43 +153,46 @@ describe("a session's funnel trail", () => {
 
 describe("a session's funnel trail at its cap", () => {
   useRealModels();
-  test("is cut at its cap, and says so", async () => {
+  test("keeps its earliest events, whatever order they come in", async () => {
     const full = Array.from({ length: MAX_TRAIL_EVENTS }, (_, index) =>
-      pageview(index, "/feed"),
+      pageview(10 + index, "/feed"),
     );
     await trails().record("cap-site", "capped", full);
-    let [session] = await read("cap-site");
-    assert.equal(session.events.length, MAX_TRAIL_EVENTS);
-    assert.equal(session.incomplete, false);
     await trails().record("cap-site", "capped", [
       full[0],
-      pageview(MAX_TRAIL_EVENTS, "/late"),
+      pageview(10 + MAX_TRAIL_EVENTS, "/late"),
     ]);
-    [session] = await read("cap-site");
+    await trails().record("cap-site", "capped", [pageview(0, "/early")]);
+    const [session] = await read("cap-site");
     assert.equal(session.events.length, MAX_TRAIL_EVENTS);
-    assert.equal(session.incomplete, true);
+    assert.deepEqual(labels(session.events.slice(0, 2)), ["/early", "/feed"]);
     assert.equal(labels(session.events).includes("/late"), false);
+    assert.equal(session.events.at(-1)?.at, T0 + 10 + MAX_TRAIL_EVENTS - 2);
   });
 
-  test("still says it was cut once its kept events are taken back", async () => {
-    const kept = Array.from({ length: MAX_TRAIL_EVENTS }, (_, at) =>
-      pageview(at, "/b"),
+  test("keeps every earlier event of concurrent writes", async () => {
+    await trails().record(
+      "concurrent-cap-site",
+      "concurrent-capped",
+      Array.from({ length: MAX_TRAIL_EVENTS }, (_, index) =>
+        pageview(10 + index, "/feed"),
+      ),
     );
-    await trails().record("forgotten-cut-site", "cut", [
-      ...kept,
-      pageview(MAX_TRAIL_EVENTS, "/b"),
+    await Promise.all(
+      [0, 1, 2].map((at) =>
+        trails().record("concurrent-cap-site", "concurrent-capped", [
+          pageview(at, `/early-${at}`),
+        ]),
+      ),
+    );
+    const [session] = await read("concurrent-cap-site");
+    assert.equal(session.events.length, MAX_TRAIL_EVENTS);
+    assert.deepEqual(labels(session.events.slice(0, 4)), [
+      "/early-0",
+      "/early-1",
+      "/early-2",
+      "/feed",
     ]);
-    await trails().forgetEvents(
-      kept.map((event) => ({ _id: event._id, sessionId: "cut" })),
-    );
-    assert.deepEqual(
-      (await read("forgotten-cut-site")).map((session) => [
-        session.sessionId,
-        session.events.length,
-        session.incomplete,
-      ]),
-      [["cut", 0, true]],
-    );
   });
 
   test("of the largest entries fits one document past its cap", async function () {
@@ -217,16 +219,15 @@ describe("a session's funnel trail at its cap", () => {
       (await read("largest-site")).map((session) => [
         session.sessionId,
         session.events.length,
-        session.incomplete,
       ]),
       [
-        ["inserted", MAX_TRAIL_EVENTS, true],
-        ["unioned", MAX_TRAIL_EVENTS, true],
+        ["inserted", MAX_TRAIL_EVENTS],
+        ["unioned", MAX_TRAIL_EVENTS],
       ],
     );
   });
 
-  test("cut late leaves the windows that end before its first dropped event complete", async function () {
+  test("leaves every window it reaches complete", async function () {
     this.timeout(60_000);
     await EnsureWebsite({
       id: "late-cut-site",
@@ -262,8 +263,38 @@ describe("a session's funnel trail at its cap", () => {
         })
       ).incomplete;
     assert.equal(await incomplete(0, late - 1), false);
-    assert.equal(await incomplete(0, late), true);
-    assert.equal(await incomplete(late, late + 1), true);
+    assert.equal(await incomplete(0, late), false);
+    assert.equal(await incomplete(late, late + 1), false);
+  });
+});
+
+describe("a session's funnel trail at its cap, on a tie", () => {
+  useRealModels();
+
+  test("keeps the first written among events sharing its last kept timestamp", async () => {
+    await trails().record(
+      "tie-cap-site",
+      "tie-capped",
+      Array.from({ length: MAX_TRAIL_EVENTS - 2 }, (_, index) =>
+        pageview(10 + index, "/feed"),
+      ),
+    );
+    const tie = 10 + MAX_TRAIL_EVENTS;
+    await trails().record("tie-cap-site", "tie-capped", [
+      pageview(tie, "/first"),
+      pageview(tie, "/second"),
+    ]);
+    await trails().record("tie-cap-site", "tie-capped", [
+      pageview(tie, "/third"),
+    ]);
+    let [session] = await read("tie-cap-site");
+    assert.deepEqual(labels(session.events.slice(-2)), ["/first", "/second"]);
+    await trails().record("tie-cap-site", "tie-capped", [
+      pageview(0, "/early"),
+    ]);
+    [session] = await read("tie-cap-site");
+    assert.equal(session.events.length, MAX_TRAIL_EVENTS);
+    assert.deepEqual(labels(session.events.slice(-1)), ["/first"]);
   });
 });
 

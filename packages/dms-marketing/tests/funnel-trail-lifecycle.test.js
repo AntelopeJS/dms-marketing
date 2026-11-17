@@ -9,6 +9,7 @@ const {
   FunnelTrailBackfillsModel,
   FunnelTrailsModel,
   MarketingEventsModel,
+  MarketingSessionsModel,
 } = require("../dist/db");
 const { WebsitesController } = require("../dist/routes/websites");
 const { importAnalytics } = require("../dist/services/analytics-import");
@@ -21,6 +22,8 @@ const { WINDOWS, at, seedFixture } = require("./helpers/funnel-fixture");
 const {
   assertSameAsReference,
   backfill,
+  importStoppedOnSecondDay,
+  pauseTheNextFlush,
   rawFunnelEventCount,
   total,
   trailSizes,
@@ -30,6 +33,26 @@ const { referenceFunnelResults } = require("./helpers/raw-funnel-reference");
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
+
+/**
+ * @param {string} tenant
+ * @param {string} websiteId
+ * @param {number} count
+ */
+async function insertRecentPageviews(tenant, websiteId, count) {
+  const timestamp = new Date(Date.now() - 60_000);
+  await GetModel(MarketingEventsModel, tenant).insertMany(
+    Array.from({ length: count }, (_, index) => ({
+      websiteId,
+      timestamp,
+      day: Math.floor(timestamp.getTime() / DAY) * DAY,
+      kind: "pageview",
+      sessionId: `recent-${index}`,
+      visitorId: `recent-${index}-visitor`,
+      url: "/a",
+    })),
+  );
+}
 
 describe("the raw events' retention", () => {
   useRealModels();
@@ -139,6 +162,76 @@ describe("a website purge", () => {
   });
 });
 
+describe("a website purge racing a backfill walk", () => {
+  useRealModels();
+
+  test("leaves no trail when a walk that began after its first fence flushes after its trail delete", async function () {
+    this.timeout(60_000);
+    const tenant = "trail-purge-walk";
+    const websiteId = "trail-purge-walk-site";
+    await EnsureWebsite({
+      id: websiteId,
+      tenantId: tenant,
+      name: websiteId,
+      domain: "trail-purge-walk.example",
+    });
+    await insertRecentPageviews(tenant, websiteId, 9);
+    await backfill();
+    assert.equal(total(await trailSizes(tenant, websiteId)), 9);
+    const walk = pauseTheNextFlush(tenant);
+    /** @type {Promise<void> | undefined} */
+    let walking;
+    const deleting = mock.method(
+      GetModel(MarketingEventsModel, tenant),
+      "deleteByWebsite",
+      /**
+       * @this {InstanceType<typeof MarketingEventsModel>}
+       * @param {string} site
+       */
+      async function (site) {
+        walking = backfill();
+        await walk.reached;
+        return MarketingEventsModel.prototype.deleteByWebsite.call(this, site);
+      },
+    );
+    const cleaning = mock.method(
+      GetModel(FunnelTrailsModel, tenant),
+      "deleteByWebsite",
+      /**
+       * @this {InstanceType<typeof FunnelTrailsModel>}
+       * @param {string} site
+       */
+      async function (site) {
+        const deleted = await FunnelTrailsModel.prototype.deleteByWebsite.call(
+          this,
+          site,
+        );
+        walk.release();
+        await walking;
+        return deleted;
+      },
+    );
+    await purgeWebsiteCollectedData(tenant, websiteId);
+    for (const mocked of [walk.pausing, deleting, cleaning]) {
+      mocked.mock.restore();
+    }
+    assert.equal(await rawFunnelEventCount(tenant, websiteId), 0);
+    assert.deepEqual(await trailSizes(tenant, websiteId), {});
+    const results = await funnelResultsIn(
+      {
+        websiteId,
+        steps: [{ kind: "url", value: "/a" }],
+        conversionWindowMs: DAY,
+        experiment: null,
+      },
+      tenant,
+      { since: new Date(Date.now() - DAY), until: new Date() },
+    );
+    assert.equal(results.incomplete, false);
+    assert.equal(results.computation.events, 0);
+  });
+});
+
 describe("the backfill's reconcile walk", () => {
   useRealModels();
 
@@ -205,7 +298,8 @@ describe("a website created on this version", () => {
 describe("a tenant purge", () => {
   useRealModels();
 
-  test("leaves no trail and no backfill row", async () => {
+  test("leaves no trail and no backfill row", async function () {
+    this.timeout(60_000);
     const tenant = "trail-tenant";
     const site = await seedFixture(tenant, "trail-tenant-site", false);
     await backfill();
@@ -222,67 +316,6 @@ describe("a tenant purge", () => {
     );
   });
 });
-
-/**
- * @param {string} tenant
- * @param {string} websiteId
- */
-async function importStoppedOnSecondDay(tenant, websiteId) {
-  await EnsureWebsite({
-    id: websiteId,
-    tenantId: tenant,
-    name: websiteId,
-    domain: `${websiteId}.example`,
-  });
-  const firstDay = Math.floor((Date.now() - 5 * DAY) / DAY) * DAY;
-  const minute = (day, minutes) => firstDay + day * DAY + minutes * 60_000;
-  const page = (path, day, minutes) => ({
-    kind: "pageview",
-    at: minute(day, minutes),
-    url: `https://${websiteId}.example${path}`,
-  });
-  const batch = {
-    tenantId: tenant,
-    importId: "trail-history",
-    websiteId,
-    sessions: Array.from({ length: 8 }, (_, visitor) => ({
-      visitor: `v${visitor}`,
-      events: [0, 1, 2]
-        .flatMap((day) => [
-          page("/a", day, 600 + visitor),
-          page("/b", day, 601 + visitor),
-          page("/c", day, 602 + visitor),
-        ])
-        .concat(page("/a", 0, 1438), page("/b", 1, 1)),
-    })),
-  };
-  let stopped = false;
-  const stopping = mock.method(
-    GetModel(MarketingEventsModel, tenant),
-    "insertMany",
-    /**
-     * @this {InstanceType<typeof MarketingEventsModel>}
-     * @param {import("../dist/db").NewMarketingEvent[]} docs
-     */
-    async function (docs) {
-      const ids = await MarketingEventsModel.prototype.insertMany.call(
-        this,
-        docs,
-      );
-      if (
-        !stopped &&
-        docs.some((doc) => doc.timestamp.getTime() >= minute(1, 601))
-      ) {
-        stopped = true;
-        throw new Error("the import stopped");
-      }
-      return ids;
-    },
-  );
-  await assert.rejects(importAnalytics(batch), /the import stopped/);
-  stopping.mock.restore();
-  return { batch, since: new Date(firstDay) };
-}
 
 /**
  * @param {string} tenant
@@ -363,5 +396,113 @@ describe("an analytics import resumed after a stop", () => {
     assert.deepEqual(resumed, ["imported"]);
     await backfill();
     await assertTrailsHoldTheEvents(tenant, websiteId, since);
+  });
+
+  test("keeps a walk that began after its first fence from writing the discarded events back after the deletes", async function () {
+    this.timeout(60_000);
+    const tenant = "trail-import-walk";
+    const websiteId = "trail-import-walk-site";
+    const { batch, since } = await importStoppedOnSecondDay(tenant, websiteId);
+    await GetModel(FunnelTrailBackfillsModel, tenant).deleteByWebsite(
+      websiteId,
+    );
+    const walk = pauseTheNextFlush(tenant);
+    /** @type {Promise<void> | undefined} */
+    let walking;
+    const deleting = mock.method(
+      GetModel(MarketingEventsModel, tenant),
+      "deleteImportedOnDay",
+      /**
+       * @this {InstanceType<typeof MarketingEventsModel>}
+       * @param {string} site
+       * @param {string} importId
+       * @param {number} day
+       */
+      async function (site, importId, day) {
+        if (!walking) {
+          walking = backfill();
+          await walk.reached;
+        }
+        return MarketingEventsModel.prototype.deleteImportedOnDay.call(
+          this,
+          site,
+          importId,
+          day,
+        );
+      },
+    );
+    const cleaning = mock.method(
+      GetModel(MarketingSessionsModel, tenant),
+      "deleteMany",
+      /**
+       * @this {InstanceType<typeof MarketingSessionsModel>}
+       * @param {string[]} sessionIds
+       */
+      async function (sessionIds) {
+        const deleted = await MarketingSessionsModel.prototype.deleteMany.call(
+          this,
+          sessionIds,
+        );
+        walk.release();
+        await walking;
+        return deleted;
+      },
+    );
+    const resumed = await importAnalytics(batch);
+    for (const mocked of [walk.pausing, deleting, cleaning]) {
+      mocked.mock.restore();
+    }
+    assert.equal(resumed.status, "imported");
+    assert.ok(walking, "the discard deleted events");
+    await backfill();
+    await assertTrailsHoldTheEvents(tenant, websiteId, since);
+  });
+});
+
+describe("an analytics import whose discard fails mid-delete", () => {
+  useRealModels();
+
+  test("still takes a racing walk's entries for the deleted events back out", async function () {
+    this.timeout(60_000);
+    const tenant = "trail-import-delete-fails";
+    const websiteId = "trail-import-delete-fails-site";
+    const { batch } = await importStoppedOnSecondDay(tenant, websiteId);
+    await GetModel(FunnelTrailBackfillsModel, tenant).deleteByWebsite(
+      websiteId,
+    );
+    const walk = pauseTheNextFlush(tenant);
+    /** @type {Promise<void> | undefined} */
+    let walking;
+    const deleting = mock.method(
+      GetModel(MarketingEventsModel, tenant),
+      "deleteImportedOnDay",
+      /**
+       * @this {InstanceType<typeof MarketingEventsModel>}
+       * @param {string} site
+       * @param {string} importId
+       * @param {number} day
+       */
+      async function (site, importId, day) {
+        walking = backfill();
+        await walk.reached;
+        await MarketingEventsModel.prototype.deleteImportedOnDay.call(
+          this,
+          site,
+          importId,
+          day,
+        );
+        walk.release();
+        await walking;
+        throw new Error("the delete failed");
+      },
+    );
+    await assert.rejects(importAnalytics(batch), /the delete failed/);
+    for (const mocked of [walk.pausing, deleting]) {
+      mocked.mock.restore();
+    }
+    assert.equal(
+      total(await trailSizes(tenant, websiteId)),
+      await rawFunnelEventCount(tenant, websiteId),
+    );
   });
 });

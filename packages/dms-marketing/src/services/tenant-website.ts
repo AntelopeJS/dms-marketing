@@ -88,10 +88,12 @@ export async function purgeWebsiteCollectedData(
     const heatmaps = await resetHeatmap(tenantId, websiteId);
     return { ...heatmaps, sessions: 0, days: 0, imports: 0 };
   }
-  await GetModel(FunnelTrailBackfillsModel, tenantId).purged(websiteId);
+  const backfills = GetModel(FunnelTrailBackfillsModel, tenantId);
+  await backfills.purged(websiteId);
   const events = await GetModel(MarketingEventsModel, tenantId).deleteByWebsite(
     websiteId,
   );
+  await backfills.fence(websiteId);
   await GetModel(FunnelTrailsModel, tenantId).deleteByWebsite(websiteId);
   const sessions = await GetModel(
     MarketingSessionsModel,
