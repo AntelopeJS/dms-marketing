@@ -37,8 +37,8 @@ export type StoredTrailEvent =
  * was written, up to `MAX_TRAIL_EVENTS`. `firstAt` and `lastAt` bound the
  * timestamps of the events written to it, in epoch milliseconds, the dropped
  * ones included: each write widens them to the events it adds, a write that
- * takes events out recomputes them from the events left, and the retention
- * trim moves `firstAt` up to its cutoff.
+ * takes events out leaves them, and the retention trim moves `firstAt` up to
+ * its cutoff.
  */
 @RegisterTable(funnelTrailsTableName, TENANT_SCHEMA_NAME)
 export class FunnelTrail extends Table {

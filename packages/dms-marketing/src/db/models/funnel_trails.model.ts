@@ -238,7 +238,7 @@ export class FunnelTrailsModel extends BasicDataModel(
 
   /**
    * Takes events back out of their sessions' trails, by event id, and deletes
-   * the trails left empty: run before the events themselves are deleted, so
+   * the trails left empty that never dropped an event: run before the events themselves are deleted, so
    * a stop in between leaves the events to be found and forgotten again.
    */
   async forgetEvents(events: readonly TrailEventRef[]): Promise<void> {
@@ -253,27 +253,18 @@ export class FunnelTrailsModel extends BasicDataModel(
       const gone = ValueProxy.constant(ids);
       await this.table
         .get(sessionId)
-        .update((doc) => {
-          const kept = () =>
-            doc
-              .key("events")
-              .default([])
-              .filter((event) => gone.includes(event.key("i")).not());
-          return {
-            events: kept(),
-            firstAt: kept()
-              .map((event) => event.key("t"))
-              .min(),
-            lastAt: kept()
-              .map((event) => event.key("t"))
-              .max(),
-          };
-        })
+        .update((doc) => ({
+          events: doc
+            .key("events")
+            .default([])
+            .filter((event) => gone.includes(event.key("i")).not()),
+        }))
         .run();
     }
     await this.table
       .getAll([...bySession.keys()])
       .filter((doc) => doc.key("events").default([]).isempty())
+      .filter((doc) => doc.key("firstDroppedAt").default(null).eq(null))
       .delete()
       .run();
   }

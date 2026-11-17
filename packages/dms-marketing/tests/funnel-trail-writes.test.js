@@ -172,6 +172,27 @@ describe("a session's funnel trail at its cap", () => {
     assert.equal(labels(session.events).includes("/late"), false);
   });
 
+  test("still says it was cut once its kept events are taken back", async () => {
+    const kept = Array.from({ length: MAX_TRAIL_EVENTS }, (_, at) =>
+      pageview(at, "/b"),
+    );
+    await trails().record("forgotten-cut-site", "cut", [
+      ...kept,
+      pageview(MAX_TRAIL_EVENTS, "/b"),
+    ]);
+    await trails().forgetEvents(
+      kept.map((event) => ({ _id: event._id, sessionId: "cut" })),
+    );
+    assert.deepEqual(
+      (await read("forgotten-cut-site")).map((session) => [
+        session.sessionId,
+        session.events.length,
+        session.incomplete,
+      ]),
+      [["cut", 0, true]],
+    );
+  });
+
   test("of the largest entries fits one document past its cap", async function () {
     this.timeout(60_000);
     const path = "\u20ac".repeat(MAX_URL_LENGTH);
