@@ -3,7 +3,7 @@
 (* The rules TLC checks on ImportClaim, the model of the ImportAnalytics  *)
 (* claim and replay. Every configuration names its rules from here.      *)
 (***************************************************************************)
-EXTENDS ImportClaim
+EXTENDS ImportClaimReplay
 
 (* No call is running: every call is yet to start, has returned, or died. *)
 Quiet == \A c \in Calls : pc[c] \in {"idle", "end", "crashed"}
