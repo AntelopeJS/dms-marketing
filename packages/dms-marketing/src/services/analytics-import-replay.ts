@@ -230,14 +230,18 @@ async function discardUncommitted(
     );
     await sessions.restoreActivity(sessionId, kept);
   }
+  const backfills = GetModel(FunnelTrailBackfillsModel, website.tenantId);
+  const trails = GetModel(FunnelTrailsModel, website.tenantId);
   if (discarded.length > 0) {
-    await GetModel(FunnelTrailBackfillsModel, website.tenantId).fence(
-      website._id,
-    );
-    await GetModel(FunnelTrailsModel, website.tenantId).forgetEvents(discarded);
+    await backfills.fence(website._id);
+    await trails.forgetEvents(discarded);
   }
   for (const day of discardedDays) {
     await events.deleteImportedOnDay(website._id, importId, day);
+  }
+  if (discarded.length > 0) {
+    await backfills.fence(website._id);
+    await trails.forgetEvents(discarded);
   }
   await sessions.deleteMany(opened);
 }

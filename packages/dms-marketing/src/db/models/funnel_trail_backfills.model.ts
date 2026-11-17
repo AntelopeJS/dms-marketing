@@ -198,10 +198,12 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
 
   /**
    * Moves the website's generation, its coverage untouched, before events of
-   * the website are deleted: a walk on any instance that read them stops at
-   * its next flush, and takes back what a flush in flight wrote (see
-   * `services/funnels/trail-backfill`). A website with no row gets one,
-   * covering nothing, so a walk that begins meanwhile stops too.
+   * the website are deleted and again once they are: a walk on any instance
+   * that read them stops at its next flush, and takes back what a flush in
+   * flight wrote (see `services/funnels/trail-backfill`). The second move
+   * stops a walk that began after the first one and read the events before
+   * their delete. A website with no row gets one, covering nothing, so a
+   * walk that begins meanwhile stops too.
    */
   async fence(websiteId: string): Promise<void> {
     const move = () =>
