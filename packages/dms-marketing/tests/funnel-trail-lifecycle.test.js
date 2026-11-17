@@ -22,6 +22,8 @@ const { WINDOWS, at, seedFixture } = require("./helpers/funnel-fixture");
 const {
   assertSameAsReference,
   backfill,
+  importStoppedOnSecondDay,
+  pauseTheNextFlush,
   rawFunnelEventCount,
   total,
   trailSizes,
@@ -31,47 +33,6 @@ const { referenceFunnelResults } = require("./helpers/raw-funnel-reference");
 
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
-
-/**
- * Holds the next backfill flush of the tenant at its first generation
- * check, after its walk read the events: `reached` resolves there, and the
- * flush goes on once `release` is called.
- *
- * @param {string} tenant
- */
-function pauseTheNextFlush(tenant) {
-  /** @type {() => void} */
-  let arrive = () => {};
-  /** @type {() => void} */
-  let release = () => {};
-  const reached = new Promise((resolve) => {
-    arrive = () => resolve(undefined);
-  });
-  const released = new Promise((resolve) => {
-    release = () => resolve(undefined);
-  });
-  let paused = false;
-  const pausing = mock.method(
-    GetModel(FunnelTrailBackfillsModel, tenant),
-    "generationOf",
-    /**
-     * @this {InstanceType<typeof FunnelTrailBackfillsModel>}
-     * @param {string} websiteId
-     */
-    async function (websiteId) {
-      if (!paused) {
-        paused = true;
-        arrive();
-        await released;
-      }
-      return FunnelTrailBackfillsModel.prototype.generationOf.call(
-        this,
-        websiteId,
-      );
-    },
-  );
-  return { reached, release, pausing };
-}
 
 /**
  * @param {string} tenant
@@ -358,67 +319,6 @@ describe("a tenant purge", () => {
 /**
  * @param {string} tenant
  * @param {string} websiteId
- */
-async function importStoppedOnSecondDay(tenant, websiteId) {
-  await EnsureWebsite({
-    id: websiteId,
-    tenantId: tenant,
-    name: websiteId,
-    domain: `${websiteId}.example`,
-  });
-  const firstDay = Math.floor((Date.now() - 5 * DAY) / DAY) * DAY;
-  const minute = (day, minutes) => firstDay + day * DAY + minutes * 60_000;
-  const page = (path, day, minutes) => ({
-    kind: "pageview",
-    at: minute(day, minutes),
-    url: `https://${websiteId}.example${path}`,
-  });
-  const batch = {
-    tenantId: tenant,
-    importId: "trail-history",
-    websiteId,
-    sessions: Array.from({ length: 8 }, (_, visitor) => ({
-      visitor: `v${visitor}`,
-      events: [0, 1, 2]
-        .flatMap((day) => [
-          page("/a", day, 600 + visitor),
-          page("/b", day, 601 + visitor),
-          page("/c", day, 602 + visitor),
-        ])
-        .concat(page("/a", 0, 1438), page("/b", 1, 1)),
-    })),
-  };
-  let stopped = false;
-  const stopping = mock.method(
-    GetModel(MarketingEventsModel, tenant),
-    "insertMany",
-    /**
-     * @this {InstanceType<typeof MarketingEventsModel>}
-     * @param {import("../dist/db").NewMarketingEvent[]} docs
-     */
-    async function (docs) {
-      const ids = await MarketingEventsModel.prototype.insertMany.call(
-        this,
-        docs,
-      );
-      if (
-        !stopped &&
-        docs.some((doc) => doc.timestamp.getTime() >= minute(1, 601))
-      ) {
-        stopped = true;
-        throw new Error("the import stopped");
-      }
-      return ids;
-    },
-  );
-  await assert.rejects(importAnalytics(batch), /the import stopped/);
-  stopping.mock.restore();
-  return { batch, since: new Date(firstDay) };
-}
-
-/**
- * @param {string} tenant
- * @param {string} websiteId
  * @param {Date} since
  */
 async function assertTrailsHoldTheEvents(tenant, websiteId, since) {
@@ -555,5 +455,53 @@ describe("an analytics import resumed after a stop", () => {
     assert.ok(walking, "the discard deleted events");
     await backfill();
     await assertTrailsHoldTheEvents(tenant, websiteId, since);
+  });
+});
+
+describe("an analytics import whose discard fails mid-delete", () => {
+  useRealModels();
+
+  test("still takes a racing walk's entries for the deleted events back out", async function () {
+    this.timeout(60_000);
+    const tenant = "trail-import-delete-fails";
+    const websiteId = "trail-import-delete-fails-site";
+    const { batch } = await importStoppedOnSecondDay(tenant, websiteId);
+    await GetModel(FunnelTrailBackfillsModel, tenant).deleteByWebsite(
+      websiteId,
+    );
+    const walk = pauseTheNextFlush(tenant);
+    /** @type {Promise<void> | undefined} */
+    let walking;
+    const deleting = mock.method(
+      GetModel(MarketingEventsModel, tenant),
+      "deleteImportedOnDay",
+      /**
+       * @this {InstanceType<typeof MarketingEventsModel>}
+       * @param {string} site
+       * @param {string} importId
+       * @param {number} day
+       */
+      async function (site, importId, day) {
+        walking = backfill();
+        await walk.reached;
+        await MarketingEventsModel.prototype.deleteImportedOnDay.call(
+          this,
+          site,
+          importId,
+          day,
+        );
+        walk.release();
+        await walking;
+        throw new Error("the delete failed");
+      },
+    );
+    await assert.rejects(importAnalytics(batch), /the delete failed/);
+    for (const mocked of [walk.pausing, deleting]) {
+      mocked.mock.restore();
+    }
+    assert.equal(
+      total(await trailSizes(tenant, websiteId)),
+      await rawFunnelEventCount(tenant, websiteId),
+    );
   });
 });

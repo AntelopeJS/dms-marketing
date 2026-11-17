@@ -268,6 +268,36 @@ describe("a session's funnel trail at its cap", () => {
   });
 });
 
+describe("a session's funnel trail at its cap, on a tie", () => {
+  useRealModels();
+
+  test("keeps the first written among events sharing its last kept timestamp", async () => {
+    await trails().record(
+      "tie-cap-site",
+      "tie-capped",
+      Array.from({ length: MAX_TRAIL_EVENTS - 2 }, (_, index) =>
+        pageview(10 + index, "/feed"),
+      ),
+    );
+    const tie = 10 + MAX_TRAIL_EVENTS;
+    await trails().record("tie-cap-site", "tie-capped", [
+      pageview(tie, "/first"),
+      pageview(tie, "/second"),
+    ]);
+    await trails().record("tie-cap-site", "tie-capped", [
+      pageview(tie, "/third"),
+    ]);
+    let [session] = await read("tie-cap-site");
+    assert.deepEqual(labels(session.events.slice(-2)), ["/first", "/second"]);
+    await trails().record("tie-cap-site", "tie-capped", [
+      pageview(0, "/early"),
+    ]);
+    [session] = await read("tie-cap-site");
+    assert.equal(session.events.length, MAX_TRAIL_EVENTS);
+    assert.deepEqual(labels(session.events.slice(-1)), ["/first"]);
+  });
+});
+
 describe("a collect batch", () => {
   useRealModels();
   test("lands in its session's funnel trail", async () => {
