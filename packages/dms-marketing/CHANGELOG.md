@@ -1,6 +1,25 @@
 # Changelog
 
 
+## v0.10.2
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.10.1...v0.10.2)
+
+### 🔥 Performance
+
+- **funnels:** Read funnel results from per-session trails ([#181](https://github.com/AntelopeJS/dms-marketing/pull/181))
+
+### 🩹 Fixes
+
+- **deps:** Name the sibling interface with workspace:^ ([#177](https://github.com/AntelopeJS/dms-marketing/pull/177))
+- **funnels:** Count capped trails, fence purges again, model the trail writes ([#182](https://github.com/AntelopeJS/dms-marketing/pull/182))
+- **verify:** Map the funnel trail files and fix the incomplete TSDoc ([#183](https://github.com/AntelopeJS/dms-marketing/pull/183))
+- **docs:** List the packed interface range in the README compat table ([#178](https://github.com/AntelopeJS/dms-marketing/pull/178))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.10.1
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.10.0...v0.10.1)
