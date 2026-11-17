@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const { randomUUID } = require("node:crypto");
 const test = it;
 const { GetModel } = require("@antelopejs/interface-database-decorators");
 const { EnsureWebsite } = require("@antelopejs/interface-dms-marketing");
@@ -7,7 +8,8 @@ const {
   ingestPreparedBatch,
   prepareEvents,
 } = require("../dist/services/collect");
-const { MAX_TRAIL_EVENTS } = require("../dist/types/constants");
+const { funnelResultsIn } = require("../dist/services/funnels");
+const { MAX_TRAIL_EVENTS, MAX_URL_LENGTH } = require("../dist/types/constants");
 const { useRealModels } = require("./helpers/funnel-trail-checks");
 
 const TENANT = "funnel-trail-writes";
@@ -100,7 +102,7 @@ describe("a session's funnel trail", () => {
       "/pricing",
       "/b",
     ]);
-    assert.equal(session.overflowed, false);
+    assert.equal(session.incomplete, false);
   });
 
   test("keeps every batch of concurrent first writes", async () => {
@@ -115,24 +117,6 @@ describe("a session's funnel trail", () => {
       labels(session.events),
       batches.map((_, index) => `/page-${index}`),
     );
-  });
-
-  test("is cut at its cap, and says so", async () => {
-    const full = Array.from({ length: MAX_TRAIL_EVENTS }, (_, index) =>
-      pageview(index, "/feed"),
-    );
-    await trails().record("cap-site", "capped", full);
-    let [session] = await read("cap-site");
-    assert.equal(session.events.length, MAX_TRAIL_EVENTS);
-    assert.equal(session.overflowed, false);
-    await trails().record("cap-site", "capped", [
-      full[0],
-      pageview(MAX_TRAIL_EVENTS, "/late"),
-    ]);
-    [session] = await read("cap-site");
-    assert.equal(session.events.length, MAX_TRAIL_EVENTS);
-    assert.equal(session.overflowed, true);
-    assert.equal(labels(session.events).includes("/late"), false);
   });
 
   test("reads only the window, and exposures only when asked", async () => {
@@ -166,6 +150,100 @@ describe("a session's funnel trail", () => {
     });
     assert.deepEqual(labels(plain.events), ["/inside"]);
     assert.deepEqual(await read("window-site", { since: 0, until: T0 }), []);
+  });
+});
+
+describe("a session's funnel trail at its cap", () => {
+  useRealModels();
+  test("is cut at its cap, and says so", async () => {
+    const full = Array.from({ length: MAX_TRAIL_EVENTS }, (_, index) =>
+      pageview(index, "/feed"),
+    );
+    await trails().record("cap-site", "capped", full);
+    let [session] = await read("cap-site");
+    assert.equal(session.events.length, MAX_TRAIL_EVENTS);
+    assert.equal(session.incomplete, false);
+    await trails().record("cap-site", "capped", [
+      full[0],
+      pageview(MAX_TRAIL_EVENTS, "/late"),
+    ]);
+    [session] = await read("cap-site");
+    assert.equal(session.events.length, MAX_TRAIL_EVENTS);
+    assert.equal(session.incomplete, true);
+    assert.equal(labels(session.events).includes("/late"), false);
+  });
+
+  test("of the largest entries fits one document past its cap", async function () {
+    this.timeout(60_000);
+    const path = "\u20ac".repeat(MAX_URL_LENGTH);
+    const largest = Array.from({ length: MAX_TRAIL_EVENTS + 10 }, (_, at) => ({
+      _id: randomUUID(),
+      kind: "pageview",
+      timestamp: new Date(T0 + at),
+      url: path,
+    }));
+    await trails().record("largest-site", "inserted", largest);
+    await trails().record(
+      "largest-site",
+      "unioned",
+      largest.slice(0, MAX_TRAIL_EVENTS - 5),
+    );
+    await trails().record(
+      "largest-site",
+      "unioned",
+      largest.slice(MAX_TRAIL_EVENTS - 5),
+    );
+    assert.deepEqual(
+      (await read("largest-site")).map((session) => [
+        session.sessionId,
+        session.events.length,
+        session.incomplete,
+      ]),
+      [
+        ["inserted", MAX_TRAIL_EVENTS, true],
+        ["unioned", MAX_TRAIL_EVENTS, true],
+      ],
+    );
+  });
+
+  test("cut late leaves the windows that end before its first dropped event complete", async function () {
+    this.timeout(60_000);
+    await EnsureWebsite({
+      id: "late-cut-site",
+      tenantId: TENANT,
+      name: "late-cut-site",
+      domain: "late-cut.example",
+    });
+    const late = MAX_TRAIL_EVENTS + 1000;
+    await trails().record(
+      "late-cut-site",
+      "long",
+      Array.from({ length: MAX_TRAIL_EVENTS }, (_, at) => pageview(at, "/a")),
+    );
+    await trails().record("late-cut-site", "long", [
+      pageview(late, "/a"),
+      pageview(late + 1, "/a"),
+    ]);
+    const funnel = {
+      websiteId: "late-cut-site",
+      steps: [{ kind: "url", value: "/a" }],
+      conversionWindowMs: DAY,
+      experiment: null,
+    };
+    /**
+     * @param {number} since
+     * @param {number} until
+     */
+    const incomplete = async (since, until) =>
+      (
+        await funnelResultsIn(funnel, TENANT, {
+          since: new Date(T0 + since),
+          until: new Date(T0 + until),
+        })
+      ).incomplete;
+    assert.equal(await incomplete(0, late - 1), false);
+    assert.equal(await incomplete(0, late), true);
+    assert.equal(await incomplete(late, late + 1), true);
   });
 });
 

@@ -107,12 +107,27 @@ export const CAMPAIGN_KEY_SEPARATOR = "\u001f";
 export const TOP_MAPS_RETENTION_DAYS = DAYS_PER_YEAR + MAX_QUERY_PERIOD_DAYS;
 export const DEFAULT_PAGES_LIST_LIMIT = 100;
 export const MAX_PAGES_LIST_LIMIT = 200;
+/** MongoDB's limit on the size of one document. */
+const MAX_DOCUMENT_BYTES = 16 * 1024 * 1024;
 /**
- * Funnel events one session's trail keeps. At the largest entry (a path of
- * MAX_URL_LENGTH characters) a trail stays near 12 MiB, under MongoDB's
- * 16 MiB document limit.
+ * The BSON size of one entry of a funnel trail at its largest: a pageview
+ * whose path kept MAX_URL_LENGTH UTF-16 units of 3 UTF-8 bytes each, as a
+ * path that failed URL parsing can. The other 84 bytes are the entry's type
+ * and array index key (7), its length and end (5), `i` holding a 36-character
+ * event id (44), `t` (11), `k` (9), and `v`'s type, key, length and end (8).
+ * An exposure (`v` and `a` of MAX_EXPERIMENT_KEY_LENGTH units each, 476
+ * bytes) and a custom event (`v` of MAX_EVENT_NAME_LENGTH units, 234 bytes)
+ * are smaller.
  */
-export const MAX_TRAIL_EVENTS = 20_000;
+const MAX_TRAIL_ENTRY_BYTES = 84 + 3 * MAX_URL_LENGTH;
+/**
+ * Funnel events one session's trail keeps: largest entries fill half of
+ * MongoDB's document limit, and the other half is the margin for the rest of
+ * the row.
+ */
+export const MAX_TRAIL_EVENTS = Math.floor(
+  MAX_DOCUMENT_BYTES / 2 / MAX_TRAIL_ENTRY_BYTES,
+);
 export const HEATMAP_DIVISIONS_PER_AXIS = 50;
 /** Scroll depths arrive as integer percent (tracker PERCENT_SCALE). */
 export const SCROLL_DEPTH_SCALE = 100;

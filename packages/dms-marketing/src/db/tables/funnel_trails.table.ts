@@ -41,9 +41,10 @@ export type StoredTrailEvent =
  * funnel, an unsaved draft and the templates read it as they read the events.
  *
  * `_id` is the session id. `events` holds each event once, in the order it
- * was written. `firstAt` and `lastAt` bound the timestamps of its events, in
- * epoch milliseconds: each write widens them to the events it adds, and a
- * write that takes events out recomputes them from the events left.
+ * was written, up to `MAX_TRAIL_EVENTS`. `firstAt` and `lastAt` bound the
+ * timestamps of the events written to it, in epoch milliseconds, the dropped
+ * ones included: each write widens them to the events it adds, and a write
+ * that takes events out recomputes them from the events left.
  */
 @RegisterTable(funnelTrailsTableName, TENANT_SCHEMA_NAME)
 export class FunnelTrail extends Table {
@@ -63,7 +64,11 @@ export class FunnelTrail extends Table {
   @Field("any")
   declare events: StoredTrailEvent[];
 
-  /** A write was cut at `MAX_TRAIL_EVENTS`: some of the session is missing. */
-  @Field("boolean")
-  declare overflowed: boolean;
+  /**
+   * The oldest timestamp of an event dropped at `MAX_TRAIL_EVENTS`, epoch
+   * milliseconds; null while none was. A window ending before it holds every
+   * event of the session.
+   */
+  @Field("number")
+  declare firstDroppedAt: number | null;
 }

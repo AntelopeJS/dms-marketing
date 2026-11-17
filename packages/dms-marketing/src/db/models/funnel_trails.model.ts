@@ -36,8 +36,11 @@ export interface TrailSession {
    * which for one collect batch is the order of its events.
    */
   events: TrailEvent[];
-  /** The trail was cut at `MAX_TRAIL_EVENTS`: some of the session is missing. */
-  overflowed: boolean;
+  /**
+   * The trail dropped events past `MAX_TRAIL_EVENTS` at or before the
+   * window's end: some of the session inside the window may be missing.
+   */
+  incomplete: boolean;
 }
 
 export interface TrailWindowQuery {
@@ -131,15 +134,15 @@ function newTrail(
   sessionId: string,
   stored: readonly StoredTrailEvent[],
 ): FunnelTrail {
-  const events = stored.slice(0, MAX_TRAIL_EVENTS);
-  const [firstAt, lastAt] = spanOf(events);
+  const [firstAt, lastAt] = spanOf(stored);
+  const dropped = stored.slice(MAX_TRAIL_EVENTS);
   return {
     _id: sessionId,
     websiteId,
-    events,
+    events: stored.slice(0, MAX_TRAIL_EVENTS),
     firstAt,
     lastAt,
-    overflowed: stored.length > MAX_TRAIL_EVENTS,
+    firstDroppedAt: dropped.length > 0 ? spanOf(dropped)[0] : null,
   };
 }
 
@@ -319,51 +322,54 @@ export class FunnelTrailsModel extends BasicDataModel(
    * Unions `stored` into an existing row, cut at `MAX_TRAIL_EVENTS`; resolves
    * to 0 when no row exists or it already held every event.
    *
-   * `merged` builds a new expression on each call: the adapter decodes the
-   * fields of an update concurrently, and one list function decoded in two
-   * fields at once binds its variable under two names.
+   * The update has no variables, so it binds them through one-element lists:
+   * the ids the row holds, read once rather than once per incoming event;
+   * the events it misses, since the adapter repeats the operand of `add` in
+   * each of its type branches and would send `stored` three times; and the
+   * merged events, built once and read by both fields that need them.
    */
   private union(
     sessionId: string,
     stored: StoredTrailEvent[],
   ): Promise<number> {
-    const incoming = ValueProxy.constant(stored);
     const [first, last] = spanOf(stored);
     return this.table
       .get(sessionId)
       .update((doc) => {
         const held = doc.key("events").default([]);
-        const merged = () =>
-          held.add(
-            incoming.filter((event) =>
-              held
-                .map((entry) => entry.key("i"))
-                .includes(event.key("i"))
-                .not(),
+        return ValueProxy.constant([held.map((entry) => entry.key("i"))])
+          .cast<string[][]>()
+          .map((heldIds) =>
+            ValueProxy.constant(stored).filter((event) =>
+              heldIds.includes(event.key("i")).not(),
             ),
-          );
-        return {
-          events: merged().slice(0, MAX_TRAIL_EVENTS),
-          firstAt: ValueProxy.constant([doc.key("firstAt"), first])
-            .cast<number[]>()
-            .min(),
-          lastAt: ValueProxy.constant([doc.key("lastAt"), last])
-            .cast<number[]>()
-            .max(),
-          overflowed: doc
-            .key("overflowed")
-            .default(false)
-            .or(merged().count().gt(MAX_TRAIL_EVENTS)),
-        };
+          )
+          .map((missing) => held.add(missing))
+          .map((merged) => ({
+            events: merged.slice(0, MAX_TRAIL_EVENTS),
+            firstAt: ValueProxy.constant([doc.key("firstAt"), first])
+              .cast<number[]>()
+              .min(),
+            lastAt: ValueProxy.constant([doc.key("lastAt"), last])
+              .cast<number[]>()
+              .max(),
+            firstDroppedAt: ValueProxy.constant([doc.key("firstDroppedAt")])
+              .cast<number[]>()
+              .add(
+                merged.slice(MAX_TRAIL_EVENTS).map((event) => event.key("t")),
+              )
+              .min(),
+          }))
+          .index(0);
       })
       .run();
   }
 
   /**
-   * The sessions with at least one event inside the window, streamed through
-   * the table cursor: one row in memory at a time, whatever the window holds.
-   * The window and the kinds are filtered on the server, so only the events
-   * read come back.
+   * The sessions with at least one event inside the window, or that dropped
+   * events at or before its end, streamed through the table cursor: one row
+   * in memory at a time, whatever the window holds. The window and the kinds
+   * are filtered on the server, so only the events read come back.
    */
   async *sessionsIn(query: TrailWindowQuery): AsyncGenerator<TrailSession> {
     const kinds = ValueProxy.constant(
@@ -375,7 +381,7 @@ export class FunnelTrailsModel extends BasicDataModel(
       .filter((doc) => doc.key("firstAt").le(query.until))
       .map((doc) => ({
         sessionId: doc.key("_id"),
-        overflowed: doc.key("overflowed").default(false),
+        firstDroppedAt: doc.key("firstDroppedAt"),
         events: doc.key("events").filter((event) =>
           event
             .key("t")
@@ -385,10 +391,12 @@ export class FunnelTrailsModel extends BasicDataModel(
         ),
       }));
     for await (const row of rows.cursor()) {
-      if (row.events.length > 0) {
+      const incomplete =
+        row.firstDroppedAt !== null && row.firstDroppedAt <= query.until;
+      if (row.events.length > 0 || incomplete) {
         yield {
           sessionId: row.sessionId,
-          overflowed: row.overflowed,
+          incomplete,
           events: inTimeOrder(row.events),
         };
       }

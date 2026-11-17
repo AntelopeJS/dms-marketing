@@ -18,8 +18,8 @@ export interface FunnelResults {
   /**
    * Some events of the period are not in the numbers: the website's history
    * is still being indexed below the period's start, or a session longer than
-   * `MAX_TRAIL_EVENTS` was cut. Experiment verdicts are then withheld, and no
-   * step is called unseen.
+   * `MAX_TRAIL_EVENTS` dropped events at or before the period's end.
+   * Experiment verdicts are then withheld, and no step is called unseen.
    */
   incomplete: boolean;
   /** The window the numbers cover, epoch milliseconds: the requested period
@@ -149,7 +149,7 @@ export async function funnelResultsIn(
   const plain = new FunnelTally(funnel);
   const arms =
     runs && experiment ? new ExperimentTally(funnel, experiment) : null;
-  let overflowed = false;
+  let cut = false;
   for await (const session of GetModel(FunnelTrailsModel, tenantId).sessionsIn({
     websiteId: funnel.websiteId,
     since,
@@ -159,9 +159,9 @@ export async function funnelResultsIn(
     const usable = runs ? withinRuns(session.events, runs) : session.events;
     plain.add(usable);
     arms?.add(usable);
-    overflowed ||= session.overflowed;
+    cut ||= session.incomplete;
   }
-  const incomplete = overflowed || !indexed;
+  const incomplete = cut || !indexed;
   return {
     computation: plain.result(),
     experiment:
