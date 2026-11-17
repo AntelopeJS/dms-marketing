@@ -11,6 +11,10 @@ covers:
   - packages/dms-marketing/src/services/tenant-funnel.ts
   - packages/dms-marketing/src/db/models/funnels.model.ts
   - packages/dms-marketing/src/db/tables/funnels.table.ts
+  - packages/dms-marketing/src/db/models/funnel_trails.model.ts
+  - packages/dms-marketing/src/db/models/funnel_trail_backfills.model.ts
+  - packages/dms-marketing/src/db/tables/funnel_trails.table.ts
+  - packages/dms-marketing/src/db/tables/funnel_trail_backfills.table.ts
   - packages/dms-marketing/src/utils/funnel-steps-type.ts
   - packages/dms-marketing/frontend-vue/app/components/FunnelBuilder.vue
   - packages/dms-marketing/frontend-vue/app/components/FunnelFigure.vue

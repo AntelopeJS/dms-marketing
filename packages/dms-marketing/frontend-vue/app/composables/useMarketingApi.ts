@@ -396,8 +396,9 @@ export interface MarketingFunnelResults {
   /** Present when the funnel carries an experiment past draft. */
   experiment?: MarketingExperimentResults
   /** Some events of the period are not counted yet: the site's history is
-   * still being indexed, or a visit was too long to keep whole. Verdicts are
-   * withheld. */
+   * still being indexed below the period's start. Verdicts are withheld. A
+   * long visit does not set it: its earliest events count and the read stays
+   * complete. */
   incomplete: boolean
   /** Null on a funnel without a started experiment. */
   verdict?: MarketingExperimentVerdict | null
