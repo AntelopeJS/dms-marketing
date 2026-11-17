@@ -1,4 +1,5 @@
 export * from "./funnels.model";
+export * from "./funnel_trail_backfills.model";
 export * from "./funnel_trails.model";
 export * from "./marketing_events.model";
 export * from "./marketing_imports.model";

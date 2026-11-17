@@ -1,11 +1,9 @@
+import type { TrailEvent } from "@/db/models/funnel_trails.model";
 import type { FunnelExperiment } from "@/db/tables/funnels.table";
-import type { MarketingEvent } from "@/db/tables/marketing_events.table";
 import {
-  computeFunnelOverSessions,
   type FunnelComputation,
   type FunnelDefinition,
-  type FunnelEvent,
-  groupBySession,
+  FunnelTally,
 } from "@/services/funnels/compute";
 import {
   MIN_DECISION_CONVERSIONS,
@@ -20,7 +18,6 @@ import {
   sampleRatioCheck,
   twoProportionTest,
 } from "./stats";
-import { isString } from "@/utils/guards";
 
 interface VariationResult {
   key: string;
@@ -61,165 +58,164 @@ export interface ExperimentResults {
   decision: ExperimentDecision;
 }
 
-/** The funnel fields plus `data`, where an exposure carries its variation. */
-export type ResultEvent = FunnelEvent & Pick<MarketingEvent, "data">;
-
 /** Sentinel for sessions seen under two variations (salt rotation, edits):
  * excluded from every arm rather than counted twice. */
 const MIXED = null;
 
-function variationBySession(
-  events: ResultEvent[],
-  experiment: FunnelExperiment,
-): Map<string, string | null> {
-  const armKeys = new Set(experiment.variations.map((v) => v.key));
-  const assignments = new Map<string, string | null>();
-  for (const event of events) {
-    if (event.kind !== "exposure" || event.name !== experiment.key) {
-      continue;
-    }
-    const variation =
-      event.data && "variation" in event.data
-        ? event.data.variation
-        : undefined;
-    if (!isString(variation) || !armKeys.has(variation)) {
-      continue;
-    }
-    const existing = assignments.get(event.sessionId);
-    if (existing === undefined) {
-      assignments.set(event.sessionId, variation);
-    } else if (existing !== MIXED && existing !== variation) {
-      assignments.set(event.sessionId, MIXED);
-    }
-  }
-  return assignments;
+interface ArmTally {
+  key: string;
+  exposed: number;
+  funnel: FunnelTally;
+}
+
+interface ArmCount {
+  key: string;
+  exposed: number;
+  conversions: number;
+  computation: FunnelComputation;
 }
 
 /**
- * Variation breakdown of one event window: sessions mapped to arms by their
- * exposure events — the recorded exposure is the authority, never a
- * re-derived assignment — then the funnel counting core per arm. Verdicts
- * are withheld on a truncated window.
+ * The per-arm read of a split, as a fold over sessions: each session is
+ * mapped to an arm by its own exposure events (the recorded exposure is the
+ * authority, never a re-derived assignment), then counted in that arm's
+ * funnel. Holds a tally per arm, nothing per session.
  *
- * Every exposure handed in counts. Bounding them to the split's run is the
- * loader's job (services/funnels/results), which owns the dates and hands in
- * how long the split served (`servedMs`) for the decision rule.
+ * Every exposure handed in counts. Bounding them to the split's runs is the
+ * loader's job (services/funnels/results), which owns the dates.
  */
-export function computeExperimentResults(
-  events: ResultEvent[],
-  goal: FunnelDefinition,
-  experiment: FunnelExperiment,
-  truncated: boolean,
-  servedMs = 0,
-): ExperimentResults {
-  const assignments = variationBySession(events, experiment);
+export class ExperimentTally {
+  readonly #experiment: FunnelExperiment;
+  readonly #arms: Map<string, ArmTally>;
 
-  const funnelEventsByArm = new Map<string, ResultEvent[]>();
-  for (const event of events) {
-    if (event.kind === "exposure") {
-      continue;
-    }
-    const arm = assignments.get(event.sessionId);
-    if (arm === undefined || arm === MIXED) {
-      continue;
-    }
-    const bucket = funnelEventsByArm.get(arm);
-    if (bucket) {
-      bucket.push(event);
-    } else {
-      funnelEventsByArm.set(arm, [event]);
-    }
-  }
-
-  const exposedByArm = new Map<string, number>();
-  for (const arm of assignments.values()) {
-    if (arm !== MIXED) {
-      exposedByArm.set(arm, (exposedByArm.get(arm) ?? 0) + 1);
-    }
-  }
-
-  interface ArmCount {
-    key: string;
-    exposed: number;
-    conversions: number;
-    computation: FunnelComputation;
-  }
-
-  const counts: ArmCount[] = experiment.variations.map((variation) => {
-    const computation = computeFunnelOverSessions(
-      goal,
-      groupBySession(funnelEventsByArm.get(variation.key) ?? []).values(),
+  constructor(goal: FunnelDefinition, experiment: FunnelExperiment) {
+    this.#experiment = experiment;
+    this.#arms = new Map(
+      experiment.variations.map((variation) => [
+        variation.key,
+        { key: variation.key, exposed: 0, funnel: new FunnelTally(goal) },
+      ]),
     );
-    const lastStep = computation.steps[computation.steps.length - 1];
-    return {
-      key: variation.key,
-      exposed: exposedByArm.get(variation.key) ?? 0,
-      conversions: lastStep?.sessions ?? 0,
-      computation,
-    };
-  });
+  }
 
-  const control = counts[0];
+  /** Counts one session, its events in time order. */
+  add(events: readonly TrailEvent[]): void {
+    const arm = this.#armOf(events);
+    if (arm === undefined || arm === MIXED) {
+      return;
+    }
+    const tally = this.#arms.get(arm);
+    if (tally) {
+      tally.exposed++;
+      tally.funnel.add(events.filter((event) => event.kind !== "exposure"));
+    }
+  }
+
+  /** Undefined without an exposure to an arm of the split, MIXED with two. */
+  #armOf(events: readonly TrailEvent[]): string | typeof MIXED | undefined {
+    let arm: string | typeof MIXED | undefined;
+    for (const event of events) {
+      if (
+        event.kind !== "exposure" ||
+        event.experiment !== this.#experiment.key ||
+        event.variation === null ||
+        !this.#arms.has(event.variation)
+      ) {
+        continue;
+      }
+      if (arm === undefined) {
+        arm = event.variation;
+      } else if (arm !== MIXED && arm !== event.variation) {
+        arm = MIXED;
+      }
+    }
+    return arm;
+  }
+
+  /**
+   * Rates, uplifts and tests per arm, the sample ratio check and the
+   * decision rule. Tests are withheld on an `incomplete` read: a p-value on a
+   * sample missing part of its sessions is wrong, not approximate.
+   * `servedMs` is how long the split served traffic.
+   */
+  result(incomplete: boolean, servedMs: number): ExperimentResults {
+    const counts: ArmCount[] = [...this.#arms.values()].map((arm) => {
+      const computation = arm.funnel.result();
+      return {
+        key: arm.key,
+        exposed: arm.exposed,
+        conversions: computation.steps.at(-1)?.sessions ?? 0,
+        computation,
+      };
+    });
+    const control = counts[0];
+    const alpha = comparisonAlpha(counts.length);
+    const days = servedMs / MS_PER_DAY;
+    return {
+      control: control.key,
+      alpha,
+      variations: counts.map((arm, index) =>
+        variationResult(arm, control, index === 0 || incomplete, alpha),
+      ),
+      decision: {
+        days,
+        minDays: MIN_DECISION_DAYS,
+        minConversions: MIN_DECISION_CONVERSIONS,
+        ready:
+          days >= MIN_DECISION_DAYS &&
+          counts.every((arm) => arm.conversions >= MIN_DECISION_CONVERSIONS),
+      },
+      srm: sampleRatioCheck(
+        counts.map((arm) => arm.exposed),
+        normalizedWeights(this.#experiment.variations),
+      ),
+    };
+  }
+}
+
+/** One arm against the control; `untested` on the control itself. */
+function variationResult(
+  arm: ArmCount,
+  control: ArmCount,
+  untested: boolean,
+  alpha: number,
+): VariationResult {
   const controlRate =
     control.exposed > 0 ? control.conversions / control.exposed : 0;
-  const alpha = comparisonAlpha(counts.length);
-
-  const variations: VariationResult[] = counts.map((arm, index) => {
-    const rate = arm.exposed > 0 ? arm.conversions / arm.exposed : 0;
-    const isControl = index === 0;
-    const test =
-      isControl || truncated
-        ? { pValue: null, significant: null }
-        : twoProportionTest(
-            control.conversions,
-            control.exposed,
-            arm.conversions,
-            arm.exposed,
-            alpha,
-          );
-    const interval =
-      test.pValue === null || controlRate === 0
-        ? null
-        : liftInterval(
-            control.conversions,
-            control.exposed,
-            arm.conversions,
-            arm.exposed,
-            alpha,
-          );
-    return {
-      key: arm.key,
-      exposedSessions: arm.exposed,
-      computation: arm.computation,
-      conversionRate: rate,
-      conversions: arm.conversions,
-      uplift:
-        isControl || controlRate === 0
-          ? null
-          : (rate - controlRate) / controlRate,
-      upliftLow: interval?.low ?? null,
-      upliftHigh: interval?.high ?? null,
-      pValue: test.pValue,
-      significant: test.significant,
-    };
-  });
-
-  const days = servedMs / MS_PER_DAY;
+  const rate = arm.exposed > 0 ? arm.conversions / arm.exposed : 0;
+  const isControl = arm === control;
+  const test = untested
+    ? { pValue: null, significant: null }
+    : twoProportionTest(
+        control.conversions,
+        control.exposed,
+        arm.conversions,
+        arm.exposed,
+        alpha,
+      );
+  const interval =
+    test.pValue === null || controlRate === 0
+      ? null
+      : liftInterval(
+          control.conversions,
+          control.exposed,
+          arm.conversions,
+          arm.exposed,
+          alpha,
+        );
   return {
-    control: control.key,
-    alpha,
-    variations,
-    decision: {
-      days,
-      minDays: MIN_DECISION_DAYS,
-      minConversions: MIN_DECISION_CONVERSIONS,
-      ready:
-        days >= MIN_DECISION_DAYS &&
-        counts.every((arm) => arm.conversions >= MIN_DECISION_CONVERSIONS),
-    },
-    srm: sampleRatioCheck(
-      counts.map((arm) => arm.exposed),
-      normalizedWeights(experiment.variations),
-    ),
+    key: arm.key,
+    exposedSessions: arm.exposed,
+    computation: arm.computation,
+    conversionRate: rate,
+    conversions: arm.conversions,
+    uplift:
+      isControl || controlRate === 0
+        ? null
+        : (rate - controlRate) / controlRate,
+    upliftLow: interval?.low ?? null,
+    upliftHigh: interval?.high ?? null,
+    pValue: test.pValue,
+    significant: test.significant,
   };
 }

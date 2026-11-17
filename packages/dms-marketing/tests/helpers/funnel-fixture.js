@@ -405,16 +405,18 @@ async function insertHistory(website, session, shift) {
 
 /**
  * A website of `tenantId` holding every fixture session twice: once through
- * live ingestion, once as rows inserted straight into the events table.
+ * live ingestion, once as rows inserted straight into the events table. With
+ * `history` false, only the live copies.
  * @param {string} tenantId
  * @param {string} websiteId
+ * @param {boolean} [history]
  */
-async function seedFixture(tenantId, websiteId) {
+async function seedFixture(tenantId, websiteId, history = true) {
   await EnsureWebsite({
     id: websiteId,
     tenantId,
     name: websiteId,
-    domain: "trails.example",
+    domain: `${websiteId}.example`,
   });
   const website = await GetModel(WebsitesModel).get(websiteId);
   if (!website) {
@@ -422,9 +424,13 @@ async function seedFixture(tenantId, websiteId) {
   }
   for (const session of SESSIONS) {
     await ingestLive(website, session);
-    await insertHistory(website, session, HISTORY_SHIFT_MS);
+    if (history) {
+      await insertHistory(website, session, HISTORY_SHIFT_MS);
+    }
   }
-  await insertHistory(website, ODD_HISTORY, 0);
+  if (history) {
+    await insertHistory(website, ODD_HISTORY, 0);
+  }
   return { website, funnels: funnelsOf(websiteId) };
 }
 

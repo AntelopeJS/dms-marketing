@@ -10,11 +10,15 @@ import {
 import { MS_PER_DAY, TOP_MAPS_RETENTION_DAYS } from "@/types/constants";
 import { forgetCaptureTimes } from "./snapshots";
 
+/** The oldest instant the raw events' retention keeps, as of now. */
+export function rawEventsCutoff(): Date {
+  return new Date(Date.now() - getConfig().rawEventsRetention);
+}
+
 export async function pruneRawEvents(
   model: MarketingEventsModel,
 ): Promise<number> {
-  const cutoff = new Date(Date.now() - getConfig().rawEventsRetention);
-  return model.deleteOlderThan(cutoff);
+  return model.deleteOlderThan(rawEventsCutoff());
 }
 
 /**

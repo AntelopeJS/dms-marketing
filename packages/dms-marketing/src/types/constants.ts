@@ -107,7 +107,6 @@ export const CAMPAIGN_KEY_SEPARATOR = "\u001f";
 export const TOP_MAPS_RETENTION_DAYS = DAYS_PER_YEAR + MAX_QUERY_PERIOD_DAYS;
 export const DEFAULT_PAGES_LIST_LIMIT = 100;
 export const MAX_PAGES_LIST_LIMIT = 200;
-export const MAX_FUNNEL_EVENTS = 200_000;
 /**
  * Funnel events one session's trail keeps. At the largest entry (a path of
  * MAX_URL_LENGTH characters) a trail stays near 12 MiB, under MongoDB's

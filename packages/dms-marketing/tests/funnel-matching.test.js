@@ -4,13 +4,13 @@ const {
   normalizeStepPath,
   stepPathMatcher,
 } = require("../dist/services/funnels/step-path");
-const { computeFunnelOverSessions } = require("../dist/services/funnels");
+const { FunnelTally } = require("../dist/services/funnels");
 const {
   comparisonAlpha,
   liftInterval,
   twoProportionTest,
 } = require("../dist/services/experiments/stats");
-const { computeExperimentResults } = require("../dist/services/experiments");
+const { ExperimentTally } = require("../dist/services/experiments");
 const { funnelStepsSchema } = require("../dist/utils/funnel-steps-type");
 
 const DAY = 86_400_000;
@@ -44,19 +44,15 @@ test("saved page steps are stored as the path", () => {
 });
 
 /**
- * @param {string} sessionId
- * @param {string} kind
+ * @param {"pageview" | "custom"} kind
  * @param {string} value
  * @param {number} at
+ * @returns {import("../dist/db").TrailEvent}
  */
-function event(sessionId, kind, value, at) {
-  return {
-    sessionId,
-    kind,
-    url: kind === "pageview" ? value : "/",
-    name: kind === "custom" ? value : undefined,
-    timestamp: new Date(at),
-  };
+function event(kind, value, at) {
+  return kind === "pageview"
+    ? { kind, at, path: value }
+    : { kind, at, name: value };
 }
 
 test("each step counts the events it matches, so a step never sent shows", () => {
@@ -67,10 +63,10 @@ test("each step counts the events it matches, so a step never sent shows", () =>
     ],
     conversionWindowMs: DAY,
   };
-  const result = computeFunnelOverSessions(funnel, [
-    [event("a", "pageview", "/pricing/", 1), event("a", "custom", "other", 2)],
-    [event("b", "pageview", "/pricing", 1)],
-  ]);
+  const tally = new FunnelTally(funnel);
+  tally.add([event("pageview", "/pricing/", 1), event("custom", "other", 2)]);
+  tally.add([event("pageview", "/pricing", 1)]);
+  const result = tally.result();
   assert.equal(result.events, 3);
   assert.deepEqual(
     result.steps.map((step) => [step.sessions, step.matches]),
@@ -109,31 +105,21 @@ test("a verdict is ready only past a week and the conversions floor", () => {
     steps: [{ kind: "custom", value: "buy" }],
     conversionWindowMs: DAY,
   };
-  const events = [];
+  const tally = new ExperimentTally(goal, experiment);
   for (let i = 0; i < 400; i++) {
     const arm = i % 2 === 0 ? "control" : "bold";
-    const session = `s${i}`;
-    events.push({
-      sessionId: session,
-      kind: "exposure",
-      name: "hero",
-      url: "/",
-      data: { variation: arm },
-      timestamp: new Date(i),
-    });
+    /** @type {import("../dist/db").TrailEvent[]} */
+    const session = [
+      { kind: "exposure", at: i, experiment: "hero", variation: arm },
+    ];
     if (arm === "control" ? i % 8 === 0 : i % 4 === 1) {
-      events.push(event(session, "custom", "buy", i + 1));
+      session.push(event("custom", "buy", i + 1));
     }
+    tally.add(session);
   }
-  const early = computeExperimentResults(events, goal, experiment, false, DAY);
+  const early = tally.result(false, DAY);
   assert.equal(early.decision.ready, false);
-  const late = computeExperimentResults(
-    events,
-    goal,
-    experiment,
-    false,
-    8 * DAY,
-  );
+  const late = tally.result(false, 8 * DAY);
   assert.equal(late.decision.ready, true);
   assert.ok(late.variations[1].upliftLow > 0);
 });
