@@ -29,7 +29,8 @@ const {
 } = require("./helpers/funnel-trail-checks");
 const { referenceFunnelResults } = require("./helpers/raw-funnel-reference");
 
-const DAY = 86_400_000;
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
 
 describe("the raw events' retention", () => {
   useRealModels();
@@ -136,6 +137,46 @@ describe("a website purge", () => {
       undefined,
     );
     assert.deepEqual(await trailSizes(tenant, site.website._id), {});
+  });
+});
+
+describe("the backfill's reconcile walk", () => {
+  useRealModels();
+
+  test("reaches back before the start of the last one that completed", async () => {
+    const tenant = "trail-reconcile";
+    const websiteId = "trail-reconcile-site";
+    await EnsureWebsite({
+      id: websiteId,
+      tenantId: tenant,
+      name: websiteId,
+      domain: "trail-reconcile.example",
+    });
+    const backfills = GetModel(FunnelTrailBackfillsModel, tenant);
+    const lastStart = Date.now() - 5 * HOUR;
+    await backfills.table
+      .get(websiteId)
+      .update({ reconcileStartedAt: lastStart })
+      .run();
+    const timestamp = new Date(Date.now() - 3 * HOUR);
+    await GetModel(MarketingEventsModel, tenant).insertMany([
+      {
+        websiteId,
+        timestamp,
+        day: Math.floor(timestamp.getTime() / DAY) * DAY,
+        kind: "pageview",
+        sessionId: "lost-trail-write",
+        visitorId: "lost-trail-write-visitor",
+        url: "/a",
+      },
+    ]);
+    const passStart = Date.now();
+    await backfill();
+    assert.deepEqual(await trailSizes(tenant, websiteId), {
+      "lost-trail-write": 1,
+    });
+    const row = await backfills.get(websiteId);
+    assert.ok((row?.reconcileStartedAt ?? 0) >= passStart);
   });
 });
 

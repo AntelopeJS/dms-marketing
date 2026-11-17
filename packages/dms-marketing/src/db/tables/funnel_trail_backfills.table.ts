@@ -30,6 +30,14 @@ export class FunnelTrailBackfill extends Table {
   declare done: boolean;
 
   /**
+   * When the website's last complete walk down from its newest event
+   * started, epoch milliseconds: the trails hold every event inserted before
+   * then, as far down as the coverage reaches. Null before the first.
+   */
+  @Field("number")
+  declare reconcileStartedAt: number | null;
+
+  /**
    * Moved before events of the website are deleted (a purge, an import
    * discard): a walk that sees it move stops.
    */

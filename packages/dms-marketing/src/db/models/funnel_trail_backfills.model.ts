@@ -47,6 +47,8 @@ function coverageOf(row: FunnelTrailBackfill | undefined): TrailCoverage {
 export interface TrailWalkStart {
   coverage: TrailCoverage;
   generation: number;
+  /** See `FunnelTrailBackfill.reconcileStartedAt`. */
+  reconcileStartedAt: number | null;
 }
 
 export class FunnelTrailBackfillsModel extends BasicDataModel(
@@ -64,15 +66,28 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
   async begin(websiteId: string): Promise<TrailWalkStart> {
     const row = await this.get(websiteId);
     if (row?.version === TRAIL_BACKFILL_VERSION) {
-      return { coverage: coverageOf(row), generation: row.generation };
+      return {
+        coverage: coverageOf(row),
+        generation: row.generation,
+        reconcileStartedAt: row.reconcileStartedAt ?? null,
+      };
     }
     if (row) {
       await this.table
         .getAll([websiteId])
         .filter((doc) => doc.key("version").ne(TRAIL_BACKFILL_VERSION))
-        .update({ version: TRAIL_BACKFILL_VERSION, through: null, done: false })
+        .update({
+          version: TRAIL_BACKFILL_VERSION,
+          through: null,
+          done: false,
+          reconcileStartedAt: null,
+        })
         .run();
-      return { coverage: { kind: "none" }, generation: row.generation };
+      return {
+        coverage: { kind: "none" },
+        generation: row.generation,
+        reconcileStartedAt: null,
+      };
     }
     try {
       await this.table
@@ -82,6 +97,7 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
           through: null,
           done: false,
           generation: 0,
+          reconcileStartedAt: null,
         })
         .run();
     } catch (error) {
@@ -89,7 +105,11 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
         throw error;
       }
     }
-    return { coverage: { kind: "none" }, generation: 0 };
+    return {
+      coverage: { kind: "none" },
+      generation: 0,
+      reconcileStartedAt: null,
+    };
   }
 
   /**
@@ -105,6 +125,7 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
           through: null,
           done: true,
           generation: 0,
+          reconcileStartedAt: Date.now(),
         })
         .run();
     } catch (error) {
@@ -137,6 +158,21 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
       .run();
   }
 
+  /**
+   * A walk of `generation` that started at `startedAt` (epoch ms) went down
+   * from the newest event to its floor: the next reconcile walk reaches back
+   * to that start.
+   */
+  async reconciled(
+    websiteId: string,
+    generation: number,
+    startedAt: number,
+  ): Promise<void> {
+    await this.ofGeneration(websiteId, generation)
+      .update({ reconcileStartedAt: startedAt })
+      .run();
+  }
+
   /** Claims every event as in the trails: the walk ran out of events. */
   async complete(websiteId: string, generation: number): Promise<void> {
     await this.ofGeneration(websiteId, generation).update({ done: true }).run();
@@ -166,6 +202,7 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
           through: null,
           done: false,
           generation: 1,
+          reconcileStartedAt: null,
         })
         .run();
     } catch (error) {
@@ -178,13 +215,18 @@ export class FunnelTrailBackfillsModel extends BasicDataModel(
 
   /**
    * A purge is deleting every event of the website: its {@link fence}, then
-   * everything is covered, since the website is left no event.
+   * everything is covered as of now, since the website is left no event.
    */
   async purged(websiteId: string): Promise<void> {
     await this.fence(websiteId);
     await this.table
       .get(websiteId)
-      .update({ version: TRAIL_BACKFILL_VERSION, through: null, done: true })
+      .update({
+        version: TRAIL_BACKFILL_VERSION,
+        through: null,
+        done: true,
+        reconcileStartedAt: Date.now(),
+      })
       .run();
   }
 

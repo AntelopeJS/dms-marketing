@@ -17,10 +17,11 @@ import { MS_PER_HOUR } from "@/types/constants";
 const TRAIL_BACKFILL_FLUSH_EVENTS = 5000;
 
 /**
- * How far back each pass walks a website again: two prune periods. It heals
- * a live batch whose events were inserted but whose trail write failed, and
- * the events an instance still on the previous version inserted during a
- * rolling deploy. Events the trails already hold cost one read of their ids.
+ * How far before the start of the website's last complete walk each pass
+ * walks it again: two prune periods. It heals a live batch whose events were
+ * inserted but whose trail write failed, and the events an instance still on
+ * the previous version inserted during a rolling deploy. Events the trails
+ * already hold cost one read of their ids.
  */
 const TRAIL_RECONCILE_MS = 2 * MS_PER_HOUR;
 
@@ -48,7 +49,8 @@ let queued: Promise<void> | null = null;
  * Brings the funnel trails of every website of every tenant up to their raw
  * events, one website after the other: down from its coverage until the
  * oldest event, newest first, so the recent windows most reads ask for are
- * complete first, after a walk of the last TRAIL_RECONCILE_MS. Runs at
+ * complete first, after a reconcile walk down to TRAIL_RECONCILE_MS before
+ * the start of the last one that completed. Runs at
  * DATABASE_INITIALIZED and after each hourly prune; a walk stopped by an
  * error, a restart or the modules stopping resumes from its coverage on the
  * next pass. Failures are per website.
@@ -92,25 +94,38 @@ async function backfillPass(onError: (failure: Error) => void): Promise<void> {
   }
 }
 
+/**
+ * A website with no coverage is walked whole, from its newest event. A
+ * covered one is reconciled from its newest event down to TRAIL_RECONCILE_MS
+ * before the start of its last complete walk, or of this one when that is
+ * later, then walked on below its coverage. A complete walk from the newest
+ * event records its start for the next reconcile.
+ */
 async function backfillWebsite(
   tenantId: string,
   websiteId: string,
 ): Promise<void> {
-  const { coverage, generation } = await GetModel(
-    FunnelTrailBackfillsModel,
-    tenantId,
-  ).begin(websiteId);
+  const backfills = GetModel(FunnelTrailBackfillsModel, tenantId);
+  const { coverage, generation, reconcileStartedAt } =
+    await backfills.begin(websiteId);
   const walk: Walk = { tenantId, websiteId, generation };
-  if (coverage.kind === "none") {
-    await walkEvents(walk, { below: null, floor: null, widens: true });
+  const startedAt = Date.now();
+  const fromNewest =
+    coverage.kind === "none"
+      ? await walkEvents(walk, { below: null, floor: null, widens: true })
+      : await walkEvents(walk, {
+          below: null,
+          floor: new Date(
+            Math.min(reconcileStartedAt ?? startedAt, startedAt) -
+              TRAIL_RECONCILE_MS,
+          ),
+          widens: false,
+        });
+  if (!fromNewest) {
     return;
   }
-  const reconciled = await walkEvents(walk, {
-    below: null,
-    floor: new Date(Date.now() - TRAIL_RECONCILE_MS),
-    widens: false,
-  });
-  if (reconciled && coverage.kind === "above") {
+  await backfills.reconciled(websiteId, generation, startedAt);
+  if (coverage.kind === "above") {
     await walkEvents(walk, {
       below: new Date(coverage.through),
       floor: null,
