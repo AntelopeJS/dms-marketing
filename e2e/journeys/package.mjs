@@ -52,7 +52,7 @@ export const journeys = guarded([
   {
     id: "the-module-tarball-holds-what-its-manifest-names",
     title: "the module's tarball holds the build, the dashboard layer, the agent skill and every path its manifest points at, without build info",
-    entryPoint: "npm pack of packages/dms-marketing",
+    entryPoint: "pnpm pack of packages/dms-marketing",
     database: "shared",
     onboard: false,
     async run(/** @type {Ctx} */ ctx) {
@@ -72,7 +72,7 @@ export const journeys = guarded([
   {
     id: "the-interface-tarball-exports-the-contract",
     title: "the interface's tarball holds its build and its consumer reference, and its root export carries the heatmap read, the four content calls and their types",
-    entryPoint: "npm pack of packages/interface-dms-marketing",
+    entryPoint: "pnpm pack of packages/interface-dms-marketing",
     database: "shared",
     onboard: false,
     async run(/** @type {Ctx} */ ctx) {
@@ -88,7 +88,7 @@ export const journeys = guarded([
   },
   {
     id: "ranges-match-the-compatibility-table",
-    title: "the README compatibility table lists the interface ranges the module depends on, its interface-dms-marketing range accepts the interface in the tree, and the dashboard layer pins its renderer minor",
+    title: "the README compatibility table lists the interface ranges the module depends on as packed, its interface-dms-marketing range accepts the interface in the tree, and the dashboard layer pins its renderer minor",
     entryPoint: "packages/dms-marketing/README.md, package.json files",
     database: "shared",
     onboard: false,
@@ -103,8 +103,8 @@ export const journeys = guarded([
       const version = String(pick(iface, "version"));
       const { manifest: packedModule } = packed(ctx, "packages/dms-marketing");
       const packedRange = pick(pick(packedModule, "dependencies"), "@antelopejs/interface-dms-marketing");
-      await ctx.verify("the ranges", [
-        ...interfaces.map(([name, spec]) => check(`${name} is in the table with the same range`, table.get(name) === spec, [table.get(name), spec])),
+            await ctx.verify("the ranges", [
+        ...interfaces.map(([name, spec]) => check(`${name} is in the table with the same range`, table.get(name) === pick(pick(packedModule, "dependencies"), name), [table.get(name), pick(pick(packedModule, "dependencies"), name), spec])),
         check("the module names the interface as a workspace sibling", range === "workspace:^", range),
         check("the packed module depends on the caret of the interface in the tree", packedRange === `^${version}`, [packedRange, version]),
         check("the dashboard layer pins one renderer minor", /^>=\d+\.\d+\.\d+ <\d+\.\d+\.0$/.test(String(pick(frontend, "engines", "@antelopejs/dms-frontend"))), pick(frontend, "engines")),
