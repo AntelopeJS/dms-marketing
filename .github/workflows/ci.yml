@@ -47,6 +47,9 @@ jobs:
       os: ${{ steps.tier.outputs.os }}
       run: ${{ steps.tier.outputs.run }}
     steps:
+      - name: Pick the tier with the shared rule
+        id: pick
+        uses: AntelopeJS/.github/.github/actions/ci-tier@v2
       - name: Pick the tier from the event, the target branch and the draft flag
         id: tier
         env:
@@ -58,25 +61,9 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
           DRAFT: ${{ github.event.pull_request.draft }}
+          TIER: ${{ steps.pick.outputs.tier }}
         run: |
-          case "$EVENT" in
-            pull_request)
-              if [[ "$BASE_REF" == "$DEFAULT_BRANCH" && "$HEAD_REPOSITORY" == "$REPOSITORY" && "$HEAD_REF" =~ ^(next|develop)$ ]]; then
-                tier=none
-              elif [[ "$DRAFT" == true ]]; then
-                tier=draft
-              elif [[ "$BASE_REF" == "$DEFAULT_BRANCH" ]]; then
-                tier=full
-              else
-                tier=fast
-              fi
-              ;;
-            push)
-              if [[ "$REF_NAME" == "$DEFAULT_BRANCH" ]]; then tier=none; else tier=full; fi
-              ;;
-            schedule) tier=nightly ;;
-            *) tier=full ;;
-          esac
+          tier="$TIER"
 
           run=true
           if [[ "$tier" == none || "$tier" == draft ]]; then
