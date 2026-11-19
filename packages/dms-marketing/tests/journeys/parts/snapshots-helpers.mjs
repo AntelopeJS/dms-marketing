@@ -1,8 +1,8 @@
-import { BROWSER_UA, check, isRow, mkt, parseJson, raw, same, text } from "../../marketing.mjs";
-import { collect, createSite, pageview } from "../../site.mjs";
+import { BROWSER_UA, check, isRow, mkt, parseJson, raw, same, text } from "../marketing.mjs";
+import { collect, createSite, pageview } from "../site.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
-/** @typedef {import("../../site.mjs").Site} Site */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../site.mjs").Site} Site */
 
 /**
  * A website with snapshots on.

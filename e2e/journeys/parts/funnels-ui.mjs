@@ -1,8 +1,8 @@
-import { list, mkt, reads, same } from "../../marketing.mjs";
-import { eventually } from "../../site.mjs";
-import { session, shop } from "./funnels-helpers.mjs";
+import { list, mkt, reads, same } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
+import { eventually } from "../../../packages/dms-marketing/tests/journeys/site.mjs";
+import { session, shop } from "../../../packages/dms-marketing/tests/journeys/parts/funnels-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
 /** The funnel builder and the Funnels list in the browser (4.usage/5.funnels.md). */
 export const journeys = [

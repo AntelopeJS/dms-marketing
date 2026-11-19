@@ -1,9 +1,9 @@
-import { BROWSER_UA, check, same } from "../../marketing.mjs";
-import { createSite } from "../../site.mjs";
-import { rows } from "../../store.mjs";
+import { BROWSER_UA, check, same } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
+import { createSite } from "../../../packages/dms-marketing/tests/journeys/site.mjs";
+import { rows } from "../../../packages/dms-marketing/tests/journeys/store.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
-/** @typedef {import("../../site.mjs").Site} Site */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/site.mjs").Site} Site */
 
 /**
  * A website whose domain is the API's host, so a page served by the playground's visitor site is a tracked site.

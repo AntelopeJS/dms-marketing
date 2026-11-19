@@ -1,8 +1,8 @@
-import { reads } from "../../marketing.mjs";
-import { collected, pageview } from "../../site.mjs";
-import { shop } from "./overview-helpers.mjs";
+import { reads } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
+import { collected, pageview } from "../../../packages/dms-marketing/tests/journeys/site.mjs";
+import { shop } from "../../../packages/dms-marketing/tests/journeys/parts/overview-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
 /** The Overview page in the browser (4.usage/1.overview.md). */
 export const journeys = [

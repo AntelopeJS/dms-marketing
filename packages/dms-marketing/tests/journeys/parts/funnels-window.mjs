@@ -1,7 +1,7 @@
-import { fixture, pick, same } from "../../marketing.mjs";
+import { fixture, pick, same } from "../marketing.mjs";
 import { declare, results, shop } from "./funnels-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
 const MINUTE = 60_000;
 const STEPS = [{ kind: "url", value: "/pricing" }, { kind: "url", value: "/plans" }, { kind: "url", value: "/checkout" }];

@@ -1,9 +1,9 @@
-import { fixture, mkt, pick, same, text } from "../../marketing.mjs";
-import { collected, createSite, pageview } from "../../site.mjs";
-import { DAY_MS, drop, edit, rows } from "../../store.mjs";
+import { fixture, mkt, pick, same, text } from "../marketing.mjs";
+import { collected, createSite, pageview } from "../site.mjs";
+import { DAY_MS, drop, edit, rows } from "../store.mjs";
 import { history, shop } from "./overview-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
 const MINUTE_MS = 60_000;
 

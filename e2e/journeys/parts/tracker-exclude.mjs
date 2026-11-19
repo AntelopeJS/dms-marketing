@@ -1,7 +1,7 @@
-import { same } from "../../marketing.mjs";
+import { same } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
 import { local, open, settled, waitFor } from "./tracker-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
 const BASE = "/verify-marketing/site";
 

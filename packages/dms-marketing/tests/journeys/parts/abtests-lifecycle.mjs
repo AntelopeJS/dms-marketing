@@ -1,7 +1,7 @@
-import { list, mkt, num, pick, same } from "../../marketing.mjs";
+import { list, mkt, num, pick, same } from "../marketing.mjs";
 import { results, shop } from "./funnels-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
 const STEPS = [{ kind: "url", value: "/pricing" }];
 const ARMS = [{ key: "a", weight: 1 }, { key: "b", weight: 1 }];

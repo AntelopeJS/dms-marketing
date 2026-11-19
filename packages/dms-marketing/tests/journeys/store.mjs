@@ -1,40 +1,14 @@
-import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { MongoClient } from "mongodb";
 
 /**
  * @typedef {import("./marketing.mjs").Ctx} Ctx
  * @typedef {Record<string, unknown>} Doc
  * @typedef {{ find: (filter: Doc) => { toArray: () => Promise<Doc[]> }, updateMany: (filter: Doc, update: Doc) => Promise<{ matchedCount: number }>, deleteMany: (filter: Doc) => Promise<{ deletedCount: number }>, insertOne: (doc: Doc) => Promise<unknown>, countDocuments: (filter: Doc) => Promise<number> }} Collection
  * @typedef {{ collection: (name: string) => Collection, listCollections: () => { toArray: () => Promise<{ name: string }[]> } }} Database
- * @typedef {{ connect: () => Promise<unknown>, db: (name: string) => Database, close: () => Promise<void> }} Client
- * @typedef {{ MongoClient: new (url: string, options?: Record<string, unknown>) => Client }} Driver
  */
-
-const DMS_PACKAGE = createRequire(import.meta.url).resolve("@antelopejs/dms/package.json");
 
 /** Milliseconds in a day. */
 export const DAY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * @param {unknown} value A module namespace
- * @returns {value is Driver} Whether it is the MongoDB driver
- */
-function isDriver(value) {
-  return typeof value === "object" && value !== null && "MongoClient" in value && typeof value.MongoClient === "function";
-}
-
-/**
- * The MongoDB driver dms-control itself uses to drop a journey's database.
- *
- * @returns {Promise<Driver>} The driver
- */
-async function driver() {
-  const resolved = createRequire(DMS_PACKAGE).resolve("mongodb");
-  /** @type {unknown} */
-  const loaded = await import(pathToFileURL(resolved).href);
-  if (isDriver(loaded)) return loaded;
-  throw new Error("the MongoDB driver dms-control resolves has no MongoClient");
-}
 
 /**
  * Runs `body` with the collections of one module table in the run's database (a table can live in one collection
@@ -47,7 +21,6 @@ async function driver() {
  * @returns {Promise<T>} Its result
  */
 export async function withTable(ctx, table, body) {
-  const { MongoClient } = await driver();
   const client = new MongoClient(ctx.state.mongoUrl, { serverSelectionTimeoutMS: 5000 });
   await client.connect();
   try {

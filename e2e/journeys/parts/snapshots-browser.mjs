@@ -1,8 +1,8 @@
-import { check, pick, same } from "../../marketing.mjs";
+import { check, pick, same } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
 import { open, stored as storedEvents, waitFor } from "./tracker-helpers.mjs";
-import { stored } from "./snapshots-helpers.mjs";
+import { stored } from "../../../packages/dms-marketing/tests/journeys/parts/snapshots-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
 const PAGE_SCRIPT = `
 const input = document.createElement("input");
@@ -23,7 +23,7 @@ export const journeys = [
     title: "on a sampled visit a real click is stored with its element anchor, a scripted click is not, the depth is sent on leaving, and the capture masks form values, marked text and blocked elements and keeps link targets without query",
     entryPoint: "tracker.js, snapshot.js, POST /api/marketing/snapshot",
     async run(/** @type {Ctx} */ ctx) {
-      const { createSite } = await import("../../site.mjs");
+      const { createSite } = await import("../../../packages/dms-marketing/tests/journeys/site.mjs");
       const site = await createSite(ctx, { name: "Visitor site", domain: new URL(ctx.state.apiUrl).hostname, snapshotsEnabled: true });
       await ctx.verify("the website is the API's host", [check("created", site.id !== "", site.answer.body)], { critical: true });
       const tab = await open(ctx, site, "capture", { attrs: { "data-heatmap-sample": "1" }, js: PAGE_SCRIPT });

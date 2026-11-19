@@ -1,8 +1,8 @@
-import { check, fixture, list, mkt, num, same } from "../../marketing.mjs";
-import { collect, createSite } from "../../site.mjs";
+import { check, fixture, list, mkt, num, same } from "../marketing.mjs";
+import { collect, createSite } from "../site.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
-/** @typedef {import("../../site.mjs").Site} Site */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../site.mjs").Site} Site */
 /** @typedef {{ kind: "url" | "custom", value: string }} Step */
 
 /**

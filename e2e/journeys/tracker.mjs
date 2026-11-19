@@ -1,9 +1,9 @@
 import { guarded } from "../guard.mjs";
-import { check, mkt, pick, raw, same } from "../marketing.mjs";
+import { check, mkt, pick, raw, same } from "../../packages/dms-marketing/tests/journeys/marketing.mjs";
 import { local, open, settled, stored, waitFor } from "./parts/tracker-helpers.mjs";
 import { journeys as exclusion } from "./parts/tracker-exclude.mjs";
 
-/** @typedef {import("../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
 /** The tracker script and its page API (4.usage/9.tracking.md, 2.installation.md). */
 export const journeys = guarded([
@@ -34,6 +34,7 @@ export const journeys = guarded([
 
   {
     id: "a-page-load-sends-a-pageview-with-its-context",
+    tag: "@smoke",
     title: "the tracker counts a page load and sends the path, the title, the screen, the language and the referrer; it sets no cookie and uses no storage",
     entryPoint: "GET /api/marketing/tracker.js, POST /api/marketing/collect",
     async run(/** @type {Ctx} */ ctx) {
@@ -57,7 +58,7 @@ export const journeys = guarded([
           return callable(api?.track) && callable(api?.variation) && callable(api?.exposure);
         }), "dmsMarketing"),
       ]);
-      const sessions = await (await import("../store.mjs")).rows(ctx, "marketing_sessions", { websiteId: site.id });
+      const sessions = await (await import("../../packages/dms-marketing/tests/journeys/store.mjs")).rows(ctx, "marketing_sessions", { websiteId: site.id });
       await ctx.verify("the session context", [same("language", sessions[0]?.language, "en-US"), check("screen is width x height", /^\d+x\d+$/.test(String(sessions[0]?.screen)), sessions[0]?.screen)]);
       await settled(ctx, site, "pageview", 1);
     },
@@ -173,6 +174,7 @@ export const journeys = guarded([
   },
   {
     id: "the-served-script-carries-the-settings-and-a-stub-when-paused",
+    tag: "@smoke",
     title: "tracker.js is public, cached for an hour, carries the sampling rate; paused it is a no-op cached for a minute; a module script has no API",
     entryPoint: "GET /api/marketing/tracker.js",
     async run(/** @type {Ctx} */ ctx) {

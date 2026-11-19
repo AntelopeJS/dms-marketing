@@ -1,8 +1,8 @@
-import { fixture, pick, same } from "../../marketing.mjs";
+import { fixture, pick, same } from "../marketing.mjs";
 import { declare } from "./funnels-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
-/** @typedef {import("../../site.mjs").Site} Site */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../site.mjs").Site} Site */
 /** @typedef {Record<string, { n: number, conv: number }>} Arms */
 
 const DAY_MS = 24 * 60 * 60 * 1000;

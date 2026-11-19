@@ -1,8 +1,8 @@
-import { check, counts, list, mkt, num, same } from "../../marketing.mjs";
-import { collect, createSite, eventually, overview } from "../../site.mjs";
+import { check, counts, list, mkt, num, same } from "../marketing.mjs";
+import { collect, createSite, eventually, overview } from "../site.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
-/** @typedef {import("../../site.mjs").Site} Site */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../site.mjs").Site} Site */
 /** @typedef {{ query?: string, referrer?: string }} Visit */
 
 /**

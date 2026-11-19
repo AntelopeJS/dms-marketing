@@ -1,11 +1,12 @@
-import { check, clickUntil, list, mkt, same } from "../../marketing.mjs";
+import { check, clickUntil, list, mkt, same } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
 /** The Websites page in the browser (4.usage/7.websites.md). */
 export const journeys = [
   {
     id: "the-websites-page-adds-lists-pauses-and-resumes-a-site",
+    tag: "@smoke",
     title: "Add a website creates the site and opens its install guide; the card shows its state; the settings modal pauses and Resume tracking resumes it",
     entryPoint: "/modules/marketing/websites, /modules/marketing/install",
     async run(/** @type {Ctx} */ ctx) {
