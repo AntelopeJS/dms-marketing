@@ -417,9 +417,10 @@ async function fixture(method, path, body) {
  * host or capture time left over.
  *
  * @param {Record<string, string>} extraEnv The variables a journey set (`VERIFY_MKT_CONFIG`, `VERIFY_MKT_TRUSTED_PROXIES`, `VERIFY_MKT_CLIENT_IP_HEADER`)
+ * @param {string[]} [websites] The websites whose memory goes, the stored ones when absent
  * @returns {Promise<void>}
  */
-async function restartMarketing(extraEnv) {
+async function restartMarketing(extraEnv, websites) {
   setConfig(
     z.record(z.unknown()).parse(parseBody(extraEnv.VERIFY_MKT_CONFIG ?? "{}")),
   );
@@ -428,7 +429,7 @@ async function restartMarketing(extraEnv) {
   auth.trustedProxies = proxies === undefined ? undefined : Number(proxies);
   auth.clientIpHeader = extraEnv.VERIFY_MKT_CLIENT_IP_HEADER || undefined;
   await loadSettings(GetModel(MarketingSettingsModel));
-  for (const id of await websiteIds()) {
+  for (const id of websites ?? (await websiteIds())) {
     forgetWebsiteSessions(id);
     forgetRejectedSources(id);
   }
@@ -542,7 +543,7 @@ class JourneyContext {
             await fixture(
               request.method,
               request.path.slice(FIXTURE.length),
-              request.body,
+              parseBody(JSON.stringify(request.body) ?? "null"),
             ),
           ) ?? "null",
         );
@@ -644,8 +645,9 @@ function describeJourneys(feature, journeys) {
       this.timeout(HOOK_TIMEOUT_MS);
       Date.now = realNow;
       await expireWarnedCuts();
+      const websites = await websiteIds();
       await emptyMarketingTables();
-      await restartMarketing({});
+      await restartMarketing({}, websites);
     });
     after(async function () {
       this.timeout(HOOK_TIMEOUT_MS);

@@ -1,6 +1,6 @@
 # Feature map
 
-One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, and `e2e/journeys/<feature>.mjs` its journeys.
+One file per feature. `covers:` lists the source globs it owns, `docs:` the pages a verdict judges, and `e2e/journeys/<feature>.mjs` (journeys that open a tab) or `packages/dms-marketing/tests/journeys/<feature>.mjs` (the others) its journeys.
 
 | Feature | What the user does | Journeys |
 |---|---|---|
