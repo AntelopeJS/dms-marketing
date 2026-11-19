@@ -1,3 +1,4 @@
+import { chromium } from "playwright-core";
 import { BROWSER_UA, check, same } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
 import { createSite } from "../../../packages/dms-marketing/tests/journeys/site.mjs";
 import { rows } from "../../../packages/dms-marketing/tests/journeys/store.mjs";
@@ -36,8 +37,7 @@ function closeVisitor(done) {
 /**
  * A visitor's browser context, one per account, in a browser of the journey's own that sends a desktop Chrome `User-Agent` on every request.
  * A context's user agent or extra headers reach only the requests of a live page: the beacon a page sends as it unloads leaves with
- * `HeadlessChrome`, which the collector drops. The browser closes with the journey's, or when the next journey opens its own: under
- * Playwright Test the journey's browser is the worker's and outlives the journey.
+ * `HeadlessChrome`, which the collector drops. The browser closes when the next journey opens its own, or when the worker exits.
  *
  * @param {Ctx} ctx The journey
  * @param {string} account The visitor's name
@@ -45,15 +45,8 @@ function closeVisitor(done) {
  */
 function visitorContext(ctx, account) {
   if (visitor?.ctx !== ctx) {
-    const previous = visitor;
-    if (previous) closeVisitor(previous);
-    const opened = { ctx, browser: ctx.browser.browserType().launch({ headless: true, args: [`--user-agent=${BROWSER_UA}`] }), contexts: new Map() };
-    if (previous?.ctx.browser !== ctx.browser) {
-      ctx.browser.on("disconnected", () => {
-        if (visitor) closeVisitor(visitor);
-      });
-    }
-    visitor = opened;
+    if (visitor) closeVisitor(visitor);
+    visitor = { ctx, browser: chromium.launch({ headless: true, args: [`--user-agent=${BROWSER_UA}`] }), contexts: new Map() };
   }
   let context = visitor.contexts.get(account);
   if (!context) {

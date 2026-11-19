@@ -40,8 +40,6 @@
     "**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "playground/node_modules",
-    "playground/dist"
+    "node_modules"
   ]
 }

@@ -25,7 +25,7 @@ function numberOrUndefined(text: string | undefined): number | undefined {
 
 /**
  * The repository's playground with the ports, origins, secrets and mail
- * `dms-control` sets for a run, a fixture module (`app`) and the module under
+ * the e2e kit sets for a run, a fixture module (`app`) and the module under
  * verification built from the checkout.
  */
 export default defineConfig({
@@ -35,7 +35,7 @@ export default defineConfig({
       source: { type: "local", path: "." },
     },
     "dms-marketing": {
-      source: { type: "local", path: "../../../../packages/dms-marketing" },
+      source: { type: "local", path: "../../packages/dms-marketing" },
       config: marketingConfig(),
     },
     dms: {
