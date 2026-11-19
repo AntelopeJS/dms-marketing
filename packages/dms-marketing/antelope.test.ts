@@ -1,8 +1,11 @@
+import { randomBytes } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { defineConfig } from "@antelopejs/interface-core/config";
 import { MongoMemoryReplSet } from "mongodb-memory-server-core";
+import { z } from "zod";
 
 const DATABASE = "marketing_retention";
 const MONGO_VERSION = "8.0.8";
@@ -10,6 +13,23 @@ const JWT_SECRET = "marketing-test-secret";
 const HTML_RENDER_SECRET = "test-html-render-secret";
 let mongo: MongoMemoryReplSet;
 let storagePath: string;
+
+/** A port no process listens on, for the API the journey tests call. */
+function freePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createServer();
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => {
+      const address = z
+        .object({ port: z.number() })
+        .safeParse(server.address());
+      server.close(() => {
+        if (address.success) resolve(address.data.port);
+        else reject(new Error("the probe server has no port"));
+      });
+    });
+  });
+}
 
 /**
  * The backend suite's project: this module from its own build, a published DMS,
@@ -40,7 +60,7 @@ export default defineConfig({
   cacheFolder: ".antelope/cache",
   logging: { channelFilter: { "*": "warn" } },
   modules: {
-    local: {
+    "dms-marketing": {
       source: {
         type: "local",
         path: ".",
@@ -102,9 +122,18 @@ export default defineConfig({
         binary: { version: MONGO_VERSION },
       });
       storagePath = await mkdtemp(join(tmpdir(), "marketing-retention-"));
+      const port = await freePort();
       process.env.TEST_MONGO_URL = mongo.getUri();
+      process.env.TEST_API_URL = `http://127.0.0.1:${port}`;
+      process.env.DMS_SETUP_TOKEN = randomBytes(24).toString("base64url");
       return {
         modules: {
+          api: {
+            config: {
+              servers: [{ protocol: "http", host: "127.0.0.1", port }],
+              publicBaseUrl: "http://127.0.0.1",
+            },
+          },
           mongodb: {
             config: {
               url: mongo.getUri(),
@@ -128,6 +157,8 @@ export default defineConfig({
         await rm(storagePath, { recursive: true, force: true });
       }
       delete process.env.TEST_MONGO_URL;
+      delete process.env.TEST_API_URL;
+      delete process.env.DMS_SETUP_TOKEN;
     },
   },
 });

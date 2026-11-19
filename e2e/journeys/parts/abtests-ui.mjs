@@ -1,8 +1,8 @@
-import { check, parseJson, pick, raw, reads, same } from "../../marketing.mjs";
-import { split } from "./abtests-helpers.mjs";
-import { shop } from "./funnels-helpers.mjs";
+import { check, parseJson, pick, raw, reads, same } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
+import { split } from "../../../packages/dms-marketing/tests/journeys/parts/abtests-helpers.mjs";
+import { shop } from "../../../packages/dms-marketing/tests/journeys/parts/funnels-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
 /** The A/B report in the browser (4.usage/6.ab-tests.md). */
 export const journeys = [

@@ -1,9 +1,9 @@
-import { collect, createSite, pageview } from "../../site.mjs";
-import { check, same } from "../../marketing.mjs";
-import { edit } from "../../store.mjs";
+import { collect, createSite, pageview } from "../site.mjs";
+import { check, same } from "../marketing.mjs";
+import { edit } from "../store.mjs";
 import { storedSessions } from "./collect-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
 const MINUTE_MS = 60_000;
 

@@ -1,11 +1,11 @@
-import { check, fixture, isRow, list, mkt, pick, same, text } from "../../marketing.mjs";
-import { count } from "../../store.mjs";
-import { createSite } from "../../site.mjs";
+import { check, fixture, isRow, list, mkt, pick, same, text } from "../marketing.mjs";
+import { count } from "../store.mjs";
+import { createSite } from "../site.mjs";
 import { declare } from "./funnels-helpers.mjs";
 import { history } from "./overview-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
-/** @typedef {import("../../site.mjs").Site} Site */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../site.mjs").Site} Site */
 
 const TABLES = ["marketing_events", "marketing_sessions", "marketing_website_statistics", "marketing_funnels", "marketing_imports"];
 /** Tables keyed by something else than the website: every row of the run is the tenant's. */

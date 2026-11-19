@@ -161,7 +161,8 @@ jobs:
       # `installCommand` reuse it instead of building twice more.
       - run: pnpm --dir packages/dms-marketing build
       # `ajs module test .` boots the module against a real DMS, a
-      # mongodb-memory replica set and the api module.
+      # mongodb-memory replica set and the api module, once for the unit
+      # tests and once for the HTTP journeys (`tests/*.journeys.js`).
       - run: pnpm --dir packages/dms-marketing test:backend
         env:
           DMS_PREBUILT: "1"
@@ -201,8 +202,8 @@ jobs:
 
   # The journeys of e2e/ as a Playwright suite: the @smoke ones on a ready
   # pull request, every journey in two shards on a merge_group run, a manual
-  # dispatch, the nightly, and a pull request labelled `ci:full`. Its global
-  # setup prepares and starts one dms-control run per shard.
+  # dispatch, the nightly, and a pull request labelled `ci:full`. The kit's
+  # global setup prepares and starts one run per shard.
   e2e:
     needs: select
     if: needs.select.outputs.e2e != 'none'

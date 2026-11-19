@@ -31,7 +31,7 @@ The fixed journey every verdict runs: add a website, send a visit, read the page
 ## Driving it with dms-control
 
 ```bash
-dms-control journey "$RUN" smoke
+pnpm --dir packages/dms-marketing test:journeys
 ```
 
 ## Gotchas

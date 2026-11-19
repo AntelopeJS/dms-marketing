@@ -1,6 +1,6 @@
 import { antelopeFmtPreset } from "@antelopejs/tooling-configs/oxc/fmt";
 
-/** Markdown is never formatted; Prettier owns the Vue layer; the journeys and their helpers keep the layout they had in the verify skill. */
+/** Markdown is never formatted; Prettier owns the Vue layer; the journeys and their helpers, in e2e/ and in the backend suite, keep the layout they had in the verify skill. */
 export default antelopeFmtPreset({
   ignorePatterns: [
     "**/*.md",
@@ -10,5 +10,6 @@ export default antelopeFmtPreset({
     "packages/dms-marketing/static/**",
     "e2e/journeys/**",
     "e2e/*.mjs",
+    "packages/dms-marketing/tests/journeys/**",
   ],
 });

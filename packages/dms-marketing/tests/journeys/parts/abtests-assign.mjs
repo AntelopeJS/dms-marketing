@@ -1,8 +1,8 @@
-import { check, parseJson, raw, text } from "../../marketing.mjs";
+import { check, parseJson, raw, text } from "../marketing.mjs";
 import { split } from "./abtests-helpers.mjs";
 import { shop } from "./funnels-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
 const CROWD = 200;
 const NONE = { n: 0, conv: 0 };

@@ -1,9 +1,9 @@
-import { check, same } from "../../marketing.mjs";
-import { collect, custom, pageview } from "../../site.mjs";
+import { check, same } from "../marketing.mjs";
+import { collect, custom, pageview } from "../site.mjs";
 import { storedEvents, storedSessions, site } from "./collect-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
-/** @typedef {import("../../site.mjs").Site} Site */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../site.mjs").Site} Site */
 
 /** The journeys of part 1. */
 export const journeys = [

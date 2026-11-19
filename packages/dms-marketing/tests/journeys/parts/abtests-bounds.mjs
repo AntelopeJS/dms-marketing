@@ -1,9 +1,9 @@
-import { check, list, mkt, num, pick, same } from "../../marketing.mjs";
+import { check, list, mkt, num, pick, same } from "../marketing.mjs";
 import { declare, results, shop } from "./funnels-helpers.mjs";
 import { split } from "./abtests-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
-/** @typedef {import("../../site.mjs").Site} Site */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../site.mjs").Site} Site */
 
 const STEPS = [{ kind: "url", value: "/pricing" }];
 
@@ -102,7 +102,7 @@ export const journeys = [
       }
       const served = await shop(ctx);
       await split(ctx, served, { key: "never", weights: { a: 0, b: 1 }, arms: { a: { n: 0, conv: 0 }, b: { n: 0, conv: 0 } } });
-      const { raw } = await import("../../marketing.mjs");
+      const { raw } = await import("../marketing.mjs");
       const seen = new Set();
       for (let visitor = 0; visitor < 12; visitor += 1) {
         const answer = await raw(ctx, `assignment ${visitor}`, { path: `/api/marketing/experiments.js?website=${served.id}`, headers: { "user-agent": `Mozilla/5.0 Chrome/130 weight-${visitor}` } });

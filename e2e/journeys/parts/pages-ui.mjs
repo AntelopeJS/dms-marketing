@@ -1,7 +1,7 @@
-import { check, list, mkt, reads } from "../../marketing.mjs";
-import { click, collected, createSite, eventually, pageview } from "../../site.mjs";
+import { check, list, mkt, reads } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
+import { click, collected, createSite, eventually, pageview } from "../../../packages/dms-marketing/tests/journeys/site.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
 const CLICK = { x: 0.5, y: 0.2, docX: 0.5, docY: 0.1 };
 
@@ -9,6 +9,7 @@ const CLICK = { x: 0.5, y: 0.2, docX: 0.5, docY: 0.1 };
 export const journeys = [
   {
     id: "the-pages-page-lists-sorts-and-opens-a-page",
+    tag: "@smoke",
     title: "Pages & heatmaps lists every path with its views and clicks, the Clicks sort reorders it, and a path opens its header of views and clicks over the snapshot notice",
     entryPoint: "/modules/marketing/pages",
     async run(/** @type {Ctx} */ ctx) {

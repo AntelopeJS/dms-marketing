@@ -1,8 +1,8 @@
-import { check, fixture, mkt, pick, same } from "../../marketing.mjs";
-import { createSite } from "../../site.mjs";
+import { check, fixture, mkt, pick, same } from "../marketing.mjs";
+import { createSite } from "../site.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
-/** @typedef {import("../../site.mjs").Site} Site */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../site.mjs").Site} Site */
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

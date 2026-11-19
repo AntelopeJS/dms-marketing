@@ -1,7 +1,7 @@
-import { mkt, num, same } from "../../marketing.mjs";
+import { mkt, num, same } from "../marketing.mjs";
 import { block, history, period, shop } from "./overview-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
 /** The default period and a 7-day window's edges (7.architecture/4.context-and-period.md). */
 export const journeys = [

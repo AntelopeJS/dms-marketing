@@ -1,7 +1,7 @@
-import { reads } from "../../marketing.mjs";
-import { shop, visit } from "./acquisition-helpers.mjs";
+import { reads } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
+import { shop, visit } from "../../../packages/dms-marketing/tests/journeys/parts/acquisition-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
 /** The Acquisition page in the browser (4.usage/2.acquisition.md). */
 export const journeys = [

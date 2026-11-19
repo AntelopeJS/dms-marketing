@@ -1,8 +1,8 @@
-import { mkt, num, pick, reads, same } from "../../marketing.mjs";
-import { eventually } from "../../site.mjs";
-import { history, shop } from "./overview-helpers.mjs";
+import { mkt, num, pick, reads, same } from "../../../packages/dms-marketing/tests/journeys/marketing.mjs";
+import { eventually } from "../../../packages/dms-marketing/tests/journeys/site.mjs";
+import { history, shop } from "../../../packages/dms-marketing/tests/journeys/parts/overview-helpers.mjs";
 
-/** @typedef {import("../../marketing.mjs").Ctx} Ctx */
+/** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
 /**
  * The saved settings once `accept` holds for them, or the last read after the wait.
