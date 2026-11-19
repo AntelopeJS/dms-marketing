@@ -9,9 +9,6 @@ export const journeys = [
   {
     id: "the-funnel-builder-saves-a-funnel-that-the-list-scores-and-deletes",
     title: "the funnel builder counts the sessions at each step and saves a two-step funnel, the Funnels list scores it, and Delete removes it once its name is typed",
-    knownFailures: {
-      "the goal step counts 1 session": "the builder's step count always says sessions (page.marketing.builder.sessions_short), so one session reads 1 sessions",
-    },
     entryPoint: "/modules/marketing/funnel-builder, /modules/marketing/funnels",
     async run(/** @type {Ctx} */ ctx) {
       const site = await shop(ctx);
