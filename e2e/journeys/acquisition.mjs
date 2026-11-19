@@ -2,6 +2,7 @@ import { guarded } from "../guard.mjs";
 import { byText, check, counts, list, mkt, num, pick, same, text } from "../marketing.mjs";
 import { eventually, overview } from "../site.mjs";
 import { campaigns, channels, channelsBlock, shop, visit } from "./parts/acquisition-helpers.mjs";
+import { journeys as ui } from "./parts/acquisition-ui.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
@@ -37,6 +38,7 @@ const medium = (/** @type {string} */ value) => ({ query: `?utm_medium=${encodeU
 
 /** Acquisition: how a session gets its channel, the campaigns table and the lists (4.usage/2.acquisition.md). */
 export const journeys = guarded([
+  ...ui,
   rules("paid-mediums-and-ad-click-ids", "paid", [
     ...["cpc", "ppc", "cpm", "cpv", "cpa", "cpp", "sem", "display", "banner", "retargeting", "paid-social", "paid_search", "paidmedia"].map(medium),
     ...["gclid", "gbraid", "wbraid", "dclid", "msclkid", "ttclid", "twclid", "li_fat_id"].map((param) => ({ query: `?${param}=abc123` })),

@@ -2,6 +2,7 @@ import { guarded } from "../guard.mjs";
 import { byText, check, list, mkt, num, numbers, pick, same } from "../marketing.mjs";
 import { collect, collected, createSite, eventually, pageview } from "../site.mjs";
 import { rows } from "../store.mjs";
+import { journeys as ui } from "./parts/pages-ui.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 /** @typedef {import("../site.mjs").Site} Site */
@@ -29,6 +30,7 @@ const BUY = { x: 0.2, y: 0.3, dx: 0.2, dy: 0.1, selector: "#buy", ox: 0.5, oy: 0
 
 /** Pages and heatmaps: the inventory, the click and scroll reads and the reset (4.usage/3.pages-and-heatmaps.md, 7.architecture/3.http-api.md). */
 export const journeys = guarded([
+  ...ui,
   {
     id: "the-pages-list-gives-views-clicks-and-sorts",
     tag: "@smoke",

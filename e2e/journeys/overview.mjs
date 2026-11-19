@@ -4,6 +4,7 @@ import { collected, pageview } from "../site.mjs";
 import { journeys as context } from "./parts/overview-context.mjs";
 import { block, history, period, shop, utcDay } from "./parts/overview-helpers.mjs";
 import { journeys as defaultPeriod } from "./parts/overview-period.mjs";
+import { journeys as ui } from "./parts/overview-ui.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
@@ -11,6 +12,7 @@ const WEEK = period(6, 0);
 
 /** The Overview: context, period, comparison and the blocks (4.usage/1.overview.md, 7.architecture/4.context-and-period.md). */
 export const journeys = guarded([
+  ...ui,
   ...context,
   {
     id: "the-kpi-cards-change-against-the-comparison-window",
@@ -118,7 +120,6 @@ export const journeys = guarded([
   },
   {
     id: "the-context-bar-picks-a-website-and-remembers-it",
-    tag: "@smoke",
     title: "the websites are listed most recently active first with their state, the pick is saved per member and a first-run notice shows until the first event",
     entryPoint: "GET /api/marketing/context, PUT /api/marketing/context, GET /api/marketing/blocks/website-notice",
     async run(/** @type {Ctx} */ ctx) {

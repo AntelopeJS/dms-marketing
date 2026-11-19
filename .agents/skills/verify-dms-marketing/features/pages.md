@@ -28,6 +28,7 @@ Pages and heatmaps: the observed paths, clicks anchored to elements, scroll dept
 
 ## Sub-features
 
+- `the-pages-page-lists-sorts-and-opens-a-page` (in the browser)
 - `the-pages-list-gives-views-clicks-and-sorts`
 - `the-page-list-keeps-50-paths-a-day-and-the-heatmap-read-is-not-lossy`
 - `clicks-stick-to-elements-and-fall-back-to-document-cells`

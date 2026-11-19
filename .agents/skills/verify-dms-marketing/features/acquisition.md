@@ -15,6 +15,7 @@ Acquisition: how a session gets its channel, the campaigns table and the referre
 
 ## Sub-features
 
+- `the-acquisition-page-splits-the-channels-and-filters-the-campaigns-by-channel` (in the browser)
 - `paid-mediums-and-ad-click-ids`
 - `email-mediums`
 - `social-networks-and-mediums`

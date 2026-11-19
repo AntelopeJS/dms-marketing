@@ -40,6 +40,7 @@ The Overview: context bar, period and comparison, KPI cards, session quality, tr
 
 ## Sub-features
 
+- `the-overview-page-shows-the-kpis-and-the-top-pages-and-opens-a-page` (in the browser)
 - `the-kpi-cards-change-against-the-comparison-window`
 - `the-traffic-chart-and-the-quality-strip`
 - `devices-and-the-tabbed-top-lists`
