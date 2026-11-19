@@ -107,7 +107,8 @@ before(async () => {
   instance = schema.instance(TENANT);
 });
 
-beforeEach(async () => {
+/** Scoped to the tests that read through it: a root hook would mock GetModel for every file. */
+async function useHeatmapModels() {
   await collection("marketing_events").deleteMany({});
   await collection("marketing_page_snapshots").deleteMany({});
   const events = new MarketingEventsModel(instance);
@@ -118,7 +119,7 @@ beforeEach(async () => {
     /** @param {Parameters<typeof models.GetModel>[0]} Model */ (Model) =>
       Model === MarketingEventsModel ? events : snapshots,
   );
-});
+}
 
 afterEach(() => mock.restoreAll());
 
@@ -127,6 +128,7 @@ after(async () => {
 });
 
 test("a page reset deletes exactly what its dialog counted", async () => {
+  await useHeatmapModels();
   await collection("marketing_events").insertMany([
     event("c1", "click", "/a"),
     event("c2", "click", "/a"),
@@ -158,6 +160,7 @@ test("a page reset deletes exactly what its dialog counted", async () => {
 });
 
 test("page activity counts clicks and sampled views per path, and reads the declared rate", async () => {
+  await useHeatmapModels();
   const rows = [
     event("c1", "click", "/a"),
     event("c2", "click", "/a"),
@@ -188,6 +191,7 @@ test("page activity counts clicks and sampled views per path, and reads the decl
 });
 
 test("the click heatmap skips stored rows that are not click-shaped", async () => {
+  await useHeatmapModels();
   await collection("marketing_events").insertMany([
     event("valid", "click", "/a", { data: { x: 0.5, y: 0.5 } }),
     event("legacy", "click", "/a", {
@@ -278,6 +282,7 @@ function bucketedInJs(rows) {
 }
 
 test("the click heatmap counted in the query equals the one bucketed in JS, cell order and cap ties included", async () => {
+  await useHeatmapModels();
   const start = Date.now() - 3 * 24 * 60 * 60 * 1000;
   /** @type {unknown[]} */
   const payloads = [
@@ -364,6 +369,7 @@ test("the click heatmap counted in the query equals the one bucketed in JS, cell
 });
 
 test("the click heatmap counts every click of the window, past the 50,000 rows a read used to stop at", async () => {
+  await useHeatmapModels();
   const clicks = 50_001;
   const start = Date.now() - 24 * 60 * 60 * 1000;
   await collection("marketing_events").insertMany(

@@ -26,13 +26,19 @@ const {
 
 const realGetModel = models.GetModel;
 
+/**
+ * Mocking an already mocked GetModel stacks the two, and `restoreAll` then
+ * puts the inner mock back instead of the original.
+ */
+function mockRealModels() {
+  if (!models.GetModel.mock) {
+    mock.method(models, "GetModel", realGetModel);
+  }
+}
+
 function useRealModels() {
-  before(() => {
-    mock.method(models, "GetModel", realGetModel);
-  });
-  beforeEach(() => {
-    mock.method(models, "GetModel", realGetModel);
-  });
+  before(mockRealModels);
+  beforeEach(mockRealModels);
   afterEach(() => {
     mock.restoreAll();
   });
