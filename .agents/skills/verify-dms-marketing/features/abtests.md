@@ -23,6 +23,7 @@ A/B tests: the assignment script, the reading per arm, the verdicts and the spli
 
 ## Sub-features
 
+- `the-ab-report-reads-each-arm-and-stops-the-test-behind-a-confirmation` (in the browser)
 - `an-arm-is-scored-per-exposed-session-with-a-two-sided-z-test`
 - `a-significant-reading-is-ready-after-a-week-and-50-conversions-per-arm`
 - `a-challenger-below-the-control-and-a-flat-reading-and-a-thin-sample`

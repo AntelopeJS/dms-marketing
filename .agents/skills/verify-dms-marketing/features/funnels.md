@@ -46,6 +46,7 @@ Funnels: step matching, the list, templates, the builder rules, the report and d
 
 ## Sub-features
 
+- `the-funnel-builder-saves-a-funnel-that-the-list-scores-and-deletes` (in the browser)
 - `steps-match-in-order-within-a-session`
 - `a-trailing-star-matches-every-path-below`
 - `the-conversion-window-bounds-the-journey`

@@ -278,6 +278,29 @@ export async function clickUntil(tab, target, opens, attempts = 12) {
 }
 
 /**
+ * A check that the page's ARIA tree, as a screen reader reads it, comes to match `pattern` within the timeout: a
+ * figure next to its label, a row, a heading.
+ *
+ * @param {Tab} tab The tab
+ * @param {RegExp} pattern What the ARIA snapshot of the page body must match
+ * @param {{ timeoutMs?: number, name?: string }} [options] How long to wait, and the check's name when the pattern does not say it
+ * @returns {Promise<Check>} Whether it matched, with the end of the last snapshot as detail
+ */
+export async function reads(tab, pattern, options = {}) {
+  const deadline = Date.now() + (options.timeoutMs ?? 15_000);
+  let tree = "";
+  while (Date.now() < deadline) {
+    tree = await tab.page
+      .locator("body")
+      .ariaSnapshot({ timeout: Math.max(1, deadline - Date.now()) })
+      .catch(() => "");
+    if (pattern.test(tree)) break;
+    await tab.page.waitForTimeout(250);
+  }
+  return { name: options.name ?? `the page reads ${pattern}`, pass: pattern.test(tree), detail: tree.slice(-1500) };
+}
+
+/**
  * A compare function for sort(): orders any JSON values by their text.
  *
  * @param {unknown} a One value

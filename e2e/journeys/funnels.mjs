@@ -3,6 +3,7 @@ import { byText, check, list, mkt, num, pick, same, text } from "../marketing.mj
 import { history } from "./parts/overview-helpers.mjs";
 import { declare, results, session, shop } from "./parts/funnels-helpers.mjs";
 import { journeys as window } from "./parts/funnels-window.mjs";
+import { journeys as ui } from "./parts/funnels-ui.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
@@ -10,6 +11,7 @@ const PRICING_THEN_SIGNUP = [{ kind: "url", value: "/pricing" }, { kind: "custom
 
 /** Funnels: how steps match, the list, the report and the builder's rules (4.usage/5.funnels.md). */
 export const journeys = guarded([
+  ...ui,
   {
     id: "steps-match-in-order-within-a-session",
     title: "a session counts for step N only if it matched steps 1 to N-1 earlier in time; a page step ignores case, query, fragment and trailing slash; the report gives sessions, rates and matches per step",

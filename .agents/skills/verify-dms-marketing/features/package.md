@@ -20,18 +20,20 @@ What a project installs from the registry: the module with its build, dashboard 
 
 ## Sub-features
 
-- `the-module-tarball-holds-what-its-manifest-names`
-- `the-interface-tarball-exports-the-contract`
-- `ranges-match-the-compatibility-table`
+No journey: these need no running DMS, so `packages/dms-marketing/tests/package.test.js` checks them in the backend suite.
+
+- the module's tarball holds the build, the dashboard layer, the agent skill and every path its manifest points at, without build info
+- the interface's tarball holds its build and its consumer reference, and its root export carries the heatmap read, the four content calls and their types
+- the README compatibility table lists the interface ranges the module depends on as packed, its interface-dms-marketing range accepts the interface in the tree, and the dashboard layer pins its renderer minor
 
 ## How to get to it (user POV)
 
 - A project runs ajs project modules add @antelopejs/dms-marketing.
 
-## Driving it with dms-control
+## Driving it
 
 ```bash
-dms-control journey "$RUN" package
+pnpm --dir packages/dms-marketing test:backend
 ```
 
 ## Gotchas

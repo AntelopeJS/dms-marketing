@@ -21,6 +21,7 @@ The Settings page: the master switch, the three retentions, sampling, their boun
 
 ## Sub-features
 
+- `the-settings-page-saves-sampling-confirms-a-retention-cut-and-pauses-collection` (in the browser)
 - `the-settings-start-from-the-configuration-defaults`
 - `values-out-of-bounds-are-refused-under-their-field-never-clamped`
 - `retentions-keep-their-order`

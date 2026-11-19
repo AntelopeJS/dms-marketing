@@ -5,6 +5,7 @@ import { journeys as bounds } from "./parts/abtests-bounds.mjs";
 import { split, twoSidedP, zScore } from "./parts/abtests-helpers.mjs";
 import { results, shop } from "./parts/funnels-helpers.mjs";
 import { journeys as assignment } from "./parts/abtests-assign.mjs";
+import { journeys as ui } from "./parts/abtests-ui.mjs";
 
 /** @typedef {import("../marketing.mjs").Ctx} Ctx */
 
@@ -18,6 +19,7 @@ function arms(read) {
 
 /** A/B tests: the reading, the verdicts and the checks (4.usage/6.ab-tests.md). */
 export const journeys = guarded([
+  ...ui,
   ...bounds,
   ...lifecycle,
   {
