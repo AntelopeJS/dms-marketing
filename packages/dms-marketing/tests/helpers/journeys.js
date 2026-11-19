@@ -24,7 +24,7 @@ const { fixture, realNow } = require("./journey-fixture");
  * @typedef {{ apiUrl: string, webUrl: string, mongoUrl: string, database: string, accounts: Record<string, Account>, tokens: Record<string, string>, extraEnv: Record<string, string> }} JourneyState
  */
 
-const FIXTURE = "/verify-marketing";
+const FIXTURE = "/e2e-marketing";
 const JOURNEY_TIMEOUT_MS = 10 * 60_000;
 const REQUEST_TIMEOUT_MS = 30_000;
 const HOOK_TIMEOUT_MS = 60_000;

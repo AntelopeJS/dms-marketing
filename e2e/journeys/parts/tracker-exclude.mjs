@@ -3,7 +3,7 @@ import { local, open, settled, waitFor } from "./tracker-helpers.mjs";
 
 /** @typedef {import("../../../packages/dms-marketing/tests/journeys/marketing.mjs").Ctx} Ctx */
 
-const BASE = "/verify-marketing/site";
+const BASE = "/e2e-marketing/site";
 
 /** The three pattern shapes of `data-exclude-paths` (2.installation.md, 4.usage/9.tracking.md). */
 export const journeys = [

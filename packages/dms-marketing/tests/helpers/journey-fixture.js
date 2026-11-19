@@ -68,11 +68,11 @@ async function outcome(call) {
 
 /**
  * The trusted backend calls of the verification playground's fixture module
- * (`/verify-marketing`), made in process: members with a role, the
+ * (`/e2e-marketing`), made in process: members with a role, the
  * interface's content calls, the tenant hooks and the backend clock.
  *
  * @param {string} method
- * @param {string} path The path under `/verify-marketing`
+ * @param {string} path The path under `/e2e-marketing`
  * @param {unknown} body
  * @returns {Promise<unknown>} What the route answers
  */

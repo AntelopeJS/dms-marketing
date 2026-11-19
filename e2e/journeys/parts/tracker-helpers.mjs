@@ -73,7 +73,7 @@ export async function open(ctx, site, name, options = {}) {
   if (options.twice) query.set("twice", "1");
   if (options.module) query.set("module", "1");
   if (options.js) query.set("js", options.js);
-  await page.goto(`${ctx.state.apiUrl}/verify-marketing/site/${name}?${query}`, { waitUntil: "load" });
+  await page.goto(`${ctx.state.apiUrl}/e2e-marketing/site/${name}?${query}`, { waitUntil: "load" });
   return { page };
 }
 
