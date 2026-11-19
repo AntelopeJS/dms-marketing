@@ -49,17 +49,17 @@ export interface VerifyConfig {
   formal: FormalCheck[];
 }
 
-const SKILL = ".agents/skills/verify-dms-marketing";
+const PLAYGROUND = "e2e/playground";
 const MODULE = "packages/dms-marketing";
 const INTERFACE = "packages/interface-dms-marketing";
 
 const config: VerifyConfig = {
-  playground: `${SKILL}/playground`,
+  playground: PLAYGROUND,
   prepare: [
     ["pnpm", "install", "--frozen-lockfile", "--prefer-offline", "--ignore-scripts"],
     ["pnpm", "run", "build"],
-    ["ln", "-sfn", `../../../../${MODULE}/node_modules`, `${SKILL}/playground/node_modules`],
-    [`${MODULE}/node_modules/.bin/tsc`, "-p", `${SKILL}/playground/tsconfig.build.json`],
+    ["ln", "-sfn", `../../${MODULE}/node_modules`, `${PLAYGROUND}/node_modules`],
+    [`${MODULE}/node_modules/.bin/tsc`, "-p", `${PLAYGROUND}/tsconfig.build.json`],
   ],
   userFacing: [`${MODULE}/src/**`, `${MODULE}/static/**`, `${MODULE}/frontend-vue/**`, `${MODULE}/skills/**`, `${MODULE}/package.json`, `${INTERFACE}/src/**`, `${INTERFACE}/package.json`],
   notUserFacing: [

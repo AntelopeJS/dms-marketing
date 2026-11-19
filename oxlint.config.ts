@@ -11,6 +11,7 @@ import {
 const MODULE_IGNORE_PATTERNS = [
   "packages/dms-marketing/frontend-vue/**",
   "packages/dms-marketing/playground/**",
+  "e2e/playground/**",
   "packages/dms-marketing/static/**",
 ];
 

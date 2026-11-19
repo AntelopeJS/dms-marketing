@@ -35,7 +35,7 @@ export default defineConfig({
       source: { type: "local", path: "." },
     },
     "dms-marketing": {
-      source: { type: "local", path: "../../../../packages/dms-marketing" },
+      source: { type: "local", path: "../../packages/dms-marketing" },
       config: marketingConfig(),
     },
     dms: {
