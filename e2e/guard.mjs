@@ -45,7 +45,7 @@ async function waitForHydration(tab) {
 
 /**
  * Signs an account in through the sign-in form once the form is hydrated, and records the same critical check as
- * the harness's own sign-in.
+ * the kit's own sign-in.
  *
  * @param {Ctx} ctx The journey
  * @param {Tab} tab The tab to sign in

@@ -41,21 +41,21 @@ export const journeys = [
       ]);
       const snapshot = await (async () => {
         const deadline = Date.now() + 45_000;
-        let read = await stored(ctx, site, "/verify-marketing/site/capture");
+        let read = await stored(ctx, site, "/e2e-marketing/site/capture");
         while (!read.html && Date.now() < deadline) {
           await new Promise((resolve) => setTimeout(resolve, 1500));
-          read = await stored(ctx, site, "/verify-marketing/site/capture");
+          read = await stored(ctx, site, "/e2e-marketing/site/capture");
         }
         return read;
       })();
       await ctx.verify("the capture of the page", [
         check("a capture was stored", snapshot.html !== "", pick(snapshot.answer.body, "snapshot", "url")),
-        check("the page content", snapshot.html.includes("/verify-marketing/site/capture") && snapshot.html.includes('id="buy"'), snapshot.html.slice(0, 200)),
+        check("the page content", snapshot.html.includes("/e2e-marketing/site/capture") && snapshot.html.includes('id="buy"'), snapshot.html.slice(0, 200)),
         same("the typed value never leaves the page", snapshot.html.includes("typed-secret"), false),
         same("marked text is masked, whitespace kept", [snapshot.html.includes("private words here"), /id="masked"[^>]*>\s*x{7} x{5} x{4}/.test(snapshot.html) || snapshot.html.includes("xxxxxxx")], [false, true]),
         same("a blocked element becomes an empty box that keeps its id and class", [snapshot.html.includes("blocked content"), /id="blocked"/.test(snapshot.html), /keep-class/.test(snapshot.html)], [false, true, true]),
         same("a link keeps its target without query or fragment", [snapshot.html.includes("token=abc"), snapshot.html.includes("#frag"), snapshot.html.includes("/elsewhere")], [false, false, true]),
-        same("the stored page URL is the origin and the path", pick(snapshot.answer.body, "snapshot", "url"), `${new URL(ctx.state.apiUrl).origin}/verify-marketing/site/capture`),
+        same("the stored page URL is the origin and the path", pick(snapshot.answer.body, "snapshot", "url"), `${new URL(ctx.state.apiUrl).origin}/e2e-marketing/site/capture`),
       ]);
       await tab.page.goto("about:blank");
       const scrolls = await waitFor(ctx, site, "scroll", (found) => found.length >= 1, 20_000);

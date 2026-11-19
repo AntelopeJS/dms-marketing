@@ -15,7 +15,7 @@ import { join } from "node:path";
 export const MARKETING = "/api/marketing";
 
 /** The verification playground's trusted backend calls (`playground/src/fixture.ts`). */
-export const FIXTURE = "/verify-marketing";
+export const FIXTURE = "/e2e-marketing";
 
 /** A desktop browser's user agent: the collector drops requests that announce a crawler or send none. */
 export const BROWSER_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36";

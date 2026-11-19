@@ -16,7 +16,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * the website (`w`), extra attributes of the tag (`attrs`, JSON), a second tag (`twice`), a `type="module"` tag
  * (`module`), and a script to run after the tracker (`js`). Only the verification playground serves it.
  */
-export class VerifySiteController extends Controller("/verify-marketing/site") {
+export class VerifySiteController extends Controller("/e2e-marketing/site") {
   @Get("/:first")
   one(@Context() context: RequestContext) {
     return this.render(context);
@@ -33,7 +33,7 @@ export class VerifySiteController extends Controller("/verify-marketing/site") {
     const attrs: unknown = JSON.parse(url.searchParams.get("attrs") ?? "{}");
     const attributes = Object.entries(isRecord(attrs) ? attrs : {}).map(([name, value]) => ` ${name}="${escapeAttribute(String(value))}"`).join("");
     const tag = `<script defer ${url.searchParams.get("module") ? 'type="module" ' : ""}src="${SCRIPT_PATH}" data-website-id="${escapeAttribute(website)}"${attributes}></script>`;
-    const body = `<!doctype html><html lang="fr-FR"><head><meta charset="utf-8"><title>${escapeAttribute(url.pathname)}</title></head><body style="margin:0"><main id="app" style="min-height:2400px"><h1>${escapeAttribute(url.pathname)}</h1><button id="buy" style="margin:40px;width:160px;height:48px">Buy</button><a id="next" href="/verify-marketing/site/second?w=${escapeAttribute(website)}">next</a></main>${tag}${url.searchParams.get("twice") ? tag : ""}<script>${url.searchParams.get("js") ?? ""}</script></body></html>`;
+    const body = `<!doctype html><html lang="fr-FR"><head><meta charset="utf-8"><title>${escapeAttribute(url.pathname)}</title></head><body style="margin:0"><main id="app" style="min-height:2400px"><h1>${escapeAttribute(url.pathname)}</h1><button id="buy" style="margin:40px;width:160px;height:48px">Buy</button><a id="next" href="/e2e-marketing/site/second?w=${escapeAttribute(website)}">next</a></main>${tag}${url.searchParams.get("twice") ? tag : ""}<script>${url.searchParams.get("js") ?? ""}</script></body></html>`;
     context.response.setStatus(200);
     context.response.addHeader("Content-Type", "text/html; charset=utf-8");
     context.response.getWriteStream("text/html; charset=utf-8").end(body);

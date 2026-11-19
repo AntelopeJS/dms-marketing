@@ -63,7 +63,7 @@ function withAncestors(permissions: string[]): string[] {
  * declaration exactly as the interface takes it, so a journey sends whatever a
  * careless caller would.
  */
-export class VerifyFixtureController extends Controller("/verify-marketing") {
+export class VerifyFixtureController extends Controller("/e2e-marketing") {
   @Post("/member")
   async member(@JSONBody() body: unknown) {
     const { name, permissions, asTenantOwner, language } = memberSchema.parse(body);

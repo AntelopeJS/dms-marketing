@@ -13,7 +13,7 @@ Date.now = () => realNow() + aheadMs;
  * cut) without waiting for it. Only the verification playground serves it;
  * `new Date()` and timers keep the real clock.
  */
-export class VerifyClockController extends Controller("/verify-marketing/clock") {
+export class VerifyClockController extends Controller("/e2e-marketing/clock") {
   @Post("")
   set(@JSONBody() body: unknown) {
     aheadMs = clockSchema.parse(body).aheadMs;

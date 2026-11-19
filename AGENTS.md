@@ -2,7 +2,7 @@
 
 ## Layout
 
-A pnpm workspace with two published packages. The root holds the tool configs, the CI workflows and `e2e/`, the Playwright suite of the verify skill's journeys that open a tab, with the dependencies they run on (`@antelopejs/dms` for its `e2e` kit, `@playwright/test`); no source code.
+A pnpm workspace with two published packages. The root holds the tool configs, the CI workflows and `e2e/`, the Playwright suite of the journeys that open a tab (declared in `e2e/journeys.config.ts`, served by `e2e/playground/`), with the dependencies they run on (`@antelopejs/dms` for its `e2e` kit, `@playwright/test`); no source code.
 
 | Path                                  | What it is                                                                         |
 | ------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -22,9 +22,9 @@ The module names the interface as `workspace:^`, so `pnpm pack` writes `^<interf
 `pnpm run checks` runs only the Vue layer tests (`test:layer`). The backend suite runs in its own CI job. Run it when your change touches the module's backend:
 
 - `pnpm --dir packages/dms-marketing test:backend` builds the interface and the module, then `ajs module test .` boots the module against a real DMS and an in-memory MongoDB replica set (`antelope.test.ts`), and `test:journeys` runs the journeys that call only the HTTP API in a second boot. Set `DMS_PREBUILT=1` to reuse an existing build.
-- `test:journeys` runs `tests/<feature>.journeys.js`, one per feature, each declaring a test per journey of `tests/journeys/<feature>.mjs` through `tests/helpers/journeys.js`: the API on the port `antelope.test.ts` picks, the playground's `/verify-marketing` calls made in process, and every marketing table emptied before each journey. Their file names leave them out of the unit run, whose tests mock models and clocks the journeys need real.
+- `test:journeys` runs `tests/<feature>.journeys.js`, one per feature, each declaring a test per journey of `tests/journeys/<feature>.mjs` through `tests/helpers/journeys.js`: the API on the port `antelope.test.ts` picks, the playground's `/e2e-marketing` calls made in process, and every marketing table emptied before each journey. Their file names leave them out of the unit run, whose tests mock models and clocks the journeys need real.
 - `packages/dms-marketing/antelope-lock/` records the lockfile of each package module `antelope.test.ts` installs, so every run, cached or not, installs the same dependencies. After you change a version there, delete the records of the old versions, run `test:backend` once, and commit the new records it writes.
-- `pnpm e2e` runs the journeys that open a tab (`e2e/journeys/`) as a Playwright suite: the kit's global setup runs the skill's `prepare` and starts one run, every journey runs on that run, and the run stops after the last. `pnpm e2e --grep @smoke` runs the journeys tagged `@smoke`, as the `e2e` job of `ci.yml` does on a ready pull request; a `merge_group` run, a manual dispatch, the nightly and a pull request labelled `ci:full` run every journey in two shards. `pnpm e2e -g <feature or journey id>` runs a part of it.
+- `pnpm e2e` runs the journeys that open a tab (`e2e/journeys/`) as a Playwright suite: the kit's global setup runs the `prepare` of `e2e/journeys.config.ts` and starts one run, every journey runs on that run, and the run stops after the last. `pnpm e2e --grep @smoke` runs the journeys tagged `@smoke`, as the `e2e` job of `ci.yml` does on a ready pull request; a `merge_group` run, a manual dispatch, the nightly and a pull request labelled `ci:full` run every journey in two shards. `pnpm e2e -g <feature or journey id>` runs a part of it.
 - `pnpm --dir packages/dms-marketing knip:all` also reports unused files and exports. The exports of `src/frontend-module.ts` are reached through `dmsFrontend` in `package.json`; confirm every other finding before you remove it.
 
 <!-- antelopejs-guardrails:start -->
@@ -37,8 +37,6 @@ CI runs `pnpm run checks` in full on every pull request and reports what failed.
 - `pnpm run typecheck` after you change types or signatures.
 - `pnpm exec oxlint <files>` and `pnpm exec oxfmt <files>` on the files you changed.
 - One test file, not the suite. In a module that tests with `ajs module test`: `pnpm run build`, then `pnpm exec ajs module test . -f dist/<path>.test.js`.
-
-Prove a change works with the verification skill in [`.agents/skills/verify-dms-marketing/SKILL.md`](.agents/skills/verify-dms-marketing/SKILL.md) before you call it done.
 
 ### Comments
 

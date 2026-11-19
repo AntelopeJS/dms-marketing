@@ -16,19 +16,19 @@ export const journeys = guarded([
       const rates = [];
       for (const rate of ["0", "1"]) {
         const tab = await open(ctx, site, `rate-${rate}`, { attrs: { "data-heatmap-sample": rate } });
-        const views = await waitFor(ctx, site, "pageview", (found) => found.filter((event) => event.url === `/verify-marketing/site/rate-${rate}`).length >= 1);
+        const views = await waitFor(ctx, site, "pageview", (found) => found.filter((event) => event.url === `/e2e-marketing/site/rate-${rate}`).length >= 1);
         await tab.page.click("#buy");
-        const here = (/** @type {Record<string, unknown>[]} */ found) => found.filter((event) => event.url === `/verify-marketing/site/rate-${rate}`);
+        const here = (/** @type {Record<string, unknown>[]} */ found) => found.filter((event) => event.url === `/e2e-marketing/site/rate-${rate}`);
         if (rate === "1") await waitFor(ctx, site, "click", (found) => here(found).length >= 1, 20_000);
         else await new Promise((resolve) => setTimeout(resolve, 7000));
         const clicks = here(await stored(ctx, site, "click")).length;
-        rates.push([rate, pick(views.find((event) => event.url === `/verify-marketing/site/rate-${rate}`), "data", "sample"), clicks]);
+        rates.push([rate, pick(views.find((event) => event.url === `/e2e-marketing/site/rate-${rate}`), "data", "sample"), clicks]);
       }
       await ctx.verify("sampling by tag", [same("declared rate and recorded clicks per tag", rates, [["0", 0, 0], ["1", 1, 1]])]);
       await mkt(ctx, "set the module sampling to 100 %", "PUT", "/settings", { body: { heatmapSamplePercent: 100 } });
       await open(ctx, site, "module-rate", { account: "visitor-after-save" });
-      const views = await waitFor(ctx, site, "pageview", (found) => found.some((event) => event.url === "/verify-marketing/site/module-rate"));
-      await ctx.verify("a tag without the attribute follows the module setting", [same("declared rate", pick(views.find((event) => event.url === "/verify-marketing/site/module-rate"), "data", "sample"), 1)]);
+      const views = await waitFor(ctx, site, "pageview", (found) => found.some((event) => event.url === "/e2e-marketing/site/module-rate"));
+      await ctx.verify("a tag without the attribute follows the module setting", [same("declared rate", pick(views.find((event) => event.url === "/e2e-marketing/site/module-rate"), "data", "sample"), 1)]);
     },
   },
 
@@ -44,7 +44,7 @@ export const journeys = guarded([
       const cookies = await tab.page.context().cookies();
       const keys = await tab.page.evaluate(() => [localStorage.length, sessionStorage.length]);
       await ctx.verify("one pageview of the landing page", [
-        same("pageviews and their path", [events.length, events[0]?.url], [1, "/verify-marketing/site/landing"]),
+        same("pageviews and their path", [events.length, events[0]?.url], [1, "/e2e-marketing/site/landing"]),
         same("no cookie, nothing in the storages", [cookies.length, keys], [0, [0, 0]]),
         check("the API exposes the page API", await tab.page.evaluate(() => {
           /**
@@ -75,20 +75,20 @@ export const journeys = guarded([
         await tab.page.evaluate(script);
         return waitFor(ctx, site, "pageview", (found) => found.length >= expected, 6000);
       };
-      const afterPush = await step("history.pushState({}, '', '/verify-marketing/site/pushed')", 2);
-      const afterReplace = await step("history.replaceState({}, '', '/verify-marketing/site/replaced')", 3);
-      await tab.page.evaluate("history.pushState({}, '', '/verify-marketing/site/replaced?tab=2')");
-      await tab.page.evaluate("history.pushState({}, '', '/verify-marketing/site/replaced?tab=2#/pricing')");
+      const afterPush = await step("history.pushState({}, '', '/e2e-marketing/site/pushed')", 2);
+      const afterReplace = await step("history.replaceState({}, '', '/e2e-marketing/site/replaced')", 3);
+      await tab.page.evaluate("history.pushState({}, '', '/e2e-marketing/site/replaced?tab=2')");
+      await tab.page.evaluate("history.pushState({}, '', '/e2e-marketing/site/replaced?tab=2#/pricing')");
       await tab.page.evaluate("location.hash = '#/other'");
       const afterNoop = await settled(ctx, site, "pageview", 3);
-      const afterFourth = await step("history.pushState({}, '', '/verify-marketing/site/fourth')", 4);
+      const afterFourth = await step("history.pushState({}, '', '/e2e-marketing/site/fourth')", 4);
       const afterBack = await step("history.back()", 5);
       await ctx.verify("which navigations count", [
-        same("pushState", afterPush.map((event) => event.url), ["/verify-marketing/site/spa", "/verify-marketing/site/pushed"]),
+        same("pushState", afterPush.map((event) => event.url), ["/e2e-marketing/site/spa", "/e2e-marketing/site/pushed"]),
         same("replaceState", afterReplace.length, 3),
         afterNoop,
         same("a push after the no-ops counts", afterFourth.length, 4),
-        same("back (popstate) counts the page it lands on", afterBack.map((event) => event.url).slice(-2), ["/verify-marketing/site/fourth", "/verify-marketing/site/replaced"]),
+        same("back (popstate) counts the page it lands on", afterBack.map((event) => event.url).slice(-2), ["/e2e-marketing/site/fourth", "/e2e-marketing/site/replaced"]),
       ]);
     },
   },
@@ -115,7 +115,7 @@ export const journeys = guarded([
       await ctx.verify("DNT and GPC are respected", [still, same("the API stays callable", noop, true), same("variation() answers null", variation, null)]);
       await open(ctx, site, "dnt-optout", { init: "Object.defineProperty(navigator, 'doNotTrack', { value: '1', configurable: true })", attrs: { "data-do-not-track": "false", "data-heatmap-sample": "0" } });
       const events = await waitFor(ctx, site, "pageview", (found) => found.length >= 1);
-      await ctx.verify("the tag can opt out of honouring it", [same("pageviews", events.map((event) => event.url), ["/verify-marketing/site/dnt-optout"])]);
+      await ctx.verify("the tag can opt out of honouring it", [same("pageviews", events.map((event) => event.url), ["/e2e-marketing/site/dnt-optout"])]);
     },
   },
   {
@@ -148,11 +148,11 @@ export const journeys = guarded([
     entryPoint: "data-exclude-paths",
     async run(/** @type {Ctx} */ ctx) {
       const site = await local(ctx);
-      const tab = await open(ctx, site, "private/area", { attrs: { "data-exclude-paths": "/verify-marketing/site/private/*", "data-heatmap-sample": "0" }, js: "window.dmsMarketing?.track('hidden-event')" });
+      const tab = await open(ctx, site, "private/area", { attrs: { "data-exclude-paths": "/e2e-marketing/site/private/*", "data-heatmap-sample": "0" }, js: "window.dmsMarketing?.track('hidden-event')" });
       const quiet = await settled(ctx, site, undefined, 0);
-      await tab.page.evaluate("history.pushState({}, '', '/verify-marketing/site/public')");
+      await tab.page.evaluate("history.pushState({}, '', '/e2e-marketing/site/public')");
       const events = await waitFor(ctx, site, "pageview", (found) => found.length >= 1);
-      await ctx.verify("excluded paths", [quiet, same("the page navigated to counts", events.map((event) => event.url), ["/verify-marketing/site/public"])]);
+      await ctx.verify("excluded paths", [quiet, same("the page navigated to counts", events.map((event) => event.url), ["/e2e-marketing/site/public"])]);
     },
   },
   {

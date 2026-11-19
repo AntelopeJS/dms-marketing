@@ -29,7 +29,7 @@ function numberOrUndefined(text: string | undefined): number | undefined {
  * verification built from the checkout.
  */
 export default defineConfig({
-  name: "verify-dms-marketing",
+  name: "dms-marketing-e2e",
   modules: {
     app: {
       source: { type: "local", path: "." },

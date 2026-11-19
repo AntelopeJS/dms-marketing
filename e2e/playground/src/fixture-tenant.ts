@@ -32,7 +32,7 @@ function memoryArchive(entries: ArchiveEntry[]): TenantExportArchive {
  * `TENANT_DELETED` handler. Only the verification playground serves them,
  * because the DMS core of a run has no route that exports or deletes a tenant.
  */
-export class VerifyTenantHooksController extends Controller("/verify-marketing/tenant") {
+export class VerifyTenantHooksController extends Controller("/e2e-marketing/tenant") {
   @Post("/export")
   async export(@JSONBody() body: unknown) {
     const { tenantId } = tenantSchema.parse(body);

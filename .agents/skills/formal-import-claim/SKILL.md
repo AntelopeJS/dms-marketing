@@ -39,11 +39,11 @@ Every configuration allows one storage failure; `Crash` allows one process death
 
 The lines that name a changed rule match `^(?:BROKEN|CHANGED|HOLDS) +(\w+)`. A rule that still holds prints in a lowercase `holds` line.
 
-A recorded finding is judged by the length of its shortest counterexample alone, so a change that adds a longer path to it exits 0. `$C formal` of `verify-dms-marketing` closes that gap for a diff: while a finding stands, it fails a verdict whose diff changes the covered code.
+A recorded finding is judged by the length of its shortest counterexample alone, so a change that adds a longer path to it exits 0.
 
 ## When to run it
 
-Run `--full` when a change touches a file in the coverage record or this folder. `verify-dms-marketing` runs it through `$C formal "$RUN"` (rule 5 of its verdict). CI runs the CI configuration on every push and pull request (job `formal-import-claim`, in the `ubuntu` gate).
+Run `--full` when a change touches a file in the coverage record or this folder. CI runs the CI configuration on every push and pull request (job `formal-import-claim`, in the `ubuntu` gate).
 
 ## The rules
 
