@@ -318,7 +318,7 @@
           "steps": "Étapes",
           "window": "Fenêtre de conversion"
         },
-        "sessions_short": "sessions",
+        "sessions_short": "session | sessions",
         "snippet_title": "À ajouter sur la page · {path}",
         "split_description": "Les visiteurs reçoivent une variante côté serveur ; chacune est notée sur les étapes ci-dessus.",
         "split_title": "Répartir le trafic entre des variantes",

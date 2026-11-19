@@ -318,7 +318,7 @@
           "steps": "Steps",
           "window": "Conversion window"
         },
-        "sessions_short": "sessions",
+        "sessions_short": "session | sessions",
         "snippet_title": "Add to the page · {path}",
         "split_description": "Visitors get an arm server-side; each arm is scored against the steps above.",
         "split_title": "Split traffic between variations",

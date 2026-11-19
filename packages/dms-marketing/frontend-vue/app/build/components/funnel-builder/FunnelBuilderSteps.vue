@@ -224,7 +224,7 @@ const { t, locale } = useI18n()
             <span class="font-semibold text-highlighted">
               {{ formatNumber(previewCount(step)!, locale) }}
             </span>
-            {{ t('page.marketing.builder.sessions_short') }}
+            {{ t('page.marketing.builder.sessions_short', {}, previewCount(step)!) }}
           </template>
         </span>
         <UButton
