@@ -46,6 +46,7 @@ jobs:
       tier: ${{ steps.tier.outputs.tier }}
       os: ${{ steps.tier.outputs.os }}
       run: ${{ steps.tier.outputs.run }}
+      e2e: ${{ steps.tier.outputs.e2e }}
     steps:
       - name: Pick the tier with the shared rule
         id: pick
@@ -61,6 +62,7 @@ jobs:
           HEAD_REF: ${{ github.head_ref }}
           HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
           DRAFT: ${{ github.event.pull_request.draft }}
+          FULL_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'ci:full') }}
           TIER: ${{ steps.pick.outputs.tier }}
         run: |
           tier="$TIER"
@@ -75,12 +77,20 @@ jobs:
             os='["ubuntu-latest","windows-latest"]'
           fi
 
+          e2e=full
+          if [[ "$tier" == none || "$tier" == draft ]]; then
+            e2e=none
+          elif [[ "$EVENT" == pull_request && "$FULL_LABEL" != true ]] || [[ "$EVENT" == push ]]; then
+            e2e=smoke
+          fi
+
           {
             echo "tier=${tier}"
             echo "run=${run}"
             echo "os=${os}"
+            echo "e2e=${e2e}"
           } >> "$GITHUB_OUTPUT"
-          echo "Tier \`${tier}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Tier \`${tier}\`, e2e \`${e2e}\`" >> "$GITHUB_STEP_SUMMARY"
 
   backend:
     needs: select
@@ -185,20 +195,22 @@ jobs:
 
       - run: node .agents/skills/formal-import-claim/check.mjs
 
-  # The journeys of e2e/ as a Playwright suite: the @smoke ones on the full
-  # tier, every journey in shards on the nightly tier, nothing on a draft or
-  # the fast tier. Its global setup prepares and starts one dms-control run.
+  # The journeys of e2e/ as a Playwright suite: the @smoke ones on a ready
+  # pull request, every journey in two shards on a merge_group run, a manual
+  # dispatch, the nightly, and a push to a pull request labelled `ci:full`
+  # (the label alone starts no run). Its global setup prepares and starts one
+  # dms-control run per shard.
   e2e:
     needs: select
-    if: needs.select.outputs.tier == 'full' || needs.select.outputs.tier == 'nightly'
+    if: needs.select.outputs.e2e != 'none'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(needs.select.outputs.tier == 'nightly' && '[1, 2]' || '[1]') }}
+        shard: ${{ fromJSON(needs.select.outputs.e2e == 'full' && '[1, 2]' || '[1]') }}
     env:
-      TIER: ${{ needs.select.outputs.tier }}
+      E2E: ${{ needs.select.outputs.e2e }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -231,16 +243,16 @@ jobs:
           fi
           echo "::warning::Chromium's system packages did not install: installing the browser alone"
           pnpm exec playwright install --only-shell chromium
-      - if: env.TIER == 'full'
+      - if: env.E2E == 'smoke'
         run: pnpm e2e --grep @smoke
-      - if: env.TIER == 'nightly'
+      - if: env.E2E == 'full'
         run: pnpm e2e --shard=${{ matrix.shard }}/2 --reporter=blob
         env:
           PLAYWRIGHT_BLOB_OUTPUT_DIR: e2e/blob-report
       # The journeys' types come from the declarations @antelopejs/dms/e2e publishes.
       - if: success() || failure()
         run: pnpm exec tsc --noEmit -p e2e
-      - if: always() && env.TIER == 'nightly'
+      - if: always() && env.E2E == 'full'
         uses: actions/upload-artifact@v4
         with:
           name: blob-report-${{ matrix.shard }}
@@ -257,10 +269,10 @@ jobs:
             ${{ runner.temp }}/dms-runs/*/logs
           retention-days: 7
 
-  # One HTML and JSON report of the nightly shards.
+  # One HTML and JSON report of the shards of a full run.
   e2e-report:
     needs: [select, e2e]
-    if: always() && needs.select.outputs.tier == 'nightly'
+    if: always() && needs.select.outputs.e2e == 'full'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -300,7 +312,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - if: >-
-          needs.select.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.ci.result == 'skipped' || (needs.select.outputs.run == 'true' && (needs.backend.result == 'skipped' || needs.formal-import-claim.result == 'skipped')) || ((needs.select.outputs.tier == 'full' || needs.select.outputs.tier == 'nightly') && needs.e2e.result == 'skipped')
+          needs.select.result != 'success' || contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || needs.ci.result == 'skipped' || (needs.select.outputs.run == 'true' && (needs.backend.result == 'skipped' || needs.formal-import-claim.result == 'skipped')) || (needs.select.outputs.e2e != 'none' && needs.e2e.result == 'skipped')
         run: exit 1
       - if: needs.select.outputs.tier == 'draft'
         run: |
