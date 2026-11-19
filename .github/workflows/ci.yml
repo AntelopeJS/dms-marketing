@@ -2,12 +2,14 @@ name: ci
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+  merge_group:
   push:
-    branches: [next]
+    branches: [main]
   schedule:
     - cron: "17 2 * * *"
   workflow_dispatch:
+
 permissions:
   contents: read
 
@@ -35,6 +37,8 @@ jobs:
       test-job: true
     permissions:
       contents: read
+    secrets:
+      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
 
   # ci-node.yml exposes no outputs, so this copies its tier rule for the jobs
   # declared here: none on a draft or on the `next` to default branch pull
@@ -197,9 +201,8 @@ jobs:
 
   # The journeys of e2e/ as a Playwright suite: the @smoke ones on a ready
   # pull request, every journey in two shards on a merge_group run, a manual
-  # dispatch, the nightly, and a push to a pull request labelled `ci:full`
-  # (the label alone starts no run). Its global setup prepares and starts one
-  # dms-control run per shard.
+  # dispatch, the nightly, and a pull request labelled `ci:full`. Its global
+  # setup prepares and starts one dms-control run per shard.
   e2e:
     needs: select
     if: needs.select.outputs.e2e != 'none'
