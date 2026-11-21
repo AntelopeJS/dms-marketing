@@ -2,11 +2,11 @@ const { randomUUID } = require("node:crypto");
 const { z } = require("zod");
 const { GetModel } = require("@antelopejs/interface-database-decorators");
 const { DEFAULT_TENANT_ID } = require("@antelopejs/interface-dms/constants");
-const { RoleModel, UserInviteModel } = require("@antelopejs/interface-dms/db");
+const { createUserInviteToken } = require("@antelopejs/interface-dms");
+const { RoleModel } = require("@antelopejs/interface-dms/db");
 const { GetRegisteredHooks, Hook } = require("@antelopejs/interface-dms/hooks");
 const marketing = require("@antelopejs/interface-dms-marketing");
 
-const INVITE_LIFETIME_MS = 3_600_000;
 /** The clock before any journey moved it. */
 const realNow = Date.now.bind(Date);
 
@@ -90,15 +90,13 @@ async function fixture(method, path, body) {
       name: `${name} ${randomUUID()}`,
       permissions: withAncestors(permissions),
     });
-    const token = randomUUID();
     const email = `${name.toLowerCase()}-${randomUUID()}@verify.local`;
-    await GetModel(UserInviteModel, DEFAULT_TENANT_ID).insert({
+    const { token } = await createUserInviteToken({
+      tenantId: DEFAULT_TENANT_ID,
       email,
-      roles_ids: roleId === undefined ? [] : [roleId],
+      roleIds: roleId === undefined ? [] : [roleId],
       language,
-      token,
       asTenantOwner,
-      expiresAt: new Date(Date.now() + INVITE_LIFETIME_MS),
     });
     return { email, token, roleId };
   }

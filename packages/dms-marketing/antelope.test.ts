@@ -71,7 +71,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/dms",
-        version: "0.20.2",
+        version: "0.21.4-next.1013.gf74dda7",
       },
       config: {
         clientBaseUrl: "http://127.0.0.1",
