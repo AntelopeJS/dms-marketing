@@ -1,6 +1,33 @@
 # Changelog
 
 
+## v0.10.4
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.10.3...v0.10.4)
+
+### 🩹 Fixes
+
+- **funnels:** Pluralize the builder's step session count ([#191](https://github.com/AntelopeJS/dms-marketing/pull/191))
+
+### 📦 Build
+
+- **deps:** Depend on the interface-dms 0.15 preview for the release train ([#194](https://github.com/AntelopeJS/dms-marketing/pull/194))
+- **deps:** Move the dms previews to the released stable versions ([#196](https://github.com/AntelopeJS/dms-marketing/pull/196))
+
+### 🏡 Chore
+
+- Delete the verify-dms-marketing skill and every reference to it ([#190](https://github.com/AntelopeJS/dms-marketing/pull/190))
+
+### ✅ Tests
+
+- **e2e:** Cover the dashboard flows in the Playwright suite and run it in full on merge_group ([#187](https://github.com/AntelopeJS/dms-marketing/pull/187))
+- **backend:** Run the HTTP journeys as integration tests and the browser journeys on the standalone e2e kit ([#188](https://github.com/AntelopeJS/dms-marketing/pull/188))
+- Restore GetModel after every root test and fail on a leaked mock ([#192](https://github.com/AntelopeJS/dms-marketing/pull/192))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.10.3
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.10.2...v0.10.3)
