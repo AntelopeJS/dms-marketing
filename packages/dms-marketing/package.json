@@ -65,18 +65,18 @@
     "@antelopejs/interface-data-api": ">=0.8.0 <0.9.0",
     "@antelopejs/interface-database": ">=0.4.0 <0.5.0",
     "@antelopejs/interface-database-decorators": ">=0.5.0 <0.6.0",
-    "@antelopejs/interface-dms": ">=0.14.0 <0.15.0",
+    "@antelopejs/interface-dms": "0.14.7-next.1011.g9a5478b",
     "@antelopejs/interface-dms-marketing": "workspace:^",
     "defu": "^6.1.4",
     "maxmind": "^5.0.7",
     "node-cron": "^4.2.1",
     "sanitize-html": "^2.18.0",
     "ua-parser-js": "^2.0.9",
-    "zod": "^3.24.2"
+    "zod": "^3.25.0"
   },
   "devDependencies": {
     "@antelopejs/core": "~1.24.0",
-    "@antelopejs/dms": ">=0.20.2 <0.21.0",
+    "@antelopejs/dms": "0.21.4-next.1013.gf74dda7",
     "@antelopejs/dms-frontend": ">=0.11.8 <0.12.0",
     "@antelopejs/interface-mongodb": ">=0.0.8 <0.1.0",
     "@antelopejs/mongodb": "~1.8.4",
