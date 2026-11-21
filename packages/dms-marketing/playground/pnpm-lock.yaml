@@ -9,7 +9,7 @@ importers:
   .:
     dependencies:
       '@antelopejs/dms':
-        specifier: 0.22.0
+        specifier: '>=0.22.0 <0.23.0'
         version: 0.22.0(@antelopejs/core@1.24.0)(supports-color@8.1.1)(typescript@5.9.3)
       '@antelopejs/interface-api':
         specifier: '>=0.3.0 <0.4.0'
@@ -30,7 +30,7 @@ importers:
         specifier: '>=0.5.0 <0.6.0'
         version: 0.5.2(@antelopejs/interface-api@0.3.3(@antelopejs/interface-core@0.5.1))(@antelopejs/interface-core@0.5.1)(@antelopejs/interface-database@0.4.0(@antelopejs/interface-core@0.5.1))
       '@antelopejs/interface-dms':
-        specifier: 0.15.0
+        specifier: '>=0.15.0 <0.16.0'
         version: 0.15.0(1183000973ac86d33c63b2338e554d86)
     devDependencies:
       '@antelopejs/core':
