@@ -33,6 +33,7 @@ jobs:
         packages/interface-dms-marketing/README.md
         packages/interface-dms-marketing/docs
       docs-typescript-project: packages/interface-dms-marketing/docs/tsconfig.json
+      module-locks: true
       renovate-sync: false
       test-job: true
     permissions:
@@ -164,6 +165,7 @@ jobs:
       - run: pnpm --dir packages/dms-marketing test:backend
         env:
           DMS_PREBUILT: "1"
+      - uses: AntelopeJS/.github/.github/actions/module-locks-committed@v2
 
   # Model-checks the ImportAnalytics claim and replay with TLC
   # (.agents/skills/formal-import-claim). Only the root package is installed:
@@ -330,3 +332,14 @@ jobs:
       actions: write
       statuses: write
     uses: AntelopeJS/.github/.github/workflows/ci-renovate-sync.yml@v2
+
+  module-locks:
+    needs: [ci, backend]
+    if: ${{ !cancelled() }}
+    permissions:
+      contents: read
+      actions: read
+    uses: AntelopeJS/.github/.github/workflows/module-locks-renovate.yml@v2
+    secrets:
+      RELEASE_APP_ID: ${{ secrets.RELEASE_APP_ID }}
+      RELEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
