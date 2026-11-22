@@ -37,8 +37,6 @@ jobs:
       test-job: true
     permissions:
       contents: read
-    secrets:
-      NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
 
   # ci-node.yml exposes no outputs, so this copies its tier rule for the jobs
   # declared here: none on a draft or on the `next` to default branch pull
