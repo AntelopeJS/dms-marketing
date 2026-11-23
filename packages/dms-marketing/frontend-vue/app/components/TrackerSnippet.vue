@@ -27,9 +27,7 @@ const flavor = ref<SnippetFlavor>('html')
  */
 const apiOrigin = ref('')
 onMounted(() => {
-  apiOrigin.value = String(
-    (config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? '',
-  )
+  apiOrigin.value = config.public.dms.baseURL
 })
 
 const code = computed(() =>

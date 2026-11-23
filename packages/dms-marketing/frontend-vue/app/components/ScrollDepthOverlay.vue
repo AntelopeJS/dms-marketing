@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { isElement } from '../utils/guards'
 import { useI18n } from '#dms/frontend-module'
 import { heatColorAt } from '../utils/heatmapPalette'
 
@@ -93,7 +94,11 @@ const showFold = computed(() => props.foldRatio > 0 && props.foldRatio < 1)
 const hover = ref<{ y: number; percent: number } | null>(null)
 
 function onPointerMove(event: PointerEvent): void {
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const target = event.currentTarget
+  if (!isElement(target)) {
+    return
+  }
+  const rect = target.getBoundingClientRect()
   if (rect.height <= 0 || props.foldRatio >= 1) {
     return
   }

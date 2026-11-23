@@ -1,7 +1,7 @@
-import { type MarketingFunnelSuggestions } from '../../composables/useMarketingApi'
+import type { MarketingFunnelSuggestions } from '../../composables/useMarketingApi'
 import { useFunnelSuggestions } from '../../composables/useMarketingReads'
 import { computed, ref } from 'vue'
-import { type StepDraft } from '../types/funnelBuilder'
+import type { StepDraft } from '../types/funnelBuilder'
 import type { Ref } from 'vue'
 
 /**
@@ -89,7 +89,10 @@ export function useStepSuggestions(
       activeOption.value = (activeOption.value + offset + count) % count
     } else if (event.key === 'Enter' && activeOption.value >= 0) {
       event.preventDefault()
-      pick(step, matchesFor(step)[activeOption.value]!.value)
+      const active = matchesFor(step)[activeOption.value]
+      if (active) {
+        pick(step, active.value)
+      }
     } else if (event.key === 'Escape') {
       event.preventDefault()
       dismissedStep.value = step.uid

@@ -1,5 +1,6 @@
 import { computed } from 'vue'
-import { type VariationDraft } from '../types/funnelBuilder'
+import { isNumber } from '../../utils/guards'
+import type { VariationDraft } from '../types/funnelBuilder'
 import {
   MAX_VARIATIONS,
   localizedSnippetComments,
@@ -8,16 +9,28 @@ import type { Ref } from 'vue'
 import type { useI18n } from '#dms/frontend-module'
 import type { useDraftPreview } from './useDraftPreview'
 
+/** What `useDraftVariations` takes from the component that calls it. */
+export interface DraftVariationsOptions {
+  t: ReturnType<typeof useI18n>['t']
+  variations: Ref<VariationDraft[]>
+  PERCENT: number
+  clearVariationError: () => void
+  uid: () => number
+  LETTER_A: number
+  validSteps: ReturnType<typeof useDraftPreview>['validSteps']
+}
+
 /** The step kinds of `FunnelBuilder`, the variations of its split (their shares, letters and rows) and the comments of its snippet. */
-export function useDraftVariations(
-  t: ReturnType<typeof useI18n>['t'],
-  variations: Ref<VariationDraft[]>,
-  PERCENT: number,
-  clearVariationError: () => void,
-  uid: () => number,
-  LETTER_A: number,
-  validSteps: ReturnType<typeof useDraftPreview>['validSteps'],
-) {
+export function useDraftVariations(options: DraftVariationsOptions) {
+  const {
+    t,
+    variations,
+    PERCENT,
+    clearVariationError,
+    uid,
+    LETTER_A,
+    validSteps,
+  } = options
   const kindItems = computed(() => [
     {
       value: 'url',
@@ -32,7 +45,7 @@ export function useDraftVariations(
   ])
 
   function servedWeight(arm: VariationDraft): number {
-    return typeof arm.weight === 'number' && arm.weight > 0 ? arm.weight : 0
+    return isNumber(arm.weight) && arm.weight > 0 ? arm.weight : 0
   }
 
   const totalWeight = computed(() =>

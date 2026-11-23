@@ -66,7 +66,8 @@ const SKELETON_ROWS = 8
 const SKELETON_TABS = 3
 const RANK_DIGITS = 2
 
-const { t, te, locale } = useI18n()
+const i18n = useI18n()
+const { t, locale } = i18n
 const { processI18n } = useTranslation()
 const inContext = useContextLink()
 
@@ -109,7 +110,7 @@ const LABELERS: Record<LabelKind, (key: string) => string> = {
   raw: (key) => key,
   channel: (key) => {
     const i18nKey = `page.marketing.channels.${key}`
-    return te(i18nKey) ? t(i18nKey) : key
+    return i18n.te(i18nKey) ? t(i18nKey) : key
   },
   country: (key) => displayName(key, 'region', locale.value),
   language: (key) => displayName(key, 'language', locale.value),

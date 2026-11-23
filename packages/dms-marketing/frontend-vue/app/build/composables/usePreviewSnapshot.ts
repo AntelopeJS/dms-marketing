@@ -1,21 +1,39 @@
 import { ref, computed } from 'vue'
 import {
-  type MarketingSnapshotLayout,
-  type MarketingWebsite,
-  type MarketingWebsitePatch,
-} from '../../composables/useMarketingApi'
-import {
   usePageSnapshot,
   useHeatmapCountRead,
 } from '../../composables/useMarketingReads'
 import { rewriteViewportUnits } from '../../utils/snapshotViewportUnits'
 import { confirmSnapshotChange } from '../../utils/snapshot-options'
 import type { ComputedRef } from 'vue'
-import type { LayoutPreset } from '../types/pagePreview'
-import type { PagePreviewProps } from '../types/pagePreview'
+import type { LayoutPreset, PagePreviewProps } from '../types/pagePreview'
 import type { useI18n } from '#dms/frontend-module'
-import type { useMarketingApi } from '../../composables/useMarketingApi'
+import type {
+  useMarketingApi,
+  MarketingSnapshotLayout,
+  MarketingWebsite,
+  MarketingWebsitePatch,
+} from '../../composables/useMarketingApi'
 import type { usePreviewReset } from './usePreviewReset'
+
+/** What `usePreviewSnapshot` takes from the component that calls it. */
+export interface PreviewSnapshotOptions {
+  DEFAULT_LAYOUT_WIDTH: number
+  LAYOUT_PRESETS: LayoutPreset[]
+  foreign: ComputedRef<boolean>
+  props: Readonly<PagePreviewProps>
+  locale: ReturnType<typeof useI18n>['locale']
+  confirm: ReturnType<typeof usePreviewReset>['confirm']
+  t: ReturnType<typeof useI18n>['t']
+  emit: (event: 'website-updated', website: MarketingWebsite) => void
+  api: ReturnType<typeof useMarketingApi>
+}
+
+function formatMebibytes(bytes: number, locale: string): string {
+  return new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 1,
+  }).format(bytes / (1024 * 1024))
+}
 
 /**
  * The snapshot of `PagePreview`: the layout read, the capture behind the
@@ -30,18 +48,19 @@ import type { usePreviewReset } from './usePreviewReset'
  * `asksBeforeSnapshotChange`); declining leaves the website as it is, and the
  * menu's checkbox with it.
  */
-export function usePreviewSnapshot(
-  DEFAULT_LAYOUT_WIDTH: number,
-  LAYOUT_PRESETS: LayoutPreset[],
-  foreign: ComputedRef<boolean>,
-  props: Readonly<PagePreviewProps>,
-  locale: ReturnType<typeof useI18n>['locale'],
-  confirm: ReturnType<typeof usePreviewReset>['confirm'],
-  t: ReturnType<typeof useI18n>['t'],
-  emit: (event: 'website-updated', website: MarketingWebsite) => void,
-  api: ReturnType<typeof useMarketingApi>,
-) {
-  const { presentError } = useApiErrorPresenter()
+export function usePreviewSnapshot(options: PreviewSnapshotOptions) {
+  const {
+    DEFAULT_LAYOUT_WIDTH,
+    LAYOUT_PRESETS,
+    foreign,
+    props,
+    locale,
+    confirm,
+    t,
+    emit,
+    api,
+  } = options
+  const errorPresenter = useApiErrorPresenter()
 
   const layoutWidth = ref(DEFAULT_LAYOUT_WIDTH)
 
@@ -102,11 +121,7 @@ export function usePreviewSnapshot(
   )
   const snapshotScheme = computed(() => snapshot.value?.colorScheme ?? 'light')
 
-  function mebibytes(bytes: number): string {
-    return new Intl.NumberFormat(locale.value, {
-      maximumFractionDigits: 1,
-    }).format(bytes / (1024 * 1024))
-  }
+  const mebibytes = (bytes: number) => formatMebibytes(bytes, locale.value)
 
   const savingOptions = ref(false)
 
@@ -141,7 +156,7 @@ export function usePreviewSnapshot(
     try {
       emit('website-updated', await api.updateWebsite(website._id, patch))
     } catch (error) {
-      presentError(error, {
+      errorPresenter.presentError(error, {
         fallbackKey: 'page.marketing.pages.preview.options_error',
       })
     } finally {

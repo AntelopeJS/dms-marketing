@@ -10,7 +10,7 @@ import { withWebsite } from './useMarketingRoutes'
 export function useContextLink(): (link: string) => string {
   const route = useDmsRoute()
   return (link) => {
-    const query = route.query as Record<string, unknown>
+    const query = route.query
     return withPeriodQuery(withWebsite(link, query), query, PERIOD_SCOPE)
   }
 }

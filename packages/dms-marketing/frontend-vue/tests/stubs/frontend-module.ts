@@ -66,8 +66,10 @@ export function useDmsRouter(): {
   return { replace: async () => {}, push: async () => {} }
 }
 
-export function useDmsRuntimeConfig(): { public: Record<string, unknown> } {
-  return { public: {} }
+export function useDmsRuntimeConfig(): {
+  public: { dms: { baseURL: string } }
+} {
+  return { public: { dms: { baseURL: '' } } }
 }
 
 export function resolveDmsComponent(): Component | undefined {

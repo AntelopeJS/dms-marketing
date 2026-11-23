@@ -1,11 +1,5 @@
 import { formatNumber } from './format'
-
-/** The `t` of useI18n, as far as these helpers call it. */
-type Translate = (
-  key: string,
-  named?: Record<string, unknown>,
-  plural?: number,
-) => string
+import type { Translate } from './translate'
 
 /** Base for reading a typed path the way the backend reads a tracked URL. */
 const RELATIVE_URL_BASE = 'http://relative.invalid'

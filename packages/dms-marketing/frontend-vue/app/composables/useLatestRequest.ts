@@ -43,7 +43,7 @@ export interface LatestRequest<T> {
 export function useLatestRequest<T>(
   fetcher: () => Promise<T> | null,
 ): LatestRequest<T> {
-  const data = ref(null) as Ref<T | null>
+  const data: Ref<T | null> = ref(null)
   const loading = ref(false)
   const failed = ref(false)
   const error = ref<unknown>(null)

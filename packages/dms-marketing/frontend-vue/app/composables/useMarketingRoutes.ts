@@ -7,7 +7,10 @@
  * link followed from an analytics page carries the page's own, or it would
  * open on whatever another tab saved last: {@link withWebsite} for the
  * website, the DMS `withPeriodQuery` for the period selector's keys.
+ *
+ * @packageDocumentation
  */
+import { isString } from '../utils/guards'
 
 const MODULE_BASE = '/modules/marketing'
 
@@ -93,7 +96,7 @@ export function websitesLink(
 
 /** The setting a Websites page URL scrolls the open modal to, if any. */
 export function websiteSettingOf(
-  query: Record<string, unknown>,
+  query: Record<string, string>,
 ): WebsiteSetting | undefined {
   return query.setting === 'snapshots' ? 'snapshots' : undefined
 }
@@ -114,10 +117,10 @@ export function settingsLink(): string {
  */
 export function withWebsite(
   link: string,
-  query: Record<string, unknown>,
+  query: Record<string, string>,
 ): string {
   const website = query.website
-  if (typeof website !== 'string' || !website) {
+  if (!isString(website) || !website) {
     return link
   }
   const [path, search = ''] = link.split('?')

@@ -162,23 +162,23 @@ it('snapshot options present the JSON refusal once without changing the website'
     trackingEnabled: true,
   }
   const emit = vi.fn()
-  const preview = usePreviewSnapshot(
-    1280,
-    [],
-    computed(() => false),
-    {
+  const preview = usePreviewSnapshot({
+    DEFAULT_LAYOUT_WIDTH: 1280,
+    LAYOUT_PRESETS: [],
+    foreign: computed(() => false),
+    props: {
       website,
       path: '/',
       period: null,
       sampleRateLabel: null,
       trackerEnabled: true,
     },
-    ref('en'),
-    async () => true,
-    (key) => key,
+    locale: ref('en'),
+    confirm: async () => true,
+    t: (key) => key,
     emit,
-    useMarketingApi(),
-  )
+    api: useMarketingApi(),
+  })
   await preview.updateSnapshotOptions({ snapshotsEnabled: true })
   expect(preview.savingOptions.value).toBe(false)
   expect(website.snapshotsEnabled).toBe(false)

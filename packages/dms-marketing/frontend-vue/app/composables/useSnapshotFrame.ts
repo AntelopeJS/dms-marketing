@@ -73,6 +73,68 @@ function readableText(element: Element): string {
 }
 
 /**
+ * Where a set of anchors sits in the snapshot `doc`. `nth` is strict: a
+ * document that no longer has that match must not project the click onto a
+ * sibling of the same selector, and no box means the caller keeps the click's
+ * document fractions. It is read after the frame has settled at its final size,
+ * since boxes taken while it is resized measure the wrong layout.
+ */
+function measureAnchorsIn(
+  doc: Document | null,
+  anchors: AnchorRequest[],
+): AnchorBox[] {
+  const view = doc?.defaultView
+  if (!doc || !view) {
+    return []
+  }
+  const boxes: AnchorBox[] = []
+  for (const anchor of anchors) {
+    let matches: NodeListOf<Element>
+    try {
+      matches = doc.querySelectorAll(anchor.selector)
+    } catch {
+      continue
+    }
+    const element = matches[anchor.nth]
+    const box = element?.getBoundingClientRect()
+    if (!element || !box || box.width <= 0 || box.height <= 0) {
+      continue
+    }
+    boxes.push({
+      ...anchor,
+      x: box.left + view.scrollX,
+      y: box.top + view.scrollY,
+      width: box.width,
+      height: box.height,
+      text: readableText(element),
+    })
+  }
+  return boxes
+}
+
+/**
+ * The anchors whose element the snapshot `doc` does not have at all: no `nth`
+ * match, or a selector this document cannot parse. An element that is there
+ * but not drawn at this width (a phone-only menu in a desktop layout) is not
+ * missing: `measureAnchorsIn` gives it no box, this keeps it.
+ */
+function missingAnchorsIn(
+  doc: Document | null,
+  anchors: AnchorRequest[],
+): AnchorRequest[] {
+  if (!doc) {
+    return []
+  }
+  return anchors.filter((anchor) => {
+    try {
+      return !doc.querySelectorAll(anchor.selector)[anchor.nth]
+    } catch {
+      return true
+    }
+  })
+}
+
+/**
  * Reads the geometry of the snapshot in `frame`. The size is published once, as
  * measured and never clamped: a document too large to draw is a decision for
  * the caller, and shrinking it here would misplace every click by the ratio it
@@ -80,15 +142,6 @@ function readableText(element: Element): string {
  * resizes by hand, and `reset()` forgets the size and waits for the frame to
  * load again. A new frame is a new reading: the ref is only set once the iframe
  * is rendered, which the caller does conditionally and keyed.
- *
- * `measureAnchors` locates a set of anchors in the snapshot. `nth` is strict: a
- * document that no longer has that match must not project the click onto a
- * sibling of the same selector, and no box means the caller keeps the click's
- * document fractions. It is read after the frame has settled at its final size,
- * since boxes taken while it is resized measure the wrong layout.
- * `missingAnchors` returns the anchors the snapshot does not have at all (no
- * `nth` match, or a selector this document cannot parse); an element that is
- * there but not drawn at this width is not missing, it only has no box.
  */
 export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
   const measuredWidth = ref<number | null>(null)
@@ -156,50 +209,11 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     }
   }
 
-  function measureAnchors(anchors: AnchorRequest[]): AnchorBox[] {
-    const doc = frameDocument()
-    const view = doc?.defaultView
-    if (!doc || !view) {
-      return []
-    }
-    const boxes: AnchorBox[] = []
-    for (const anchor of anchors) {
-      let matches: NodeListOf<Element>
-      try {
-        matches = doc.querySelectorAll(anchor.selector)
-      } catch {
-        continue
-      }
-      const element = matches[anchor.nth]
-      const box = element?.getBoundingClientRect()
-      if (!element || !box || box.width <= 0 || box.height <= 0) {
-        continue
-      }
-      boxes.push({
-        ...anchor,
-        x: box.left + view.scrollX,
-        y: box.top + view.scrollY,
-        width: box.width,
-        height: box.height,
-        text: readableText(element),
-      })
-    }
-    return boxes
-  }
+  const measureAnchors = (anchors: AnchorRequest[]) =>
+    measureAnchorsIn(frameDocument(), anchors)
 
-  function missingAnchors(anchors: AnchorRequest[]): AnchorRequest[] {
-    const doc = frameDocument()
-    if (!doc) {
-      return []
-    }
-    return anchors.filter((anchor) => {
-      try {
-        return !doc.querySelectorAll(anchor.selector)[anchor.nth]
-      } catch {
-        return true
-      }
-    })
-  }
+  const missingAnchors = (anchors: AnchorRequest[]) =>
+    missingAnchorsIn(frameDocument(), anchors)
 
   onBeforeUnmount(() => {
     watchedFrame?.removeEventListener('load', onFrameLoad)

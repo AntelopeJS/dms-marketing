@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { isString } from '../utils/guards'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import DmsMarketingPagePreview from './PagePreview.vue'
 import type {
@@ -18,7 +19,6 @@ import { useMarketingContext } from '../composables/useMarketingContext'
 import { installLink } from '../composables/useMarketingRoutes'
 import { PERIOD_SCOPE } from '../constants'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
-import { formatNumber } from '../utils/format'
 import { pageSnapshotBadge } from '../utils/page-snapshot'
 import { useFillPanes } from '../build/composables/useFillPanes'
 import { useMarketingNow } from '../composables/useMarketingNow'
@@ -39,6 +39,11 @@ import PagesExplorerList from '../build/components/pages-explorer/PagesExplorerL
  * route registry, no sitemap — which is what makes it hold for any site. The
  * filter is also a path field: a day keeps a capped number of paths, so a page
  * can be missing from the list while its clicks are perfectly queryable.
+ *
+ * `PagePreview` is imported rather than resolved from the registry: a
+ * registered component is a lazy chunk of its own, fetched only once a page is
+ * selected, so the preview would land a beat after the list, its column empty
+ * meanwhile.
  */
 const props = withDefaults(
   defineProps<{
@@ -74,8 +79,7 @@ const pagesPeriod = computed(() =>
     : null,
 )
 
-const queryPath = () =>
-  typeof route.query.path === 'string' ? route.query.path : ''
+const queryPath = () => (isString(route.query.path) ? route.query.path : '')
 const selectedPath = ref<string | undefined>(queryPath() || undefined)
 const search = ref('')
 /** The search the list is read with, once the box holds still. */
@@ -125,7 +129,7 @@ const workspaceOptions = computed(() =>
 )
 const queryWorkspace = () => {
   const value = route.query[WORKSPACE_QUERY]
-  return typeof value === 'string' ? value : ''
+  return isString(value) ? value : ''
 }
 /** What the link asks for, else this browser's last pick (once mounted:
  * the storage is the browser's). */
@@ -135,8 +139,6 @@ const wantedWorkspace = ref(queryWorkspace())
 const workspace = computed(() =>
   effectiveWorkspace(wantedWorkspace.value, workspaceOptions.value),
 )
-/** Another workspace's data: read-only, backdrops masked by the backend. */
-const foreign = computed(() => workspace.value !== '')
 /** A wanted scope waits for the selector's answer, so a link to one never
  * reads the own workspace first, nor fails for a viewer it is not for. */
 const scopeReady = computed(

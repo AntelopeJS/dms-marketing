@@ -77,6 +77,7 @@ export function useWebsiteFunnels(
         sortKey: 'createdAt',
         sortDirection: 'asc',
       }),
+      // SAFETY: the data-api list route answers `{ results }`, not the declared array the transform is typed to receive.
       transform: (value) =>
         (value as { results: MarketingFunnelListItem[] }).results,
     },
@@ -286,6 +287,7 @@ function useReadOnDemand<T>(
     if (read.error.value) {
       throw read.error.value
     }
+    // SAFETY: the read settled without an error, so `data` holds what the route answered, a `T`.
     return read.data.value as T
   }
 }
@@ -305,7 +307,7 @@ export function useWebsiteDeletionImpactRead(
 /** What resetting the clicks of a page, or of the whole site, deletes. */
 export function useHeatmapCountRead(
   websiteId: MaybeRefOrGetter<string>,
-  path: MaybeRefOrGetter<string | undefined> = undefined,
+  path?: MaybeRefOrGetter<string | undefined>,
 ): ReadOnDemand<MarketingHeatmapData> {
   return useReadOnDemand(
     () => (toValue(websiteId) ? '/api/marketing/stats/heatmap/count' : null),

@@ -4,13 +4,7 @@ import type {
   MarketingWebsitePurge,
 } from '../composables/useMarketingApi'
 import { formatNumber, formatShortDate } from './format'
-
-/** The `t` of useI18n, as far as these helpers call it. */
-type Translate = (
-  key: string,
-  named?: Record<string, unknown>,
-  plural?: number,
-) => string
+import type { Translate } from './translate'
 
 const PREFIX = 'page.marketing.websites.purge'
 

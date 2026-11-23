@@ -11,7 +11,7 @@ import type { VariationDraft } from '../../types/funnelBuilder'
 
 /** The A/B section of `FunnelBuilder`: the switch, the experiment key, the weighted variations and the code that asks for one. */
 interface Props {
-  VARIATION_CONTROL_PREFIX: string
+  variationControlPrefix: string
   addVariation: () => void
   clearVariationError: () => void
   fieldErrors: ReturnType<typeof useFieldErrors<DraftField>>
@@ -126,7 +126,7 @@ const experimentKey = defineModel<string>('experimentKey', { required: true })
             {{ letter(index) }}
           </span>
           <UInput
-            :id="`${VARIATION_CONTROL_PREFIX}${arm.uid}`"
+            :id="`${variationControlPrefix}${arm.uid}`"
             v-model="arm.key"
             size="sm"
             class="font-mono"

@@ -5,7 +5,7 @@ import {
   type UnrollStyle,
 } from '../app/utils/snapshotScrollRoot'
 
-interface FakeElement extends UnrollElement {
+interface FakeElement extends UnrollElement<FakeElement> {
   name: string
   parentElement: FakeElement | null
   computed: UnrollStyle

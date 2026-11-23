@@ -2,6 +2,7 @@ import type {
   MarketingExperimentRun,
   MarketingExperimentStatus,
 } from './useMarketingApi'
+import { isRecord, isString } from '../utils/guards'
 
 /**
  * The A/B facet of a funnel as it travels through the form layer.
@@ -25,12 +26,53 @@ export interface ExperimentDraft {
   runs: MarketingExperimentRun[]
 }
 
-function parseJsonValue(raw: unknown): unknown {
-  if (typeof raw !== 'string') {
-    return raw
+function isVariation(value: unknown): value is ExperimentVariationDraft {
+  return (
+    isRecord(value) && isString(value.key) && typeof value.weight === 'number'
+  )
+}
+
+function isRun(value: unknown): value is MarketingExperimentRun {
+  return (
+    isRecord(value) &&
+    typeof value.startedAt === 'number' &&
+    (value.stoppedAt === null || typeof value.stoppedAt === 'number')
+  )
+}
+
+function isStatus(value: unknown): value is MarketingExperimentStatus {
+  return value === 'draft' || value === 'running' || value === 'stopped'
+}
+
+function variationsOf(parsed: unknown): ExperimentVariationDraft[] {
+  return Array.isArray(parsed) ? parsed.filter(isVariation) : []
+}
+
+function experimentOf(parsed: unknown): ExperimentDraft | null {
+  if (isRecord(parsed)) {
+    return {
+      key: isString(parsed.key) ? parsed.key : '',
+      status: isStatus(parsed.status) ? parsed.status : undefined,
+      variations: variationsOf(parsed.variations),
+      runs: Array.isArray(parsed.runs) ? parsed.runs.filter(isRun) : [],
+    }
   }
+  return null
+}
+
+function variationsFromJson(raw: string): ExperimentVariationDraft[] {
   try {
-    return raw ? JSON.parse(raw) : null
+    const parsed: unknown = raw ? JSON.parse(raw) : null
+    return variationsOf(parsed)
+  } catch {
+    return []
+  }
+}
+
+function experimentFromJson(raw: string): ExperimentDraft | null {
+  try {
+    const parsed: unknown = raw ? JSON.parse(raw) : null
+    return experimentOf(parsed)
   } catch {
     return null
   }
@@ -39,20 +81,21 @@ function parseJsonValue(raw: unknown): unknown {
 export function parseExperimentVariationsValue(
   raw: unknown,
 ): ExperimentVariationDraft[] {
-  const parsed = parseJsonValue(raw)
-  return Array.isArray(parsed) ? (parsed as ExperimentVariationDraft[]) : []
+  if (isString(raw)) {
+    return variationsFromJson(raw)
+  }
+  if (Array.isArray(raw)) {
+    return variationsOf(raw)
+  }
+  return []
 }
 
 export function parseExperimentValue(raw: unknown): ExperimentDraft | null {
-  const parsed = parseJsonValue(raw)
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    return null
+  if (isString(raw)) {
+    return experimentFromJson(raw)
   }
-  const candidate = parsed as Partial<ExperimentDraft>
-  return {
-    key: typeof candidate.key === 'string' ? candidate.key : '',
-    status: candidate.status,
-    variations: parseExperimentVariationsValue(candidate.variations),
-    runs: Array.isArray(candidate.runs) ? candidate.runs : [],
+  if (isRecord(raw)) {
+    return experimentOf(raw)
   }
+  return null
 }

@@ -62,7 +62,7 @@ const {
 } = useContextWebsite()
 
 await ready
-function linkSelected(id: string | null): Promise<unknown> | undefined {
+function linkSelected(id: string | null): Promise<void> | undefined {
   if (id && route.query.website !== id) {
     return router.replace({ query: { ...route.query, website: id } })
   }

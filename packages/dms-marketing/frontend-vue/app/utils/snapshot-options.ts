@@ -3,14 +3,10 @@
  * (`PUT /api/marketing/websites/:id`): off means forgotten, and a mask
  * setting only holds for captures taken under it. Every place offering the
  * options asks first, with the same words.
+ *
+ * @packageDocumentation
  */
-
-/** The `t` of useI18n, as far as these helpers call it. */
-type Translate = (
-  key: string,
-  named?: Record<string, unknown>,
-  plural?: number,
-) => string
+import type { Translate } from './translate'
 
 interface SnapshotOptions {
   snapshotsEnabled: boolean

@@ -1,9 +1,19 @@
 import { computed } from 'vue'
-import { type ClickedElement, type Pin } from '../types/pagePreview'
+import type { ClickedElement, Pin } from '../types/pagePreview'
 import type { usePreviewFrame } from './usePreviewFrame'
 import type { usePreviewReads } from './usePreviewReads'
 import type { usePreviewScale } from './usePreviewScale'
 import type { usePreviewSnapshot } from './usePreviewSnapshot'
+
+/** What `usePreviewPins` takes from the component that calls it. */
+export interface PreviewPinsOptions {
+  points: ReturnType<typeof usePreviewReads>['points']
+  anchorKey: ReturnType<typeof usePreviewFrame>['anchorKey']
+  anchorBoxes: ReturnType<typeof usePreviewFrame>['anchorBoxes']
+  overlayMode: ReturnType<typeof usePreviewReads>['overlayMode']
+  scale: ReturnType<typeof usePreviewScale>['scale']
+  layoutWidth: ReturnType<typeof usePreviewSnapshot>['layoutWidth']
+}
 
 /**
  * The most clicked elements of `PagePreview` and the pins drawn on them. The
@@ -11,14 +21,9 @@ import type { usePreviewSnapshot } from './usePreviewSnapshot'
  * right edge would cut its badge in half, and pushed down past the badges
  * already placed.
  */
-export function usePreviewPins(
-  points: ReturnType<typeof usePreviewReads>['points'],
-  anchorKey: ReturnType<typeof usePreviewFrame>['anchorKey'],
-  anchorBoxes: ReturnType<typeof usePreviewFrame>['anchorBoxes'],
-  overlayMode: ReturnType<typeof usePreviewReads>['overlayMode'],
-  scale: ReturnType<typeof usePreviewScale>['scale'],
-  layoutWidth: ReturnType<typeof usePreviewSnapshot>['layoutWidth'],
-) {
+export function usePreviewPins(options: PreviewPinsOptions) {
+  const { points, anchorKey, anchorBoxes, overlayMode, scale, layoutWidth } =
+    options
   const MOST_CLICKED = 5
 
   const mostClicked = computed<ClickedElement[]>(() => {

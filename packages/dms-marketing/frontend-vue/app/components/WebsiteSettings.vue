@@ -157,7 +157,7 @@ function done(): void {
     props.onSuccessCallback()
   } else {
     emit('success')
-    refreshPageBlocks()
+    void refreshPageBlocks()
   }
 }
 

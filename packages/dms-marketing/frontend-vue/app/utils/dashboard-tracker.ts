@@ -8,7 +8,14 @@
  * @packageDocumentation
  */
 import { watch, type WatchStopHandle } from 'vue'
+import type { DmsFrontendModule } from '#dms/frontend-module'
 import { MODULE_CONFIG_KEY } from '../constants'
+import { isRecord, isString } from './guards'
+
+/** The public options of the module's backend, as the frontend SDK hands them over. */
+type PublicOptions = Parameters<
+  NonNullable<DmsFrontendModule['setup']>
+>[0]['options']['public']
 
 export const DASHBOARD_TRACKER_ELEMENT_ID = 'dms-marketing-dashboard-tracker'
 
@@ -24,19 +31,19 @@ export interface DashboardTrackingOptions {
  * nothing for it.
  */
 export function dashboardTrackingOptions(
-  publicOptions: Record<string, unknown>,
+  publicOptions: PublicOptions,
 ): DashboardTrackingOptions | null {
-  const tracking = (
-    publicOptions[MODULE_CONFIG_KEY] as
-      { dashboardTracking?: { excludePaths?: unknown } } | undefined
-  )?.dashboardTracking
-  if (!tracking || typeof tracking !== 'object') {
+  const moduleOptions = Object.hasOwn(publicOptions, MODULE_CONFIG_KEY)
+    ? publicOptions[MODULE_CONFIG_KEY]
+    : undefined
+  const tracking = isRecord(moduleOptions)
+    ? moduleOptions.dashboardTracking
+    : undefined
+  if (!isRecord(tracking)) {
     return null
   }
   const excludePaths = Array.isArray(tracking.excludePaths)
-    ? tracking.excludePaths.filter(
-        (path): path is string => typeof path === 'string',
-      )
+    ? tracking.excludePaths.filter(isString)
     : []
   return { excludePaths }
 }

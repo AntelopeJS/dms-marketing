@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { isString } from '../utils/guards'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import { useMarketingContext } from '../composables/useMarketingContext'
 import {
@@ -44,13 +45,13 @@ const router = useDmsRouter()
 const api = useMarketingApi()
 const context = useMarketingContext()
 const toast = useToast()
-const { presentError } = useApiErrorPresenter()
+const errorPresenter = useApiErrorPresenter()
 const { confirm } = useConfirm()
 const { confirmFrom } = useConfirmFrom()
 
 const funnelId = computed(() => {
   const id = route.query.id
-  return typeof id === 'string' ? id : ''
+  return isString(id) ? id : ''
 })
 
 /** In the page's own context: website and period follow the link. */
@@ -175,7 +176,7 @@ async function writeStatus(target: MarketingExperimentStatus): Promise<void> {
     })
     reloadToken.value++
   } catch (error) {
-    presentError(error, {
+    errorPresenter.presentError(error, {
       fallbackKey: 'page.marketing.funnel.lifecycle.error',
     })
   } finally {

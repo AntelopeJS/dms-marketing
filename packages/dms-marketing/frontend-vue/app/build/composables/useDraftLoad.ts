@@ -10,13 +10,36 @@ import {
   templateSteps,
 } from '../../utils/funnel-draft'
 import { parseFunnelStepsValue } from '../../composables/useFunnelSteps'
-import { type MarketingExperiment } from '../../composables/useMarketingApi'
+import type { MarketingExperiment } from '../../composables/useMarketingApi'
 import { ref, onMounted } from 'vue'
-import { type ContextWebsite } from '../../composables/useMarketingContext'
+import { isString } from '../../utils/guards'
+import type { ContextWebsite } from '../../composables/useMarketingContext'
 import type { Ref } from 'vue'
 import type { useDmsRoute, useI18n } from '#dms/frontend-module'
 import type { useCopyDraft } from '../../composables/useCopyDraft'
-import type { StepDraft, VariationDraft } from '../types/funnelBuilder'
+import type { StepDraft } from '../types/funnelBuilder'
+
+/** What `useDraftLoad` takes from the component that calls it. */
+export interface DraftLoadOptions {
+  funnelId: string
+  sourceId: string
+  values: () => FunnelDraftValues
+  applyValues: (next: FunnelDraftValues) => void
+  route: ReturnType<typeof useDmsRoute>
+  original: Ref<MarketingExperiment | null>
+  savedObjective: Ref<string>
+  t: ReturnType<typeof useI18n>['t']
+  copy: ReturnType<typeof useCopyDraft>
+  queryParam: (key: string) => string
+  websiteId: Ref<string>
+  loading: Ref<boolean>
+  loadFailed: Ref<'not_found' | 'error' | null>
+  isEdit: boolean
+  steps: Ref<StepDraft[]>
+  uid: () => number
+  markClean: () => void
+  HTTP_NOT_FOUND: number
+}
 
 /**
  * How `FunnelBuilder` fills its draft once mounted: the funnel being edited or
@@ -31,26 +54,27 @@ import type { StepDraft, VariationDraft } from '../types/funnelBuilder'
  * after the starting point the page opened on, so it counts as a change to
  * save.
  */
-export function useDraftLoad(
-  funnelId: string,
-  sourceId: string,
-  values: () => FunnelDraftValues,
-  applyValues: (next: FunnelDraftValues) => void,
-  route: ReturnType<typeof useDmsRoute>,
-  original: Ref<MarketingExperiment | null>,
-  savedObjective: Ref<string>,
-  t: ReturnType<typeof useI18n>['t'],
-  copy: ReturnType<typeof useCopyDraft>,
-  queryParam: (key: string) => string,
-  websiteId: Ref<string>,
-  loading: Ref<boolean>,
-  loadFailed: Ref<'not_found' | 'error' | null>,
-  isEdit: boolean,
-  steps: Ref<StepDraft[]>,
-  uid: () => number,
-  markClean: () => void,
-  HTTP_NOT_FOUND: number,
-) {
+export function useDraftLoad(options: DraftLoadOptions) {
+  const {
+    funnelId,
+    sourceId,
+    values,
+    applyValues,
+    route,
+    original,
+    savedObjective,
+    t,
+    copy,
+    queryParam,
+    websiteId,
+    loading,
+    loadFailed,
+    isEdit,
+    steps,
+    uid,
+    markClean,
+    HTTP_NOT_FOUND,
+  } = options
   const readDefinition = useFunnelRead(funnelId || sourceId)
   const readContext = useContextOnDemand()
 
@@ -59,8 +83,7 @@ export function useDraftLoad(
     const experiment = parseExperimentValue(row.experiment)
     const draft: FunnelDraftValues = {
       name: row.name,
-      websiteId:
-        typeof row.websiteId === 'string' ? row.websiteId : row.websiteId._id,
+      websiteId: isString(row.websiteId) ? row.websiteId : row.websiteId._id,
       steps: parseFunnelStepsValue(row.steps),
       windowHours: row.conversionWindowHours,
       split: experiment !== null,
