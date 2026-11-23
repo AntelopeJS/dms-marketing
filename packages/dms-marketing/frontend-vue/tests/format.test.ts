@@ -22,7 +22,6 @@ describe('formatting', () => {
 
   it('never writes an event age in the future', () => {
     const now = Date.UTC(2026, 9, 18, 12)
-    // The server's clock a few seconds ahead of the reader's.
     expect(formatRelativeTime(now + 3_000, now, 'en-GB', 'short')).toBe('now')
     expect(formatRelativeTime(now + 3_000, now, 'fr-FR', 'short')).toBe(
       'maintenant',
@@ -98,7 +97,6 @@ describe('helpers', () => {
 })
 
 describe('dates in the reader zone', () => {
-  // 16 Oct 2026: Paris on summer time (UTC+2), New York on UTC-4.
   const now = Date.UTC(2026, 9, 16, 12)
 
   it('says when the statistics day starts on the reader clock, nothing at UTC', () => {

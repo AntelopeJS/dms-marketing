@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { Script } from 'node:vm'
 import {
   draftIssues,
   isExperimentKey,
@@ -73,7 +74,6 @@ describe('template links', () => {
   })
 })
 
-// QA B08: "Split into A/B test" opened a plain funnel with its split off.
 describe('a split requested by the link', () => {
   it("turns a stored funnel's split on, and never off", () => {
     expect(withRequestedSplit(draft({ split: false }), '1').split).toBe(true)
@@ -150,18 +150,19 @@ describe('draft issues', () => {
         false,
       ).variations,
     ).toMatchObject({ message: 'variations', index: 1 })
-    for (const weights of [
+    const refusedWeights: [number | string, number | string][] = [
       [0, 0],
       [-3, 1],
       ['', 1],
-    ]) {
+    ]
+    for (const [control, bold] of refusedWeights) {
       expect(
         draftIssues(
           draft({
             ...split,
             variations: [
-              { key: 'control', weight: weights[0]! },
-              { key: 'bold', weight: weights[1]! },
+              { key: 'control', weight: control },
+              { key: 'bold', weight: bold },
             ],
           }),
           false,
@@ -199,7 +200,7 @@ describe('variation snippet', () => {
     expect(code).not.toMatch(/^\s*(const|let|var) .*= await/m)
     expect(code).toContain('variation("hero-cta").then(')
     expect(code).toContain('} else if (arm === "quiet") {')
-    expect(() => new Function(code)).not.toThrow()
+    expect(() => new Script(code)).not.toThrow()
   })
 
   it('writes its comments in the language it is given', () => {
@@ -213,14 +214,14 @@ describe('variation snippet', () => {
 })
 
 describe('window presets', () => {
-  // QA m8: a preset read "Whole session" while the funnel saved "24 h".
   it('label each preset with the hours it saves, in every locale', () => {
     for (const messages of [en, fr]) {
-      const labels: Record<string, string> =
-        messages.page.marketing.builder.window_presets
-      expect(Object.keys(labels).map(Number)).toEqual([...WINDOW_PRESET_HOURS])
+      const labels = new Map(
+        Object.entries(messages.page.marketing.builder.window_presets),
+      )
+      expect([...labels.keys()].map(Number)).toEqual([...WINDOW_PRESET_HOURS])
       for (const hours of WINDOW_PRESET_HOURS) {
-        expect(labels[hours]?.replace(/\s/g, '')).toBe(`${hours}h`)
+        expect(labels.get(String(hours))?.replace(/\s/g, '')).toBe(`${hours}h`)
       }
     }
   })

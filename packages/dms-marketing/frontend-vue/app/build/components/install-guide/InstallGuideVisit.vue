@@ -7,7 +7,7 @@ import type {
 import type { ContextWebsite } from '../../../composables/useMarketingContext'
 
 /** What the connection check of `InstallGuide` saw: the pageview that arrived, or the listening state while it waits for one. */
-defineProps<{
+interface Props {
   visit: MarketingConnectionVisit | null
   website: ContextWebsite
   status: MarketingConnectionStatus
@@ -16,7 +16,9 @@ defineProps<{
   when: (at: number) => string
   checkAgain: () => void
   openOverview: () => Promise<void>
-}>()
+}
+
+defineProps<Props>()
 
 const { t } = useI18n()
 </script>

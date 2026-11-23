@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { websiteCardOf } from '../app/utils/website-card'
+import { websiteCardOf, type WebsiteRow } from '../app/utils/website-card'
 import {
   WEBSITE_LIVE_WINDOW_MS,
   websiteDisplayState,
 } from '../app/utils/website-state'
 
 /** A row as the websites table lists it: stored fields, card merged in. */
-function listedRow(overrides: Record<string, unknown> = {}) {
+function listedRow(overrides: WebsiteRow = {}) {
   return {
     _id: 'site-1',
     name: 'Shop',
@@ -100,8 +100,6 @@ describe('websiteCardOf', () => {
   })
 })
 
-// QA m10: a card read off the table shows the same state as everywhere else,
-// not the backend's sticky \`live\`.
 describe('a listed card', () => {
   const lastActivityAt = Date.UTC(2026, 9, 17, 12)
 

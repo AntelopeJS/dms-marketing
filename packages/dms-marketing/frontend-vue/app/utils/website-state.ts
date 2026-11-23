@@ -1,5 +1,6 @@
 import type { ContextWebsite } from '../composables/useMarketingContext'
 import { formatRelativeTime, isJustNow } from './format'
+import type { Translate } from './translate'
 
 /**
  * A website reads "live" while its last event is this recent: the backend's
@@ -34,8 +35,6 @@ export function websiteDisplayState(
   }
   return site.state
 }
-
-type Translate = (key: string, named?: Record<string, unknown>) => string
 
 /** A state that tells the age of its last event, when there is one. */
 function showsActivity(state: WebsiteDisplayState): boolean {

@@ -1,15 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { isElement } from '../utils/guards'
 import { useDmsRouter, useI18n } from '#dms/frontend-module'
 import { useMarketingApi } from '../composables/useMarketingApi'
 import { installLink, overviewLink } from '../composables/useMarketingRoutes'
 import { useMarketingNow } from '../composables/useMarketingNow'
-import {
-  formatNumber,
-  formatRelativeTime,
-  formatShortDate,
-  initials,
-} from '../utils/format'
+import { formatNumber, formatShortDate, initials } from '../utils/format'
 import { allowHostConfirmation, hostConflictOf } from '../utils/host-conflict'
 import { websiteCardOf, type WebsiteRow } from '../utils/website-card'
 import {
@@ -44,7 +40,7 @@ const { t, locale } = useI18n()
 const router = useDmsRouter()
 const api = useMarketingApi()
 const toast = useToast()
-const { presentError } = useApiErrorPresenter()
+const errorPresenter = useApiErrorPresenter()
 const { confirm } = useConfirm()
 
 const card = computed(() => websiteCardOf(props.row))
@@ -53,8 +49,10 @@ const now = useMarketingNow(CLOCK_TICK_MS)
 /** The browser's zone, which a server render writes the dates in. */
 const readerZone = readerTimeZone()
 
-// \`live\` only while the last event is recent (website-state), as everywhere
-// a site's state shows.
+/**
+ * \`live\` only while the last event is recent (website-state), as everywhere
+ * a site's state shows.
+ */
 const displayState = computed(() => websiteDisplayState(card.value, now.value))
 const stateLine = computed(() =>
   websiteStateLine(card.value, now.value, t, locale.value),
@@ -70,8 +68,11 @@ function edit(setting?: 'snapshots'): void {
 
 /** A click on the card, outside its own controls, opens the settings. */
 function onCardClick(event: MouseEvent): void {
-  const target = event.target as HTMLElement | null
-  if (target?.closest('a, button, input, [role="button"]')) {
+  const target = event.target
+  if (
+    isElement(target) &&
+    target.closest('a, button, input, [role="button"]')
+  ) {
     return
   }
   edit()
@@ -85,9 +86,9 @@ async function openOverview(): Promise<void> {
 /** The card action running (`resume` or a host), for its spinner. */
 const busy = ref<string | null>(null)
 
-async function runCardAction(
+async function runCardAction<Answer>(
   key: string,
-  action: () => Promise<unknown>,
+  action: () => Promise<Answer>,
   successTitle: string,
   errorTitle: string,
 ): Promise<void> {
@@ -95,12 +96,10 @@ async function runCardAction(
   try {
     await action()
     toast.add({ color: 'success', title: successTitle })
-    // Its state and counts are the backend's: the page reads them again,
-    // the card's spinner on until it shows them.
     await refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)
-    presentError(error, {
+    errorPresenter.presentError(error, {
       fallbackKey: conflict
         ? 'page.marketing.errors.duplicate_host_named'
         : errorTitle,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { present } from './present'
 import {
   acquisitionLink,
   funnelBuilderLink,
@@ -38,7 +39,7 @@ describe('module links', () => {
     })
     const query = new URL(link, 'http://x').searchParams
     expect(query.get('split')).toBe('1')
-    expect(JSON.parse(query.get('steps')!)).toEqual([
+    expect(JSON.parse(present(query.get('steps')))).toEqual([
       { kind: 'custom', value: 'signup' },
     ])
   })
@@ -91,7 +92,6 @@ describe('module links', () => {
     expect(websitesLink('site-1', 'snapshots')).toBe(
       '/modules/marketing/websites?record=site-1&setting=snapshots',
     )
-    // A setting without a site has no modal to open.
     expect(websitesLink(null, 'snapshots')).toBe('/modules/marketing/websites')
   })
 

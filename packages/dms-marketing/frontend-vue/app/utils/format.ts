@@ -1,6 +1,8 @@
 /**
  * Locale formatting shared by the module's blocks. Pure functions of their
  * inputs, so the blocks stay thin and the rules stay testable.
+ *
+ * @packageDocumentation
  */
 
 import { fractionDigits } from '../constants'
@@ -171,8 +173,8 @@ export function initials(name: string): string {
   const words = name.split(/[^\p{L}\p{N}]+/u).filter(Boolean)
   const letters =
     words.length > 1
-      ? words.slice(0, INITIALS_LENGTH).map((word) => [...word][0])
-      : [...(words[0] ?? '?')].slice(0, INITIALS_LENGTH)
+      ? words.slice(0, INITIALS_LENGTH).map((word) => Array.from(word)[0])
+      : Array.from(words[0] ?? '?').slice(0, INITIALS_LENGTH)
   return letters.join('').toUpperCase()
 }
 

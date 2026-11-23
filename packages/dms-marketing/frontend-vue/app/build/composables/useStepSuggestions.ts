@@ -1,21 +1,26 @@
-import { type MarketingFunnelSuggestions } from '../../composables/useMarketingApi'
+import type { MarketingFunnelSuggestions } from '../../composables/useMarketingApi'
 import { useFunnelSuggestions } from '../../composables/useMarketingReads'
 import { computed, ref } from 'vue'
-import { type StepDraft } from '../types/funnelBuilder'
+import type { StepDraft } from '../types/funnelBuilder'
 import type { Ref } from 'vue'
 
-/** The suggestions of `FunnelBuilder`'s step inputs: the site's pages and events, the list under the focused input and its keyboard. */
+/**
+ * The suggestions of `FunnelBuilder`'s step inputs: the site's pages and
+ * events, the list under the focused input and its keyboard.
+ *
+ * They are read once the site is known (the context, or the funnel being
+ * edited). The list is a combobox: arrows move through it, Enter picks, Escape
+ * closes it until the step is typed in again, and the blur is late enough for a
+ * click on a suggestion to land first.
+ */
 export function useStepSuggestions(
   websiteId: Ref<string>,
   SUGGESTIONS_SHOWN: number,
   clearStepError: () => void,
   STEP_CONTROL_PREFIX: string,
 ) {
-  // --- Suggestions and preview -------------------------------------------------
-
   const NO_SUGGESTIONS: MarketingFunnelSuggestions = { pages: [], events: [] }
 
-  // Read once the site is known (the context, or the funnel being edited).
   const suggestionsRead = useFunnelSuggestions(websiteId)
   const suggestions = computed(() =>
     suggestionsRead.error.value
@@ -24,7 +29,6 @@ export function useStepSuggestions(
   )
 
   const focusedStep = ref<number | null>(null)
-  /** The step whose list Escape closed, until it is typed in again. */
   const dismissedStep = ref<number | null>(null)
   const activeOption = ref(-1)
 
@@ -53,7 +57,6 @@ export function useStepSuggestions(
 
   const BLUR_DELAY_MS = 150
 
-  /** Late enough for a click on a suggestion to land first. */
   function blurStep(step: StepDraft): void {
     setTimeout(() => {
       if (focusedStep.value === step.uid) {
@@ -75,7 +78,6 @@ export function useStepSuggestions(
     clearStepError()
   }
 
-  /** The combobox keys: arrows move through the list, Enter picks, Escape closes. */
   function onStepKeydown(event: KeyboardEvent, step: StepDraft): void {
     if (!listOpen(step)) {
       return
@@ -87,7 +89,10 @@ export function useStepSuggestions(
       activeOption.value = (activeOption.value + offset + count) % count
     } else if (event.key === 'Enter' && activeOption.value >= 0) {
       event.preventDefault()
-      pick(step, matchesFor(step)[activeOption.value]!.value)
+      const active = matchesFor(step)[activeOption.value]
+      if (active) {
+        pick(step, active.value)
+      }
     } else if (event.key === 'Escape') {
       event.preventDefault()
       dismissedStep.value = step.uid

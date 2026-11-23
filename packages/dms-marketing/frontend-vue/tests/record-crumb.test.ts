@@ -6,7 +6,6 @@ let labels: { path: string; label: string | undefined }[]
 
 beforeEach(() => {
   labels = []
-  // The DMS's own: the label its header ends the breadcrumb with.
   vi.stubGlobal('usePageRecordLabel', () => ({
     setLabel: (path: string, label: string | undefined) =>
       labels.push({ path, label }),
@@ -17,7 +16,6 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-// QA m13: the funnel report's breadcrumb stopped at "Funnel".
 describe('the record crumb', () => {
   it("names the page's record once it is loaded, and follows it", async () => {
     const name = ref<string | null>(null)

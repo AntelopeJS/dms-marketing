@@ -24,7 +24,7 @@ const emit = defineEmits<{ success: [] }>()
 const { t } = useI18n()
 const router = useDmsRouter()
 const api = useMarketingApi()
-// A field-tied error from the creation shows under its field, the rest as a toast.
+/** A field-tied error from the creation shows under its field, the rest as a toast. */
 const fieldErrors = useFieldErrors({
   fields: { name: 'website-create-name', domain: 'website-create-domain' },
 })
@@ -62,7 +62,6 @@ async function create(): Promise<void> {
     })
     created.value = true
     await api.selectContextWebsite(website._id)
-    // Another page: the modal closes on its own.
     await router.push(installLink(website._id))
   } catch (error) {
     const conflict = hostConflictOf(error)

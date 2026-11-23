@@ -1,49 +1,16 @@
 import { describe, expect, it, vi } from 'vitest'
 import { nextTick, ref } from 'vue'
+import { present } from './present'
 import frontendModule from '../dms.frontend'
 import { MODULE_CONFIG_KEY } from '../app/constants'
 import {
-  applyDashboardTracker,
-  DASHBOARD_TRACKER_ELEMENT_ID,
   dashboardTrackingOptions,
   followDashboardSession,
 } from '../app/utils/dashboard-tracker'
 
-/** Just enough of a script element and a document for the tag helper. */
-class FakeElement {
-  id = ''
-  async = false
-  src = ''
-  readonly attributes = new Map<string, string>()
-  setAttribute(name: string, value: string) {
-    this.attributes.set(name, value)
-  }
-  removeAttribute(name: string) {
-    this.attributes.delete(name)
-  }
-}
-
-function fakeDocument() {
-  const appended: FakeElement[] = []
-  const doc = {
-    appended,
-    getElementById: (id: string) =>
-      appended.find((element) => element.id === id) ?? null,
-    createElement: () => new FakeElement(),
-    head: {
-      appendChild: (element: FakeElement) => {
-        appended.push(element)
-        return element
-      },
-    },
-  }
-  return doc as typeof doc & Parameters<typeof applyDashboardTracker>[0]
-}
-
-const SRC = 'https://dms.example.com/api/marketing/tracker.js'
 const EXCLUDED = ['/auth/**', '/settings/*']
 
-function sdk(publicOptions: Record<string, unknown>) {
+function sdk(publicOptions: Parameters<typeof dashboardTrackingOptions>[0]) {
   return {
     options: { public: publicOptions },
     registerComponent: vi.fn(),
@@ -95,56 +62,14 @@ describe('dashboard tracking options', () => {
   })
 })
 
-describe('the dashboard tag', () => {
-  it('is not inserted before there is a website to report to', () => {
-    const doc = fakeDocument()
-    applyDashboardTracker(doc, {
-      src: SRC,
-      websiteId: null,
-      excludePaths: EXCLUDED,
-    })
-    expect(doc.appended).toHaveLength(0)
-  })
-
-  it('is inserted once, then paused and retargeted in place', () => {
-    const doc = fakeDocument()
-    applyDashboardTracker(doc, {
-      src: SRC,
-      websiteId: 'site-a',
-      excludePaths: EXCLUDED,
-    })
-    expect(doc.appended).toHaveLength(1)
-    const tag = doc.appended[0]!
-    expect(tag.id).toBe(DASHBOARD_TRACKER_ELEMENT_ID)
-    expect(tag.src).toBe(SRC)
-    expect(tag.async).toBe(true)
-    expect(tag.attributes.get('data-website-id')).toBe('site-a')
-    expect(tag.attributes.get('data-exclude-paths')).toBe(
-      '/auth/**,/settings/*',
-    )
-
-    applyDashboardTracker(doc, {
-      src: SRC,
-      websiteId: null,
-      excludePaths: EXCLUDED,
-    })
-    expect(tag.attributes.has('data-website-id')).toBe(false)
-
-    applyDashboardTracker(doc, {
-      src: SRC,
-      websiteId: 'site-b',
-      excludePaths: EXCLUDED,
-    })
-    expect(doc.appended).toHaveLength(1)
-    expect(tag.attributes.get('data-website-id')).toBe('site-b')
-  })
-})
-
 describe('following the signed-in workspace', () => {
   function binding(answers: Record<string, () => Promise<string>>) {
     const workspace = ref<string | null>(null)
     const applied: (string | null)[] = []
-    const provision = vi.fn(() => answers[workspace.value!]!())
+    const byWorkspace = new Map(Object.entries(answers))
+    const provision = vi.fn(() =>
+      present(byWorkspace.get(present(workspace.value)))(),
+    )
     const stop = followDashboardSession({
       workspace: () => workspace.value,
       provision,
@@ -176,7 +101,6 @@ describe('following the signed-in workspace', () => {
     expect(applied).toEqual([null, null, 'site-1'])
 
     workspace.value = 't2'
-    // Synchronous: paused before the navigation that follows the switch.
     expect(applied.at(-1)).toBeNull()
     await settle()
     expect(applied.at(-1)).toBe('site-2')

@@ -21,7 +21,7 @@ export interface SnapshotViewport {
 }
 
 const VIEWPORT_UNIT =
-  /(-?(?:\d+\.?\d*|\.\d+))(dvh|svh|lvh|vh|vmin|vmax)(?![\w-])/g
+  /(-?(?:\d+(?:\.\d*)?|\.\d+))(dvh|svh|lvh|vh|vmin|vmax)(?![\w-])/g
 const DECLARATION_VALUE = /((?<!\\):)([^;{}]*)/g
 const STYLE_BLOCK = /(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi
 const STYLE_ATTRIBUTE = /(\sstyle=")([^"]*)(")/gi

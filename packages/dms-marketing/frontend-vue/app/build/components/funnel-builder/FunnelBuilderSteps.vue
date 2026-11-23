@@ -13,8 +13,8 @@ import {
 import type { StepDraft } from '../../types/funnelBuilder'
 
 /** The steps section of `FunnelBuilder`: each step's kind and value, with suggestions as it is typed, its preview count and its controls. */
-defineProps<{
-  STEP_CONTROL_PREFIX: string
+interface Props {
+  stepControlPrefix: string
   activeOption: number
   addStep: (kind?: MarketingFunnelStep['kind'], value?: string) => void
   blurStep: (step: StepDraft) => void
@@ -36,7 +36,9 @@ defineProps<{
   stepHint: (step: StepDraft) => { text: string; warning: boolean } | null
   steps: StepDraft[]
   typeStep: () => void
-}>()
+}
+
+defineProps<Props>()
 
 const { t, locale } = useI18n()
 </script>
@@ -130,7 +132,7 @@ const { t, locale } = useI18n()
           class="relative order-last col-span-full md:order-none md:col-span-1"
         >
           <UInput
-            :id="`${STEP_CONTROL_PREFIX}${step.uid}`"
+            :id="`${stepControlPrefix}${step.uid}`"
             v-model="step.value"
             size="sm"
             class="w-full font-mono"
@@ -144,7 +146,7 @@ const { t, locale } = useI18n()
               })
             "
             :aria-expanded="listOpen(step)"
-            :aria-controls="`${STEP_CONTROL_PREFIX}${step.uid}-list`"
+            :aria-controls="`${stepControlPrefix}${step.uid}-list`"
             :aria-activedescendant="
               listOpen(step) && activeOption >= 0
                 ? optionId(step, activeOption)
@@ -171,7 +173,7 @@ const { t, locale } = useI18n()
                 "
               />
             </div>
-            <ul :id="`${STEP_CONTROL_PREFIX}${step.uid}-list`" role="listbox">
+            <ul :id="`${stepControlPrefix}${step.uid}-list`" role="listbox">
               <li
                 v-for="(match, matchIndex) in matchesFor(step)"
                 :id="optionId(step, matchIndex)"
@@ -224,7 +226,13 @@ const { t, locale } = useI18n()
             <span class="font-semibold text-highlighted">
               {{ formatNumber(previewCount(step)!, locale) }}
             </span>
-            {{ t('page.marketing.builder.sessions_short', {}, previewCount(step)!) }}
+            {{
+              t(
+                'page.marketing.builder.sessions_short',
+                {},
+                previewCount(step)!,
+              )
+            }}
           </template>
         </span>
         <UButton

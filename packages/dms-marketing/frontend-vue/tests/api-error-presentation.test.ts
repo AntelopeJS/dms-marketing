@@ -1,4 +1,4 @@
-import { computed, createSSRApp, defineComponent, h, ref } from 'vue'
+import { computed, createSSRApp, h, ref, type FunctionalComponent } from 'vue'
 import { renderToString } from 'vue/server-renderer'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createFetch } from 'ofetch'
@@ -12,7 +12,12 @@ import { setDmsRouteQuery } from './stubs/frontend-module'
 
 const READ_ONLY = 'Read-only demo, changes are not saved'
 
-function notices(status: number, body: object) {
+interface ErrorBody {
+  message?: string
+  severity?: string
+}
+
+function notices(status: number, body: ErrorBody) {
   const add = vi.fn(() => ({ id: 'notice' }))
   const response = Object.assign(Response.json(body, { status }), {
     _data: body,
@@ -27,7 +32,7 @@ function notices(status: number, body: object) {
       rt: (message: string) => message,
     },
   }))
-  vi.stubGlobal('useDmsState', (key: string, init: () => unknown) => {
+  vi.stubGlobal('useDmsState', (key: string, init: () => boolean) => {
     if (!states.has(key)) {
       states.set(key, ref(init()))
     }
@@ -92,23 +97,25 @@ it.each([
     vi.stubGlobal('readerTimeZone', () => 'UTC')
     vi.stubGlobal('apiErrorStatus', () => 0)
     setDmsRouteQuery({ id: 'quote' })
-    let stop = async () => {
+    let stop: () => Promise<void> = async () => {
       throw new Error('Stop button not rendered')
     }
     const app = createSSRApp(FunnelReport)
     app.config.warnHandler = () => {}
-    app.component(
-      'UButton',
-      defineComponent({
-        props: ['label', 'onClick'],
-        setup(props) {
-          if (props.label === 'page.marketing.funnel.lifecycle.stop') {
-            stop = props.onClick
-          }
-          return () => h('button', props.label)
-        },
-      }),
-    )
+    const button: FunctionalComponent<{
+      label?: string
+      onClick?: () => Promise<void>
+    }> = (props) => {
+      if (
+        props.label === 'page.marketing.funnel.lifecycle.stop' &&
+        props.onClick
+      ) {
+        stop = props.onClick
+      }
+      return h('button', props.label)
+    }
+    button.props = ['label', 'onClick']
+    app.component('UButton', button)
     await renderToString(app)
     await stop()
     useApiErrorPresenter().presentError(error, {
@@ -162,23 +169,23 @@ it('snapshot options present the JSON refusal once without changing the website'
     trackingEnabled: true,
   }
   const emit = vi.fn()
-  const preview = usePreviewSnapshot(
-    1280,
-    [],
-    computed(() => false),
-    {
+  const preview = usePreviewSnapshot({
+    DEFAULT_LAYOUT_WIDTH: 1280,
+    LAYOUT_PRESETS: [],
+    foreign: computed(() => false),
+    props: {
       website,
       path: '/',
       period: null,
       sampleRateLabel: null,
       trackerEnabled: true,
     },
-    ref('en'),
-    async () => true,
-    (key) => key,
+    locale: ref('en'),
+    confirm: async () => true,
+    t: (key) => key,
     emit,
-    useMarketingApi(),
-  )
+    api: useMarketingApi(),
+  })
   await preview.updateSnapshotOptions({ snapshotsEnabled: true })
   expect(preview.savingOptions.value).toBe(false)
   expect(website.snapshotsEnabled).toBe(false)

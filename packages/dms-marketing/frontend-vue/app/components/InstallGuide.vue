@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { isString } from '../utils/guards'
 import {
   useDmsRoute,
   useDmsRouter,
@@ -24,20 +25,20 @@ import InstallGuideVisit from '../build/components/install-guide/InstallGuideVis
  * — or names a host the guard refused, with the fix. "Check again" waits for
  * a pageview sent after it, to re-verify a site already live.
  */
-const props = withDefaults(
-  defineProps<{ componentId?: string; pageId?: string }>(),
-  {
-    componentId: undefined,
-    pageId: undefined,
-  },
-)
+interface Props {
+  componentId?: string
+  pageId?: string
+}
+
+withDefaults(defineProps<Props>(), {
+  componentId: undefined,
+  pageId: undefined,
+})
 
 const POLL_MS = 4000
 const HTTP_NOT_FOUND = 404
 const MAX_NAME_LENGTH = 100
 const MAX_DOMAIN_LENGTH = 253
-
-void props
 
 const { t, locale } = useI18n()
 const route = useDmsRoute()
@@ -45,16 +46,14 @@ const router = useDmsRouter()
 const config = useDmsRuntimeConfig()
 const api = useMarketingApi()
 const toast = useToast()
-const { presentError } = useApiErrorPresenter()
+const errorPresenter = useApiErrorPresenter()
 const { confirm } = useConfirm()
-// A field-tied error from the creation shows under its field, the rest as a toast.
+/** A field-tied error from the creation shows under its field, the rest as a toast. */
 const fieldErrors = useFieldErrors({
   fields: { name: 'install-name', domain: 'install-domain' },
 })
 
-const websiteId = ref(
-  typeof route.query.website === 'string' ? route.query.website : '',
-)
+const websiteId = ref(isString(route.query.website) ? route.query.website : '')
 /** Server time "Check again" waits from; null: since the site's creation. */
 const recheckSince = ref<number | null>(null)
 /** The check's polling period: `POLL_MS` while it waits for a pageview, 0 (stopped) otherwise. */
@@ -69,8 +68,6 @@ const missing = computed(
 )
 /** The last check failed; the next one is on its way. */
 const failed = computed(() => !!connection.error.value && !missing.value)
-
-// --- Step 1 ----------------------------------------------------------------------
 
 const name = ref('')
 const domain = ref('')
@@ -118,14 +115,10 @@ async function createWebsite(): Promise<void> {
   }
 }
 
-// --- Step 3: connection check ---------------------------------------------------
-
 /** No pageview yet, and the site is there: the check polls. */
 const isWaiting = computed(
   () => !!websiteId.value && !missing.value && !status.value?.visit,
 )
-// The check polls while it waits, and stops once a pageview arrived or the
-// site is gone.
 watch(
   isWaiting,
   (waiting) => {
@@ -145,16 +138,13 @@ function checkAgain(): void {
 
 const apiOrigin = ref('')
 onMounted(() => {
-  // Read once mounted: the server renders with its internal backend URL.
-  apiOrigin.value = String(
-    (config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? '',
-  )
+  apiOrigin.value = config.public.dms.baseURL
 })
 
 watch(
   () => route.query.website,
   (value) => {
-    const next = typeof value === 'string' ? value : ''
+    const next = isString(value) ? value : ''
     if (next !== websiteId.value) {
       websiteId.value = next
       recheckSince.value = null
@@ -182,11 +172,10 @@ async function allow(hostname: string): Promise<void> {
       color: 'success',
       title: t('page.marketing.install.allowed', { host: hostname }),
     })
-    // The refused host leaves the check before its button comes back.
     await refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)
-    presentError(error, {
+    errorPresenter.presentError(error, {
       fallbackKey: conflict
         ? 'page.marketing.errors.duplicate_host_named'
         : 'page.marketing.install.allow_error',

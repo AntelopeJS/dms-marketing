@@ -2,6 +2,8 @@
  * The website settings modal's draft: what it starts from, what saving it
  * sends, and when it asks first. Pure, so the modal's rules are testable
  * without it.
+ *
+ * @packageDocumentation
  */
 
 import type {

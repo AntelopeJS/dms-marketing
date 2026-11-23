@@ -5,15 +5,18 @@ import type { PagePreviewProps } from '../types/pagePreview'
 import type { useI18n } from '#dms/frontend-module'
 import type { useMarketingApi } from '../../composables/useMarketingApi'
 
-/** The reset of `PagePreview`: deleting the page's clicks, scrolls and snapshots, confirmed with what it removes. */
+/**
+ * The reset of `PagePreview`: deleting the page's clicks, scrolls and snapshots
+ * of every period, confirmed with what it removes. The server counts them
+ * before asking, and the page's reads follow the deletion so the preview shows
+ * the emptied page before the button comes back.
+ */
 export function usePreviewReset(
   props: Readonly<PagePreviewProps>,
   t: ReturnType<typeof useI18n>['t'],
   locale: ReturnType<typeof useI18n>['locale'],
   api: ReturnType<typeof useMarketingApi>,
 ) {
-  // --- Reset ------------------------------------------------------------------
-
   const { confirm } = useConfirm()
   const toast = useToast()
   const resetting = ref(false)
@@ -23,8 +26,6 @@ export function usePreviewReset(
     () => props.path,
   )
 
-  /** Deletes the clicks, scrolls and snapshots of the page (every period),
-   *  counted by the server before asking; the page's reads follow. */
   async function resetPageHeatmap() {
     const website = props.website
     if (!website) {
@@ -59,7 +60,6 @@ export function usePreviewReset(
               what: heatmapDataLabel(deleted, t, locale.value),
             }),
           })
-          // The preview shows the emptied page before the button comes back.
           await refreshPageBlocks()
         } finally {
           resetting.value = false

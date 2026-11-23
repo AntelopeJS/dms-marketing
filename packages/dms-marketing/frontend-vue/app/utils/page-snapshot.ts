@@ -3,13 +3,7 @@ import type {
   MarketingSnapshotLayout,
 } from '../composables/useMarketingApi'
 import { formatRelativeTime, formatShortDate } from './format'
-
-/** The `t` of useI18n, as far as these helpers call it. */
-type Translate = (
-  key: string,
-  named?: Record<string, unknown>,
-  plural?: number,
-) => string
+import type { Translate } from './translate'
 
 const PREFIX = 'page.marketing.pages.row_snapshot'
 

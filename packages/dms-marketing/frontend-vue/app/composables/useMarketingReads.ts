@@ -1,5 +1,8 @@
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import type { MarketingContextPayload } from './useMarketingContext'
+import { isExperiment } from './useExperiment'
+import { isStepList } from './useFunnelSteps'
+import { isNumber, isRecord, isString } from '../utils/guards'
 import type {
   MarketingConnectionStatus,
   MarketingFunnelListItem,
@@ -64,6 +67,33 @@ export function useWebsites(): ApiDataResult<MarketingWebsite[]> {
   return useApiData<MarketingWebsite[]>('/api/marketing/websites')
 }
 
+function isFunnelListItem(value: unknown): value is MarketingFunnelListItem {
+  return (
+    isRecord(value) &&
+    isString(value._id) &&
+    (isString(value.websiteId) ||
+      (isRecord(value.websiteId) && isString(value.websiteId._id))) &&
+    isString(value.name) &&
+    (isString(value.steps) || isStepList(value.steps)) &&
+    isNumber(value.conversionWindowHours) &&
+    (value.experiment === undefined ||
+      value.experiment === null ||
+      isString(value.experiment) ||
+      isExperiment(value.experiment))
+  )
+}
+
+/** The page of funnels the data-api list route answers. */
+function isFunnelListPage(
+  value: unknown,
+): value is { results: MarketingFunnelListItem[] } {
+  return (
+    isRecord(value) &&
+    Array.isArray(value.results) &&
+    value.results.every(isFunnelListItem)
+  )
+}
+
 /** The funnels of a website, oldest first; nothing read without one. */
 export function useWebsiteFunnels(
   websiteId: MaybeRefOrGetter<string>,
@@ -77,8 +107,7 @@ export function useWebsiteFunnels(
         sortKey: 'createdAt',
         sortDirection: 'asc',
       }),
-      transform: (value) =>
-        (value as { results: MarketingFunnelListItem[] }).results,
+      transform: (value) => (isFunnelListPage(value) ? value.results : []),
     },
   )
 }
@@ -286,7 +315,11 @@ function useReadOnDemand<T>(
     if (read.error.value) {
       throw read.error.value
     }
-    return read.data.value as T
+    const answer = read.data.value
+    if (answer === undefined || answer === null) {
+      throw new Error('The read settled without an answer')
+    }
+    return answer
   }
 }
 
@@ -305,7 +338,7 @@ export function useWebsiteDeletionImpactRead(
 /** What resetting the clicks of a page, or of the whole site, deletes. */
 export function useHeatmapCountRead(
   websiteId: MaybeRefOrGetter<string>,
-  path: MaybeRefOrGetter<string | undefined> = undefined,
+  path?: MaybeRefOrGetter<string | undefined>,
 ): ReadOnDemand<MarketingHeatmapData> {
   return useReadOnDemand(
     () => (toValue(websiteId) ? '/api/marketing/stats/heatmap/count' : null),

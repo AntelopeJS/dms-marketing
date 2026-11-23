@@ -1,6 +1,10 @@
+/**
+ * The server's own rules, read from its sources: the builder and the website
+ * forms check a draft before saving it, and must refuse what the API refuses.
+ *
+ * @packageDocumentation
+ */
 import { describe, expect, it } from 'vitest'
-// The server's own rules, read from its sources: the builder and the website
-// forms check a draft before saving it, and must refuse what the API refuses.
 import * as server from '../../src/types/constants'
 import { normalizeStepPath } from '../../src/services/funnels/step-path'
 import * as draft from '../app/utils/funnel-draft'

@@ -1,7 +1,4 @@
-import antiSlop from '@antelopejs/tooling-configs/oxc/anti-slop'
-import guardrails from '@antelopejs/tooling-configs/oxc/guardrails'
-import vue from 'eslint-plugin-vue'
-import ts from 'typescript-eslint'
+import { antelopeNuxtConfig } from '@antelopejs/tooling-configs/eslint'
 
 /**
  * Nuxt's `import.meta` flags. The DMS builds this module with Vite alone, where
@@ -15,30 +12,12 @@ const NUXT_ONLY_FLAG = {
     'The DMS builds this module with Vite, where Nuxt-only import.meta flags are undefined: use import.meta.env.SSR.',
 }
 
-export default [
-  { ignores: ['node_modules/**', 'dist/**'] },
-  ...vue.configs['flat/essential'],
-  {
-    files: ['**/*.ts', '**/*.vue'],
-    languageOptions: { parserOptions: { parser: ts.parser } },
-    rules: {
-      curly: ['error', 'all'],
-    },
-  },
-  { files: ['**/*.ts'], languageOptions: { parser: ts.parser } },
-  {
+export default antelopeNuxtConfig({
+  typeAware: { tsconfigRootDir: import.meta.dirname },
+  rules: { curly: ['error', 'all'] },
+})
+  .prepend({ ignores: ['.dms-types/**'] })
+  .append({
     files: ['app/**/*.ts', 'app/**/*.vue', 'dms.frontend.ts'],
     rules: { 'no-restricted-syntax': ['error', NUXT_ONLY_FLAG] },
-  },
-  {
-    files: ['tests/**/*.ts'],
-    plugins: { antelopejs: guardrails, 'anti-slop': antiSlop },
-    rules: {
-      'antelopejs/no-fs-read-in-tests': 'error',
-      'antelopejs/no-constant-value-assertion': 'error',
-      'antelopejs/no-typeof-function-only-test': 'error',
-      'antelopejs/no-self-import-in-tests': 'error',
-      'anti-slop/no-module-mocking': 'error',
-    },
-  },
-]
+  })

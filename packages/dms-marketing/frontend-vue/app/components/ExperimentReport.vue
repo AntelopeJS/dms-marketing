@@ -38,10 +38,17 @@ const PERCENT = 100
 const MIN_OUTCOMES = 5
 const SMALL_P = 0.001
 
-// On a 15% tint the light theme's 700 text falls under 4.5:1: one shade darker
-// there, the theme colour in dark.
+/**
+ * On a 15% tint the light theme's 700 text falls under 4.5:1: one shade darker
+ * there, the theme colour in dark.
+ */
+const CONTROL_ARM_STYLE = {
+  chip: 'bg-elevated text-toned',
+  bar: 'bg-(--ui-text-dimmed)',
+}
+
 const ARM_STYLES = [
-  { chip: 'bg-elevated text-toned', bar: 'bg-(--ui-text-dimmed)' },
+  CONTROL_ARM_STYLE,
   {
     chip: 'bg-primary/15 text-(--ui-color-primary-800) dark:text-primary',
     bar: 'bg-primary',
@@ -60,7 +67,13 @@ const { t, locale } = useI18n()
 const inContext = useContextLink()
 
 const experiment = computed(() => props.results.experiment ?? null)
-const definition = computed(() => props.results.funnel.experiment!)
+const definition = computed(() => {
+  const stored = props.results.funnel.experiment
+  if (!stored) {
+    throw new Error('The experiment report needs a funnel with an experiment')
+  }
+  return stored
+})
 const arms = computed(() => experiment.value?.variations ?? [])
 const stopped = computed(() => definition.value.status === 'stopped')
 const decision = computed(() => experiment.value?.decision ?? null)
@@ -70,7 +83,7 @@ function letter(index: number): string {
 }
 
 function armStyle(index: number) {
-  return ARM_STYLES[index % ARM_STYLES.length]!
+  return ARM_STYLES.at(index % ARM_STYLES.length) ?? CONTROL_ARM_STYLE
 }
 
 function goalSessions(arm: MarketingVariationResult): number {
@@ -248,7 +261,7 @@ function stepLift(
   return base > 0 ? ((stepShare(arm, stepIndex) - base) / base) * PERCENT : null
 }
 
-// The builder's snippet: no top-level await, comments in the reader's language.
+/** The builder's snippet: no top-level await, comments in the reader's language. */
 const snippet = computed(() =>
   variationSnippet(
     definition.value.key,

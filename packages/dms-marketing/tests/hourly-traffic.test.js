@@ -73,10 +73,6 @@ function today() {
   };
 }
 
-/**
- * Scoped to a describe: the root hooks of the other files mock GetModel too,
- * and a root hook here would run after theirs.
- */
 describe("the Today hourly series", () => {
   before(async () => {
     client = new MongoClient(process.env.TEST_MONGO_URL);

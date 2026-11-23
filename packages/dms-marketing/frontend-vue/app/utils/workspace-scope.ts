@@ -45,7 +45,5 @@ export function rememberWorkspace(workspace: string): void {
     } else {
       globalThis.localStorage?.removeItem(STORAGE_KEY)
     }
-  } catch {
-    // Storage blocked: the URL still carries the scope.
-  }
+  } catch {}
 }

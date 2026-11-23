@@ -97,8 +97,9 @@ async function replayVisitor(
     if (isModulesStopping()) {
       throw new Error("the modules are stopping");
     }
-    const first = batch[0]!;
-    const last = batch[batch.length - 1]!;
+    const first = batch[0];
+    const last = batch.at(-1);
+    if (!first || !last) continue;
     const outcome: IngestOutcome | undefined = await ingestPreparedBatch(
       website,
       batch.map((entry) => entry.event),
@@ -134,7 +135,9 @@ function batchesByDay(
   const days = new Map<number, Map<string, VisitorEvent[][]>>();
   for (const [visitor, events] of visitors) {
     for (const batch of trackerBatches(events)) {
-      const day = getUtcMidnight(new Date(batch[0]!.at));
+      const head = batch[0];
+      if (!head) continue;
+      const day = getUtcMidnight(new Date(head.at));
       const ofDay = days.get(day) ?? new Map<string, VisitorEvent[][]>();
       ofDay.set(visitor, [...(ofDay.get(visitor) ?? []), batch]);
       days.set(day, ofDay);
@@ -291,14 +294,9 @@ export async function replayAll(
   for (const applied of ledger.values()) addCounts(total, applied);
   const days = batchesByDay(visitors);
   const statistics = GetModel(WebsiteStatisticsModel, website.tenantId);
-  for (const day of [...days.keys()].sort((a, b) => a - b)) {
+  for (const [day, ofDay] of [...days].sort(([a], [b]) => a - b)) {
     if (ledger.has(day)) continue;
-    const { deltas, counts } = await replayDay(
-      website,
-      importId,
-      days.get(day)!,
-      claim,
-    );
+    const { deltas, counts } = await replayDay(website, importId, ofDay, claim);
     addCounts(total, counts);
     if (deltas.length > 0) {
       await commitImportedDay(statistics, website._id, day, deltas, {

@@ -1,6 +1,7 @@
-import { createSSRApp, defineComponent, h, onServerPrefetch, ref } from 'vue'
+import { createSSRApp, h, onServerPrefetch, ref } from 'vue'
+import { bareStub } from './bare-stub'
 import { renderToString } from 'vue/server-renderer'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 /**
  * The overview top lists as a server renders them: with their data, the
@@ -17,12 +18,8 @@ interface ChartState {
 
 let chart: ChartState = { data: null, isLoading: false, error: null }
 
-const globals = globalThis as Record<string, unknown>
-
 beforeAll(() => {
-  // As `useAsyncData` on a server: the answer lands in `serverPrefetch`,
-  // after setup, before the render.
-  globals.useChartFetch = () => {
+  vi.stubGlobal('useChartFetch', () => {
     const data = ref<unknown>(null)
     const isLoading = ref(true)
     const error = ref<unknown>(null)
@@ -32,24 +29,26 @@ beforeAll(() => {
       error.value = chart.error
     })
     return { data, isLoading, error, refresh: async () => {} }
-  }
-  globals.useTranslation = () => ({ processI18n: (key: string) => key })
+  })
+  vi.stubGlobal('useTranslation', () => ({
+    processI18n: (key: string) => key,
+  }))
+})
+
+afterAll(() => {
+  vi.unstubAllGlobals()
 })
 
 /** An auto-import the template reads: an app global, as Nuxt provides it. */
 const formatPercentage = (value: number) => `${Math.round(value * 100)}%`
 
 const slotStub = (tag: string) =>
-  defineComponent({
-    inheritAttrs: false,
-    setup:
-      (_, { slots, attrs }) =>
-      () =>
-        h(tag, { class: attrs.class }, [
-          String(attrs.title ?? attrs.label ?? ''),
-          slots.default?.(),
-        ]),
-  })
+  bareStub((_props, { slots, attrs }) =>
+    h(tag, { class: attrs.class }, [
+      String(attrs.title ?? attrs.label ?? ''),
+      slots.default?.(),
+    ]),
+  )
 
 const STUBS = {
   DmsEyebrowLabel: slotStub('p'),
@@ -59,13 +58,9 @@ const STUBS = {
   UTabs: slotStub('div'),
   UButton: slotStub('button'),
   UIcon: slotStub('i'),
-  USkeleton: defineComponent({
-    inheritAttrs: false,
-    setup:
-      (_, { attrs }) =>
-      () =>
-        h('div', { class: ['skeleton', attrs.class] }),
-  }),
+  USkeleton: bareStub((_props, { attrs }) =>
+    h('div', { class: ['skeleton', attrs.class] }),
+  ),
 }
 
 async function render(state: ChartState): Promise<string> {
@@ -128,17 +123,14 @@ describe('TopListTabs server render', () => {
 
   it('draws a full card of row-sized skeletons while nothing is there yet', async () => {
     const html = await render({ data: null, isLoading: true, error: null })
-    // Eight rows (the route's limit), each on a list row's grid and padding.
     expect(
       count(
         html,
         'grid grid-cols-[1.5rem_minmax(0,1fr)_auto_3rem] items-center gap-x-3 px-4 py-2',
       ),
     ).toBe(8)
-    // The label line keeps a row's text height, its share bar under it.
     expect(count(html, 'flex h-[19.5px] items-center')).toBe(8)
     expect(count(html, 'mt-1 h-0.5')).toBe(8)
-    // The tab strip's place, at a tab's height, never wrapping the header.
     expect(count(html, 'class="px-2 py-3"')).toBe(3)
     expect(html).toContain(
       'overflow-hidden sm:order-none sm:mx-0 sm:flex-1 sm:basis-0',

@@ -9,14 +9,24 @@
 
 export type HeatRgb = readonly [number, number, number]
 
+type HeatStop = readonly [number, HeatRgb]
+
+const COLD_STOP: HeatStop = [0.0, [0, 80, 255]]
+const HOT_STOP: HeatStop = [1.0, [255, 40, 0]]
+
 /** Position on the 0-1 ramp → color, linearly interpolated in between. */
-export const HEAT_STOPS: ReadonlyArray<readonly [number, HeatRgb]> = [
-  [0.0, [0, 80, 255]],
+export const HEAT_STOPS: readonly HeatStop[] = [
+  COLD_STOP,
   [0.4, [0, 200, 255]],
   [0.6, [80, 220, 60]],
   [0.8, [255, 220, 0]],
-  [1.0, [255, 40, 0]],
+  HOT_STOP,
 ]
+
+const HEAT_SEGMENTS = HEAT_STOPS.flatMap((low, index) => {
+  const high = HEAT_STOPS[index + 1]
+  return high ? [[low, high] as const] : []
+})
 
 export function heatRgba(rgb: HeatRgb, alpha: number): string {
   return `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`
@@ -24,19 +34,13 @@ export function heatRgba(rgb: HeatRgb, alpha: number): string {
 
 export function heatColorAt(fraction: number, alpha: number): string {
   const bounded = Math.min(Math.max(fraction, 0), 1)
-  let low = HEAT_STOPS[0]!
-  let high = HEAT_STOPS[HEAT_STOPS.length - 1]!
-  for (let i = 0; i < HEAT_STOPS.length - 1; i++) {
-    if (bounded >= HEAT_STOPS[i]![0] && bounded <= HEAT_STOPS[i + 1]![0]) {
-      low = HEAT_STOPS[i]!
-      high = HEAT_STOPS[i + 1]!
-      break
-    }
-  }
+  const [low, high] = HEAT_SEGMENTS.find(
+    ([from, to]) => bounded >= from[0] && bounded <= to[0],
+  ) ?? [COLD_STOP, HOT_STOP]
   const span = high[0] - low[0]
   const mix = span > 0 ? (bounded - low[0]) / span : 0
-  const channel = (index: number) =>
-    Math.round(low[1][index]! + (high[1][index]! - low[1][index]!) * mix)
+  const channel = (index: 0 | 1 | 2) =>
+    Math.round(low[1][index] + (high[1][index] - low[1][index]) * mix)
   return heatRgba([channel(0), channel(1), channel(2)], alpha)
 }
 

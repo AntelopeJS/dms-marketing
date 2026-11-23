@@ -19,21 +19,17 @@ const components = import.meta.glob<VueModule>('./app/components/**/*.vue')
 const frontendModule: DmsFrontendModule = {
   componentPrefix: 'DmsMarketing',
   setup(sdk) {
-    for (const [path, loader] of Object.entries(components).sort()) {
-      const name = path
-        .split('/')
-        .at(-1)!
-        .replace(/\.vue$/, '')
+    const sorted = Object.entries(components).sort(([left], [right]) =>
+      left.localeCompare(right),
+    )
+    for (const [path, loader] of sorted) {
+      const name = path.slice(path.lastIndexOf('/') + 1).replace(/\.vue$/, '')
       sdk.registerComponent(
         name,
         defineAsyncComponent(async () => (await loader()).default),
       )
     }
-    // Client-only: the display it registers carries callables, which the SSR
-    // payload strips.
     sdk.registerPlugin(funnelStepsDataType, { clientOnly: true })
-    // Only when the backend enables `dashboardTracking`: off, the dashboard
-    // loads no tracker and calls nothing.
     const tracking = dashboardTrackingOptions(sdk.options.public)
     if (tracking) {
       sdk.registerPlugin(dashboardTrackingPlugin(tracking), {

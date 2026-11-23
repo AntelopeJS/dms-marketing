@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { isString } from '../utils/guards'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
 import { useMarketingContext } from '../composables/useMarketingContext'
 import {
@@ -44,13 +45,13 @@ const router = useDmsRouter()
 const api = useMarketingApi()
 const context = useMarketingContext()
 const toast = useToast()
-const { presentError } = useApiErrorPresenter()
+const errorPresenter = useApiErrorPresenter()
 const { confirm } = useConfirm()
 const { confirmFrom } = useConfirmFrom()
 
 const funnelId = computed(() => {
   const id = route.query.id
-  return typeof id === 'string' ? id : ''
+  return isString(id) ? id : ''
 })
 
 /** In the page's own context: website and period follow the link. */
@@ -58,8 +59,10 @@ const inContext = useContextLink()
 
 const reloadToken = ref(0)
 
-// The id is read off the URL on every request, so another `?id=` opened in
-// the same page reads that funnel, not the one first mounted.
+/**
+ * The id is read off the URL on every request, so another `?id=` opened in
+ * the same page reads that funnel, not the one first mounted.
+ */
 const { data, isLoading, error, refresh } =
   useChartFetch<MarketingFunnelResults>({
     fetchUrl: '/api/marketing/funnels/{{query.id}}/results',
@@ -77,7 +80,6 @@ const status = computed<MarketingExperimentStatus | null>(
   () => experiment.value?.status ?? null,
 )
 const isSplit = computed(() => experiment.value !== null)
-// The breadcrumb names the funnel, not only the page ("Funnel").
 useRecordCrumb(() => funnel.value?.name)
 const notFound = computed(
   () => !current.value && apiErrorStatus(error.value) === HTTP_NOT_FOUND,
@@ -88,8 +90,6 @@ const websiteName = computed(
     context.websites.value.find((site) => site.id === funnel.value?.websiteId)
       ?.name ?? '',
 )
-
-// --- Website -------------------------------------------------------------------
 
 /** The funnel the page URL was last put on the website of. */
 const aligned = ref<string | null>(null)
@@ -104,21 +104,16 @@ watch(
       return
     }
     if (aligned.value !== shown._id) {
-      // Opened under another site: the funnel's own, without a history entry
-      // and without saving it as the reader's site.
       aligned.value = shown._id
       void router.replace({
         query: { ...route.query, website: shown.websiteId },
       })
       return
     }
-    // A site picked in the bar: this funnel is not one of its funnels.
     void router.push(inContext(funnelsLink()))
   },
   { immediate: true },
 )
-
-// --- Subtitle ------------------------------------------------------------------
 
 function runDays(since: number, until: number): string {
   const days = Math.floor((until - since) / MS_PER_DAY)
@@ -158,8 +153,6 @@ const subtitle = computed(() => {
   })
 })
 
-// --- Lifecycle -------------------------------------------------------------------
-
 const changing = ref(false)
 
 async function writeStatus(target: MarketingExperimentStatus): Promise<void> {
@@ -183,7 +176,7 @@ async function writeStatus(target: MarketingExperimentStatus): Promise<void> {
     })
     reloadToken.value++
   } catch (error) {
-    presentError(error, {
+    errorPresenter.presentError(error, {
       fallbackKey: 'page.marketing.funnel.lifecycle.error',
     })
   } finally {

@@ -31,7 +31,7 @@ const emit = defineEmits<{ 'update:modelValue': [value: FunnelStepDraft[]] }>()
 
 const { t } = useI18n()
 
-// Computed so labels follow live locale switches (t() at setup would freeze).
+/** Computed so labels follow live locale switches (t() at setup would freeze). */
 const stepKindMeta = computed<Record<FunnelStepDraft['kind'], StepKindMeta>>(
   () => ({
     url: {
@@ -59,8 +59,6 @@ function emptyStep(): FunnelStepDraft {
 function parseValue(
   raw: FunnelStepDraft[] | string | null | undefined,
 ): FunnelStepDraft[] {
-  // Copies, not references: the drafts are mutated by the inputs below and
-  // must never write through to the prop value.
   const steps = parseFunnelStepsValue(raw).map((step) => ({ ...step }))
   while (steps.length < MIN_STEPS) {
     steps.push(emptyStep())
@@ -72,8 +70,10 @@ const steps = ref<FunnelStepDraft[]>(
   parseValue(props.modelValue ?? props.initialValue),
 )
 
-// Values are emitted untrimmed — trimming here would eat spaces mid-typing
-// through the v-model echo; the DataType schema trims server-side.
+/**
+ * Values are emitted untrimmed — trimming here would eat spaces mid-typing
+ * through the v-model echo; the DataType schema trims server-side.
+ */
 function onEdit(): void {
   emit(
     'update:modelValue',

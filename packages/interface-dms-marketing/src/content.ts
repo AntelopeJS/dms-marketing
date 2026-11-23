@@ -19,12 +19,12 @@ import { InterfaceFunction } from "@antelopejs/interface-core";
  * How a declaration call left the stored record. Content declared from code
  * is written once, when the tenant is provisioned, and belongs to its owner
  * from then on.
+ *
+ * - `created`: no record had this id, so it was created from the declaration.
+ * - `kept`: a record already has this id, so it is left as it is and the
+ *   declaration is ignored.
  */
-export type MarketingDeclarationStatus =
-  /** No record had this id: it was created from the declaration. */
-  | "created"
-  /** A record already has this id: it is left as it is, declaration ignored. */
-  | "kept";
+export type MarketingDeclarationStatus = "created" | "kept";
 
 export interface MarketingDeclarationResult {
   /** The record's id: the declared one. */

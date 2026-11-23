@@ -8,7 +8,7 @@ import { formatNumber } from '../../../utils/format'
 import type { pageSnapshotBadge } from '../../../utils/page-snapshot'
 
 /** The list of `PagesExplorer`: one row per path, its count in the sort's metric, its snapshot badge and a bar against the busiest path. */
-defineProps<{
+interface Props {
   rows: Array<
     MarketingPageEntry & { badge: ReturnType<typeof pageSnapshotBadge> }
   >
@@ -19,7 +19,9 @@ defineProps<{
   maxMetric: number
   metricOf: (page: { pageviews: number; clicks: number }) => number
   pick: (path: string) => Promise<void>
-}>()
+}
+
+defineProps<Props>()
 
 const { t, locale } = useI18n()
 </script>

@@ -1,53 +1,27 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
+import { isString } from '../utils/guards'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
-import { parseExperimentValue } from '../composables/useExperiment'
-import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
-import { useLatestRequest } from '../composables/useLatestRequest'
 import {
-  saveFunnel,
   useMarketingApi,
   type MarketingExperiment,
-  type MarketingFunnelPreview,
   type MarketingFunnelStep,
-  type MarketingFunnelSuggestions,
 } from '../composables/useMarketingApi'
 import {
-  useContextOnDemand,
-  useFunnelRead,
-  useFunnelSuggestions,
-} from '../composables/useMarketingReads'
-import type { ContextWebsite } from '../composables/useMarketingContext'
-import {
   funnelBuilderLink,
-  funnelLink,
   funnelsLink,
 } from '../composables/useMarketingRoutes'
-import { useContextLink } from '../composables/useContextLink'
 import { useCopyDraft } from '../composables/useCopyDraft'
 import {
   DEFAULT_WINDOW_HOURS,
-  draftIssues,
-  isWindowHours,
-  MAX_EXPERIMENT_KEY_LENGTH,
   MAX_NAME_LENGTH,
-  MAX_STEP_VALUE_LENGTH,
   MAX_STEPS,
-  MAX_VARIATIONS,
   MAX_WINDOW_HOURS,
-  MIN_VARIATIONS,
-  splitSampleSize,
-  templateSteps,
-  localizedSnippetComments,
   variationSnippet,
   WINDOW_PRESET_HOURS,
-  withRequestedSplit,
   type DraftField,
   type FunnelDraftValues,
 } from '../utils/funnel-draft'
-import { formatNumber } from '../utils/format'
-import { normalizeFunnelStepPath } from '../utils/step-path'
-import { fractionDigits } from '../constants'
 import type { StepDraft, VariationDraft } from '../build/types/funnelBuilder'
 import FunnelBuilderSplit from '../build/components/funnel-builder/FunnelBuilderSplit.vue'
 import FunnelBuilderSteps from '../build/components/funnel-builder/FunnelBuilderSteps.vue'
@@ -68,25 +42,24 @@ import { useDraftVariations } from '../build/composables/useDraftVariations'
  * against a baseline, a guard before leaving, errors under their field — and
  * writes through the funnels data API, which owns the experiment lifecycle.
  */
-const props = withDefaults(
-  defineProps<{ componentId?: string; pageId?: string }>(),
-  {
-    componentId: undefined,
-    pageId: undefined,
-  },
-)
+interface Props {
+  componentId?: string
+  pageId?: string
+}
+
+withDefaults(defineProps<Props>(), {
+  componentId: undefined,
+  pageId: undefined,
+})
 
 const PREVIEW_DEBOUNCE_MS = 450
 const SUGGESTIONS_SHOWN = 6
 const MINIMUM_DETECTABLE_LIFT = 0.2
 const LETTER_A = 65
 const PERCENT = 100
-const MS_PER_HOUR = 3_600_000
 const HTTP_NOT_FOUND = 404
 /** Below this, months read "under 0.1". */
 const MIN_MONTHS_SHOWN = 0.1
-
-void props
 
 const { t, locale } = useI18n()
 const route = useDmsRoute()
@@ -97,7 +70,7 @@ const { confirm } = useConfirm()
 
 function queryParam(key: string): string {
   const value = route.query[key]
-  return typeof value === 'string' ? value : ''
+  return isString(value) ? value : ''
 }
 
 const funnelId = queryParam('id')
@@ -129,8 +102,6 @@ const frozen = computed(
   () => original.value !== null && original.value.status !== 'draft',
 )
 
-// --- Form values, baseline and leave guard -------------------------------------
-
 function values(): FunnelDraftValues {
   return {
     name: name.value,
@@ -154,13 +125,17 @@ function applyValues(next: FunnelDraftValues): void {
 }
 
 const { dirty, baseline, markClean } = useFormDirty(values)
-// A Duplicate opens dirty (the copy is a change to save), but an untouched
-// copy holds nothing to lose: only edits to it hold the leave.
+/**
+ * A Duplicate opens dirty (the copy is a change to save), but an untouched
+ * copy holds nothing to lose: only edits to it hold the leave.
+ */
 const copy = useCopyDraft({ values, dirty, markClean })
 const { confirmLeave } = useUnsavedChanges({ dirty: copy.unsaved })
 
-// Errors land under their field: the client's checks on a save attempt, and
-// the server's — its codes name the field they belong to.
+/**
+ * Errors land under their field: the client's checks on a save attempt, and
+ * the server's — its codes name the field they belong to.
+ */
 const STEP_CONTROL_PREFIX = 'funnel-step-'
 const VARIATION_CONTROL_PREFIX = 'funnel-variation-'
 const flaggedStep = ref<number | null>(null)
@@ -206,7 +181,7 @@ function clearVariationError(): void {
   fieldErrors.clear('variations')
 }
 
-const { objectiveOf, websites, load } = useDraftLoad(
+const { objectiveOf, websites, load } = useDraftLoad({
   funnelId,
   sourceId,
   values,
@@ -225,7 +200,7 @@ const { objectiveOf, websites, load } = useDraftLoad(
   uid,
   markClean,
   HTTP_NOT_FOUND,
-)
+})
 
 const {
   suggestions,
@@ -249,7 +224,6 @@ const {
 const {
   validSteps,
   previewable,
-  preview,
   previewing,
   previewFailed,
   previewCount,
@@ -259,7 +233,7 @@ const {
   endToEnd,
   stepRate,
   sampleHint,
-} = useDraftPreview(
+} = useDraftPreview({
   steps,
   windowHours,
   websiteId,
@@ -272,9 +246,7 @@ const {
   variations,
   frozen,
   MIN_MONTHS_SHOWN,
-)
-
-// --- Editing -------------------------------------------------------------------
+})
 
 function addStep(kind: MarketingFunnelStep['kind'] = 'url', value = ''): void {
   clearStepError()
@@ -299,8 +271,12 @@ function moveStep(index: number, offset: number): void {
   if (target < 0 || target >= steps.value.length) {
     return
   }
-  const [step] = steps.value.splice(index, 1)
-  steps.value.splice(target, 0, step!)
+  const step = steps.value[index]
+  if (!step) {
+    return
+  }
+  steps.value.splice(index, 1)
+  steps.value.splice(target, 0, step)
 }
 
 const windowItems = computed(() =>
@@ -318,7 +294,7 @@ const {
   letter,
   firstUrlStep,
   snippetComments,
-} = useDraftVariations(
+} = useDraftVariations({
   t,
   variations,
   PERCENT,
@@ -326,7 +302,7 @@ const {
   uid,
   LETTER_A,
   validSteps,
-)
+})
 
 const snippet = computed(() =>
   variationSnippet(
@@ -345,7 +321,7 @@ const {
   backLink,
   leave,
   websiteItems,
-} = useDraftSave(
+} = useDraftSave({
   frozen,
   objectiveOf,
   values,
@@ -378,7 +354,7 @@ const {
   sourceId,
   confirmLeave,
   websites,
-)
+})
 </script>
 
 <template>
@@ -523,7 +499,7 @@ const {
         </section>
 
         <FunnelBuilderSteps
-          :STEP_CONTROL_PREFIX="STEP_CONTROL_PREFIX"
+          :step-control-prefix="STEP_CONTROL_PREFIX"
           :active-option="activeOption"
           :add-step="addStep"
           :blur-step="blurStep"
@@ -608,7 +584,7 @@ const {
         <FunnelBuilderSplit
           v-model:split-enabled="splitEnabled"
           v-model:experiment-key="experimentKey"
-          :VARIATION_CONTROL_PREFIX="VARIATION_CONTROL_PREFIX"
+          :variation-control-prefix="VARIATION_CONTROL_PREFIX"
           :add-variation="addVariation"
           :clear-variation-error="clearVariationError"
           :field-errors="fieldErrors"

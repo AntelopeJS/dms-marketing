@@ -18,12 +18,17 @@ import { PERIOD_SCOPE } from '../constants'
  * page its sessions viewed most often before it), and a blank start. A site
  * that sent nothing yet is sent to its install guide instead.
  */
-const props = withDefaults(
-  defineProps<{ state?: string; componentId?: string; pageId?: string }>(),
-  { state: undefined, componentId: undefined, pageId: undefined },
-)
+interface Props {
+  state?: string
+  componentId?: string
+  pageId?: string
+}
 
-void props
+withDefaults(defineProps<Props>(), {
+  state: undefined,
+  componentId: undefined,
+  pageId: undefined,
+})
 
 const { t, locale } = useI18n()
 const inContext = useContextLink()

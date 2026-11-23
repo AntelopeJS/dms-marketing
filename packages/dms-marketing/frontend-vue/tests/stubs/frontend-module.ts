@@ -4,45 +4,18 @@
  * The real module only exists inside the Vue workspace the DMS frontend
  * loader generates; these tests run the module's own sources directly, so the
  * few SDK helpers they reach are stubbed with the same shapes.
+ *
+ * @packageDocumentation
  */
-import type { Component, Plugin } from 'vue'
+import type { Component } from 'vue'
 
-export type DmsPluginSetup = (context: unknown) => void | Promise<void>
-
-export interface DmsFrontendSdk {
-  options: { public: Record<string, unknown> }
-  registerComponent: (name: string, component: Component) => void
-  registerPage: (name: string, component: Component) => void
-  registerDynamicPage: (name: string, component: Component) => void
-  registerLayout: (name: string, component: Component) => void
-  registerErrorPage: (component: Component) => void
-  registerPlugin: (
-    setup: DmsPluginSetup,
-    options?: { clientOnly?: boolean },
-  ) => void
-  registerMiddleware: (
-    name: string,
-    handler: unknown,
-    options?: { global?: boolean },
-  ) => void
-  provide: (key: string, value: unknown) => void
-  use: (plugin: Plugin) => void
-}
-
-export interface DmsFrontendModule {
-  componentPrefix?: string
-  setup(sdk: DmsFrontendSdk): void | Promise<void>
-}
-
-export function defineDmsPlugin(setup: DmsPluginSetup): DmsPluginSetup {
+export function defineDmsPlugin<Setup extends () => void | Promise<void>>(
+  setup: Setup,
+): Setup {
   return setup
 }
 
-export function useI18n(): {
-  t: (key: string) => string
-  te: () => boolean
-  locale: { value: string }
-} {
+export function useI18n() {
   return { t: (key: string) => key, te: () => false, locale: { value: 'en' } }
 }
 
@@ -53,35 +26,26 @@ export function setDmsRouteQuery(query: Record<string, string>): void {
   routeQuery = query
 }
 
-export function useDmsRoute(): { query: Record<string, string>; path: string } {
+export function useDmsRoute() {
   return { query: routeQuery, path: '/' }
 }
 
-export function useDmsRouter(): {
-  replace: () => Promise<void>
-  push: () => Promise<void>
-} {
+export function useDmsRouter() {
   return { replace: async () => {}, push: async () => {} }
 }
 
-export function useDmsRuntimeConfig(): { public: Record<string, unknown> } {
-  return { public: {} }
+export function useDmsRuntimeConfig() {
+  return { public: { dms: { baseURL: '' } } }
 }
 
 export function resolveDmsComponent(): Component | undefined {
   return undefined
 }
 
-export function useDmsCookie<T>(
-  _name: string,
-  options: { default: () => T },
-): { value: T } {
+export function useDmsCookie<T>(_name: string, options: { default: () => T }) {
   return { value: options.default() }
 }
 
-export function useDmsUserSession(): {
-  loggedIn: { value: boolean }
-  session: { value: { activeTenantId?: string } | null }
-} {
+export function useDmsUserSession() {
   return { loggedIn: { value: false }, session: { value: null } }
 }

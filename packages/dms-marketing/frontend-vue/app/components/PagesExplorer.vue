@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { isString } from '../utils/guards'
 import { useDmsRoute, useDmsRouter, useI18n } from '#dms/frontend-module'
-// Imported rather than resolved from the registry: a registered component is
-// a lazy chunk of its own, fetched only once a page is selected, so the
-// preview would land a beat after the list, its column empty meanwhile.
 import DmsMarketingPagePreview from './PagePreview.vue'
 import type {
   MarketingPageEntry,
@@ -21,7 +19,6 @@ import { useMarketingContext } from '../composables/useMarketingContext'
 import { installLink } from '../composables/useMarketingRoutes'
 import { PERIOD_SCOPE } from '../constants'
 import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
-import { formatNumber } from '../utils/format'
 import { pageSnapshotBadge } from '../utils/page-snapshot'
 import { useFillPanes } from '../build/composables/useFillPanes'
 import { useMarketingNow } from '../composables/useMarketingNow'
@@ -42,6 +39,11 @@ import PagesExplorerList from '../build/components/pages-explorer/PagesExplorerL
  * route registry, no sitemap — which is what makes it hold for any site. The
  * filter is also a path field: a day keeps a capped number of paths, so a page
  * can be missing from the list while its clicks are perfectly queryable.
+ *
+ * `PagePreview` is imported rather than resolved from the registry: a
+ * registered component is a lazy chunk of its own, fetched only once a page is
+ * selected, so the preview would land a beat after the list, its column empty
+ * meanwhile.
  */
 const props = withDefaults(
   defineProps<{
@@ -77,15 +79,14 @@ const pagesPeriod = computed(() =>
     : null,
 )
 
-const queryPath = () =>
-  typeof route.query.path === 'string' ? route.query.path : ''
+const queryPath = () => (isString(route.query.path) ? route.query.path : '')
 const selectedPath = ref<string | undefined>(queryPath() || undefined)
 const search = ref('')
 /** The search the list is read with, once the box holds still. */
 const searchedTerm = ref('')
 const sort = ref<MarketingPagesSort>('views')
 
-// The full row: the context carries the id, the preview needs the snapshot options.
+/** The full row: the context carries the id, the preview needs the snapshot options. */
 const websitesRead = useWebsites()
 const website = computed(
   () =>
@@ -115,11 +116,11 @@ function putWebsite(saved: MarketingWebsite): void {
   }
 }
 
-// --- Workspace scope ----------------------------------------------------------
-
-// A platform owner on the dashboard's own website reads it for another
-// workspace, or all of them (see utils/workspace-scope). Everyone else gets
-// an empty list from the backend, which also refuses the scope itself.
+/**
+ * A platform owner on the dashboard's own website reads it for another
+ * workspace, or all of them (see utils/workspace-scope). Everyone else gets
+ * an empty list from the backend, which also refuses the scope itself.
+ */
 const workspacesRead = useDashboardWorkspaces(websiteId)
 const workspaceOptions = computed(() =>
   workspacesRead.error.value
@@ -128,7 +129,7 @@ const workspaceOptions = computed(() =>
 )
 const queryWorkspace = () => {
   const value = route.query[WORKSPACE_QUERY]
-  return typeof value === 'string' ? value : ''
+  return isString(value) ? value : ''
 }
 /** What the link asks for, else this browser's last pick (once mounted:
  * the storage is the browser's). */
@@ -138,8 +139,6 @@ const wantedWorkspace = ref(queryWorkspace())
 const workspace = computed(() =>
   effectiveWorkspace(wantedWorkspace.value, workspaceOptions.value),
 )
-/** Another workspace's data: read-only, backdrops masked by the backend. */
-const foreign = computed(() => workspace.value !== '')
 /** A wanted scope waits for the selector's answer, so a link to one never
  * reads the own workspace first, nor fails for a viewer it is not for. */
 const scopeReady = computed(
@@ -160,12 +159,10 @@ function selectWorkspace(value: string): void {
   })
 }
 
-// Back and Forward move the scope with the URL.
 watch(queryWorkspace, (value) => {
   wantedWorkspace.value = value || rememberedWorkspace()
 })
 
-// A remembered scope lands in the URL too: a copied link carries it.
 watch(workspace, (value) => {
   if (value && queryWorkspace() !== value) {
     void router.replace({ query: { ...route.query, [WORKSPACE_QUERY]: value } })
@@ -183,9 +180,6 @@ const inventory = computed(() =>
   inventoryRead.error.value ? null : inventoryRead.data.value,
 )
 
-// The pages panel holds the workspace selector from the first paint: a
-// server render, or a navigation, reads the workspaces before it draws, so
-// the panel never grows under the reader (the inventory reads alongside).
 await workspacesRead
 
 const loading = computed(() => inventoryRead.status.value === 'pending')
@@ -264,16 +258,17 @@ function selectPath(path: string | undefined, mode: 'push' | 'replace'): void {
   void router[mode]({ query: { ...route.query, path: path ?? undefined } })
 }
 
-/** Back and Forward move the selection with the URL. */
 watch(queryPath, (path) => {
   if (path && path !== selectedPath.value) {
     selectedPath.value = path
   }
 })
 
-// A first impression that shows the feature: the first page with clicks,
-// else the first page. In the browser: the list a server render hands over
-// is chosen from once mounted.
+/**
+ * A first impression that shows the feature: the first page with clicks,
+ * else the first page. In the browser: the list a server render hands over
+ * is chosen from once mounted.
+ */
 function selectFirst(data: MarketingPages | null): void {
   if (!selectedPath.value && data?.pages.length) {
     const withClicks = data.pages.find((page) => page.clicks > 0)
@@ -318,8 +313,6 @@ watch([pages, selectedPath], ([list, path]) => {
 const readScope = computed(() =>
   JSON.stringify([workspace.value, pagesPeriod.value]),
 )
-// Another workspace or other days: the row read before says nothing of
-// them, the header waits for the path's row in the new list (or none).
 watch(readScope, () => {
   selectedPage.value = undefined
 })
@@ -333,10 +326,12 @@ const usedIn = computed(() =>
   ),
 )
 
-// The preview draws in the browser only (frames, canvases): a server render
-// holds its place, until the browser hydrating it is mounted. A client
-// navigation draws it with the list, from the first render: mounted later,
-// it would come in after the list, and its skeleton after none.
+/**
+ * The preview draws in the browser only (frames, canvases): a server render
+ * holds its place, until the browser hydrating it is mounted. A client
+ * navigation draws it with the list, from the first render: mounted later,
+ * it would come in after the list, and its skeleton after none.
+ */
 const mounted = ref(!import.meta.env.SSR && !isDmsHydrating())
 if (mounted.value) {
   selectFirst(inventory.value)

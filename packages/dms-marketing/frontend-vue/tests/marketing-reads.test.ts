@@ -1,4 +1,13 @@
-import { createSSRApp, defineComponent, h, ref, toValue } from 'vue'
+import {
+  createSSRApp,
+  defineComponent,
+  h,
+  ref,
+  toValue,
+  type MaybeRefOrGetter,
+  type Ref,
+} from 'vue'
+import { present } from './present'
 import { renderToString } from 'vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -14,10 +23,39 @@ import {
 } from '../app/composables/useMarketingReads'
 import { useMarketingNow } from '../app/composables/useMarketingNow'
 
+type ReadQuery = Record<string, string | number | boolean | undefined>
+
+interface FunnelRow {
+  _id: string
+  websiteId: string
+  name: string
+  steps: string
+  conversionWindowHours: number
+}
+
+const FUNNEL: FunnelRow = {
+  _id: 'f1',
+  websiteId: 'acme-shop',
+  name: 'Signup',
+  steps: '[]',
+  conversionWindowHours: 24,
+}
+
+/** The options a read hands `useApiData`, as far as these tests look at them. */
+interface ReadOptions {
+  query?: MaybeRefOrGetter<ReadQuery>
+  transform?: (page: { results: FunnelRow[] | string }) => FunnelRow[]
+  watch?: (() => boolean)[]
+  refreshInterval?: MaybeRefOrGetter<number | null | undefined>
+  refreshOnPageRefresh?: boolean
+  server?: boolean
+  immediate?: boolean
+}
+
 /** What a read asked `useApiData` for. */
 interface ReadCall {
   url: () => string | null
-  options: Record<string, unknown>
+  options: ReadOptions
 }
 
 let calls: ReadCall[]
@@ -37,12 +75,11 @@ beforeEach(() => {
   calls = []
   vi.stubGlobal(
     'useApiData',
-    (url: unknown, options: Record<string, unknown> = {}) => {
-      calls.push({ url: () => toValue(url as () => string | null), options })
+    (url: MaybeRefOrGetter<string | null>, options: ReadOptions = {}) => {
+      calls.push({ url: () => toValue(url), options })
       return { data: ref(null) }
     },
   )
-  // The DMS's own, as the module's blocks append a period.
   vi.stubGlobal(
     'appendPeriodToUrl',
     (url: string, state: typeof PERIOD | null) =>
@@ -56,20 +93,19 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const query = (call: ReadCall | undefined) =>
-  toValue(call?.options.query as () => Record<string, unknown>)
+const query = (call: ReadCall | undefined) => toValue(call?.options.query)
 
 describe('the reads the pages render', () => {
   it('reads nothing bound to the period before there is one, nor without a website', () => {
     const website = ref('')
     const period = ref<typeof PERIOD | null>(null)
-    usePageInventory({
+    void usePageInventory({
       websiteId: website,
       period,
       search: '',
       sort: 'views',
     })
-    useFunnelTemplates(website, period)
+    void useFunnelTemplates(website, period)
     const [pages, templates] = calls
     expect(pages?.url()).toBeNull()
     expect(templates?.url()).toBeNull()
@@ -89,7 +125,7 @@ describe('the reads the pages render', () => {
   })
 
   it('lists a website funnels oldest first, read again with the page refresh', () => {
-    useWebsiteFunnels('acme-shop')
+    void useWebsiteFunnels('acme-shop')
     const [funnels] = calls
     expect(funnels?.url()).toBe('/api/marketing/tables/funnels/list')
     expect(query(funnels)).toMatchObject({
@@ -97,19 +133,17 @@ describe('the reads the pages render', () => {
       sortKey: 'createdAt',
       sortDirection: 'asc',
     })
-    // No trigger of its own: the page's refreshes read it again.
     expect(funnels?.options.watch).toBeUndefined()
     expect(funnels?.options.refreshOnPageRefresh).toBeUndefined()
-    const transform = funnels?.options.transform as (value: unknown) => unknown
-    expect(transform({ results: [{ _id: 'f1' }], total: 1 })).toEqual([
-      { _id: 'f1' },
-    ])
+    const transform = present(funnels?.options.transform)
+    expect(transform({ results: [FUNNEL] })).toEqual([FUNNEL])
+    expect(transform({ results: 'not a list' })).toEqual([])
   })
 
   it('checks a website connection since a server time, once there is a website', () => {
     const website = ref('')
     const since = ref<number | null>(null)
-    useWebsiteConnection(website, since)
+    void useWebsiteConnection(website, since)
     const [connection] = calls
     expect(connection?.url()).toBeNull()
     website.value = 'shop/eu'
@@ -124,11 +158,11 @@ describe('the reads the pages render', () => {
 
 describe('useMarketingNow', () => {
   it('starts from the time the server rendered at, handed to the browser', async () => {
-    const state = new Map<string, { value: unknown }>()
+    const state = new Map<string, Ref<number>>()
     const transferred: string[] = []
     vi.stubGlobal(
       'useDmsState',
-      (key: string, init: () => unknown, options?: { transfer?: boolean }) => {
+      (key: string, init: () => number, options?: { transfer?: boolean }) => {
         if (options?.transfer) {
           transferred.push(key)
         }
@@ -154,25 +188,24 @@ describe('useMarketingNow', () => {
 
 describe('the reads with triggers of their own', () => {
   it('reads the context bar on its own triggers, on no clock of its own', () => {
-    useMarketingContextRead()
+    void useMarketingContextRead()
     const [context] = calls
     expect(context?.options).toMatchObject({ refreshOnPageRefresh: false })
     expect(context?.options).not.toHaveProperty('refreshInterval')
   })
 
   it('polls the connection check when asked to', () => {
-    useWebsiteConnection('acme-shop', null, { refreshInterval: 4000 })
+    void useWebsiteConnection('acme-shop', null, { refreshInterval: 4000 })
     const [connection] = calls
     expect(connection?.options.refreshInterval).toBe(4000)
   })
 
   it('follows a reactive polling period, which stops the check at 0', () => {
     const interval = ref(4000)
-    useWebsiteConnection('acme-shop', null, { refreshInterval: interval })
-    // One read: the polling is the check's own interval, not a second caller.
+    void useWebsiteConnection('acme-shop', null, { refreshInterval: interval })
     expect(calls).toHaveLength(1)
     const [connection] = calls
-    const polling = () => toValue(connection?.options.refreshInterval as number)
+    const polling = () => toValue(connection?.options.refreshInterval)
     expect(polling()).toBe(4000)
     interval.value = 0
     expect(polling()).toBe(0)
@@ -180,11 +213,9 @@ describe('the reads with triggers of their own', () => {
 })
 
 describe('the dashboard workspaces', () => {
-  // The pages panel grew a row after the first paint while the workspaces
-  // were read in the browser only.
   it('are read with the page, server render included, once there is a site', () => {
     const website = ref('')
-    useDashboardWorkspaces(website)
+    void useDashboardWorkspaces(website)
     const [workspaces] = calls
     expect(workspaces?.options.server).not.toBe(false)
     expect(workspaces?.url()).toBeNull()
@@ -198,12 +229,11 @@ describe('the page preview', () => {
   it('reads the clicks in the browser only, once there is a site and a path', () => {
     const website = ref<string | undefined>(undefined)
     const period = ref<typeof PERIOD | null>(null)
-    usePageHeatmap({ websiteId: website, path: '/pricing', period })
+    void usePageHeatmap({ websiteId: website, path: '/pricing', period })
     const [heatmap] = calls
     expect(heatmap?.options.server).toBe(false)
     expect(heatmap?.url()).toBeNull()
     website.value = 'acme-shop'
-    // Without a period, the route's default window.
     expect(heatmap?.url()).toBe('/api/marketing/stats/heatmap')
     period.value = PERIOD
     expect(heatmap?.url()).toBe(
@@ -214,7 +244,7 @@ describe('the page preview', () => {
 
   it('reads no capture while the site keeps none', () => {
     const enabled = ref(false)
-    usePageSnapshot({
+    void usePageSnapshot({
       websiteId: 'acme-shop',
       path: '/pricing',
       layout: 'phone',
@@ -234,7 +264,7 @@ describe('the page preview', () => {
 
   it('reads the capture again once the text mask changes, which discards it', () => {
     const maskText = ref(false)
-    usePageSnapshot({
+    void usePageSnapshot({
       websiteId: 'acme-shop',
       path: '/pricing',
       layout: 'desktop',
@@ -242,8 +272,7 @@ describe('the page preview', () => {
       maskText,
     })
     const [snapshot] = calls
-    // Same URL and query: only a watched source reads it again.
-    const sources = snapshot?.options.watch as (() => unknown)[] | undefined
+    const sources = snapshot?.options.watch
     expect(sources?.map((source) => source())).toEqual([false])
     maskText.value = true
     expect(sources?.map((source) => source())).toEqual([true])
@@ -264,8 +293,8 @@ describe('the reads a dialog makes when it asks', () => {
     })
     vi.stubGlobal(
       'useApiData',
-      (url: unknown, options: Record<string, unknown> = {}) => {
-        calls.push({ url: () => toValue(url as () => string | null), options })
+      (url: MaybeRefOrGetter<string | null>, options: ReadOptions = {}) => {
+        calls.push({ url: () => toValue(url), options })
         return { data, error, execute }
       },
     )

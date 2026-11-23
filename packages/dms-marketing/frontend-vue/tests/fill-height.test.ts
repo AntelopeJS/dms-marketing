@@ -8,7 +8,6 @@ import {
 
 describe('the height the pages panes fill', () => {
   it('is what the viewport leaves below their top and above what follows', () => {
-    // 1000 px window, panes from 290 px, a 40 px note and padding after them.
     expect(fillHeight({ viewHeight: 1000, top: 290, trailing: 40 })).toBe(670)
   })
 
@@ -31,9 +30,7 @@ describe('what the content lays out after the panes', () => {
   it('is how far the following siblings reach, plus the closing padding', () => {
     expect(
       trailingExtent([
-        // The panes, then a note 16 px below them, 40 px high.
         { bottom: 800, marginBottom: 0, following: [856], closing: 0 },
-        // Their block ends the content, which closes on 24 px of padding.
         { bottom: 856, marginBottom: 0, following: [], closing: 24 },
       ]),
     ).toBe(80)
@@ -94,8 +91,6 @@ describe('the panes in a shell that stretches its content', () => {
   })
 
   it('grow with the window in one measurement', () => {
-    // The content is shorter than the grown viewport: the wrapper's empty
-    // space below the panes is not content after them.
     expect(measure(1100, measure(900, 0))).toBe(746)
   })
 

@@ -1,18 +1,4 @@
 #!/usr/bin/env node
-/**
- * Model-checks the website claim of ImportAnalytics in
- * @antelopejs/dms-marketing, the day-by-day replay it guards and the funnel
- * trail writes beside it, with TLC through the shared runner of
- * @antelopejs/tooling-configs: the rules of ImportClaimRules.tla on
- * ImportClaim.tla, where a call's process can die, then where a live holder
- * can stop for 30 s and resume, then where neither happens.
- *
- * With no argument it runs the CI configuration of each (`<config>.ci.cfg`);
- * with `--full` it runs the full one (`<config>.cfg`). Exits 0 when all
- * match the record in SKILL.md, 1 when a rule changed, and 2 when TLC could
- * not run. The runner exits on the first configuration that changed, so a
- * change under crashes skips the stall run.
- */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkSpec, EXIT } from "@antelopejs/tooling-configs/formal";

@@ -1,4 +1,6 @@
+import { isRecord, isString } from './guards'
 import { sampleSizePerArm } from './sample-size'
+import type { MessageParams, Translate } from './translate'
 
 /**
  * The rules of a funnel draft, as the builder checks them before a save.
@@ -56,31 +58,33 @@ export interface FunnelDraftValues {
   variations: VariationValue[]
 }
 
+/** The fields of a draft, in the order the form shows them. */
+const DRAFT_FIELDS = [
+  'name',
+  'websiteId',
+  'steps',
+  'conversionWindowHours',
+  'experiment',
+  'variations',
+] as const
+
 /** The request body keys, which also name the fields the server's errors
  * land on. `variations` has no key of its own: it is the experiment's arms. */
-export type DraftField =
-  | 'name'
-  | 'websiteId'
-  | 'steps'
-  | 'conversionWindowHours'
-  | 'experiment'
-  | 'variations'
+export type DraftField = (typeof DRAFT_FIELDS)[number]
 
 export interface DraftIssue {
   /** i18n key of the message, under page.marketing.builder.errors. */
   message: string
-  params?: Record<string, unknown>
+  params?: MessageParams
   /** The step or variation row the issue names. */
   index?: number
 }
 
 function isStep(step: unknown): step is StepValue {
-  const candidate = step as Partial<StepValue> | null
   return (
-    typeof candidate === 'object' &&
-    candidate !== null &&
-    (candidate.kind === 'url' || candidate.kind === 'custom') &&
-    typeof candidate.value === 'string'
+    isRecord(step) &&
+    (step.kind === 'url' || step.kind === 'custom') &&
+    isString(step.value)
   )
 }
 
@@ -89,9 +93,10 @@ function isStep(step: unknown): step is StepValue {
  * or edited by hand: anything malformed is dropped, never thrown.
  */
 export function templateSteps(raw: unknown): StepValue[] {
-  if (typeof raw !== 'string') {
-    return []
-  }
+  return isString(raw) ? stepsOfLink(raw) : []
+}
+
+function stepsOfLink(raw: string): StepValue[] {
   let parsed: unknown
   try {
     parsed = JSON.parse(raw)
@@ -117,7 +122,7 @@ export function templateSteps(raw: unknown): StepValue[] {
  */
 export function withRequestedSplit(
   draft: FunnelDraftValues,
-  raw: unknown,
+  raw: string | string[] | null | undefined,
 ): FunnelDraftValues {
   return raw === '1' ? { ...draft, split: true } : draft
 }
@@ -176,6 +181,19 @@ function variationIssue(variations: VariationValue[]): DraftIssue | undefined {
   return undefined
 }
 
+/** The issues of a draft, at most one per field. */
+export type DraftIssues = Partial<Record<DraftField, DraftIssue>>
+
+/** The issues in the order the form shows their fields. */
+export function draftIssueList(
+  issues: DraftIssues,
+): { field: DraftField; issue: DraftIssue }[] {
+  return DRAFT_FIELDS.flatMap((field) => {
+    const issue = issues[field]
+    return issue ? [{ field, issue }] : []
+  })
+}
+
 /**
  * The first issue of each field, in the order the form shows them. A split
  * that has started keeps its stored key and arms, so they are not checked.
@@ -183,8 +201,8 @@ function variationIssue(variations: VariationValue[]): DraftIssue | undefined {
 export function draftIssues(
   draft: FunnelDraftValues,
   frozen: boolean,
-): Partial<Record<DraftField, DraftIssue>> {
-  const issues: Partial<Record<DraftField, DraftIssue>> = {}
+): DraftIssues {
+  const issues: DraftIssues = {}
   const name = draft.name.trim()
   if (!name) {
     issues.name = { message: 'name' }
@@ -254,7 +272,7 @@ const ENGLISH_COMMENTS: VariationSnippetComments = {
 
 /** The snippet comments read from the locale files. */
 export function localizedSnippetComments(
-  t: (key: string, named: Record<string, unknown>) => string,
+  t: Translate,
 ): VariationSnippetComments {
   return {
     show: (variation) =>

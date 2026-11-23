@@ -26,11 +26,22 @@ defineOptions({ name: 'DmsMarketingContext' })
  * `waitingGuide` a website still waiting for its first event shows the way
  * to its install guide instead. A server render reads the context first: a
  * URL naming no website (or one the tenant does not have) is redirected to
- * the one saved, and the page renders on it.
+ * the one saved, and the page renders on it, without a history entry: a server
+ * render redirects to it. The redirect is watched with the query too, so a
+ * block rewriting the URL for its own state (the heatmap path) keeps it, and it
+ * is set up once the context is read.
+ *
+ * A navigation in the browser waits for the URL to name the website, so the
+ * page opens on its blocks, not on the gate's placeholder first. The blocks
+ * then set up while the page's suspense is still pending, so one that holds the
+ * navigation for its data (a fetched banner) is drawn with the page. The wait
+ * reads Vite's SSR flag: the DMS builds with Vite alone, where Nuxt's client
+ * flag is undefined (see tests/build-flags.test.ts).
+ *
+ * The gate comes first under the page toolbar. The DMS page stack sets its
+ * items 24px apart (space-y-6); `-mt-2` keeps the 16px the analytics pages had
+ * when the bar was drawn in this gate (gap-4).
  */
-// The gate comes first under the page toolbar. The DMS page stack sets its
-// items 24px apart (space-y-6); `-mt-2` keeps the 16px the analytics pages
-// had when the bar was drawn in this gate (gap-4).
 const props = withDefaults(defineProps<{ waitingGuide?: boolean }>(), {
   waitingGuide: false,
 })
@@ -50,22 +61,12 @@ const {
   ready,
 } = useContextWebsite()
 
-// The URL names no website, or one the tenant does not have: fill in the
-// saved one, without a history entry (a server render redirects to it).
-// Watched with the query too, so a block rewriting the URL for its own state
-// (the heatmap path) keeps it. Set up once the context is read.
 await ready
-function linkSelected(id: string | null): Promise<unknown> | undefined {
+function linkSelected(id: string | null): Promise<void> | undefined {
   if (id && route.query.website !== id) {
     return router.replace({ query: { ...route.query, website: id } })
   }
 }
-// A navigation in the browser waits for the URL to name the website: the
-// page then opens on its blocks, not on the gate's placeholder first. The
-// blocks then set up while the page's suspense is still pending, so one that
-// holds the navigation for its data (a fetched banner) is drawn with the page.
-// Vite's SSR flag: the DMS builds with Vite alone, where Nuxt's client flag
-// is undefined (see tests/build-flags.test.ts).
 if (!import.meta.env.SSR) {
   await linkSelected(selectedId.value)
 }

@@ -1,0 +1,13 @@
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "target": "es2021",
+    "module": "esnext",
+    "lib": ["es2021", "dom", "dom.iterable"],
+    "types": [],
+    "noEmit": true,
+    "incremental": false,
+    "declaration": false
+  },
+  "include": ["**/*.ts"]
+}

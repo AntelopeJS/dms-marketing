@@ -8,7 +8,7 @@
 
 const STEP_PATH_BASE = 'http://step.invalid'
 const STEP_SCHEME_PATTERN = /^[a-z][a-z\d+.-]*:\/\//i
-const STEP_BARE_HOST_PATTERN = /^[^/\s?#]+\.[^/\s?#]+\//
+const STEP_BARE_HOST_PATTERN = /^[^\s#/?][^\s#./?]*\.[^\s#/?]+\//
 
 export function normalizeFunnelStepPath(raw: string): string {
   const value = raw.trim()

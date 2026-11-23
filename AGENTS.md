@@ -4,14 +4,16 @@
 
 A pnpm workspace with two published packages. The root holds the tool configs, the CI workflows and `e2e/`, the Playwright suite of the journeys that open a tab (declared in `e2e/journeys.config.ts`, served by `e2e/playground/`), with the dependencies they run on (`@antelopejs/dms` for its `e2e` kit, `@playwright/test`); no source code.
 
-| Path                                  | What it is                                                                         |
-| ------------------------------------- | ---------------------------------------------------------------------------------- |
-| `packages/dms-marketing`              | `@antelopejs/dms-marketing`, the DMS module: backend sources, static tracker, docs |
-| `packages/dms-marketing/frontend-vue` | The Vue layer. ESLint and Prettier own it, not oxlint and oxfmt                    |
-| `packages/dms-marketing/playground`   | A project of its own (`--ignore-workspace`), outside lint and format               |
-| `packages/interface-dms-marketing`    | `@antelopejs/interface-dms-marketing`, the public contracts                        |
+| Path                                  | What it is                                                                          |
+| ------------------------------------- | ----------------------------------------------------------------------------------- |
+| `packages/dms-marketing`              | `@antelopejs/dms-marketing`, the DMS module: backend sources, browser scripts, docs |
+| `packages/dms-marketing/frontend-vue` | The Vue layer. ESLint and Prettier own it, not oxlint and oxfmt                     |
+| `packages/dms-marketing/playground`   | A project of its own (`--ignore-workspace`), outside lint and format                |
+| `packages/interface-dms-marketing`    | `@antelopejs/interface-dms-marketing`, the public contracts                         |
 
 Each package keeps its own `pnpm-lock.yaml` (`shared-workspace-lockfile=false`). The module's lockfile links the interface from the workspace sibling, and the root `typecheck` builds the interface first so the module's typecheck and lint resolve it. Run a package script from its own directory: `pnpm --dir packages/dms-marketing <script>`.
+
+The browser scripts the module serves, `tracker` and `snapshot`, are TypeScript modules under `packages/dms-marketing/static/`, one entry per script, typed against the DOM lib by `static/tsconfig.json` (the module's `typecheck` runs it). `build` bundles each entry into `dist/static/<name>.js` with `scripts/build-static.mts`, and `src/services/static-script.ts` serves that file. The unit suite bundles the capture script's pure parts from `static/snapshot/pure-parts.ts`.
 
 ## Versioning
 

@@ -3,10 +3,12 @@ import { useI18n } from '#dms/frontend-module'
 import type { StatusStrip } from '../../types/pagePreview'
 
 /** The status strip of `PagePreview`: the one state above the snapshot worth telling, with its actions. */
-defineProps<{
+interface Props {
   statusStrip: StatusStrip
   savingOptions: boolean
-}>()
+}
+
+defineProps<Props>()
 
 const { t } = useI18n()
 </script>

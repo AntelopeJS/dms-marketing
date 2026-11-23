@@ -46,11 +46,16 @@ export default defineConfig({
       },
       config: {
         homepage: "/modules/marketing/overview",
-        meta: { title: "AntelopeJS Marketing", description: "Marketing verification" },
+        meta: {
+          title: "AntelopeJS Marketing",
+          description: "Marketing verification",
+        },
         auth: {
           jwtSecret: process.env.DMS_JWT_SECRET ?? "dev",
           signInCountry: { database: false },
-          trustedProxies: numberOrUndefined(process.env.VERIFY_MKT_TRUSTED_PROXIES),
+          trustedProxies: numberOrUndefined(
+            process.env.VERIFY_MKT_TRUSTED_PROXIES,
+          ),
           clientIpHeader: process.env.VERIFY_MKT_CLIENT_IP_HEADER || undefined,
         },
         htmlRender: {
@@ -117,7 +122,9 @@ export default defineConfig({
         servers: [{ protocol: "http", port: preferredApiPort }],
         publicBaseUrl: process.env.DMS_CLIENT_BASE_URL,
         cors: {
-          allowedOrigins: [process.env.DMS_CLIENT_BASE_URL ?? "http://localhost:3001"],
+          allowedOrigins: [
+            process.env.DMS_CLIENT_BASE_URL ?? "http://localhost:3001",
+          ],
         },
       },
     },

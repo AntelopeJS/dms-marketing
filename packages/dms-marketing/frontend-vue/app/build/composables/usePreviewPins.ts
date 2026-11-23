@@ -1,24 +1,31 @@
 import { computed } from 'vue'
-import { type ClickedElement, type Pin } from '../types/pagePreview'
+import type { ClickedElement, Pin } from '../types/pagePreview'
 import type { usePreviewFrame } from './usePreviewFrame'
 import type { usePreviewReads } from './usePreviewReads'
 import type { usePreviewScale } from './usePreviewScale'
 import type { usePreviewSnapshot } from './usePreviewSnapshot'
 
-/** The most clicked elements of `PagePreview` and the pins drawn on them. */
-export function usePreviewPins(
-  points: ReturnType<typeof usePreviewReads>['points'],
-  anchorKey: ReturnType<typeof usePreviewFrame>['anchorKey'],
-  anchorBoxes: ReturnType<typeof usePreviewFrame>['anchorBoxes'],
-  overlayMode: ReturnType<typeof usePreviewReads>['overlayMode'],
-  scale: ReturnType<typeof usePreviewScale>['scale'],
-  layoutWidth: ReturnType<typeof usePreviewSnapshot>['layoutWidth'],
-) {
-  // --- Most clicked -----------------------------------------------------------
+/** What `usePreviewPins` takes from the component that calls it. */
+export interface PreviewPinsOptions {
+  points: ReturnType<typeof usePreviewReads>['points']
+  anchorKey: ReturnType<typeof usePreviewFrame>['anchorKey']
+  anchorBoxes: ReturnType<typeof usePreviewFrame>['anchorBoxes']
+  overlayMode: ReturnType<typeof usePreviewReads>['overlayMode']
+  scale: ReturnType<typeof usePreviewScale>['scale']
+  layoutWidth: ReturnType<typeof usePreviewSnapshot>['layoutWidth']
+}
 
+/**
+ * The most clicked elements of `PagePreview` and the pins drawn on them. The
+ * count badges are kept inside the surface, since an element flush with the
+ * right edge would cut its badge in half, and pushed down past the badges
+ * already placed.
+ */
+export function usePreviewPins(options: PreviewPinsOptions) {
+  const { points, anchorKey, anchorBoxes, overlayMode, scale, layoutWidth } =
+    options
   const MOST_CLICKED = 5
 
-  /** The anchored elements with the most clicks, the backend's own cells summed. */
   const mostClicked = computed<ClickedElement[]>(() => {
     const groups = new Map<string, ClickedElement>()
     for (const point of points.value) {
@@ -45,16 +52,10 @@ export function usePreviewPins(
       .slice(0, MOST_CLICKED)
   })
 
-  /** Half a pin's footprint on screen, and the step that unstacks two pins. */
   const PIN_HALF_WIDTH = 28
   const PIN_HALF_HEIGHT = 11
   const PIN_STEP = 22
 
-  /**
-   * Count badges pinned on the hottest elements, in the surface's own pixels:
-   * kept inside the surface (an element flush with the right edge would cut
-   * its badge in half) and pushed down past the badges already placed.
-   */
   const pins = computed(() => {
     if (overlayMode.value !== 'clicks') {
       return []

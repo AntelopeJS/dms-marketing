@@ -141,7 +141,6 @@ const { confirm, resetting, resetPageHeatmap } = usePreviewReset(
 
 const {
   layoutWidth,
-  layout,
   snapshotsEnabled,
   snapshotSettled,
   snapshot,
@@ -153,7 +152,7 @@ const {
   mebibytes,
   savingOptions,
   updateSnapshotOptions,
-} = usePreviewSnapshot(
+} = usePreviewSnapshot({
   DEFAULT_LAYOUT_WIDTH,
   LAYOUT_PRESETS,
   foreign,
@@ -163,7 +162,7 @@ const {
   t,
   emit,
   api,
-)
+})
 
 const {
   frame,
@@ -179,14 +178,14 @@ const {
   drift,
   oversized,
   overflowing,
-} = usePreviewFrame(
+} = usePreviewFrame({
   props,
   snapshot,
   layoutWidth,
   PROBE_VIEWPORT_HEIGHT,
   points,
   OVERFLOW_TOLERANCE,
-)
+})
 
 const {
   container,
@@ -199,7 +198,7 @@ const {
 } = usePreviewScale(layoutWidth, renderHeight, props)
 
 const { emptyState, activeFailed, activeLoading, retryActive, truncatedState } =
-  usePreviewEmptiness(
+  usePreviewEmptiness({
     props,
     t,
     scrollViews,
@@ -213,7 +212,7 @@ const { emptyState, activeFailed, activeLoading, retryActive, truncatedState } =
     scrollFailed,
     heatmapRead,
     scrollRead,
-  )
+  })
 
 const {
   externalUrl,
@@ -222,7 +221,7 @@ const {
   statusLine,
   capturedUrl,
   maskLine,
-} = usePreviewStatus(
+} = usePreviewStatus({
   props,
   snapshot,
   foreign,
@@ -242,16 +241,16 @@ const {
   layoutWidth,
   overflowing,
   measuredWidth,
-)
+})
 
-const { mostClicked, pins } = usePreviewPins(
+const { mostClicked, pins } = usePreviewPins({
   points,
   anchorKey,
   anchorBoxes,
   overlayMode,
   scale,
   layoutWidth,
-)
+})
 
 const {
   overlayItems,
@@ -260,7 +259,7 @@ const {
   moreItems,
   surface,
   surfaceEmpty,
-} = usePreviewToolbar(
+} = usePreviewToolbar({
   t,
   LAYOUT_PRESETS,
   locale,
@@ -277,7 +276,7 @@ const {
   snapshotsEnabled,
   snapshotSettled,
   overlayMode,
-)
+})
 </script>
 
 <template>

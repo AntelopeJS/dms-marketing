@@ -1,4 +1,5 @@
-import { createSSRApp, defineComponent, h, ref } from 'vue'
+import { createSSRApp, h, ref, type FunctionalComponent } from 'vue'
+import { bareStub } from './bare-stub'
 import { renderToString } from 'vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import InstallGuide from '../app/components/InstallGuide.vue'
@@ -13,25 +14,17 @@ const WEBSITE = {
 
 /** A component drawn as its slot, every attribute kept. */
 const slot = (name: string) =>
-  defineComponent({
-    name,
-    inheritAttrs: false,
-    setup:
-      (_props, { slots, attrs }) =>
-      () =>
-        h('div', { 'data-stub': name, ...attrs }, slots.default?.()),
-  })
+  bareStub((_props, { slots, attrs }) =>
+    h('div', { 'data-stub': name, ...attrs }, slots.default?.()),
+  )
 
 /** A link drawn as an anchor on its target. */
-const link = (name: string) =>
-  defineComponent({
-    name,
-    props: { to: { type: String, default: undefined } },
-    setup:
-      (props, { slots }) =>
-      () =>
-        h('a', { 'data-stub': name, href: props.to }, slots.default?.()),
-  })
+const link = (name: string) => {
+  const anchor: FunctionalComponent<{ to?: string }> = (props, { slots }) =>
+    h('a', { 'data-stub': name, href: props.to }, slots.default?.())
+  anchor.props = ['to']
+  return anchor
+}
 
 beforeEach(() => {
   setDmsRouteQuery({ website: WEBSITE.id })
@@ -63,9 +56,7 @@ afterEach(() => {
 })
 
 async function render(): Promise<string> {
-  const app = createSSRApp(
-    defineComponent({ setup: () => () => h(InstallGuide) }),
-  )
+  const app = createSSRApp(() => h(InstallGuide))
   app.component('DmsAutoLink', link('DmsAutoLink'))
   for (const name of [
     'DmsNoticeBanner',

@@ -6,7 +6,7 @@ import { fractionDigits } from '../../../constants'
 import type { StepDraft } from '../../types/funnelBuilder'
 
 /** The live preview card of `FunnelBuilder`: the draft read over the last 30 days, step by step, with the sample a split would need. */
-defineProps<{
+interface Props {
   endToEnd: number | null
   entered: number
   previewFailed: boolean
@@ -22,7 +22,9 @@ defineProps<{
   splitEnabled: boolean
   stepRate: (index: number) => string | null
   validSteps: { kind: StepDraft['kind']; value: string }[]
-}>()
+}
+
+defineProps<Props>()
 
 const { t, locale } = useI18n()
 </script>

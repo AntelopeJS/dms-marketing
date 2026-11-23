@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
+import type { MessageParams } from '../app/utils/translate'
 import { pageSnapshotBadge } from '../app/utils/page-snapshot'
 
 /** A `t` that shows which key, values and plural form were asked for. */
-function t(key: string, named: Record<string, unknown> = {}, plural?: number) {
+function t(key: string, named: MessageParams = {}, plural?: number) {
   const name = key.split('.').at(-1)
   const values = Object.values(named).join(',')
   return plural === undefined
@@ -40,7 +41,7 @@ describe('the snapshot mark of a pages row', () => {
     )
     expect(badge).toEqual({
       icon: 'i-ph-camera',
-      // Intl writes a no-break space before the unit.
+      /** Intl writes a no-break space before the unit. */
       label: new Intl.RelativeTimeFormat('fr-FR', { style: 'short' }).format(
         -3,
         'hour',

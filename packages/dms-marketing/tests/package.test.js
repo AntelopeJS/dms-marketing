@@ -32,18 +32,14 @@ const MODULE_FILES = [
   "frontend-vue/dms.frontend.ts",
   "frontend-vue/i18n/locales/marketing-en-GB.json",
   "frontend-vue/i18n/locales/marketing-fr-FR.json",
-  "static/tracker/10-pages.js",
-  "static/tracker/20-scroll-and-clicks.js",
-  "static/tracker/30-snapshots-experiments-lifecycle.js",
-  "static/snapshot/10-text-and-urls.js",
-  "static/snapshot/20-stylesheets.js",
-  "static/snapshot/30-elements-and-upload.js",
+  "dist/static/tracker.js",
+  "dist/static/snapshot.js",
 ];
 
 describe("what a project installs from the registry", function () {
   this.timeout(PACK_TIMEOUT_MS);
 
-  it("the module's tarball holds the build, the dashboard layer, the agent skill and every path its manifest points at, without build info", () => {
+  it("the module's tarball holds the build, the dashboard layer, the agent skill, the bundled browser scripts and every path its manifest points at, without build info or the browser sources", () => {
     const { files, manifest } = packed("packages/dms-marketing");
     const root = manifest.exports?.["."];
     for (const target of [
@@ -65,7 +61,9 @@ describe("what a project installs from the registry", function () {
     ]);
     assert.deepEqual(manifest.antelopeJs?.skills, ["./skills"]);
     assert.deepEqual(
-      files.filter((file) => file.endsWith(".tsbuildinfo")),
+      files.filter(
+        (file) => file.endsWith(".tsbuildinfo") || file.startsWith("static/"),
+      ),
       [],
     );
     assert.equal(manifest.publishConfig?.access, "public");

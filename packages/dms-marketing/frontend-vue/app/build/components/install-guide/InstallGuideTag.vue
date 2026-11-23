@@ -3,10 +3,12 @@ import { useI18n } from '#dms/frontend-module'
 import type { ContextWebsite } from '../../../composables/useMarketingContext'
 
 /** Step 2 of `InstallGuide`: the tag to paste, and the options it takes. */
-defineProps<{
+interface Props {
   stepTwoState: 'done' | 'current' | 'next'
   website: ContextWebsite | null
-}>()
+}
+
+defineProps<Props>()
 
 const { t } = useI18n()
 </script>
@@ -76,9 +78,7 @@ const { t } = useI18n()
             <dd class="text-muted">
               {{ t('page.marketing.install.option_dnt') }}
             </dd>
-            <dt class="font-mono text-xs text-highlighted">
-              data-host-url
-            </dt>
+            <dt class="font-mono text-xs text-highlighted">data-host-url</dt>
             <dd class="text-muted">
               {{ t('page.marketing.install.option_host') }}
             </dd>

@@ -32,10 +32,18 @@ export interface LatestRequest<T> {
   run: () => Promise<void>
 }
 
+/**
+ * Runs `fetcher` and keeps only the newest answer. The fetcher is called
+ * synchronously, so it reads the selection as it is now, not as it will be once
+ * the previous request resolves. The failure is cleared before the guard for a
+ * fetcher with nothing to fetch, so a retry cannot leave a stale error on
+ * screen. A superseded run owns none of the shared state, not even the flag
+ * that says the newest one is still in flight.
+ */
 export function useLatestRequest<T>(
   fetcher: () => Promise<T> | null,
 ): LatestRequest<T> {
-  const data = ref(null) as Ref<T | null>
+  const data: Ref<T | null> = ref(null)
   const loading = ref(false)
   const failed = ref(false)
   const error = ref<unknown>(null)
@@ -45,13 +53,9 @@ export function useLatestRequest<T>(
 
   async function run(): Promise<void> {
     const request = ++latest
-    // Cleared before the guard below, so a retry with nothing to fetch cannot
-    // leave a stale error on screen.
     failed.value = false
     error.value = null
 
-    // Called synchronously: the fetcher reads the selection as it is now, not
-    // as it will be once the previous request resolves.
     const pending = fetcher()
     if (!pending) {
       data.value = null
@@ -75,8 +79,6 @@ export function useLatestRequest<T>(
       error.value = cause
       data.value = null
     } finally {
-      // A superseded run owns none of the shared state — not even the flag
-      // that says the newest one is still in flight.
       if (request === latest) {
         loading.value = false
         settled.value = true

@@ -13,8 +13,7 @@ const INPUT: MarketingFunnelInput = {
   experiment: null,
 }
 
-// What interface-data-api 0.3 answers on `new`: the created row, not its key
-// in an array.
+/** What interface-data-api 0.3 answers on `new`: the created row, not its key in an array. */
 const CREATED: MarketingFunnelListItem = {
   _id: 'funnel-new',
   websiteId: 'acme-shop',

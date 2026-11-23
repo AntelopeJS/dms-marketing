@@ -5,7 +5,7 @@ import {
   type UnrollStyle,
 } from '../app/utils/snapshotScrollRoot'
 
-interface FakeElement extends UnrollElement {
+interface FakeElement extends UnrollElement<FakeElement> {
   name: string
   parentElement: FakeElement | null
   computed: UnrollStyle
@@ -39,8 +39,6 @@ function element(
 }
 
 describe('snapshot scroll root', () => {
-  // The dashboard shape: a fixed shell, a sidebar row, a column panel whose
-  // body scrolls.
   const html = element('html', null)
   const body = element('body', html, { overflowX: 'hidden' })
   const shell = element('shell', body, {
@@ -78,7 +76,6 @@ describe('snapshot scroll root', () => {
   it('touches the flex basis in a column only', () => {
     expect(scroller.set['flex-basis']).toBe('auto')
     expect(scroller.set['flex-shrink']).toBe('0')
-    // The panel is an item of a row: its basis is a width.
     expect(panel.set['flex-basis']).toBeUndefined()
   })
 })

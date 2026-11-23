@@ -4,13 +4,15 @@ import type { MarketingFunnelResults } from '../../../composables/useMarketingAp
 import { funnelBuilderLink } from '../../../composables/useMarketingRoutes'
 
 /** The definition card of `FunnelFigure`: the website, the steps and the conversion window, with a link to edit them. */
-defineProps<{
+interface Props {
   noTraffic: boolean
   definition: MarketingFunnelResults['funnel']
   websiteName: string
   windowHours: number
   inContext: (link: string) => string
-}>()
+}
+
+defineProps<Props>()
 
 const { t } = useI18n()
 </script>

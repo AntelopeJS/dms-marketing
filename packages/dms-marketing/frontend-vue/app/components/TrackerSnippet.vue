@@ -21,13 +21,13 @@ const config = useDmsRuntimeConfig()
 
 const flavor = ref<SnippetFlavor>('html')
 
-// Read once mounted: the server renders with its internal backend URL, the
-// browser with the public one — the tag must only ever show the latter.
+/**
+ * Read once mounted: the server renders with its internal backend URL, the
+ * browser with the public one — the tag must only ever show the latter.
+ */
 const apiOrigin = ref('')
 onMounted(() => {
-  apiOrigin.value = String(
-    (config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? '',
-  )
+  apiOrigin.value = config.public.dms.baseURL
 })
 
 const code = computed(() =>

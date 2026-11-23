@@ -113,7 +113,6 @@ describe('snapshot options in the modal', () => {
     expect(
       draftAsksBeforeSaving(none, { ...websiteDraftOf(none), snapshots: true }),
     ).toBe(false)
-    // No snapshots yet, still a change of what later captures keep.
     expect(
       draftAsksBeforeSaving(card({ snapshots: 0 }), { ...draft, mask: true }),
     ).toBe(true)
@@ -123,7 +122,6 @@ describe('snapshot options in the modal', () => {
 describe('the setting a card opens the modal on', () => {
   it('is taken once, by the modal of its own site', () => {
     requestWebsiteSetting('site-1', 'snapshots')
-    // The modal of another site drops the request.
     expect(takeWebsiteSetting('site-2')).toBeUndefined()
     expect(takeWebsiteSetting('site-1')).toBeUndefined()
     requestWebsiteSetting('site-1', 'snapshots')

@@ -8,11 +8,11 @@ EXTENDS ImportClaim
 
 (* ------------------------------ replaying ------------------------------ *)
 
-(* A resumed replay reads which days the ledger names (replay.ts:284-286, *)
+(* A resumed replay reads which days the ledger names (replay.ts:287-289, *)
 (* 253-269); a new one starts from the first day. A resume also lists the *)
 (* raw rows of the days the ledger does not name, then, when it found any, *)
 (* moves the backfill generation and takes those rows out of the trails   *)
-(* (replay.ts:216-218, 235-238). The model does this here, before the     *)
+(* (replay.ts:219-221, 238-241). The model does this here, before the     *)
 (* isHeld() check that Discard holds: a call that fails that check took   *)
 (* entries out that the raw rows keep, which no trail rule reads.         *)
 ReadLedger(c) ==
@@ -34,8 +34,8 @@ ReadLedger(c) ==
                  fenceOf, tail, walks, wpc, wgen, wread, wrote>>
 
 (* discardUncommitted deletes the import's raw rows on every day that    *)
-(* ledger read did not name (replay.ts:286-289, 202-250), after an       *)
-(* isHeld() check that throws once it is false (replay.ts:287).           *)
+(* ledger read did not name (replay.ts:289-292, 205-253), after an       *)
+(* isHeld() check that throws once it is false (replay.ts:290).           *)
 Discard(c) ==
   /\ pc[c] = "discard"
   /\ IF holds[c]
@@ -51,7 +51,7 @@ Discard(c) ==
                  fenceOf, trail, gen, listed, walks, wpc, wgen, wread, wrote>>
 
 (* A worker checks isHeld() before each visitor and throws once it is     *)
-(* false (replay.ts:165, 189-194). With no day left, the replay returns.  *)
+(* false (replay.ts:168, 192-197). With no day left, the replay returns.  *)
 Check(c) ==
   /\ pc[c] = "check"
   /\ Go(c, IF day[c] > Days THEN "markDone"
@@ -60,7 +60,7 @@ Check(c) ==
   /\ Frozen
 
 (* replayVisitor writes the day's raw events and sessions through        *)
-(* ingestPreparedBatch and holds the rollup in memory (replay.ts:167-172).*)
+(* ingestPreparedBatch and holds the rollup in memory (replay.ts:170-175).*)
 WriteRaw(c) ==
   /\ pc[c] = "write"
   /\ raw' = [raw EXCEPT ![day[c]] = @ \cup {c}]
@@ -71,7 +71,7 @@ WriteRaw(c) ==
   /\ UNCHANGED trailVars
 
 (* commitImportedDay adds the day's counters and its ledger entry in one  *)
-(* write to the day row, with no look at the claim (replay.ts:303-308,    *)
+(* write to the day row, with no look at the claim (replay.ts:301-306,    *)
 (* rollup.ts:121-157, 183-193). Then the next day the ledger read did not *)
 (* name.                                                                  *)
 Commit(c) ==
@@ -174,7 +174,7 @@ TrailWrite(c) ==
 
 (* Once its deletes are done, discardUncommitted moves the generation     *)
 (* again, then takes the rows it listed out of the trails once more       *)
-(* (replay.ts:243-248). The model lets these two steps run at any later  *)
+(* (replay.ts:246-251). The model lets these two steps run at any later  *)
 (* point, which covers the code's order, and a call that dies first never *)
 (* runs them.                                                             *)
 TailFence(c) ==

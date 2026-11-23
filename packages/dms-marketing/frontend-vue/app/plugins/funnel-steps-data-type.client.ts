@@ -1,12 +1,15 @@
-import { defineComponent, h, type PropType } from 'vue'
+import { defineComponent, h } from 'vue'
 import { defineDmsPlugin } from '#dms/frontend-module'
 import FunnelStepsInput from '../components/FunnelStepsInput.vue'
-import type { FunnelStepDraft } from '../composables/useFunnelSteps'
-import { parseFunnelStepsValue } from '../composables/useFunnelSteps'
+import {
+  isFunnelStepsValue,
+  parseFunnelStepsValue,
+  type FunnelStepsValue,
+} from '../composables/useFunnelSteps'
 
 const MAX_PREVIEW_STEPS = 3
 
-function renderStepsPreview(value: unknown): string {
+function renderStepsPreview(value: FunnelStepsValue): string {
   const steps = parseFunnelStepsValue(value)
   if (!steps.length) {
     return '—'
@@ -21,14 +24,16 @@ const FunnelStepsDisplay = defineComponent({
   name: 'FunnelStepsDisplay',
   props: {
     modelValue: {
-      type: [Array, String] as PropType<FunnelStepDraft[] | string | null>,
+      type: [Array, String],
       default: null,
     },
   },
   setup(props) {
     return () =>
       h(FunnelStepsInput, {
-        modelValue: props.modelValue,
+        modelValue: isFunnelStepsValue(props.modelValue)
+          ? props.modelValue
+          : null,
         disabled: true,
       })
   },
@@ -40,7 +45,8 @@ export default defineDmsPlugin(() => {
     id: 'marketing_funnel_steps',
     displayComponent: FunnelStepsDisplay,
     formatter: {
-      default: (value: unknown) => renderStepsPreview(value),
+      default: (value: unknown) =>
+        isFunnelStepsValue(value) ? renderStepsPreview(value) : '—',
     },
   })
 })

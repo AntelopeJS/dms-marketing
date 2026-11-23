@@ -26,13 +26,17 @@ export interface UnrollStyle {
   flexDirection: string
 }
 
-/** The part of an element the unrolling touches. */
-export interface UnrollElement {
-  parentElement: UnrollElement | null
+/** The part of an element the unrolling writes: its inline style. */
+interface StyledElement {
   style: { setProperty(name: string, value: string, priority: string): void }
 }
 
-function important(element: UnrollElement, name: string, value: string): void {
+/** The part of an element the unrolling touches, `E` being its own type. */
+export interface UnrollElement<E> extends StyledElement {
+  parentElement: E | null
+}
+
+function important(element: StyledElement, name: string, value: string): void {
   element.style.setProperty(name, value, 'important')
 }
 
@@ -48,25 +52,19 @@ function isColumnFlex(style: UnrollStyle | null): boolean {
  * Releases `root` and its ancestors; `computed` reads an element's style as
  * the page laid it out.
  */
-export function unrollScrollRoot<E extends UnrollElement>(
+export function unrollScrollRoot<E extends UnrollElement<E>>(
   root: E,
   computed: (element: E) => UnrollStyle,
 ): void {
-  for (
-    let element: E | null = root;
-    element;
-    element = element.parentElement as E | null
-  ) {
+  for (let element: E | null = root; element; element = element.parentElement) {
     const style = computed(element)
-    const parent = element.parentElement as E | null
+    const parent = element.parentElement
     important(element, 'height', 'auto')
     important(element, 'max-height', 'none')
     important(element, 'overflow-y', 'visible')
     if (style.overflowX !== 'visible') {
       important(element, 'overflow-x', 'clip')
     }
-    // A fixed box adds nothing to the document's scroll height, and one
-    // pinned at both ends (`inset: 0`) keeps the window's height.
     if (style.position === 'fixed' || style.position === 'absolute') {
       important(element, 'position', 'absolute')
       important(element, 'bottom', 'auto')

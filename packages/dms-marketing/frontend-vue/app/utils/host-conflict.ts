@@ -2,7 +2,10 @@
  * A host another website of the workspace already declares: the API answers
  * 409 `{ field, message: duplicate_host, values: [host, site] }`. The DMS
  * shows the message alone, so the forms name the site themselves.
+ *
+ * @packageDocumentation
  */
+import type { Translate } from './translate'
 
 const HTTP_CONFLICT = 409
 const DUPLICATE_HOST = '$page.marketing.errors.duplicate_host'
@@ -16,8 +19,6 @@ export interface HostConflict {
   /** The name of the website that declares it. */
   site: string
 }
-
-type Translate = (key: string, params?: Record<string, unknown>) => string
 
 /**
  * The confirmation before "Allow this host": a refused host is only what a
@@ -35,7 +36,14 @@ export function allowHostConfirmation(t: Translate, host: string) {
   }
 }
 
-export function hostConflictOf(error: unknown): HostConflict | null {
+function isHostField(field: string): field is HostConflict['field'] {
+  return field === 'domain' || field === 'extraDomains'
+}
+
+/** What a failed request throws, as the DMS error helpers take it. */
+type ApiError = Parameters<typeof apiErrorStatus>[0]
+
+export function hostConflictOf(error: ApiError): HostConflict | null {
   if (apiErrorStatus(error) !== HTTP_CONFLICT) {
     return null
   }
@@ -44,5 +52,8 @@ export function hostConflictOf(error: unknown): HostConflict | null {
   if (entry?.message !== DUPLICATE_HOST || !host || !site) {
     return null
   }
-  return { field: entry.field as HostConflict['field'], host, site }
+  if (!isHostField(entry.field)) {
+    return null
+  }
+  return { field: entry.field, host, site }
 }

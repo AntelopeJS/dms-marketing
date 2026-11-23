@@ -1,5 +1,8 @@
+const path = require("node:path");
 const vm = require("node:vm");
-const { staticScript } = require("../../dist/services/static-script");
+const { buildSync } = require("esbuild");
+
+const PURE_PARTS = path.join(__dirname, "../../static/snapshot/pure-parts.ts");
 
 /**
  * @typedef {object} StyleCollector
@@ -29,16 +32,24 @@ const { staticScript } = require("../../dist/services/static-script");
  */
 
 /**
- * The pure parts of the capture script, loaded the way a CommonJS module is:
- * with no `window` and a `module` to export them on.
+ * The pure parts of the capture script, bundled from its sources as a
+ * CommonJS module: the served script runs in a page and exports nothing.
  * @returns {SnapshotModule}
  */
 function loadSnapshotModule() {
+  const { outputFiles } = buildSync({
+    entryPoints: [PURE_PARTS],
+    bundle: true,
+    format: "cjs",
+    target: "es2021",
+    write: false,
+    logLevel: "warning",
+  });
   /** @type {{ exports: SnapshotModule | null }} */
   const loaded = { exports: null };
-  vm.compileFunction(staticScript("snapshot"), ["module"])(loaded);
+  vm.compileFunction(outputFiles[0].text, ["module"])(loaded);
   if (loaded.exports === null) {
-    throw new Error("the capture script exported nothing");
+    throw new Error("the capture sources exported nothing");
   }
   return loaded.exports;
 }
