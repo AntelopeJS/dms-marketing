@@ -1,6 +1,26 @@
 # Changelog
 
 
+## v0.11.0
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.10.4...v0.11.0)
+
+### 🚀 Enhancements
+
+- **dms-marketing:** Move to zod 4 and interface-dms 0.16 ([#202](https://github.com/AntelopeJS/dms-marketing/pull/202))
+
+### 🏡 Chore
+
+- Adopt tooling-configs 0.10 and lint every ts and vue file ([#203](https://github.com/AntelopeJS/dms-marketing/pull/203))
+
+#### ⚠️ Breaking Changes
+
+- **dms-marketing:** Move to zod 4 and interface-dms 0.16 ([#202](https://github.com/AntelopeJS/dms-marketing/pull/202))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.10.4
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.10.3...v0.10.4)
