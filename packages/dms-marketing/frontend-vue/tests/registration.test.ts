@@ -1,4 +1,5 @@
 import { expect, it, vi } from 'vitest'
+import type { Component } from 'vue'
 import frontendModule from '../dms.frontend'
 
 /**
@@ -26,7 +27,8 @@ const BACKEND_ADDRESSED = [
 ]
 
 it('registers every backend-addressed component, once, without the prefix', async () => {
-  const registerComponent = vi.fn()
+  const registerComponent =
+    vi.fn<(name: string, component: Component) => void>()
   const registerPlugin = vi.fn()
   await frontendModule.setup({
     options: { public: {} },
@@ -68,5 +70,7 @@ it('registers the funnel-steps DataType plugin client-side only', async () => {
   })
 
   expect(registerPlugin).toHaveBeenCalledTimes(1)
-  expect(registerPlugin.mock.calls[0]![1]).toEqual({ clientOnly: true })
+  expect(registerPlugin).toHaveBeenCalledWith(expect.any(Function), {
+    clientOnly: true,
+  })
 })

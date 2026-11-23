@@ -19,11 +19,11 @@ const components = import.meta.glob<VueModule>('./app/components/**/*.vue')
 const frontendModule: DmsFrontendModule = {
   componentPrefix: 'DmsMarketing',
   setup(sdk) {
-    for (const [path, loader] of Object.entries(components).sort()) {
-      const name = path
-        .split('/')
-        .at(-1)!
-        .replace(/\.vue$/, '')
+    const sorted = Object.entries(components).sort(([left], [right]) =>
+      left.localeCompare(right),
+    )
+    for (const [path, loader] of sorted) {
+      const name = path.slice(path.lastIndexOf('/') + 1).replace(/\.vue$/, '')
       sdk.registerComponent(
         name,
         defineAsyncComponent(async () => (await loader()).default),

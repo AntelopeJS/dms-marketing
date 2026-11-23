@@ -1,6 +1,7 @@
-import { createSSRApp, defineComponent, h, onServerPrefetch, ref } from 'vue'
+import { createSSRApp, h, onServerPrefetch, ref } from 'vue'
+import { bareStub } from './bare-stub'
 import { renderToString } from 'vue/server-renderer'
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 /**
  * The overview top lists as a server renders them: with their data, the
@@ -17,10 +18,8 @@ interface ChartState {
 
 let chart: ChartState = { data: null, isLoading: false, error: null }
 
-const globals = globalThis as Record<string, unknown>
-
 beforeAll(() => {
-  globals.useChartFetch = () => {
+  vi.stubGlobal('useChartFetch', () => {
     const data = ref<unknown>(null)
     const isLoading = ref(true)
     const error = ref<unknown>(null)
@@ -30,24 +29,26 @@ beforeAll(() => {
       error.value = chart.error
     })
     return { data, isLoading, error, refresh: async () => {} }
-  }
-  globals.useTranslation = () => ({ processI18n: (key: string) => key })
+  })
+  vi.stubGlobal('useTranslation', () => ({
+    processI18n: (key: string) => key,
+  }))
+})
+
+afterAll(() => {
+  vi.unstubAllGlobals()
 })
 
 /** An auto-import the template reads: an app global, as Nuxt provides it. */
 const formatPercentage = (value: number) => `${Math.round(value * 100)}%`
 
 const slotStub = (tag: string) =>
-  defineComponent({
-    inheritAttrs: false,
-    setup:
-      (_, { slots, attrs }) =>
-      () =>
-        h(tag, { class: attrs.class }, [
-          String(attrs.title ?? attrs.label ?? ''),
-          slots.default?.(),
-        ]),
-  })
+  bareStub((_props, { slots, attrs }) =>
+    h(tag, { class: attrs.class }, [
+      String(attrs.title ?? attrs.label ?? ''),
+      slots.default?.(),
+    ]),
+  )
 
 const STUBS = {
   DmsEyebrowLabel: slotStub('p'),
@@ -57,13 +58,9 @@ const STUBS = {
   UTabs: slotStub('div'),
   UButton: slotStub('button'),
   UIcon: slotStub('i'),
-  USkeleton: defineComponent({
-    inheritAttrs: false,
-    setup:
-      (_, { attrs }) =>
-      () =>
-        h('div', { class: ['skeleton', attrs.class] }),
-  }),
+  USkeleton: bareStub((_props, { attrs }) =>
+    h('div', { class: ['skeleton', attrs.class] }),
+  ),
 }
 
 async function render(state: ChartState): Promise<string> {

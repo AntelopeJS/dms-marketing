@@ -26,7 +26,7 @@ function isFunnelStepDraft(value: unknown): value is FunnelStepDraft {
   )
 }
 
-function isStepList(value: unknown): value is FunnelStepDraft[] {
+export function isStepList(value: unknown): value is FunnelStepDraft[] {
   return Array.isArray(value) && value.every(isFunnelStepDraft)
 }
 

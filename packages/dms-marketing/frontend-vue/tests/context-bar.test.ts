@@ -1,12 +1,5 @@
-import {
-  computed,
-  createSSRApp,
-  defineComponent,
-  h,
-  nextTick,
-  ref,
-  type Ref,
-} from 'vue'
+import { computed, createSSRApp, h, ref, type Component, type Ref } from 'vue'
+import { bareStub } from './bare-stub'
 import { renderToString } from 'vue/server-renderer'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Context from '../app/components/Context.vue'
@@ -30,13 +23,18 @@ const CONTEXT: MarketingContextPayload = {
 }
 
 let contextData: Ref<MarketingContextPayload | null>
-let readOptions: Record<string, unknown>
+interface ReadOptions {
+  refreshOnPageRefresh?: boolean
+  refreshInterval?: number
+}
+
+let readOptions: ReadOptions
 let paused: Ref<boolean>
 let liveRefreshes: Array<{
   refresh: () => void
-  options: Record<string, unknown>
+  options: { realtimeTopic?: string }
 }>
-let topicHandlers: Map<string, (event: object) => void>
+let topicHandlers: Map<string, () => void>
 let blockRefreshes: number
 let contextReads: number
 
@@ -52,7 +50,7 @@ beforeEach(() => {
   setDmsRouteQuery({})
   vi.stubGlobal(
     'useApiData',
-    (_url: unknown, options: Record<string, unknown> = {}) => {
+    (_url: string | null, options: ReadOptions = {}) => {
       readOptions = options
       return {
         data: contextData,
@@ -68,7 +66,7 @@ beforeEach(() => {
   vi.stubGlobal('useAuthFetch', () => ({ $authFetch: async () => ({}) }))
   vi.stubGlobal('useToast', () => ({ add: () => {} }))
   vi.stubGlobal('useApiErrorPresenter', () => ({ presentError: vi.fn() }))
-  vi.stubGlobal('useDmsState', (_key: string, init: () => unknown) =>
+  vi.stubGlobal('useDmsState', <Value>(_key: string, init: () => Value) =>
     ref(init()),
   )
   vi.stubGlobal('usePeriodScope', () =>
@@ -87,7 +85,7 @@ beforeEach(() => {
   })
   vi.stubGlobal(
     'usePageLiveRefresh',
-    (refresh: () => void, options: Record<string, unknown> = {}) => {
+    (refresh: () => void, options: { realtimeTopic?: string } = {}) => {
       liveRefreshes.push({ refresh, options })
       return {
         missed: computed(() => 0),
@@ -96,12 +94,9 @@ beforeEach(() => {
       }
     },
   )
-  vi.stubGlobal(
-    'useRealtimeTopic',
-    (topic: string, handler: (event: object) => void) => {
-      topicHandlers.set(topic, handler)
-    },
-  )
+  vi.stubGlobal('useRealtimeTopic', (topic: string, handler: () => void) => {
+    topicHandlers.set(topic, handler)
+  })
   vi.stubGlobal('readerTimeZone', () => 'UTC')
   vi.stubGlobal('usePageToolbarSize', () => ({ size: computed(() => 'sm') }))
   vi.stubGlobal('withQuery', (path: string) => path)
@@ -112,27 +107,16 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const slot = (name: string) =>
-  defineComponent({
-    name,
-    inheritAttrs: false,
-    setup:
-      (_props, { slots }) =>
-      () =>
-        h('div', slots.default?.()),
-  })
+const slot = () => bareStub((_props, { slots }) => h('div', slots.default?.()))
 
 const TOPIC = 'marketing.events'
 
 async function render(
-  component: object,
-  props: Record<string, unknown> = {},
+  component: Component,
+  props: Record<string, string> = {},
 ): Promise<string> {
-  const app = createSSRApp(
-    defineComponent({
-      setup: () => () =>
-        h(component, props, { default: () => h('main', 'blocks') }),
-    }),
+  const app = createSSRApp(() =>
+    h(component, props, { default: () => h('main', 'blocks') }),
   )
   for (const name of [
     'UDropdownMenu',
@@ -143,12 +127,12 @@ async function render(
     'DmsEmptyState',
     'DmsMarketingFirstRun',
   ]) {
-    app.component(name, slot(name))
+    app.component(name, slot())
   }
   return renderToString(app)
 }
 
-const renderPicker = (props: Record<string, unknown> = {}) =>
+const renderPicker = (props: Record<string, string> = {}) =>
   render(WebsitePicker, { realtimeTopic: TOPIC, ...props })
 
 describe('the website picker of the page toolbar', () => {

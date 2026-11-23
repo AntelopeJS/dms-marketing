@@ -22,8 +22,3 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
 export function isElement(value: unknown): value is Element {
   return value instanceof Element
 }
-
-/** Whether `value` is a string array. */
-export function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every(isString)
-}

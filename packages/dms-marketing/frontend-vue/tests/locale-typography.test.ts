@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { isString } from '../app/utils/guards'
 import en from '../i18n/locales/marketing-en-GB.json'
 import fr from '../i18n/locales/marketing-fr-FR.json'
 
@@ -17,17 +18,19 @@ const COUNT_NEVER_ONE = new Set([
 ])
 
 /** What intlify warns about as HTML in a message (`warnHtmlMessage`). */
-const HTML_TAG = /<\/?[\w\s="/.':;#-]+>/
+const HTML_TAG = /<[\w\s="/.':;#-]+>/
 /** A `@` that is not the literal `{'@'}` starts a linked message. */
 const BARE_AT = /@(?<!\{'@)/
 
-function messages(value: unknown, prefix = ''): [string, string][] {
-  if (typeof value === 'string') {
-    return [[prefix, value]]
-  }
-  return Object.entries(value as Record<string, unknown>).flatMap(
-    ([key, child]) => messages(child, prefix ? `${prefix}.${key}` : key),
-  )
+interface MessageTree {
+  [key: string]: string | MessageTree
+}
+
+function messages(tree: MessageTree, prefix = ''): [string, string][] {
+  return Object.entries(tree).flatMap<[string, string]>(([key, child]) => {
+    const path = prefix ? `${prefix}.${key}` : key
+    return isString(child) ? [[path, child]] : messages(child, path)
+  })
 }
 
 const english = messages(en)
@@ -104,7 +107,7 @@ describe('French typography', () => {
   it('leaves no English product words in French prose', () => {
     expect(
       offending(french, (text) =>
-        /\b(analytics|first-party|tracker|snippet|capture|tagu)/i.test(
+        /\b(?:analytics|first-party|tracker|snippet|capture|tagu)/i.test(
           text.replace(/utm_\w+|\{\w+\}|\(first-party\)/g, ''),
         ),
       ),

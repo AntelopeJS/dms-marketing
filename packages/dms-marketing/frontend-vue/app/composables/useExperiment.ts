@@ -1,4 +1,5 @@
 import type {
+  MarketingExperiment,
   MarketingExperimentRun,
   MarketingExperimentStatus,
 } from './useMarketingApi'
@@ -37,6 +38,19 @@ function isRun(value: unknown): value is MarketingExperimentRun {
     isRecord(value) &&
     typeof value.startedAt === 'number' &&
     (value.stoppedAt === null || typeof value.stoppedAt === 'number')
+  )
+}
+
+/** Whether `value` is an experiment as the backend stores it. */
+export function isExperiment(value: unknown): value is MarketingExperiment {
+  return (
+    isRecord(value) &&
+    isString(value.key) &&
+    isStatus(value.status) &&
+    Array.isArray(value.variations) &&
+    value.variations.every(isVariation) &&
+    Array.isArray(value.runs) &&
+    value.runs.every(isRun)
   )
 }
 

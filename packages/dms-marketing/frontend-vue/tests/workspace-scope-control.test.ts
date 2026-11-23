@@ -1,4 +1,13 @@
-import { computed, createSSRApp, defineComponent, h, ref } from 'vue'
+import {
+  computed,
+  createSSRApp,
+  type FunctionalComponent,
+  h,
+  ref,
+  toValue,
+  type MaybeRefOrGetter,
+} from 'vue'
+import { bareStub } from './bare-stub'
 import { renderToString } from 'vue/server-renderer'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import PagesExplorer from '../app/components/PagesExplorer.vue'
@@ -10,49 +19,45 @@ const OWN = { id: 'tenant-a', name: 'Alpha', current: true }
 const OTHER = { id: 'tenant-b', name: 'Beta', current: false }
 
 /** The Nuxt UI parts, drawn as their slot; the tooltip keeps its text. */
+const tooltip: FunctionalComponent<{ text?: string }> = (props, { slots }) =>
+  h('div', { 'data-tooltip': props.text }, slots.default?.())
+tooltip.props = ['text']
+
 const UI_STUBS = {
-  UDropdownMenu: defineComponent({
-    setup:
-      (_props, { slots }) =>
-      () =>
-        h('div', slots.default?.()),
-  }),
-  UButton: defineComponent({
-    inheritAttrs: false,
-    setup:
-      (_props, { slots, attrs }) =>
-      () =>
-        h(
-          'button',
-          {
-            'aria-label': attrs['aria-label'],
-            'aria-describedby': attrs['aria-describedby'],
-          },
-          slots.default?.(),
-        ),
-  }),
-  UTooltip: defineComponent({
-    props: { text: String },
-    setup:
-      (props, { slots }) =>
-      () =>
-        h('div', { 'data-tooltip': props.text }, slots.default?.()),
-  }),
-  UIcon: defineComponent({ setup: () => () => h('i') }),
+  UDropdownMenu: (() => {
+    const menu: FunctionalComponent = (_props, { slots }) =>
+      h('div', slots.default?.())
+    return menu
+  })(),
+  UButton: bareStub((_props, { slots, attrs }) =>
+    h(
+      'button',
+      {
+        'aria-label': attrs['aria-label'],
+        'aria-describedby': attrs['aria-describedby'],
+      },
+      slots.default?.(),
+    ),
+  ),
+  UTooltip: tooltip,
+  UIcon: () => h('i'),
 }
 
 /** What each read of the explorer answers, by the path it reads. */
-const READS: Record<string, unknown> = {
-  '/api/marketing/stats/workspaces': { workspaces: [OWN, OTHER] },
-  '/api/marketing/websites': [{ _id: 'acme-shop', name: 'Acme Shop' }],
-  '/api/marketing/stats/pages': {
-    pages: [{ path: '/', pageviews: 3, clicks: 1, snapshot: null }],
-    total: 1,
-    sampleRate: 1,
-    trackerEnabled: true,
-  },
-  '/api/marketing/tables/funnels/list': [],
-}
+const READS = new Map<string, object>([
+  ['/api/marketing/stats/workspaces', { workspaces: [OWN, OTHER] }],
+  ['/api/marketing/websites', [{ _id: 'acme-shop', name: 'Acme Shop' }]],
+  [
+    '/api/marketing/stats/pages',
+    {
+      pages: [{ path: '/', pageviews: 3, clicks: 1, snapshot: null }],
+      total: 1,
+      sampleRate: 1,
+      trackerEnabled: true,
+    },
+  ],
+  ['/api/marketing/tables/funnels/list', []],
+])
 
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -60,10 +65,10 @@ afterEach(() => {
 
 /** The explorer on a live website, drawn by the server. */
 async function renderExplorer(): Promise<string> {
-  vi.stubGlobal('useApiData', (url: unknown) => {
-    const path = typeof url === 'function' ? url() : url
+  vi.stubGlobal('useApiData', (url: MaybeRefOrGetter<string | null>) => {
+    const [path = ''] = String(toValue(url)).split('?')
     const read = {
-      data: ref(READS[String(path).split('?')[0]!] ?? null),
+      data: ref(READS.get(path) ?? null),
       error: ref(null),
       status: ref('success'),
       refresh: async () => {},
@@ -78,7 +83,7 @@ async function renderExplorer(): Promise<string> {
   )
   vi.stubGlobal('appendPeriodToUrl', (url: string) => url)
   vi.stubGlobal('isDmsHydrating', () => false)
-  vi.stubGlobal('useDmsState', (_key: string, init: () => unknown) =>
+  vi.stubGlobal('useDmsState', <Value>(_key: string, init: () => Value) =>
     ref(init()),
   )
   vi.stubGlobal('formatPercentage', () => '100 %')
@@ -89,9 +94,7 @@ async function renderExplorer(): Promise<string> {
     state: 'live',
     lastActivityAt: null,
   }
-  const app = createSSRApp(
-    defineComponent({ setup: () => () => h(PagesExplorer) }),
-  )
+  const app = createSSRApp(() => h(PagesExplorer))
   app.provide(MARKETING_CONTEXT_KEY, {
     websites: computed(() => [website]),
     selected: computed(() => website),
@@ -111,25 +114,17 @@ async function renderExplorer(): Promise<string> {
   ]) {
     app.component(
       name,
-      defineComponent({
-        name,
-        inheritAttrs: false,
-        setup:
-          (_props, { slots }) =>
-          () =>
-            h('div', { 'data-stub': name }, slots.default?.()),
-      }),
+      bareStub((_props, { slots }) =>
+        h('div', { 'data-stub': name }, slots.default?.()),
+      ),
     )
   }
   return renderToString(app)
 }
 
 async function renderScope(modelValue: string): Promise<string> {
-  const app = createSSRApp(
-    defineComponent({
-      setup: () => () =>
-        h(WorkspaceScope, { workspaces: [OWN, OTHER], modelValue }),
-    }),
+  const app = createSSRApp(() =>
+    h(WorkspaceScope, { workspaces: [OWN, OTHER], modelValue }),
   )
   for (const [name, component] of Object.entries(UI_STUBS)) {
     app.component(name, component)
@@ -146,11 +141,12 @@ describe('the workspace selector', () => {
   })
 
   it('puts the read-only note in a focusable tooltip, never as a line', async () => {
-    for (const [value, note] of [
+    const readOnlyScopes: [string, string][] = [
       [ALL_WORKSPACES, 'page.marketing.pages.workspace.combined_note'],
       [OTHER.id, 'page.marketing.pages.workspace.other_note'],
-    ]) {
-      const html = await renderScope(value!)
+    ]
+    for (const [value, note] of readOnlyScopes) {
+      const html = await renderScope(value)
       expect(html).not.toMatch(/<p\b/)
       expect(html).toContain(`data-tooltip="${note}"`)
       const icon = html.match(

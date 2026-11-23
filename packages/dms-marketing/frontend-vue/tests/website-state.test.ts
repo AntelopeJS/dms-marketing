@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { MessageParams } from '../app/utils/translate'
 import {
   WEBSITE_LIVE_WINDOW_MS,
   websiteDisplayState,
@@ -10,7 +11,7 @@ const NOW = Date.UTC(2026, 9, 18, 12)
 const MINUTE = 60_000
 const HOUR = 60 * MINUTE
 
-const t = (key: string, named: Record<string, unknown> = {}) =>
+const t = (key: string, named: MessageParams = {}) =>
   named.ago ? `${key} ${String(named.ago)}` : key
 
 describe('a website reads live', () => {

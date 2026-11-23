@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
+import type { MessageParams } from '../app/utils/translate'
 import type { MarketingWebsiteDeletionImpact } from '../app/composables/useMarketingApi'
 import {
   websitePurgeImpact,
   websitePurgeResult,
 } from '../app/utils/website-purge'
 
-const t = (key: string, named?: Record<string, unknown>) =>
+const t = (key: string, named?: MessageParams) =>
   named ? `${key} ${JSON.stringify(named)}` : key
 
 const IMPACT: MarketingWebsiteDeletionImpact = {

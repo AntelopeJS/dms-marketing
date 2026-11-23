@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { present } from './present'
 import {
   acquisitionLink,
   funnelBuilderLink,
@@ -38,7 +39,7 @@ describe('module links', () => {
     })
     const query = new URL(link, 'http://x').searchParams
     expect(query.get('split')).toBe('1')
-    expect(JSON.parse(query.get('steps')!)).toEqual([
+    expect(JSON.parse(present(query.get('steps')))).toEqual([
       { kind: 'custom', value: 'signup' },
     ])
   })

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { MessageParams } from '../app/utils/translate'
 import {
   heatmapDataLabel,
   normalizePagePath,
@@ -6,7 +7,7 @@ import {
 } from '../app/utils/heatmap'
 
 /** A `t` that shows which key and which plural form were asked for. */
-function t(key: string, named: Record<string, unknown> = {}, plural?: number) {
+function t(key: string, named: MessageParams = {}, plural?: number) {
   const name = key.split('.').at(-1)
   if (name === 'and') {
     return `${named.first} + ${named.second}`

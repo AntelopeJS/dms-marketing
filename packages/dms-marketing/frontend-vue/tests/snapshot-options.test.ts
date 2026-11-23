@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest'
+import { present } from './present'
+import type { MessageParams } from '../app/utils/translate'
 import en from '../i18n/locales/marketing-en-GB.json'
 import fr from '../i18n/locales/marketing-fr-FR.json'
 import {
@@ -9,7 +11,7 @@ import {
 } from '../app/utils/snapshot-options'
 
 /** A `t` that shows which key, count and plural form were asked for. */
-function t(key: string, named: Record<string, unknown> = {}, plural?: number) {
+function t(key: string, named: MessageParams = {}, plural?: number) {
   const name = key.split('.').at(-1)
   return plural === undefined ? `${name}` : `${name}:${named.count}/${plural}`
 }
@@ -93,19 +95,21 @@ describe('the heatmap menu snapshot checkboxes', () => {
 
   it('asks before "Mask all text" and saves nothing on Cancel', async () => {
     const { items, asked, saved, settled } = menu(site, false)
-    const mask = items[1]!
+    const mask = present(items[1])
     expect(mask.checked).toBe(false)
     mask.onUpdateChecked(true)
     await Promise.all(settled)
     expect(asked).toEqual(['title'])
     expect(saved).toEqual([])
-    expect(snapshotOptionItems(site, () => {}, t)[1]!.checked).toBe(false)
+    expect(present(snapshotOptionItems(site, () => {}, t)[1]).checked).toBe(
+      false,
+    )
   })
 
   it('asks even when the site holds no snapshot yet', async () => {
     const { items, asked, saved, settled } = menu(site, true, 0)
-    items[1]!.onUpdateChecked(true)
-    items[0]!.onUpdateChecked(false)
+    present(items[1]).onUpdateChecked(true)
+    present(items[0]).onUpdateChecked(false)
     await Promise.all(settled)
     expect(asked).toEqual(['title_none', 'title_none'])
     expect(saved).toEqual([
@@ -117,8 +121,8 @@ describe('the heatmap menu snapshot checkboxes', () => {
   it('turns snapshots on without asking when there are none', async () => {
     const off = { snapshotsEnabled: false, snapshotMaskText: false }
     const { items, asked, saved, settled } = menu(off, false, 0)
-    expect(items[1]!.disabled).toBe(true)
-    items[0]!.onUpdateChecked(true)
+    expect(present(items[1]).disabled).toBe(true)
+    present(items[0]).onUpdateChecked(true)
     await Promise.all(settled)
     expect(asked).toEqual([])
     expect(saved).toEqual([{ snapshotsEnabled: true }])
