@@ -1,4 +1,4 @@
-import { Schema, type Table } from "@antelopejs/interface-database";
+import { Schema } from "@antelopejs/interface-database";
 import {
   CORE_SCHEMA_NAME,
   DEFAULT_TENANT_ID,
@@ -28,9 +28,9 @@ export function registerDemoWebsiteSeed(): void {
     if (tenantId !== DEFAULT_TENANT_ID) {
       return undefined;
     }
-    const table = Schema.get(CORE_SCHEMA_NAME)
+    const table = Schema.get<Record<string, DemoWebsiteRow>>(CORE_SCHEMA_NAME)
       ?.instance()
-      .table(WEBSITES_TABLE) as Table<DemoWebsiteRow> | undefined;
+      .table(WEBSITES_TABLE);
     if (!table) {
       return undefined;
     }

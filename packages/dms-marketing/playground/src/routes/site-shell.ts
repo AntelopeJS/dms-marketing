@@ -1,11 +1,5 @@
 import type { RequestContext } from "@antelopejs/interface-api";
 
-/** Response surface actually used here; interface-api types it loosely. */
-interface WritableResponse {
-  addHeader(name: string, value: string): void;
-  getWriteStream(contentType: string): { end(data: string): void };
-}
-
 const HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 
 /**
@@ -76,7 +70,7 @@ export function write(
   html: string,
   framable = true,
 ): void {
-  const response = context.response as WritableResponse;
+  const { response } = context;
   if (!framable) {
     response.addHeader("X-Frame-Options", "DENY");
   }

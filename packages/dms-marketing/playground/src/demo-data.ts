@@ -60,20 +60,21 @@ function utcMidnight(time: number): number {
 }
 
 /** Split `total` over weighted keys, the rounding remainder on the first one. */
-function spread(total: number, weights: Record<string, number>): Record<string, number> {
-  const sum = Object.values(weights).reduce((a, b) => a + b, 0);
-  const out: Record<string, number> = {};
+function spread(total: number, weights: Readonly<Record<string, number>>) {
+  const entries = Object.entries(weights);
+  const sum = entries.reduce((acc, [, weight]) => acc + weight, 0);
+  const out = new Map<string, number>();
   let used = 0;
-  for (const [key, weight] of Object.entries(weights)) {
+  for (const [key, weight] of entries) {
     const share = Math.floor((total * weight) / sum);
     if (share > 0) {
-      out[key] = share;
+      out.set(key, share);
       used += share;
     }
   }
-  const first = Object.keys(weights)[0];
-  out[first] = (out[first] ?? 0) + (total - used);
-  return out;
+  const first = entries[0]?.[0];
+  if (first !== undefined) out.set(first, (out.get(first) ?? 0) + (total - used));
+  return Object.fromEntries(out);
 }
 
 const SHOP_PAGES = {
@@ -98,8 +99,8 @@ const SHOP_REFERRERS = {
   "duckduckgo.com": 1.3,
 };
 
-const SHOP_CAMPAIGNS: Record<string, number> = {
-  [["newsletter", "email", "autumn-sale"].join(SEPARATOR)]: 0, // the spike
+const SHOP_CAMPAIGNS = {
+  [["newsletter", "email", "autumn-sale"].join(SEPARATOR)]: 0,
   [["linkedin", "social", "b2b-desks-q3"].join(SEPARATOR)]: 4.1,
   [["google", "cpc", "ergonomic-chairs"].join(SEPARATOR)]: 2.9,
   [["newsletter", "email", "weekly-digest"].join(SEPARATOR)]: 2.6,
@@ -134,8 +135,10 @@ function shopVolume(dayIndex: number, rnd: () => number): DayVolume {
   return { sessions: Math.round(base + spike), spike };
 }
 
+type Channel = "direct" | "paid" | "email" | "social" | "referral" | "organic";
+
 /** The channel a demo campaign's sessions land in: its medium alone, as they carry no referrer. */
-function mediumChannel(key: string): string {
+function mediumChannel(key: string): Channel {
   const medium = key.split(SEPARATOR)[1];
   if (medium === "cpc" || medium.startsWith("paid")) return "paid";
   if (medium === "email" || medium === "social" || medium === "referral") return medium;
@@ -143,7 +146,7 @@ function mediumChannel(key: string): string {
 }
 
 /** The channel an untagged session with this referrer lands in. */
-function referrerChannel(domain: string): string {
+function referrerChannel(domain: string): Channel {
   if (/google|bing|duckduckgo/.test(domain)) return "organic";
   return /linkedin|facebook/.test(domain) ? "social" : "referral";
 }
@@ -162,9 +165,9 @@ function channelsOf(
   sessions: number,
   campaigns: Record<string, number>,
   referrers: Record<string, number>,
-): Record<string, number> {
-  const channels: Record<string, number> = { direct: sessions, paid: 0, email: 0, social: 0, referral: 0, organic: 0 };
-  const take = (channel: string, count: number) => {
+) {
+  const channels: Record<Channel, number> = { direct: sessions, paid: 0, email: 0, social: 0, referral: 0, organic: 0 };
+  const take = (channel: Channel, count: number) => {
     channels[channel] += count;
     channels.direct -= count;
   };
@@ -176,28 +179,30 @@ function channelsOf(
 }
 
 /** One UTM field of the tagged sessions, read off their campaign keys. */
-function utmTop(campaigns: Record<string, number>, field: number): Record<string, number> {
-  const top: Record<string, number> = {};
+function utmTop(campaigns: Readonly<Record<string, number>>, field: number) {
+  const top = new Map<string, number>();
   for (const [key, count] of Object.entries(campaigns)) {
     const value = key.split(SEPARATOR)[field];
-    if (value) top[value] = (top[value] ?? 0) + count;
+    if (value) top.set(value, (top.get(value) ?? 0) + count);
   }
-  return top;
+  return Object.fromEntries(top);
 }
 
+/**
+ * One day of rollups. The newsletter spike arrives tagged, and referrers only
+ * reach the sessions left, so tagged plus referred never exceeds the day.
+ * UTM terms come with the paid search clicks, contents with any tagged link.
+ */
 function rollupRow(
   websiteId: string,
   day: number,
-  sessions: number,
-  spike: number,
+  { sessions, spike }: DayVolume,
   rnd: () => number,
   scale: number,
 ): Row {
   const pageviews = Math.round(sessions * (3.1 + rnd() * 0.3));
   const campaigns = { ...SHOP_CAMPAIGNS };
   campaigns[["newsletter", "email", "autumn-sale"].join(SEPARATOR)] = spike > 0 ? spike * 1.2 : 0.4;
-  // The newsletter spike arrives tagged; referrers only reach the sessions
-  // left, so tagged + referred never exceeds the day.
   const base = sessions - spike;
   const tagged = Math.min(sessions, Math.round(base * 0.27 + spike * 0.9));
   const taggedCampaigns = counted(spread(tagged, campaigns));
@@ -224,7 +229,6 @@ function rollupRow(
       topUtmSources: utmTop(taggedCampaigns, 0),
       topUtmMediums: utmTop(taggedCampaigns, 1),
       topUtmCampaigns: utmTop(taggedCampaigns, 2),
-      // Terms come with the paid search clicks, contents with any tagged link.
       topUtmTerms: counted(spread(Math.min(paidClicks, Math.round(sessions * 0.04)), { "ergonomic office chair": 49, "standing desk b2b": 26, "office chair bulk": 17, "cable tray desk": 8 })),
       topUtmContents: counted(spread(Math.min(tagged, Math.round(sessions * 0.15)), { "hero-button": 50, "product-grid": 24, "carousel-2": 15, "footer-link": 11 })),
       topCampaigns: Object.fromEntries(
@@ -247,7 +251,8 @@ async function seedRollups(websiteId: string, scale: number, seed: number): Prom
   for (let index = 0; index < HISTORY_DAYS; index++) {
     const day = today - (HISTORY_DAYS - 1 - index) * DAY_MS;
     const volume = shopVolume(index, rnd);
-    rows.push(rollupRow(websiteId, day, Math.round(volume.sessions * scale), Math.round(volume.spike * scale), rnd, scale));
+    const scaled = { sessions: Math.round(volume.sessions * scale), spike: Math.round(volume.spike * scale) };
+    rows.push(rollupRow(websiteId, day, scaled, rnd, scale));
   }
   await table(TENANT_SCHEMA_NAME, "marketing_website_statistics", DEFAULT_TENANT_ID).insert(rows).run();
 }
@@ -282,9 +287,17 @@ function shopJourney(rnd: () => number): Journey {
   return { steps, variation };
 }
 
+interface Visit {
+  sessionId: string;
+  visitorId: string;
+}
+
+function anonymousVisit(): Visit {
+  return { sessionId: randomUUID(), visitorId: randomUUID() };
+}
+
 function eventRow(
-  sessionId: string,
-  visitorId: string,
+  { sessionId, visitorId }: Visit,
   at: number,
   kind: string,
   url: string,
@@ -304,21 +317,20 @@ function eventRow(
 }
 
 function journeyEvents(journey: Journey, start: number, rnd: () => number): Row[] {
-  const sessionId = randomUUID();
-  const visitorId = randomUUID();
+  const visit = anonymousVisit();
   const rows: Row[] = [];
   let at = start;
   let url = journey.steps[0][1];
   if (journey.variation) {
-    rows.push(eventRow(sessionId, visitorId, at, "exposure", "/", { name: "hero-cta", data: { experiment: "hero-cta", variation: journey.variation } }));
+    rows.push(eventRow(visit, at, "exposure", "/", { name: "hero-cta", data: { experiment: "hero-cta", variation: journey.variation } }));
   }
   for (const [kind, value] of journey.steps) {
     at += Math.round(20_000 + rnd() * 90_000);
     if (kind === "pageview") {
       url = value;
-      rows.push(eventRow(sessionId, visitorId, at, "pageview", value));
+      rows.push(eventRow(visit, at, "pageview", value));
     } else {
-      rows.push(eventRow(sessionId, visitorId, at, "custom", url, { name: value }));
+      rows.push(eventRow(visit, at, "custom", url, { name: value }));
     }
   }
   return rows;
@@ -339,7 +351,7 @@ function clickEvents(now: number, rnd: () => number): Row[] {
   for (const [selector, weight] of HOT_ELEMENTS) {
     for (let index = 0; index < weight; index++) {
       const at = now - Math.round(rnd() * RAW_DAYS * DAY_MS);
-      rows.push(eventRow(randomUUID(), randomUUID(), at, "click", "/sale/office-chairs", {
+      rows.push(eventRow(anonymousVisit(), at, "click", "/sale/office-chairs", {
         data: { x: 0.5, y: 0.2, selector, nth: 0, ox: 0.3 + rnd() * 0.4, oy: 0.3 + rnd() * 0.4 },
       }));
     }
@@ -347,7 +359,7 @@ function clickEvents(now: number, rnd: () => number): Row[] {
   for (let index = 0; index < 600; index++) {
     const at = now - Math.round(rnd() * RAW_DAYS * DAY_MS);
     const depth = Math.round(Math.min(100, Math.max(0, 100 - Math.abs(rnd() * rnd()) * 140)));
-    rows.push(eventRow(randomUUID(), randomUUID(), at, "scroll", "/sale/office-chairs", { data: { depth } }));
+    rows.push(eventRow(anonymousVisit(), at, "scroll", "/sale/office-chairs", { data: { depth } }));
   }
   return rows;
 }
