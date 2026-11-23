@@ -16,11 +16,9 @@ function isJson(value: unknown): value is HTTPBody {
 
 /**
  * zod's issues as the JSON value `JSON.stringify` writes for them, so a body
- * holding it serializes byte for byte as one holding the issues. A `ZodError`
- * nested in an issue (`unionErrors`, `argumentsError`, `returnTypeError`)
- * becomes its enumerable fields, `issues` and `name`.
+ * holding it serializes byte for byte as one holding the issues.
  */
-export function zodIssuesJson(issues: readonly z.ZodIssue[]): HTTPBody {
+export function zodIssuesJson(issues: readonly z.core.$ZodIssue[]): HTTPBody {
   const json: unknown = JSON.parse(JSON.stringify(issues));
   if (!isJson(json))
     throw new TypeError("zod issues did not serialize to JSON");

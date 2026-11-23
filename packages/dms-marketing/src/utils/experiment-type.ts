@@ -49,7 +49,7 @@ export type ExperimentInput = z.output<typeof experimentSchema>;
 /** The two fields that tell a blank experiment apart; anything else reads as blank. */
 const blankProbe = z
   .object({ key: z.unknown(), variations: z.unknown() })
-  .catch({});
+  .catch({ key: undefined, variations: undefined });
 
 /**
  * Normalizes a body-provided experiment (object, JSON string, or nothing)

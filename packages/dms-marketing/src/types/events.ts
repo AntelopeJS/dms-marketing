@@ -65,7 +65,7 @@ export const clickDataSchema = z.object({
 });
 
 const customDataSchema = z
-  .record(z.unknown())
+  .record(z.string(), z.unknown())
   .refine((data) => JSON.stringify(data).length <= MAX_EVENT_DATA_BYTES);
 
 const eventBaseSchema = z.object({

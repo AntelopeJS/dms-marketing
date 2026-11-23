@@ -45,7 +45,7 @@ export function inflateIfGzipped(
  */
 export function parseJsonOr400<Output>(
   body: Buffer,
-  schema: z.ZodType<Output, z.ZodTypeDef, unknown>,
+  schema: z.ZodType<Output, unknown>,
 ): Output {
   let json: unknown;
   try {

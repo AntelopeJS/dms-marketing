@@ -37,7 +37,7 @@ const collectionSchema = z.object({ enabled: z.boolean() }).strict();
 /** A key the form does not know is refused rather than silently dropped. */
 const settingsSchema = marketingSettingsFormSchema
   .strict()
-  .pipe(z.record(z.union([z.number(), z.boolean(), z.null()])));
+  .pipe(z.record(z.string(), z.union([z.number(), z.boolean(), z.null()])));
 
 /**
  * Fetch/submit endpoints for the declarative Settings form. The wire format

@@ -87,7 +87,7 @@ const websiteUpdateSchema = z.object({
  */
 function validated<Output>(
   body: JsonBody,
-  schema: z.ZodType<Output, z.ZodTypeDef, unknown>,
+  schema: z.ZodType<Output, unknown>,
 ): Output {
   try {
     return schema.parse(body);
