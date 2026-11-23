@@ -17,7 +17,6 @@ import {
 } from "@antelopejs/interface-dms-marketing";
 import { z } from "zod";
 
-
 const memberSchema = z.object({
   name: z.string(),
   permissions: z.array(z.string()).default([]),
@@ -40,7 +39,10 @@ async function outcome<T>(call: () => Promise<T>): Promise<Outcome<T>> {
   try {
     return { ok: true, result: await call() };
   } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -50,7 +52,9 @@ function withAncestors(permissions: string[]): string[] {
     ...new Set(
       permissions.flatMap((id) => {
         const segments = id.split(".");
-        return segments.map((_, index) => segments.slice(0, index + 1).join("."));
+        return segments.map((_, index) =>
+          segments.slice(0, index + 1).join("."),
+        );
       }),
     ),
   ];
@@ -66,7 +70,8 @@ function withAncestors(permissions: string[]): string[] {
 export class VerifyFixtureController extends Controller("/e2e-marketing") {
   @Post("/member")
   async member(@JSONBody() body: unknown) {
-    const { name, permissions, asTenantOwner, language } = memberSchema.parse(body);
+    const { name, permissions, asTenantOwner, language } =
+      memberSchema.parse(body);
     const [roleId] = await GetModel(RoleModel, DEFAULT_TENANT_ID).insert({
       name: `${name} ${randomUUID()}`,
       permissions: withAncestors(permissions),

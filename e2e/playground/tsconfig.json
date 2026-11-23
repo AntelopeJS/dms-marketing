@@ -4,8 +4,12 @@
     "rootDir": ".",
     "noEmit": true,
     "paths": {
-      "@antelopejs/interface-dms-marketing": ["../../packages/interface-dms-marketing/src/index.ts"],
-      "@antelopejs/interface-dms-marketing/*": ["../../packages/interface-dms-marketing/src/*.ts"]
+      "@antelopejs/interface-dms-marketing": [
+        "../../packages/interface-dms-marketing/src/index.ts"
+      ],
+      "@antelopejs/interface-dms-marketing/*": [
+        "../../packages/interface-dms-marketing/src/*.ts"
+      ]
     }
   },
   "include": ["src/**/*.ts", "antelope.config.ts"]
