@@ -20,16 +20,15 @@
     "vue": "^3.5.18"
   },
   "devDependencies": {
-    "@antelopejs/tooling-configs": ">=0.7.0 <0.8.0",
+    "@antelopejs/tooling-configs": ">=0.10.0 <0.11.0",
+    "@nuxt/eslint-config": "^1.17.0",
     "@nuxt/ui": "^4.0.1",
     "@vitejs/plugin-vue": "^6.0.0",
-    "eslint": "^9.0.0",
-    "eslint-plugin-vue": "^10.0.0",
+    "eslint": "^10.9.1",
     "jsdom": "^26.1.0",
     "ofetch": "^1.5.1",
     "prettier": "^3.5.3",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.0.0",
     "vite": "^8.3.0",
     "vitest": "^4.1.5"
   }

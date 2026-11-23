@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm --filter @antelopejs/dms-marketing build",
-    "lint": "oxlint && pnpm --dir packages/dms-marketing/frontend-vue lint && node packages/dms-marketing/scripts/check-locales.mts && node packages/dms-marketing/scripts/check-dms-components.mts && node packages/dms-marketing/scripts/check-docs-module-version.mts",
+    "lint": "pnpm run lint:types && oxlint && pnpm --dir packages/dms-marketing/frontend-vue lint && node packages/dms-marketing/scripts/check-locales.mts && node packages/dms-marketing/scripts/check-dms-components.mts && node packages/dms-marketing/scripts/check-docs-module-version.mts",
     "typecheck": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --filter @antelopejs/dms-marketing typecheck && pnpm --dir packages/dms-marketing run typecheck:layer",
     "knip": "pnpm --dir packages/dms-marketing knip",
     "test": "pnpm --dir packages/dms-marketing test:layer",
@@ -19,11 +19,12 @@
     "lint:fix": "oxlint --fix && pnpm --dir packages/dms-marketing/frontend-vue lint:fix",
     "suppressions": "antelopejs-suppressions",
     "suppressions:update": "antelopejs-suppressions --update",
-    "e2e": "playwright test -c e2e"
+    "e2e": "playwright test -c e2e",
+    "lint:types": "pnpm --dir packages/dms-marketing exec ajs dms prepare-types -q -m frontend-vue --out frontend-vue/.dms-types"
   },
   "devDependencies": {
     "@antelopejs/dms": ">=0.23.0 <0.24.0",
-    "@antelopejs/tooling-configs": ">=0.9.4 <0.10.0",
+    "@antelopejs/tooling-configs": ">=0.10.0 <0.11.0",
     "@playwright/test": "~1.65.0",
     "@types/node": "^22.20.5",
     "knip": "^6.34.0",
