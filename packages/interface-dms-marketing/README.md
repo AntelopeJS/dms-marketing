@@ -80,7 +80,7 @@ A `@antelopejs/dms-marketing` release implements one minor line of this interfac
 
 | Package                      | Supported        | Tested with |
 | ---------------------------- | ---------------- | ----------- |
-| `@antelopejs/interface-core` | `>=0.5.0 <0.6.0` | `0.5.1`     |
+| `@antelopejs/interface-core` | `>=0.5.2 <0.6.0` | `0.5.2`     |
 
 <!-- antelopejs-docs-compat:end -->
 
