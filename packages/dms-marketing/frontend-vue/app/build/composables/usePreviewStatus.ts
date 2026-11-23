@@ -15,7 +15,17 @@ import type { usePreviewReads } from './usePreviewReads'
 import type { usePreviewReset } from './usePreviewReset'
 import type { usePreviewSnapshot } from './usePreviewSnapshot'
 
-/** The status strip of `PagePreview` and the lines under the snapshot: its capture, its URL and its masking. */
+/**
+ * The status strip of `PagePreview` and the lines under the snapshot: its
+ * capture, its URL and its masking.
+ *
+ * One strip says what needs attention, highest priority first, instead of every
+ * applicable alert stacked above the page; the numbers in the header stay exact
+ * whatever it says. The real page is opened, never framed, on the origin the
+ * snapshot was captured from, else on the site's declared domain. The site's
+ * snapshot switch lives on the Websites page's settings, which the strip links
+ * to; the menu's toggles are only a shortcut to it.
+ */
 export function usePreviewStatus(
   props: Readonly<PagePreviewProps>,
   snapshot: ReturnType<typeof usePreviewSnapshot>['snapshot'],
@@ -41,8 +51,6 @@ export function usePreviewStatus(
 ) {
   const LOCAL_HOST = /^(localhost|127\.|\[?::1\]?$)/
 
-  /** The real page — opened, never framed: on the origin the snapshot was
-   *  captured from, else on the site's declared domain. */
   const externalUrl = computed(() => {
     const domain = props.website?.domain
     const origin =
@@ -60,10 +68,6 @@ export function usePreviewStatus(
     }
   })
 
-  // --- One status strip -------------------------------------------------------
-
-  /** Where the site's snapshot switch lives: the Websites page's settings,
-   * scrolled to it. The menu's toggles are only a shortcut to it. */
   const snapshotSettingsLink = computed(() =>
     props.website && !foreign.value
       ? websitesLink(props.website._id, 'snapshots')
@@ -79,17 +83,10 @@ export function usePreviewStatus(
       : undefined
   }
 
-  /** The drift strip was closed on this page this session (see
-   * drift-dismissals). */
   const driftDismissedHere = computed(
     () => !!props.website && driftDismissed(props.website._id, props.path),
   )
 
-  /**
-   * Highest priority first: one strip says what needs attention, instead of
-   * every applicable alert stacked above the page. The numbers in the header
-   * stay exact whatever it says.
-   */
   const statusStrip = computed<StatusStrip | null>(() => {
     const candidates: Array<StatusStrip | null> = [
       !props.trackerEnabled
@@ -161,8 +158,10 @@ export function usePreviewStatus(
                 }),
               ),
             }),
-            // One line: the share and the way out. Why, and what the reset
-            // does, wait behind the info button.
+            /**
+             * One line: the share and the way out. Why, and what the reset
+             * does, wait behind the info button.
+             */
             details: t('page.marketing.pages.preview.drift_hint', {
               date: snapshot.value
                 ? formatShortDate(snapshot.value.capturedAt, locale.value)
@@ -242,7 +241,6 @@ export function usePreviewStatus(
     })
   })
 
-  /** Where the snapshot was taken: origin and path, as stored. */
   const capturedUrl = computed(() =>
     snapshot.value
       ? (snapshot.value.url ?? `${snapshot.value.origin}${props.path}`)

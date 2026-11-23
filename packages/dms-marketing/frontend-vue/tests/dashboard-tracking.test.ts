@@ -176,7 +176,6 @@ describe('following the signed-in workspace', () => {
     expect(applied).toEqual([null, null, 'site-1'])
 
     workspace.value = 't2'
-    // Synchronous: paused before the navigation that follows the switch.
     expect(applied.at(-1)).toBeNull()
     await settle()
     expect(applied.at(-1)).toBe('site-2')

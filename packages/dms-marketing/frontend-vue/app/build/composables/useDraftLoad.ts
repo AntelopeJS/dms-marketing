@@ -18,7 +18,19 @@ import type { useDmsRoute, useI18n } from '#dms/frontend-module'
 import type { useCopyDraft } from '../../composables/useCopyDraft'
 import type { StepDraft, VariationDraft } from '../types/funnelBuilder'
 
-/** How `FunnelBuilder` fills its draft once mounted: the funnel being edited or copied, a template, and the websites it can target. */
+/**
+ * How `FunnelBuilder` fills its draft once mounted: the funnel being edited or
+ * copied, a template, and the websites it can target.
+ *
+ * The builder sits outside the context bar: it reads the website list itself,
+ * and starts a new funnel on the website of the page it was opened from, else
+ * on the member's selection. An edited funnel is applied first, so its site
+ * wins over the context's and the suggestions are read once, for the right
+ * site. A Duplicate is a new draft, unsaved until the user saves it, and its
+ * experiment key must change, keys being unique per site. The copy is applied
+ * after the starting point the page opened on, so it counts as a change to
+ * save.
+ */
 export function useDraftLoad(
   funnelId: string,
   sourceId: string,
@@ -39,13 +51,9 @@ export function useDraftLoad(
   markClean: () => void,
   HTTP_NOT_FOUND: number,
 ) {
-  // --- Loading -------------------------------------------------------------------
-
-  // The definition edited, or the one a Duplicate copies.
   const readDefinition = useFunnelRead(funnelId || sourceId)
   const readContext = useContextOnDemand()
 
-  /** A stored definition as the form holds it. */
   async function fetchDefinition() {
     const row = await readDefinition()
     const experiment = parseExperimentValue(row.experiment)
@@ -82,8 +90,6 @@ export function useDraftLoad(
     savedObjective.value = objectiveOf(draft)
   }
 
-  /** Duplicate: the copy is a new draft, unsaved until the user saves it — its
-   * experiment key must change, keys being unique per site. */
   async function loadCopy(): Promise<void> {
     const { draft } = await fetchDefinition()
     applyValues({
@@ -97,9 +103,6 @@ export function useDraftLoad(
     copy.open()
   }
 
-  // The builder sits outside the context bar: it reads the website list itself,
-  // and starts a new funnel on the website of the page it was opened from, else
-  // on the member's selection.
   const websites = ref<ContextWebsite[]>([])
 
   async function loadWebsites(): Promise<void> {
@@ -116,8 +119,6 @@ export function useDraftLoad(
     loading.value = true
     loadFailed.value = null
     try {
-      // The funnel first: its site then wins over the context's, and the
-      // suggestions are read once, for the right site.
       if (isEdit) {
         await loadExisting()
       }
@@ -126,8 +127,6 @@ export function useDraftLoad(
       if (!isEdit && template.length > 0) {
         steps.value = template.map((step) => ({ uid: uid(), ...step }))
       }
-      // The starting point: what the page opened on. A copy is applied after
-      // it, so it counts as a change to save.
       markClean()
       if (sourceId) {
         await loadCopy()

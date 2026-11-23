@@ -3,7 +3,11 @@ import type { PagePreviewProps } from '../types/pagePreview'
 import type { useI18n } from '#dms/frontend-module'
 import type { usePreviewReads } from './usePreviewReads'
 
-/** Why the overlay of `PagePreview` is empty, failed, loading or truncated. */
+/**
+ * Why the overlay of `PagePreview` is empty, failed, loading or truncated.
+ * Silence has shared causes (collection off, no view sampled) that are told
+ * before the per-overlay one.
+ */
 export function usePreviewEmptiness(
   props: Readonly<PagePreviewProps>,
   t: ReturnType<typeof useI18n>['t'],
@@ -19,10 +23,6 @@ export function usePreviewEmptiness(
   heatmapRead: ReturnType<typeof usePreviewReads>['heatmapRead'],
   scrollRead: ReturnType<typeof usePreviewReads>['scrollRead'],
 ) {
-  // --- Emptiness, explained ---------------------------------------------------
-
-  /** Silence has shared causes (collection off, no view sampled) before the
-   *  per-overlay one; both overlays explain themselves through this. */
   function captureEmptyReason(fallbackKey: string): string {
     if (!props.trackerEnabled) {
       return t('page.marketing.pages.empty.tracking_off')
@@ -59,8 +59,6 @@ export function usePreviewEmptiness(
       description: captureEmptyReason('page.marketing.pages.empty.no_scrolls'),
     }
   })
-
-  // --- Per-overlay surface state ----------------------------------------------
 
   const activeFailed = computed(() =>
     overlayMode.value === 'clicks' ? failed.value : scrollFailed.value,

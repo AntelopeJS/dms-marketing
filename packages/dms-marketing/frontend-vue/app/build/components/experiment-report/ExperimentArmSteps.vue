@@ -9,7 +9,7 @@ import { formatNumber } from '../../../utils/format'
 import { fractionDigits } from '../../../constants'
 
 /** The step-by-step card of `ExperimentReport`: each arm's share of its exposed sessions at every step, and its change against the control. */
-defineProps<{
+interface Props {
   results: MarketingFunnelResults
   arms: MarketingVariationResult[]
   armStyle: (index: number) => { chip: string; bar: string }
@@ -18,7 +18,9 @@ defineProps<{
   inContext: (link: string) => string
   letter: (index: number) => string
   signed: (value: number, digits?: number) => string
-}>()
+}
+
+defineProps<Props>()
 
 const { t, locale } = useI18n()
 </script>

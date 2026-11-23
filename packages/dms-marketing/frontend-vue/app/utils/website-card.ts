@@ -3,6 +3,8 @@
  * answers it (the stored fields and, merged in, the card the backend
  * computed), read into the card the card component and the settings modal
  * draw. Pure, so the mapping is testable without the table.
+ *
+ * @packageDocumentation
  */
 
 import type {

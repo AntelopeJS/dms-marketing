@@ -73,9 +73,6 @@ export function useContextWebsite(): ContextWebsiteState {
     }
     switching.value = true
     try {
-      // Saved first, as the website of the pages opened without one; the
-      // page follows the URL once it names it. A pick is a history entry, so
-      // Back takes it back.
       context.value = await api.selectContextWebsite(id)
       await router.push({ query: { ...route.query, website: id } })
     } catch (error) {

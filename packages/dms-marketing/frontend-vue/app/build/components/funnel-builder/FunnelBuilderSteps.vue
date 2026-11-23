@@ -13,7 +13,7 @@ import {
 import type { StepDraft } from '../../types/funnelBuilder'
 
 /** The steps section of `FunnelBuilder`: each step's kind and value, with suggestions as it is typed, its preview count and its controls. */
-defineProps<{
+interface Props {
   STEP_CONTROL_PREFIX: string
   activeOption: number
   addStep: (kind?: MarketingFunnelStep['kind'], value?: string) => void
@@ -36,7 +36,9 @@ defineProps<{
   stepHint: (step: StepDraft) => { text: string; warning: boolean } | null
   steps: StepDraft[]
   typeStep: () => void
-}>()
+}
+
+defineProps<Props>()
 
 const { t, locale } = useI18n()
 </script>
@@ -224,7 +226,13 @@ const { t, locale } = useI18n()
             <span class="font-semibold text-highlighted">
               {{ formatNumber(previewCount(step)!, locale) }}
             </span>
-            {{ t('page.marketing.builder.sessions_short', {}, previewCount(step)!) }}
+            {{
+              t(
+                'page.marketing.builder.sessions_short',
+                {},
+                previewCount(step)!,
+              )
+            }}
           </template>
         </span>
         <UButton

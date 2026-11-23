@@ -17,22 +17,17 @@ interface UseCopyDraftOptions<T> {
  * Once the user edits it, it is guarded like any other change.
  */
 export function useCopyDraft<T>(options: UseCopyDraftOptions<T>) {
-  /** The values the copy opened on; null outside a copy. */
   const copied = ref<string | null>(null)
   const snapshot = () => JSON.stringify(options.values())
 
-  /** Work leaving would lose: what the leave guard watches. */
   const unsaved = computed(() =>
     copied.value === null ? options.dirty.value : snapshot() !== copied.value,
   )
 
-  /** The copy is applied to the form: what is on screen is the copy. */
   function open(): void {
     copied.value = snapshot()
   }
 
-  /** Ends the copy on what is on screen: the form is clean and nothing holds
-   * the leave. Throwing it away (with any edit to it) and saving it both end it. */
   function settle(): void {
     copied.value = null
     options.markClean()

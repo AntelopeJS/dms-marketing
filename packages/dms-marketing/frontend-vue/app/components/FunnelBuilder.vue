@@ -129,8 +129,6 @@ const frozen = computed(
   () => original.value !== null && original.value.status !== 'draft',
 )
 
-// --- Form values, baseline and leave guard -------------------------------------
-
 function values(): FunnelDraftValues {
   return {
     name: name.value,
@@ -154,13 +152,17 @@ function applyValues(next: FunnelDraftValues): void {
 }
 
 const { dirty, baseline, markClean } = useFormDirty(values)
-// A Duplicate opens dirty (the copy is a change to save), but an untouched
-// copy holds nothing to lose: only edits to it hold the leave.
+/**
+ * A Duplicate opens dirty (the copy is a change to save), but an untouched
+ * copy holds nothing to lose: only edits to it hold the leave.
+ */
 const copy = useCopyDraft({ values, dirty, markClean })
 const { confirmLeave } = useUnsavedChanges({ dirty: copy.unsaved })
 
-// Errors land under their field: the client's checks on a save attempt, and
-// the server's — its codes name the field they belong to.
+/**
+ * Errors land under their field: the client's checks on a save attempt, and
+ * the server's — its codes name the field they belong to.
+ */
 const STEP_CONTROL_PREFIX = 'funnel-step-'
 const VARIATION_CONTROL_PREFIX = 'funnel-variation-'
 const flaggedStep = ref<number | null>(null)
@@ -273,8 +275,6 @@ const {
   frozen,
   MIN_MONTHS_SHOWN,
 )
-
-// --- Editing -------------------------------------------------------------------
 
 function addStep(kind: MarketingFunnelStep['kind'] = 'url', value = ''): void {
   clearStepError()

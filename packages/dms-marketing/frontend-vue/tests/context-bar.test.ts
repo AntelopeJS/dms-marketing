@@ -155,7 +155,6 @@ describe('the website picker of the page toolbar', () => {
   it("shows the website's state as a dot and the age of its last event", async () => {
     const html = await renderPicker()
     expect(html).toContain('Acme Shop')
-    // The full line is the tooltip and the accessible name.
     expect(html).toContain('aria-label="page.marketing.context.live"')
     expect(html).toMatch(/>1 min\.? ago</)
   })
@@ -185,7 +184,6 @@ describe('the website picker of the page toolbar', () => {
     expect(contextLive?.options).toEqual({ realtimeTopic: TOPIC })
     contextLive?.refresh()
     expect(contextReads).toBe(1)
-    // Nothing of its own ticks the blocks.
     await vi.advanceTimersByTimeAsync(5 * 60_000)
     expect(blockRefreshes).toBe(0)
     expect(topicHandlers.size).toBe(0)

@@ -108,7 +108,7 @@ function trailingLevels(element: Element, root: Element): TrailingLevel[] {
       bottom: node.getBoundingClientRect().bottom,
       marginBottom: px(getComputedStyle(node).marginBottom),
       following,
-      // A scroll viewport's border is outside its clientHeight.
+      /** A scroll viewport's border is outside its clientHeight. */
       closing:
         px(parentStyle.paddingBottom) +
         (parent === root && root !== document.documentElement

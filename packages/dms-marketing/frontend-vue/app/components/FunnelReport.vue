@@ -58,8 +58,10 @@ const inContext = useContextLink()
 
 const reloadToken = ref(0)
 
-// The id is read off the URL on every request, so another `?id=` opened in
-// the same page reads that funnel, not the one first mounted.
+/**
+ * The id is read off the URL on every request, so another `?id=` opened in
+ * the same page reads that funnel, not the one first mounted.
+ */
 const { data, isLoading, error, refresh } =
   useChartFetch<MarketingFunnelResults>({
     fetchUrl: '/api/marketing/funnels/{{query.id}}/results',
@@ -77,7 +79,6 @@ const status = computed<MarketingExperimentStatus | null>(
   () => experiment.value?.status ?? null,
 )
 const isSplit = computed(() => experiment.value !== null)
-// The breadcrumb names the funnel, not only the page ("Funnel").
 useRecordCrumb(() => funnel.value?.name)
 const notFound = computed(
   () => !current.value && apiErrorStatus(error.value) === HTTP_NOT_FOUND,
@@ -88,8 +89,6 @@ const websiteName = computed(
     context.websites.value.find((site) => site.id === funnel.value?.websiteId)
       ?.name ?? '',
 )
-
-// --- Website -------------------------------------------------------------------
 
 /** The funnel the page URL was last put on the website of. */
 const aligned = ref<string | null>(null)
@@ -104,21 +103,16 @@ watch(
       return
     }
     if (aligned.value !== shown._id) {
-      // Opened under another site: the funnel's own, without a history entry
-      // and without saving it as the reader's site.
       aligned.value = shown._id
       void router.replace({
         query: { ...route.query, website: shown.websiteId },
       })
       return
     }
-    // A site picked in the bar: this funnel is not one of its funnels.
     void router.push(inContext(funnelsLink()))
   },
   { immediate: true },
 )
-
-// --- Subtitle ------------------------------------------------------------------
 
 function runDays(since: number, until: number): string {
   const days = Math.floor((until - since) / MS_PER_DAY)
@@ -157,8 +151,6 @@ const subtitle = computed(() => {
     website,
   })
 })
-
-// --- Lifecycle -------------------------------------------------------------------
 
 const changing = ref(false)
 

@@ -5,8 +5,6 @@ import {
 } from '../app/composables/useExperiment'
 import { parseFunnelStepsValue } from '../app/composables/useFunnelSteps'
 
-// Both shapes reach the inputs: the real value on a form, a JSON string on a
-// table cell. Neither parser may throw — they run while rendering.
 describe('parseFunnelStepsValue', () => {
   it('reads the array and its JSON form alike', () => {
     const steps = [{ kind: 'url' as const, value: '/pricing' }]

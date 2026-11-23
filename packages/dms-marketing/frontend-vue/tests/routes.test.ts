@@ -91,7 +91,6 @@ describe('module links', () => {
     expect(websitesLink('site-1', 'snapshots')).toBe(
       '/modules/marketing/websites?record=site-1&setting=snapshots',
     )
-    // A setting without a site has no modal to open.
     expect(websitesLink(null, 'snapshots')).toBe('/modules/marketing/websites')
   })
 

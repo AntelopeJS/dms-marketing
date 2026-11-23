@@ -17,7 +17,19 @@ import type { useI18n } from '#dms/frontend-module'
 import type { useMarketingApi } from '../../composables/useMarketingApi'
 import type { usePreviewReset } from './usePreviewReset'
 
-/** The snapshot of `PagePreview`: the layout read, the capture behind the overlay and the site's snapshot options. */
+/**
+ * The snapshot of `PagePreview`: the layout read, the capture behind the
+ * overlay and the site's snapshot options.
+ *
+ * The capture is not fetched while the site has snapshots off: the option's
+ * banner is the whole story then, and a leftover capture must not contradict
+ * it. The frame renders the capture with its viewport units fixed to the
+ * visitor's screen at the width being looked at. Changing a snapshot option
+ * deletes the site's snapshots and changes what later captures keep, so it is
+ * asked first, with the count when there are some (see
+ * `asksBeforeSnapshotChange`); declining leaves the website as it is, and the
+ * menu's checkbox with it.
+ */
 export function usePreviewSnapshot(
   DEFAULT_LAYOUT_WIDTH: number,
   LAYOUT_PRESETS: LayoutPreset[],
@@ -30,7 +42,6 @@ export function usePreviewSnapshot(
   api: ReturnType<typeof useMarketingApi>,
 ) {
   const { presentError } = useApiErrorPresenter()
-  // --- Snapshot ---------------------------------------------------------------
 
   const layoutWidth = ref(DEFAULT_LAYOUT_WIDTH)
 
@@ -46,8 +57,6 @@ export function usePreviewSnapshot(
       : (props.website?.snapshotsEnabled ?? false),
   )
 
-  // Not fetched while the site has snapshots off: the option's banner is the
-  // whole story then, and a leftover capture must not contradict it.
   const snapshotRead = usePageSnapshot({
     websiteId: () => props.website?._id,
     path: () => props.path,
@@ -59,7 +68,6 @@ export function usePreviewSnapshot(
   const isSnapshotAsked = computed(
     () => snapshotsEnabled.value && !!props.website?._id && !!props.path,
   )
-  /** A capture was asked and answered, or there is none to ask for. */
   const snapshotSettled = computed(
     () =>
       !isSnapshotAsked.value ||
@@ -75,8 +83,6 @@ export function usePreviewSnapshot(
 
   const backdrop = computed(() => snapshot.value?.html ?? null)
 
-  /** The document the frame renders: the capture, its viewport units fixed
-   *  to the visitor's screen at the width being looked at. */
   const frameDocument = computed(() =>
     snapshot.value && backdrop.value !== null
       ? rewriteViewportUnits(backdrop.value, {
@@ -106,12 +112,6 @@ export function usePreviewSnapshot(
 
   const countSiteHeatmap = useHeatmapCountRead(() => props.website?._id ?? '')
 
-  /**
-   * Whether the change may go ahead: it deletes the site's snapshots and
-   * changes what later captures keep, so it is asked first — with the count
-   * when there are some (see asksBeforeSnapshotChange). Declining leaves the
-   * website as it is, and the menu's checkbox with it.
-   */
   function confirmSnapshotDiscard(
     website: MarketingWebsite,
     patch: MarketingWebsitePatch,

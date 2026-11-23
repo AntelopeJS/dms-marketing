@@ -65,8 +65,6 @@ export function unrollScrollRoot<E extends UnrollElement>(
     if (style.overflowX !== 'visible') {
       important(element, 'overflow-x', 'clip')
     }
-    // A fixed box adds nothing to the document's scroll height, and one
-    // pinned at both ends (`inset: 0`) keeps the window's height.
     if (style.position === 'fixed' || style.position === 'absolute') {
       important(element, 'position', 'absolute')
       important(element, 'bottom', 'auto')

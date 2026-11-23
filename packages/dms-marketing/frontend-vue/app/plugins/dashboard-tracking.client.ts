@@ -22,7 +22,6 @@ export function dashboardTrackingPlugin(options: DashboardTrackingOptions) {
     const { loggedIn, session } = useDmsUserSession()
     const config = useDmsRuntimeConfig()
     const api = useMarketingApi()
-    // The public backend URL, where client sites load the tracker from too.
     const src = trackerUrl(
       String(
         (config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? '',

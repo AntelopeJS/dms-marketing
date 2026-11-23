@@ -10,7 +10,18 @@ import type { usePreviewReset } from './usePreviewReset'
 import type { usePreviewSnapshot } from './usePreviewSnapshot'
 import type { usePreviewStatus } from './usePreviewStatus'
 
-/** The toolbar of `PagePreview`: the overlay and layout switches, the menu, and what the surface shows. */
+/**
+ * The toolbar of `PagePreview`: the overlay and layout switches, the menu, and
+ * what the surface shows.
+ *
+ * The icon-only layout segments are named on the rendered buttons, in preset
+ * order: `DmsSegmentedControl` renders an item's label as its only text and has
+ * no per-item aria-label, so a screen reader would read unnamed radios. The
+ * surface is one empty state whose texts change with the reason, never several
+ * swapped in turn, because replacing one `DmsEmptyState` by another landed the
+ * new one outside the cell. Another workspace's page is read-only: its options
+ * and reset are its own.
+ */
 export function usePreviewToolbar(
   t: ReturnType<typeof useI18n>['t'],
   LAYOUT_PRESETS: LayoutPreset[],
@@ -33,8 +44,6 @@ export function usePreviewToolbar(
   snapshotSettled: ReturnType<typeof usePreviewSnapshot>['snapshotSettled'],
   overlayMode: ReturnType<typeof usePreviewReads>['overlayMode'],
 ) {
-  // --- Toolbar ------------------------------------------------------------------
-
   const overlayItems = computed(() => [
     {
       value: 'clicks',
@@ -56,11 +65,6 @@ export function usePreviewToolbar(
     })),
   )
 
-  /**
-   * Names the icon-only layout segments: DmsSegmentedControl renders an item's label
-   * as its only text and has no per-item aria-label, so a screen reader would
-   * read three unnamed radios. Set on the rendered buttons, in preset order.
-   */
   const layoutSwitch = ref<HTMLElement | null>(null)
 
   watch(
@@ -77,7 +81,6 @@ export function usePreviewToolbar(
     { flush: 'post' },
   )
 
-  // Another workspace's page is read-only: its options and reset are its own.
   const moreItems = computed(() =>
     [
       [
@@ -125,13 +128,6 @@ export function usePreviewToolbar(
     ].filter((group) => group.length > 0),
   )
 
-  // --- Surface ----------------------------------------------------------------
-
-  /**
-   * What the left cell draws. One empty state whose texts change with the
-   * reason, never several swapped in turn: replacing one DmsEmptyState by
-   * another landed the new one outside the cell.
-   */
   const surface = computed(() => {
     if (activeFailed.value) {
       return 'error'

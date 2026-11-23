@@ -73,7 +73,6 @@ describe('template links', () => {
   })
 })
 
-// QA B08: "Split into A/B test" opened a plain funnel with its split off.
 describe('a split requested by the link', () => {
   it("turns a stored funnel's split on, and never off", () => {
     expect(withRequestedSplit(draft({ split: false }), '1').split).toBe(true)
@@ -213,7 +212,6 @@ describe('variation snippet', () => {
 })
 
 describe('window presets', () => {
-  // QA m8: a preset read "Whole session" while the funnel saved "24 h".
   it('label each preset with the hours it saves, in every locale', () => {
     for (const messages of [en, fr]) {
       const labels: Record<string, string> =

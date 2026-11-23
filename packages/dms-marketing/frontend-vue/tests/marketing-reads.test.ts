@@ -42,7 +42,6 @@ beforeEach(() => {
       return { data: ref(null) }
     },
   )
-  // The DMS's own, as the module's blocks append a period.
   vi.stubGlobal(
     'appendPeriodToUrl',
     (url: string, state: typeof PERIOD | null) =>
@@ -97,7 +96,6 @@ describe('the reads the pages render', () => {
       sortKey: 'createdAt',
       sortDirection: 'asc',
     })
-    // No trigger of its own: the page's refreshes read it again.
     expect(funnels?.options.watch).toBeUndefined()
     expect(funnels?.options.refreshOnPageRefresh).toBeUndefined()
     const transform = funnels?.options.transform as (value: unknown) => unknown
@@ -169,7 +167,6 @@ describe('the reads with triggers of their own', () => {
   it('follows a reactive polling period, which stops the check at 0', () => {
     const interval = ref(4000)
     useWebsiteConnection('acme-shop', null, { refreshInterval: interval })
-    // One read: the polling is the check's own interval, not a second caller.
     expect(calls).toHaveLength(1)
     const [connection] = calls
     const polling = () => toValue(connection?.options.refreshInterval as number)
@@ -180,8 +177,6 @@ describe('the reads with triggers of their own', () => {
 })
 
 describe('the dashboard workspaces', () => {
-  // The pages panel grew a row after the first paint while the workspaces
-  // were read in the browser only.
   it('are read with the page, server render included, once there is a site', () => {
     const website = ref('')
     useDashboardWorkspaces(website)
@@ -203,7 +198,6 @@ describe('the page preview', () => {
     expect(heatmap?.options.server).toBe(false)
     expect(heatmap?.url()).toBeNull()
     website.value = 'acme-shop'
-    // Without a period, the route's default window.
     expect(heatmap?.url()).toBe('/api/marketing/stats/heatmap')
     period.value = PERIOD
     expect(heatmap?.url()).toBe(
@@ -242,7 +236,6 @@ describe('the page preview', () => {
       maskText,
     })
     const [snapshot] = calls
-    // Same URL and query: only a watched source reads it again.
     const sources = snapshot?.options.watch as (() => unknown)[] | undefined
     expect(sources?.map((source) => source())).toEqual([false])
     maskText.value = true

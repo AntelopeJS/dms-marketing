@@ -20,13 +20,11 @@ describe('snapshot options', () => {
   it('names the changes the server discards snapshots on', () => {
     expect(changesSnapshotOptions(site, { snapshotsEnabled: false })).toBe(true)
     expect(changesSnapshotOptions(site, { snapshotMaskText: true })).toBe(true)
-    // Unchanged values and absent keys discard nothing.
     expect(changesSnapshotOptions(site, { snapshotsEnabled: true })).toBe(false)
     expect(changesSnapshotOptions(site, { snapshotMaskText: false })).toBe(
       false,
     )
     expect(changesSnapshotOptions(site, {})).toBe(false)
-    // A site saved before the mask existed has it off.
     expect(
       changesSnapshotOptions(
         { snapshotsEnabled: true },
@@ -59,7 +57,6 @@ describe('snapshot options', () => {
         /clics et la profondeur de défilement sont conservés/,
       )
     }
-    // Singular | plural, the count in the plural.
     expect(en_.description.split(' | ')[1]).toContain('{count}')
     expect(fr_.description.split(' | ')[1]).toContain('{count}')
   })
@@ -68,7 +65,6 @@ describe('snapshot options', () => {
 describe('the heatmap menu snapshot checkboxes', () => {
   const site = { snapshotsEnabled: true, snapshotMaskText: false }
 
-  /** The page's flow, as PagePreview wires it: ask, then save or not. */
   function menu(
     website: { snapshotsEnabled: boolean; snapshotMaskText: boolean },
     answer: boolean,
@@ -103,7 +99,6 @@ describe('the heatmap menu snapshot checkboxes', () => {
     await Promise.all(settled)
     expect(asked).toEqual(['title'])
     expect(saved).toEqual([])
-    // Rebuilt from the website, which nothing changed: still unchecked.
     expect(snapshotOptionItems(site, () => {}, t)[1]!.checked).toBe(false)
   })
 

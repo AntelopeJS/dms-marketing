@@ -4,14 +4,14 @@
  * The /api/marketing/* writes, and the funnel preview the builder posts its
  * draft to. Every read goes through `useMarketingReads`. The response shapes
  * are declared here.
+ *
+ * @packageDocumentation
  */
 
 import type {
   ContextWebsite,
   MarketingContextPayload,
 } from './useMarketingContext'
-
-// --- Shapes mirrored from the backend ---------------------------------------
 
 export type {
   ContextWebsite,
@@ -464,8 +464,6 @@ export interface MarketingDashboardTracking {
   websiteId: string
 }
 
-// --- Facade -----------------------------------------------------------------
-
 type MarketingApi = ReturnType<typeof useMarketingApi>
 
 /**
@@ -535,17 +533,21 @@ export function useMarketingApi() {
         { method: 'PUT', body: patch },
       ),
 
-    // Whole click and scroll history, every period: without `path` the whole
-    // site's (counted first by `useHeatmapCountRead`).
+    /**
+     * Whole click and scroll history, every period: without `path` the whole
+     * site's (counted first by `useHeatmapCountRead`).
+     */
     resetHeatmap: (website: string, path?: string) =>
       $authFetch<MarketingHeatmapData>('/api/marketing/stats/heatmap', {
         method: 'DELETE',
         query: { website, path },
       }),
 
-    // Definitions CRUD over the funnels data-api routes; the list is read by
-    // `useWebsiteFunnels`, one definition by `useFunnelRead`. The insert
-    // answers the created row, its `_id` included (interface-data-api 0.3).
+    /**
+     * Definitions CRUD over the funnels data-api routes; the list is read by
+     * `useWebsiteFunnels`, one definition by `useFunnelRead`. The insert
+     * answers the created row, its `_id` included (interface-data-api 0.3).
+     */
     createFunnel: (input: MarketingFunnelInput) =>
       $authFetch<MarketingFunnelListItem>('/api/marketing/tables/funnels/new', {
         method: 'POST',
@@ -565,7 +567,7 @@ export function useMarketingApi() {
         query: { id },
       }),
 
-    // Provisions the signed-in workspace's dashboard website on first use.
+    /** Provisions the signed-in workspace's dashboard website on first use. */
     dashboardTracking: () =>
       $authFetch<MarketingDashboardTracking>(
         '/api/marketing/dashboard-tracking',

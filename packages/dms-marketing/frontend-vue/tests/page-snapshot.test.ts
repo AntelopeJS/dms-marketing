@@ -40,7 +40,7 @@ describe('the snapshot mark of a pages row', () => {
     )
     expect(badge).toEqual({
       icon: 'i-ph-camera',
-      // Intl writes a no-break space before the unit.
+      /** Intl writes a no-break space before the unit. */
       label: new Intl.RelativeTimeFormat('fr-FR', { style: 'short' }).format(
         -3,
         'hour',

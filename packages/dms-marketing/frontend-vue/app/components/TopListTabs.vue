@@ -142,8 +142,6 @@ function deltaClass(delta: number | null | undefined): string {
     : DELTA_TONES[percentChangeTrend(delta)]
 }
 
-// --- Tabs --------------------------------------------------------------------
-
 const tabItems = computed(() =>
   tabs.value.map((tab) => ({ label: processI18n(tab.label), value: tab.id })),
 )

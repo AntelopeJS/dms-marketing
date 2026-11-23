@@ -6,6 +6,11 @@ import { measureFillHeight } from '../../utils/fill-height'
  * bar, each scrolling inside itself: the page does not scroll, and the
  * preview's toolbar and legend stay in sight however long the page or the
  * list. Stacked (below xl), nothing is pinned: null.
+ *
+ * What sits above or below the panes (a banner, the sampling note) moves them:
+ * the body's size says so on a page that scrolls, this block's own on a shell
+ * that scrolls a panel. Their own height leaves the answer as is, so the
+ * observer settles at once.
  */
 export function useFillPanes(SIDE_BY_SIDE_QUERY: string) {
   const panes = ref<HTMLElement | null>(null)
@@ -23,10 +28,6 @@ export function useFillPanes(SIDE_BY_SIDE_QUERY: string) {
     })
   }
 
-  // What sits above or below the panes (a banner, the sampling note) moves
-  // them: the body's size says so on a page that scrolls, this block's own on
-  // a shell that scrolls a panel. Their own height leaves the answer as is,
-  // so the observer settles at once.
   let paneObserver: ResizeObserver | null = null
   onMounted(() => {
     measurePanes()
@@ -44,7 +45,6 @@ export function useFillPanes(SIDE_BY_SIDE_QUERY: string) {
     paneObserver?.disconnect()
   })
 
-  // The panes come and go with the waiting state.
   watch(panes, (element) => element && measurePanes())
 
   const paneStyle = computed(() =>

@@ -38,8 +38,10 @@ const PERCENT = 100
 const MIN_OUTCOMES = 5
 const SMALL_P = 0.001
 
-// On a 15% tint the light theme's 700 text falls under 4.5:1: one shade darker
-// there, the theme colour in dark.
+/**
+ * On a 15% tint the light theme's 700 text falls under 4.5:1: one shade darker
+ * there, the theme colour in dark.
+ */
 const ARM_STYLES = [
   { chip: 'bg-elevated text-toned', bar: 'bg-(--ui-text-dimmed)' },
   {
@@ -248,7 +250,7 @@ function stepLift(
   return base > 0 ? ((stepShare(arm, stepIndex) - base) / base) * PERCENT : null
 }
 
-// The builder's snippet: no top-level await, comments in the reader's language.
+/** The builder's snippet: no top-level await, comments in the reader's language. */
 const snippet = computed(() =>
   variationSnippet(
     definition.value.key,

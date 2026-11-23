@@ -4,6 +4,8 @@
  * module instead of pasted. It is kept and retargeted, never reinserted: the
  * tracker follows its `data-website-id` (see static/tracker/), and a
  * second copy would only be refused.
+ *
+ * @packageDocumentation
  */
 import { watch, type WatchStopHandle } from 'vue'
 import { MODULE_CONFIG_KEY } from '../constants'

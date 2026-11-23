@@ -18,7 +18,20 @@ import type { StepDraft, VariationDraft } from '../types/funnelBuilder'
 import type { useDraftLoad } from './useDraftLoad'
 import type { useDraftPreview } from './useDraftPreview'
 
-/** How `FunnelBuilder` leaves: saving the draft (its issues shown first, a started test's goal change confirmed), discarding it, and the links and guards around both. */
+/**
+ * How `FunnelBuilder` leaves: saving the draft (its issues shown first, a
+ * started test's goal change confirmed), discarding it, and the links and
+ * guards around both.
+ *
+ * Saving re-scores a whole started test against the new goal when its steps or
+ * window differ from the saved ones. Several clicks in one tick would each
+ * create a funnel, so a save in flight refuses the next. The copy is settled
+ * before leaving, or the leave guard would ask. Discarding returns to what the
+ * page opened on; a Duplicate opened on its copy, which stays a change to save,
+ * so discarding drops the copy and leaves with nothing left to hold the
+ * navigation. `leave` takes `remount` for another builder URL, as the same page
+ * otherwise stays mounted on the funnel it opened with.
+ */
 export function useDraftSave(
   frozen: ComputedRef<boolean>,
   objectiveOf: ReturnType<typeof useDraftLoad>['objectiveOf'],
@@ -53,13 +66,9 @@ export function useDraftSave(
   confirmLeave: ReturnType<typeof useUnsavedChanges>['confirmLeave'],
   websites: ReturnType<typeof useDraftLoad>['websites'],
 ) {
-  /** The steps or the window of a started test differ from the saved ones:
-   * saving re-scores the whole test against the new goal. */
   const objectiveChanged = computed(
     () => frozen.value && objectiveOf(values()) !== savedObjective.value,
   )
-
-  // --- Validation and save -------------------------------------------------------
 
   async function showDraftIssues(): Promise<boolean> {
     const issues = draftIssues(values(), frozen.value)
@@ -117,7 +126,6 @@ export function useDraftSave(
   }
 
   async function save(): Promise<void> {
-    // Several clicks in one tick would each create a funnel.
     if (saving.value) {
       return
     }
@@ -137,8 +145,6 @@ export function useDraftSave(
         experiment: experimentPayload(),
       }
       const id = await saveFunnel(api, input, funnelId)
-      // Clean before leaving, or the leave guard would ask: a saved copy is
-      // no copy any more.
       copy.settle()
       toast.add({
         color: 'success',
@@ -154,9 +160,6 @@ export function useDraftSave(
     }
   }
 
-  /** Back to what the page opened on. A Duplicate opened on its copy, which
-   * stays a change to save: discarding it drops the copy and leaves, with
-   * nothing left to hold the navigation. */
   function discard(): void {
     clearStepError()
     clearVariationError()
@@ -169,7 +172,6 @@ export function useDraftSave(
     applyValues(baseline.value)
   }
 
-  /** A link out of the builder, on the website and period it was opened from. */
   const inContext = useContextLink()
 
   const backLink = computed(() => {
@@ -179,8 +181,6 @@ export function useDraftSave(
     return inContext(sourceId ? funnelLink(sourceId) : funnelsLink())
   })
 
-  /** `remount` for another builder URL: the same page otherwise stays
-   * mounted on the funnel it opened with. */
   async function leave(href: string, remount = false): Promise<void> {
     if (await confirmLeave()) {
       await router.push(href, remount ? { preserveState: false } : undefined)

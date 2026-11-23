@@ -7,7 +7,7 @@ import { heatLegendGradient } from '../../../utils/heatmapPalette'
 import type { ClickedElement } from '../../types/pagePreview'
 
 /** The side panel of `PagePreview`: the legend of the overlay on screen, the most clicked elements or the scroll depth, and the funnels the page is a step of. */
-defineProps<{
+interface Props {
   filled: boolean
   overlayMode: 'clicks' | 'scroll'
   mostClicked: ClickedElement[]
@@ -15,7 +15,9 @@ defineProps<{
   scrollFoldRatio: number
   scrollViews: number
   usedIn: MarketingFunnelListItem[] | undefined
-}>()
+}
+
+defineProps<Props>()
 
 const { t, locale } = useI18n()
 </script>

@@ -20,8 +20,6 @@ let chart: ChartState = { data: null, isLoading: false, error: null }
 const globals = globalThis as Record<string, unknown>
 
 beforeAll(() => {
-  // As `useAsyncData` on a server: the answer lands in `serverPrefetch`,
-  // after setup, before the render.
   globals.useChartFetch = () => {
     const data = ref<unknown>(null)
     const isLoading = ref(true)
@@ -128,17 +126,14 @@ describe('TopListTabs server render', () => {
 
   it('draws a full card of row-sized skeletons while nothing is there yet', async () => {
     const html = await render({ data: null, isLoading: true, error: null })
-    // Eight rows (the route's limit), each on a list row's grid and padding.
     expect(
       count(
         html,
         'grid grid-cols-[1.5rem_minmax(0,1fr)_auto_3rem] items-center gap-x-3 px-4 py-2',
       ),
     ).toBe(8)
-    // The label line keeps a row's text height, its share bar under it.
     expect(count(html, 'flex h-[19.5px] items-center')).toBe(8)
     expect(count(html, 'mt-1 h-0.5')).toBe(8)
-    // The tab strip's place, at a tab's height, never wrapping the header.
     expect(count(html, 'class="px-2 py-3"')).toBe(3)
     expect(html).toContain(
       'overflow-hidden sm:order-none sm:mx-0 sm:flex-1 sm:basis-0',

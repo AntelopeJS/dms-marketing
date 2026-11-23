@@ -159,7 +159,6 @@ describe('the workspace selector', () => {
       expect(icon).toBeDefined()
       const noteId = icon?.match(/aria-describedby="([^"]+)"/)?.[1]
       expect(noteId).toBeTruthy()
-      // The selector and the icon both point at the note's text.
       expect(html).toContain(`id="${noteId}" class="sr-only">${note}<`)
       expect(html).toContain(
         `<button aria-label="page.marketing.pages.workspace.switch" aria-describedby="${noteId}"`,
@@ -176,7 +175,6 @@ describe('the workspace selector', () => {
     expect(scope).toBeGreaterThan(panel)
     expect(search).toBeGreaterThan(scope)
     expect(html.indexOf('</section>', panel)).toBeGreaterThan(search)
-    // Only once: no copy of it left above the panes.
     expect(html.lastIndexOf('data-stub="DmsMarketingWorkspaceScope"')).toBe(
       scope,
     )

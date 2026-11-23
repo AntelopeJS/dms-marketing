@@ -56,7 +56,7 @@ const router = useDmsRouter()
 const api = useMarketingApi()
 const toast = useToast()
 const { confirm } = useConfirm()
-// A field-tied error from the save shows under its field, the rest as a toast.
+/** A field-tied error from the save shows under its field, the rest as a toast. */
 const fieldErrors = useFieldErrors({
   fields: {
     name: 'website-name',
@@ -72,7 +72,7 @@ const saving = ref(false)
 
 /** Saved or deleted: nothing is left to lose, the guard steps aside. */
 const settled = ref(false)
-// Closing with changes not saved (X, Escape, Cancel, leaving) asks first.
+/** Closing with changes not saved (X, Escape, Cancel, leaving) asks first. */
 const { confirmLeave } = useUnsavedChanges({
   dirty: () => !settled.value && isWebsiteDraftDirty(card.value, draft.value),
   containerId: () => props.containerId,
@@ -100,9 +100,6 @@ async function scrollToSetting(setting: WebsiteSetting): Promise<void> {
   })
 }
 
-// Asked by the card (its snapshot pill) or by the link that opened the
-// modal; the link's key then leaves the URL, so a reload opens the modal
-// without scrolling it again. `record` stays: the table owns it.
 onMounted(() => {
   const fromLink = websiteSettingOf(route.query)
   const setting = takeWebsiteSetting(card.value.id) ?? fromLink
@@ -175,7 +172,6 @@ async function save(): Promise<void> {
     toast.add({ color: 'success', title: t('page.marketing.websites.saved') })
     done()
   } catch (error) {
-    // A refused field lives on the General tab: show it there.
     const conflict = hostConflictOf(error)
     if (conflict) {
       tab.value = 'general'
@@ -234,7 +230,7 @@ async function purge(scope: MarketingPurgeScope): Promise<void> {
     color: 'error',
     icon: 'i-ph-eraser',
     confirmLabel: t(`page.marketing.websites.purge.${scope}_confirm`),
-    // A hostname is not case-sensitive: neither is the typed check.
+    /** A hostname is not case-sensitive: neither is the typed check. */
     confirmText: website.domain,
     confirmTextCaseInsensitive: true,
     impact: websitePurgeImpact(scope, impact, t, locale.value),
@@ -259,7 +255,6 @@ async function purge(scope: MarketingPurgeScope): Promise<void> {
 
 async function remove(): Promise<void> {
   const website = card.value
-  // The backend refuses it too (409): the button is disabled.
   if (website.dashboard) {
     return
   }
@@ -272,7 +267,6 @@ async function remove(): Promise<void> {
     })
     return
   }
-  // Every stored day goes, so the counts read "since the oldest one".
   const since =
     impact.since === null ? null : formatShortDate(impact.since, locale.value)
   const sinceLabel = (key: 'sessions' | 'pageviews') =>
@@ -285,7 +279,7 @@ async function remove(): Promise<void> {
     color: 'error',
     icon: 'i-ph-trash',
     confirmLabel: t('page.marketing.websites.delete.confirm'),
-    // A hostname is not case-sensitive: neither is the typed check.
+    /** A hostname is not case-sensitive: neither is the typed check. */
     confirmText: website.domain,
     confirmTextCaseInsensitive: true,
     impact: [

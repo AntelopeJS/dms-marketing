@@ -13,7 +13,33 @@ import type { PagePreviewProps } from '../types/pagePreview'
 import type { usePreviewReads } from './usePreviewReads'
 import type { usePreviewSnapshot } from './usePreviewSnapshot'
 
-/** The frame geometry of `PagePreview`: its measured size, the height it renders at, and the clicks anchored on the elements it holds. */
+/**
+ * The frame geometry of `PagePreview`: its measured size, the height it renders
+ * at, and the clicks anchored on the elements it holds.
+ *
+ * The frame is pinned to the probe viewport while a reading is still possible,
+ * since resizing it earlier would corrupt the very number being waited on. The
+ * surface height falls back to a typical long page while the real one is
+ * unknown, so the heatmap is readable before, and without, any snapshot.
+ *
+ * Clicks are normalized against the document's `scrollWidth`, so a document
+ * wider than the frame widens the canvas while the frame itself stays at the
+ * chosen layout width, which keeps the width buttons meaningful.
+ *
+ * A click is stored twice: as a document fraction, and as an offset inside the
+ * element it hit. Only the second survives being read back at another size,
+ * because a document fraction divides by a box that, on a page shorter than the
+ * visitor's window, is that window. The boxes come from the snapshot document.
+ * Every way that can fail resolves to no box, and a point with no box keeps its
+ * document fraction. The anchor measurement is re-run whenever the layout the
+ * boxes were taken in changes, and a token drops a pass for a geometry that is
+ * no longer on screen.
+ *
+ * `drift` counts the clicks aiming at elements this snapshot does not have,
+ * and `oversized` flags a document that does not fit the surface the canvas can
+ * allocate: both are clamped, so the overlay is compressed against a backdrop
+ * that is merely cut off.
+ */
 export function usePreviewFrame(
   props: Readonly<PagePreviewProps>,
   snapshot: ReturnType<typeof usePreviewSnapshot>['snapshot'],
@@ -22,8 +48,6 @@ export function usePreviewFrame(
   points: ReturnType<typeof usePreviewReads>['points'],
   OVERFLOW_TOLERANCE: number,
 ) {
-  // --- Frame geometry ---------------------------------------------------------
-
   const frame = ref<HTMLIFrameElement | null>(null)
   const {
     measuredWidth,
@@ -42,16 +66,10 @@ export function usePreviewFrame(
     ].join('|'),
   )
 
-  /** Viewport the frame is pinned to until its size is read. */
   const probeHeight = computed(
     () => snapshot.value?.viewport.height ?? PROBE_VIEWPORT_HEIGHT,
   )
 
-  /**
-   * Height of the drawn surface — the overlay's coordinate space. Falls back to
-   * a typical long page while the real one is unknown, so the heatmap is
-   * readable before (and without) any snapshot.
-   */
   const renderHeight = computed(() => {
     const chosen = measuredHeight.value
     if (chosen !== null) {
@@ -60,11 +78,6 @@ export function usePreviewFrame(
     return DEFAULT_RENDER_HEIGHT
   })
 
-  /**
-   * Height of the frame itself. Pinned to the probe viewport while a reading
-   * is still possible — resizing it earlier would corrupt the very number
-   * being waited on. An operator override takes it back by hand.
-   */
   const frameHeight = computed(() => {
     if (measuredHeight.value !== null) {
       return measuredHeight.value
@@ -72,13 +85,6 @@ export function usePreviewFrame(
     return tier.value === 'pending' ? probeHeight.value : renderHeight.value
   })
 
-  /**
-   * Width the overlay maps onto. Clicks are normalized against the document's
-   * `scrollWidth`, so a document wider than the frame must widen the canvas or
-   * every x is compressed — while the frame itself stays at the chosen layout
-   * width, which is what keeps the width buttons meaningful. The overflowing
-   * part is clipped by the pane, exactly as it is clipped inside the frame.
-   */
   const overlayWidth = computed(() =>
     Math.min(
       Math.max(measuredWidth.value ?? 0, layoutWidth.value),
@@ -86,24 +92,7 @@ export function usePreviewFrame(
     ),
   )
 
-  // --- Element anchoring ------------------------------------------------------
-
-  /**
-   * A click is stored twice: as a document fraction, and as an offset inside
-   * the element it hit. Only the second survives being read back at another
-   * size — a document fraction divides by a box that, on a page shorter than
-   * the visitor's window, IS that window, so the same button arrives here as a
-   * different fraction per visitor. Given the element's box in the layout on
-   * screen, the offset puts the point back where the visitor put it.
-   *
-   * The boxes come from the snapshot document. Every way that can fail — no
-   * snapshot, an element that no longer exists, a selector that became
-   * ambiguous — resolves to no box, and a point with no box keeps its document
-   * fraction, never a blank one.
-   */
   const anchorBoxes = ref(new Map<string, AnchorBox>())
-  /** Keys of the anchors the snapshot has no element for; null until the
-   *  frame has been measured. */
   const missingAnchorKeys = ref<Set<string> | null>(null)
 
   function anchorKey(anchor: AnchorRequest): string {
@@ -122,7 +111,6 @@ export function usePreviewFrame(
     return [...unique.values()]
   })
 
-  /** Points in the overlay's coordinate space, anchored where one resolved. */
   const drawnPoints = computed(() =>
     points.value.map((point) => {
       const anchor = point.anchor
@@ -143,12 +131,6 @@ export function usePreviewFrame(
 
   let measureToken = 0
 
-  /**
-   * Re-measure whenever the layout the boxes were taken in changes. The token
-   * drops a pass for a geometry that is no longer on screen: the frame is
-   * resized from the published reading, and a box read before that resize has
-   * been laid out measures the probe viewport.
-   */
   async function refreshAnchorBoxes(): Promise<void> {
     const token = ++measureToken
     if (tier.value !== 'measured' || requestedAnchors.value.length === 0) {
@@ -173,11 +155,6 @@ export function usePreviewFrame(
     )
   }
 
-  /**
-   * Clicks aiming at elements this snapshot does not have: drawn at their
-   * document fraction, and past a threshold a sign the page changed since it
-   * was captured (see anchorDrift).
-   */
   const drift = computed(() => {
     const missing = missingAnchorKeys.value
     return missing
@@ -190,12 +167,6 @@ export function usePreviewFrame(
     () => void refreshAnchorBoxes(),
   )
 
-  /**
-   * The document does not fit the surface the canvas can allocate. Both are
-   * clamped, so the overlay is uniformly compressed against a backdrop that
-   * is merely cut off — the two no longer line up, and that is worth saying
-   * rather than showing.
-   */
   const oversized = computed(
     () =>
       (measuredHeight.value ?? 0) > MAX_RENDER_HEIGHT ||

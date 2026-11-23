@@ -23,7 +23,7 @@ const props = defineProps<{
 }>()
 
 const POINT_RADIUS = 28
-// About 60% at the densest spot: the button under a hot spot stays readable.
+/** About 60% at the densest spot: the button under a hot spot stays readable. */
 const MAX_RENDER_ALPHA = 150
 /** Floor on a point's intensity so single clicks stay visible. */
 const MIN_POINT_ALPHA = 0.08

@@ -36,8 +36,6 @@ function emptyVariation(): ExperimentVariationDraft {
 function parseValue(
   raw: ExperimentVariationDraft[] | string | null | undefined,
 ): ExperimentVariationDraft[] {
-  // Copies, not references: the drafts are mutated by the inputs below and
-  // must never write through to the prop value.
   const variations = parseExperimentVariationsValue(raw).map((variation) => ({
     ...variation,
   }))
@@ -59,7 +57,6 @@ const totalWeight = computed(() =>
 )
 
 function sharePercent(variation: ExperimentVariationDraft): number {
-  // No weight above 0 serves nobody: the save refuses it, the bars say so.
   if (totalWeight.value <= 0) {
     return 0
   }
@@ -68,8 +65,10 @@ function sharePercent(variation: ExperimentVariationDraft): number {
   )
 }
 
-// Values are emitted untrimmed — trimming here would eat characters
-// mid-typing through the v-model echo; the DataType schema trims server-side.
+/**
+ * Values are emitted untrimmed — trimming here would eat characters
+ * mid-typing through the v-model echo; the DataType schema trims server-side.
+ */
 function onEdit(): void {
   emit(
     'update:modelValue',

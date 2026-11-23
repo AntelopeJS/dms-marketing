@@ -53,8 +53,10 @@ const now = useMarketingNow(CLOCK_TICK_MS)
 /** The browser's zone, which a server render writes the dates in. */
 const readerZone = readerTimeZone()
 
-// \`live\` only while the last event is recent (website-state), as everywhere
-// a site's state shows.
+/**
+ * \`live\` only while the last event is recent (website-state), as everywhere
+ * a site's state shows.
+ */
 const displayState = computed(() => websiteDisplayState(card.value, now.value))
 const stateLine = computed(() =>
   websiteStateLine(card.value, now.value, t, locale.value),
@@ -95,8 +97,6 @@ async function runCardAction(
   try {
     await action()
     toast.add({ color: 'success', title: successTitle })
-    // Its state and counts are the backend's: the page reads them again,
-    // the card's spinner on until it shows them.
     await refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)

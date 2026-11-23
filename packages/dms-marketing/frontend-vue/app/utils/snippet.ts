@@ -5,7 +5,7 @@
  */
 export type SnippetFlavor = 'html' | 'nuxt' | 'gtm'
 
-// Split so a bundler or a linter never reads a real closing tag here.
+/** Split so a bundler or a linter never reads a real closing tag here. */
 const CLOSING_TAG = '</' + 'script>'
 
 export function trackerUrl(apiOrigin: string): string {

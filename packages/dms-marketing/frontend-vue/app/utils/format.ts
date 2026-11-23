@@ -1,6 +1,8 @@
 /**
  * Locale formatting shared by the module's blocks. Pure functions of their
  * inputs, so the blocks stay thin and the rules stay testable.
+ *
+ * @packageDocumentation
  */
 
 import { fractionDigits } from '../constants'

@@ -13,9 +13,7 @@ describe('anchor drift', () => {
         { weight: 40, anchor: anchor('#buy') },
         { weight: 6, anchor: anchor('#old-cta') },
         { weight: 4, anchor: anchor('.card', 2) },
-        // Same selector, an nth the snapshot still has.
         { weight: 10, anchor: anchor('.card', 1) },
-        // A click on the document itself cannot drift.
         { weight: 100 },
       ],
       isMissing,
@@ -37,9 +35,9 @@ describe('anchor drift', () => {
         ],
         isMissing,
       ).significant
-    expect(at(5, 45)).toBe(true) // 10 %, 5 clicks
-    expect(at(5, 46)).toBe(false) // under 10 %
-    expect(at(4, 0)).toBe(false) // 100 %, but 4 clicks
+    expect(at(5, 45)).toBe(true)
+    expect(at(5, 46)).toBe(false)
+    expect(at(4, 0)).toBe(false)
   })
 
   it('reads no drift without anchored clicks', () => {

@@ -106,8 +106,6 @@ const websiteItems = computed(() => [
  * UTC's, the state's tooltip says when their days really start.
  */
 const utcHint = computed(() => {
-  // The reader's zone: the browser's, which a server render reads from its
-  // cookie.
   const time = utcDayStart(now.value, locale.value, readerTimeZone())
   return time ? t('page.marketing.context.utc_days', { time }) : ''
 })

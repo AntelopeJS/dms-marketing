@@ -15,7 +15,19 @@ import type { useI18n } from '#dms/frontend-module'
 import type { useMarketingApi } from '../../composables/useMarketingApi'
 import type { VariationDraft } from '../types/funnelBuilder'
 
-/** The live preview of `FunnelBuilder`'s draft: read again, debounced, as its steps, window or site change, and the counts, hints and sample size drawn from it. */
+/**
+ * The live preview of `FunnelBuilder`'s draft: read again, debounced, as its
+ * steps, window or site change, and the counts, hints and sample size drawn
+ * from it.
+ *
+ * The preview scores what the server would accept, nothing else, and places
+ * each filled step by position, so a step repeated later reads its own count. A
+ * step hint is the path a pasted URL is matched as, or a step the site never
+ * sent over the preview's 30 days (unless the read hit its cap). The sample
+ * hint says how long the split would need at the traffic the preview measured,
+ * its entered sessions being a month's; it is moot once the test has started,
+ * the arms can no longer change.
+ */
 export function useDraftPreview(
   steps: Ref<StepDraft[]>,
   windowHours: Ref<number | string>,
@@ -36,8 +48,6 @@ export function useDraftPreview(
       .filter((step) => step.value !== ''),
   )
 
-  /** Where each filled step sits in the preview, which skips the empty ones —
-   * by position, so a step repeated later reads its own count. */
   const previewIndex = computed(() => {
     const index = new Map<number, number>()
     for (const step of steps.value) {
@@ -48,7 +58,6 @@ export function useDraftPreview(
     return index
   })
 
-  /** The preview scores what the server would accept, nothing else. */
   const previewable = computed(
     () =>
       isWindowHours(windowHours.value) &&
@@ -96,8 +105,6 @@ export function useDraftPreview(
 
   const previewRows = computed(() => preview.value?.computation.steps ?? [])
 
-  /** Under a step: the path a pasted URL is matched as, or a step the site
-   * never sent over the preview's 30 days (unless the read hit its cap). */
   function stepHint(
     step: StepDraft,
   ): { text: string; warning: boolean } | null {
@@ -133,7 +140,6 @@ export function useDraftPreview(
     entered.value > 0 ? (converted.value / entered.value) * PERCENT : null,
   )
 
-  /** Share of the previous step's sessions that reached this one. */
   function stepRate(index: number): string | null {
     const before = previewRows.value[index - 1]?.sessions ?? 0
     if (index === 0 || before <= 0) {
@@ -148,9 +154,6 @@ export function useDraftPreview(
     )
   }
 
-  /** How long the split would need, at the traffic the preview measured (the
-   * preview covers 30 days, so its entered sessions are a month's). Moot once
-   * the test has started: the arms can no longer change. */
   const sampleHint = computed(() => {
     const rate = entered.value > 0 ? converted.value / entered.value : 0
     const total = splitSampleSize(

@@ -37,7 +37,11 @@ describe('heatmap helpers', () => {
 
     it('takes the selected path row from the list just read', () => {
       expect(
-        selectedPageRow([home, { ...pricing, pageviews: 3 }], '/pricing', pricing),
+        selectedPageRow(
+          [home, { ...pricing, pageviews: 3 }],
+          '/pricing',
+          pricing,
+        ),
       ).toEqual({ path: '/pricing', pageviews: 3 })
     })
 

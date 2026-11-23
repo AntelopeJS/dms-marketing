@@ -29,11 +29,7 @@ const frontendModule: DmsFrontendModule = {
         defineAsyncComponent(async () => (await loader()).default),
       )
     }
-    // Client-only: the display it registers carries callables, which the SSR
-    // payload strips.
     sdk.registerPlugin(funnelStepsDataType, { clientOnly: true })
-    // Only when the backend enables `dashboardTracking`: off, the dashboard
-    // loads no tracker and calls nothing.
     const tracking = dashboardTrackingOptions(sdk.options.public)
     if (tracking) {
       sdk.registerPlugin(dashboardTrackingPlugin(tracking), {

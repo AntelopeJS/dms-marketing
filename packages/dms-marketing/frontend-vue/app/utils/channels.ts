@@ -9,8 +9,10 @@ const NEUTRAL_STYLE: ChannelStyle = {
   bar: 'bg-(--ui-border-accented)',
 }
 
-// A categorical palette: six hues told apart in both themes, none of them the
-// green and orange that mean "good" and "watch out" elsewhere in the module.
+/**
+ * A categorical palette: six hues told apart in both themes, none of them the
+ * green and orange that mean "good" and "watch out" elsewhere in the module.
+ */
 const CHANNEL_STYLES: Record<string, ChannelStyle> = {
   direct: { icon: 'i-ph-arrow-elbow-down-right', bar: 'bg-primary' },
   organic: {

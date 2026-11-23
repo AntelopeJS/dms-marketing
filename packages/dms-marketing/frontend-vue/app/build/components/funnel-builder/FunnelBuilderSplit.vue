@@ -10,7 +10,7 @@ import { fractionDigits } from '../../../constants'
 import type { VariationDraft } from '../../types/funnelBuilder'
 
 /** The A/B section of `FunnelBuilder`: the switch, the experiment key, the weighted variations and the code that asks for one. */
-defineProps<{
+interface Props {
   VARIATION_CONTROL_PREFIX: string
   addVariation: () => void
   clearVariationError: () => void
@@ -23,7 +23,9 @@ defineProps<{
   share: (arm: VariationDraft) => number
   snippet: string
   variations: VariationDraft[]
-}>()
+}
+
+defineProps<Props>()
 
 const { t, locale } = useI18n()
 

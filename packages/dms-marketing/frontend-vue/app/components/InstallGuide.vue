@@ -47,7 +47,7 @@ const api = useMarketingApi()
 const toast = useToast()
 const { presentError } = useApiErrorPresenter()
 const { confirm } = useConfirm()
-// A field-tied error from the creation shows under its field, the rest as a toast.
+/** A field-tied error from the creation shows under its field, the rest as a toast. */
 const fieldErrors = useFieldErrors({
   fields: { name: 'install-name', domain: 'install-domain' },
 })
@@ -69,8 +69,6 @@ const missing = computed(
 )
 /** The last check failed; the next one is on its way. */
 const failed = computed(() => !!connection.error.value && !missing.value)
-
-// --- Step 1 ----------------------------------------------------------------------
 
 const name = ref('')
 const domain = ref('')
@@ -118,14 +116,10 @@ async function createWebsite(): Promise<void> {
   }
 }
 
-// --- Step 3: connection check ---------------------------------------------------
-
 /** No pageview yet, and the site is there: the check polls. */
 const isWaiting = computed(
   () => !!websiteId.value && !missing.value && !status.value?.visit,
 )
-// The check polls while it waits, and stops once a pageview arrived or the
-// site is gone.
 watch(
   isWaiting,
   (waiting) => {
@@ -145,7 +139,6 @@ function checkAgain(): void {
 
 const apiOrigin = ref('')
 onMounted(() => {
-  // Read once mounted: the server renders with its internal backend URL.
   apiOrigin.value = String(
     (config.public as { dms?: { baseURL?: string } }).dms?.baseURL ?? '',
   )
@@ -182,7 +175,6 @@ async function allow(hostname: string): Promise<void> {
       color: 'success',
       title: t('page.marketing.install.allowed', { host: hostname }),
     })
-    // The refused host leaves the check before its button comes back.
     await refreshPageBlocks()
   } catch (error) {
     const conflict = hostConflictOf(error)

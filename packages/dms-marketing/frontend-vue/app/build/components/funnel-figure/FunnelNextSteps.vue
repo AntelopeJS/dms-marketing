@@ -8,7 +8,7 @@ import {
 import { fractionDigits } from '../../../constants'
 
 /** The "where to look next" card of `FunnelFigure`: the step losing the largest share and the first drop worth a split. */
-defineProps<{
+interface Props {
   noTraffic: boolean
   worst: { index: number; lost: number; rate: number } | null
   firstDrop: { index: number; lost: number; rate: number } | null
@@ -18,7 +18,9 @@ defineProps<{
   definition: MarketingFunnelResults['funnel']
   stepLabel: (index: number) => string
   inContext: (link: string) => string
-}>()
+}
+
+defineProps<Props>()
 
 const { t, locale } = useI18n()
 </script>

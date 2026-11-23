@@ -59,8 +59,6 @@ const ANCHOR_TEXT_LENGTH = 40
 
 function readableText(element: Element): string {
   const text = (element.textContent ?? '').replace(/\s+/g, ' ').trim()
-  // An image, an icon or a picture reads through its own alternative, or the
-  // one of the image inside it.
   const label =
     text ||
     element.getAttribute('aria-label') ||
@@ -74,12 +72,28 @@ function readableText(element: Element): string {
     : label
 }
 
+/**
+ * Reads the geometry of the snapshot in `frame`. The size is published once, as
+ * measured and never clamped: a document too large to draw is a decision for
+ * the caller, and shrinking it here would misplace every click by the ratio it
+ * was shrunk. `stop()` ends reading without publishing, for a frame the caller
+ * resizes by hand, and `reset()` forgets the size and waits for the frame to
+ * load again. A new frame is a new reading: the ref is only set once the iframe
+ * is rendered, which the caller does conditionally and keyed.
+ *
+ * `measureAnchors` locates a set of anchors in the snapshot. `nth` is strict: a
+ * document that no longer has that match must not project the click onto a
+ * sibling of the same selector, and no box means the caller keeps the click's
+ * document fractions. It is read after the frame has settled at its final size,
+ * since boxes taken while it is resized measure the wrong layout.
+ * `missingAnchors` returns the anchors the snapshot does not have at all (no
+ * `nth` match, or a selector this document cannot parse); an element that is
+ * there but not drawn at this width is not missing, it only has no box.
+ */
 export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
-  /** Published size — the caller may size the frame from this, once. */
   const measuredWidth = ref<number | null>(null)
   const measuredHeight = ref<number | null>(null)
 
-  /** Published or given up on: no further reading may be taken. */
   let closed = false
   let settleTimer: ReturnType<typeof setTimeout> | null = null
   let watchedFrame: HTMLIFrameElement | null = null
@@ -91,7 +105,6 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     }
   }
 
-  /** The srcdoc document, never the blank one a fresh frame starts on. */
   function frameDocument(): Document | null {
     const doc = frame.value?.contentDocument ?? null
     return doc && doc.URL === SRCDOC_URL ? doc : null
@@ -105,9 +118,6 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     closed = true
     clearTimer()
     const root = doc.documentElement
-    // Reported as measured, not clamped: a document too large to draw is a
-    // decision for the caller, and silently shrinking it here would misplace
-    // every click by the ratio it was shrunk.
     measuredWidth.value = Math.max(root.scrollWidth, 1)
     measuredHeight.value = Math.max(root.scrollHeight, MIN_RENDER_HEIGHT)
   }
@@ -127,17 +137,11 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     })
   }
 
-  /**
-   * Stop reading without publishing. The caller uses this when it resizes
-   * the frame by hand (a typed height): from then on every reading measures
-   * that layout, not the snapshot's.
-   */
   function close(): void {
     closed = true
     clearTimer()
   }
 
-  /** Start over: forget the size and wait for the frame to load. */
   function reset(): void {
     clearTimer()
     closed = false
@@ -152,13 +156,6 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     }
   }
 
-  /**
-   * Where a set of anchors sits in the snapshot. `nth` is strict: a document
-   * that no longer has that match must not project the click onto a sibling
-   * of the same selector — no box means the caller keeps the click's
-   * document fractions. Read after the frame has settled at its final size;
-   * boxes taken while it is being resized measure the wrong layout.
-   */
   function measureAnchors(anchors: AnchorRequest[]): AnchorBox[] {
     const doc = frameDocument()
     const view = doc?.defaultView
@@ -190,12 +187,6 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     return boxes
   }
 
-  /**
-   * The anchors whose element the snapshot does not have at all — no
-   * `nth` match, or a selector this document cannot parse. An element that
-   * is there but not drawn at this width (a phone-only menu in a desktop
-   * layout) is not missing: measureAnchors gives it no box, this keeps it.
-   */
   function missingAnchors(anchors: AnchorRequest[]): AnchorRequest[] {
     const doc = frameDocument()
     if (!doc) {
@@ -216,8 +207,6 @@ export function useSnapshotFrame(frame: Ref<HTMLIFrameElement | null>) {
     clearTimer()
   })
 
-  // A new frame is a new reading: the ref is only set once the iframe is
-  // actually rendered, which the caller does conditionally and keyed.
   watch(frame, reset, { immediate: true })
 
   const tier = computed<SnapshotTier>(() => {

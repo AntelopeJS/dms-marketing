@@ -100,8 +100,6 @@ describe('websiteCardOf', () => {
   })
 })
 
-// QA m10: a card read off the table shows the same state as everywhere else,
-// not the backend's sticky \`live\`.
 describe('a listed card', () => {
   const lastActivityAt = Date.UTC(2026, 9, 17, 12)
 

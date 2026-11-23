@@ -80,8 +80,6 @@ const marks = computed(() => {
   const placed: Array<{ percent: number; y: number }> = []
   for (const percent of REACH_MARKS) {
     const y = yRatio(depthReachedBy(percent)) * props.height
-    // Collapsed shares (everyone stops at one depth) would stack identical
-    // lines; the strongest claim wins.
     if (placed.every((mark) => Math.abs(mark.y - y) > 1)) {
       placed.push({ percent, y })
     }

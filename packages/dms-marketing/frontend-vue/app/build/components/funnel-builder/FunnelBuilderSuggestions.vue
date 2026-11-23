@@ -7,10 +7,12 @@ import type {
 import { formatNumber } from '../../../utils/format'
 
 /** The suggestions card of `FunnelBuilder`: the pages and events the site sent most, each a step to add. */
-defineProps<{
+interface Props {
   addStep: (kind?: MarketingFunnelStep['kind'], value?: string) => void
   suggestions: MarketingFunnelSuggestions
-}>()
+}
+
+defineProps<Props>()
 
 const { t, locale } = useI18n()
 </script>

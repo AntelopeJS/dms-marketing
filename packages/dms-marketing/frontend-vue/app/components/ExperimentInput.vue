@@ -38,7 +38,7 @@ function emptyDraft(): ExperimentDraft {
       { key: '', weight: DEFAULT_WEIGHT },
       { key: '', weight: DEFAULT_WEIGHT },
     ],
-    // A draft has served no traffic; the backend re-derives them anyway.
+    /** A draft has served no traffic; the backend re-derives them anyway. */
     runs: [],
   }
 }
