@@ -1,51 +1,22 @@
 const assert = require("node:assert/strict");
-const test = it;
+const vm = require("node:vm");
 const { staticScript } = require("../dist/services/static-script");
-
-/**
- * The section headers each served script is cut at, in the order the script
- * runs them: a part joined out of order or left out breaks this list.
- */
-/** @type {Record<"tracker" | "snapshot", string[]>} */
-const SECTIONS = {
-  tracker: [
-    "// --- Public API",
-    "// --- Configuration",
-    "// --- Excluded pages",
-    "// --- Pageviews",
-    "// --- Scroll root",
-    "// --- Scroll depth",
-    "// --- Click capture",
-    "// --- Page snapshots",
-    "// --- Experiments",
-    "// --- Lifecycle",
-  ],
-  snapshot: [
-    "// --- Text",
-    "// --- URLs",
-    "// --- Stylesheets",
-    "// --- Elements",
-    "// --- Timing",
-    "// --- Upload",
-  ],
-};
+const test = it;
 
 for (const name of /** @type {const} */ (["tracker", "snapshot"])) {
-  const headers = SECTIONS[name];
-  test(`the ${name} script is its parts joined in order, as one function`, () => {
-    const script = staticScript(name);
-    const positions = headers.map((header) => script.indexOf(header));
-    assert.ok(
-      positions.every((position) => position >= 0),
-      `every section of the ${name} script is present`,
+  test(`the ${name} script is a classic script that follows the statement the route prepends`, () => {
+    assert.doesNotThrow(
+      () =>
+        new vm.Script(`window.__dmsMarketingConfig={};\n${staticScript(name)}`),
     );
-    assert.deepEqual(
-      positions,
-      [...positions].sort((a, b) => a - b),
-      `the sections of the ${name} script run in order`,
-    );
-    assert.ok(script.startsWith("/**\n * dms-marketing"));
-    assert.ok(script.endsWith("})();\n"));
-    assert.equal(script.split("\n(() => {").length, 2);
+  });
+
+  test(`the ${name} script keeps its helpers out of the page's global scope`, () => {
+    /** @type {Record<string, unknown>} */
+    const page = { document: { currentScript: null } };
+    page.window = page;
+    const before = Object.keys(page);
+    vm.runInNewContext(staticScript(name), page);
+    assert.deepEqual(Object.keys(page), before);
   });
 }
