@@ -121,13 +121,12 @@ export class MarketingSessionsModel extends BasicDataModel(
     const last = events[events.length - 1];
     if (!last) return;
     const pageviews = events.filter((event) => event.kind === "pageview");
+    const exit = pageviews.at(-1);
     await this.update(sessionId, {
       pageviewsCount: pageviews.length,
       eventsCount: events.length,
       lastSeenAt: last.timestamp,
-      ...(pageviews.length > 0 && {
-        exitUrl: pageviews[pageviews.length - 1]!.url,
-      }),
+      ...(exit && { exitUrl: exit.url }),
     });
   }
 

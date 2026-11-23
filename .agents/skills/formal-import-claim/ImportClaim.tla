@@ -13,7 +13,7 @@
 (* holder's token and takes the claim over once the token stays           *)
 (* unchanged (claim.ts:106-155). The holder replaces its token every 5 s  *)
 (* (claim.ts:33-66) and replays the history one UTC day at a time         *)
-(* (replay.ts:271-311).                                                   *)
+(* (replay.ts:274-309).                                                   *)
 (*                                                                         *)
 (* One database round trip is one step, and Node runs other calls at     *)
 (* every await, so steps of different calls interleave in any order. A    *)
@@ -56,7 +56,7 @@ VARIABLES
   seen,      \* the holder of the claim the call read as `owner` (claim.ts:135)
   moved,     \* the claim's token changed since the call read `owner`
   resuming,  \* `current !== undefined` (import.ts:405)
-  counted,   \* the days the ledger named when the call read it (replay.ts:284)
+  counted,   \* the days the ledger named when the call read it (replay.ts:287)
   day,       \* the day the call replays next
   answer,    \* what the call returned, or "error" when it rejected
   failed,    \* the call met a storage failure

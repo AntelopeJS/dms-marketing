@@ -7,10 +7,13 @@ import {
 
 const TRAIL_BACKFILL_VERSION = 1;
 
-/** What one website's funnel trails cover, parsed from its backfill row. */
+/**
+ * What one website's funnel trails cover, parsed from its backfill row.
+ * `above` covers every event with a timestamp strictly above `through`
+ * (epoch ms).
+ */
 export type TrailCoverage =
   | { kind: "none" }
-  /** Every event with a timestamp strictly above `through` (epoch ms). */
   | { kind: "above"; through: number }
   | { kind: "all" };
 

@@ -20,7 +20,7 @@ OneWriter ==
 CountedOnce == \A d \in DaySet : ledger[d] <= 1
 
 (* Once no call runs, the raw rows of a counted day come from one replay: *)
-(* a resume never discards a counted day's rows (replay.ts:216-222).      *)
+(* a resume never discards a counted day's rows (replay.ts:219-225).      *)
 StoredOnce ==
   Quiet => \A d \in DaySet : ledger[d] >= 1 => Cardinality(raw[d]) <= 1
 
