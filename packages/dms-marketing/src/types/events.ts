@@ -43,7 +43,10 @@ const clipped = (max: number) =>
   z.string().transform((value) => value.slice(0, max));
 
 /** A field this kind does not carry: ignored rather than refused. */
-const ignored = z.unknown().transform((): undefined => undefined);
+const ignored = z
+  .unknown()
+  .optional()
+  .transform((): undefined => undefined);
 
 /** Absolute http(s) or site-relative: `javascript:`, `data:` and friends
  * name no page of the site. */

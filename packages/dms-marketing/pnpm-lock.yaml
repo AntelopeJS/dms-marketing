@@ -52,14 +52,14 @@ importers:
         version: 4.6.5
     devDependencies:
       '@antelopejs/core':
-        specifier: ~1.24.0
-        version: 1.24.0
+        specifier: ~1.24.5
+        version: 1.24.7
       '@antelopejs/dms':
         specifier: '>=0.23.0 <0.24.0'
-        version: 0.23.0(@antelopejs/core@1.24.0)(typescript@6.0.3)
+        version: 0.23.0(@antelopejs/core@1.24.7)(typescript@6.0.3)
       '@antelopejs/dms-frontend':
         specifier: '>=0.11.8 <0.12.0'
-        version: 0.11.8(@antelopejs/core@1.24.0)
+        version: 0.11.8(@antelopejs/core@1.24.7)
       '@antelopejs/interface-mongodb':
         specifier: '>=0.0.8 <0.1.0'
         version: 0.0.8(socks@2.8.10)
@@ -108,8 +108,8 @@ packages:
   2fa@0.1.2:
     resolution: {integrity: sha512-PbQttc6USc2TmZwOPE/zlNWTJTySLt50rWhUbZgPkZ5LAOLpgShT3yclbxwHPfHGUXEjfLrTo3Lunyx8onGnXw==}
 
-  '@antelopejs/core@1.24.0':
-    resolution: {integrity: sha512-lYw0iwu8pMohkWvU+aRTHRsZvRi2YXph+ALF3lwCyjilxeXlMxoCDwHroGP3iWXrAhqK8G/8iTloOz/b0WGUKw==}
+  '@antelopejs/core@1.24.7':
+    resolution: {integrity: sha512-d2oMMhSbnPUqIOM36ypHD8ppV7oMyMKBzy8Nnb7z6//Ilg+WQQQBNzXYO3hTOxMT9vA+FtJPPkyWpdy1Lk/cWQ==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
@@ -3217,7 +3217,7 @@ snapshots:
       qr-image: 3.2.0
       thirty-two: 0.0.2
 
-  '@antelopejs/core@1.24.0':
+  '@antelopejs/core@1.24.7':
     dependencies:
       '@antelopejs/interface-core': 0.5.2
       '@clack/prompts': 1.8.1
@@ -3227,14 +3227,16 @@ snapshots:
       jiti: 2.7.0
       mocha: 12.0.3
       picocolors: 1.1.1
+      picomatch: 4.0.7
       proper-lockfile: 4.1.2
       reflect-metadata: 0.2.2
       semver: 7.8.5
       typescript: 5.9.3
+      yaml: 2.9.1
 
-  '@antelopejs/dms-frontend@0.11.8(@antelopejs/core@1.24.0)':
+  '@antelopejs/dms-frontend@0.11.8(@antelopejs/core@1.24.7)':
     dependencies:
-      '@antelopejs/core': 1.24.0
+      '@antelopejs/core': 1.24.7
       '@intlify/message-compiler': 11.4.18
       chokidar: 4.0.3
       commander: 13.1.0
@@ -3248,7 +3250,7 @@ snapshots:
       '@oxc-parser/binding-linux-x64-gnu': 0.95.0
       '@oxc-parser/binding-win32-x64-msvc': 0.95.0
 
-  '@antelopejs/dms@0.23.0(@antelopejs/core@1.24.0)(typescript@6.0.3)':
+  '@antelopejs/dms@0.23.0(@antelopejs/core@1.24.7)(typescript@6.0.3)':
     dependencies:
       2fa: 0.1.2
       '@antelopejs/interface-api': 0.3.3(@antelopejs/interface-core@0.5.2)
@@ -3282,7 +3284,7 @@ snapshots:
       ua-parser-js: 2.0.10
       zod: 4.6.5
     optionalDependencies:
-      '@antelopejs/core': 1.24.0
+      '@antelopejs/core': 1.24.7
       '@antelopejs/interface-database-catalog': 0.1.1(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-dms-automation': 0.7.0(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-redis': 0.0.9(@antelopejs/interface-core@0.5.2)

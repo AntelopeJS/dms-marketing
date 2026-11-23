@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@antelopejs/dms':
         specifier: '>=0.23.0 <0.24.0'
-        version: 0.23.0(@antelopejs/core@1.24.0)(supports-color@8.1.1)(typescript@5.9.3)
+        version: 0.23.0(@antelopejs/core@1.24.6)(supports-color@8.1.1)(typescript@5.9.3)
       '@antelopejs/interface-api':
         specifier: '>=0.3.0 <0.4.0'
         version: 0.3.3(@antelopejs/interface-core@0.5.2)
@@ -34,11 +34,11 @@ importers:
         version: 0.16.0(e37eee444c119cd305298464a1efe5ba)
     devDependencies:
       '@antelopejs/core':
-        specifier: ~1.24.0
-        version: 1.24.0
+        specifier: ~1.24.5
+        version: 1.24.6
       '@antelopejs/dms-frontend':
         specifier: '>=0.11.4 <0.12.0'
-        version: 0.11.4(@antelopejs/core@1.24.0)
+        version: 0.11.4(@antelopejs/core@1.24.6)
       '@types/node':
         specifier: ^22.19.15
         version: 22.20.1
@@ -54,10 +54,9 @@ packages:
   2fa@0.1.2:
     resolution: {integrity: sha512-PbQttc6USc2TmZwOPE/zlNWTJTySLt50rWhUbZgPkZ5LAOLpgShT3yclbxwHPfHGUXEjfLrTo3Lunyx8onGnXw==}
 
-  '@antelopejs/core@1.24.0':
-    resolution: {integrity: sha512-lYw0iwu8pMohkWvU+aRTHRsZvRi2YXph+ALF3lwCyjilxeXlMxoCDwHroGP3iWXrAhqK8G/8iTloOz/b0WGUKw==}
+  '@antelopejs/core@1.24.6':
+    resolution: {integrity: sha512-8FnMvVFraABgHqdDRwdpJFg5IUSdiI9961/78S2rhYaDb4d5xFJrhKrVysN1PBCVwhK3ZXzyvEGrCnEdelsSpg==}
     engines: {node: ^20.19.0 || >=22.12.0}
-    deprecated: 'Update to @antelopejs/core >=1.24.6: interface-core 0.5.2 adds HoldReloads, which older cores do not implement'
     hasBin: true
 
   '@antelopejs/dms-frontend@0.11.4':
@@ -1210,7 +1209,7 @@ snapshots:
       qr-image: 3.2.0
       thirty-two: 0.0.2
 
-  '@antelopejs/core@1.24.0':
+  '@antelopejs/core@1.24.6':
     dependencies:
       '@antelopejs/interface-core': 0.5.2
       '@clack/prompts': 1.8.1
@@ -1225,9 +1224,9 @@ snapshots:
       semver: 7.8.6
       typescript: 5.9.3
 
-  '@antelopejs/dms-frontend@0.11.4(@antelopejs/core@1.24.0)':
+  '@antelopejs/dms-frontend@0.11.4(@antelopejs/core@1.24.6)':
     dependencies:
-      '@antelopejs/core': 1.24.0
+      '@antelopejs/core': 1.24.6
       '@intlify/message-compiler': 11.4.16
       chokidar: 4.0.3
       commander: 13.1.0
@@ -1241,7 +1240,7 @@ snapshots:
       '@oxc-parser/binding-linux-x64-gnu': 0.95.0
       '@oxc-parser/binding-win32-x64-msvc': 0.95.0
 
-  '@antelopejs/dms@0.23.0(@antelopejs/core@1.24.0)(supports-color@8.1.1)(typescript@5.9.3)':
+  '@antelopejs/dms@0.23.0(@antelopejs/core@1.24.6)(supports-color@8.1.1)(typescript@5.9.3)':
     dependencies:
       2fa: 0.1.2
       '@antelopejs/interface-api': 0.3.3(@antelopejs/interface-core@0.5.2)
@@ -1275,7 +1274,7 @@ snapshots:
       ua-parser-js: 2.0.10
       zod: 4.6.7
     optionalDependencies:
-      '@antelopejs/core': 1.24.0
+      '@antelopejs/core': 1.24.6
       '@antelopejs/interface-database-catalog': 0.1.1(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-dms-automation': 0.7.0(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-redis': 0.0.9(@antelopejs/interface-core@0.5.2)(supports-color@8.1.1)
