@@ -64,7 +64,7 @@ export const clickDataSchema = z.object({
   selector: z.string().max(MAX_CLICK_SELECTOR_LENGTH).optional(),
   ox: fraction.optional(),
   oy: fraction.optional(),
-  nth: z.number().int().nonnegative().optional(),
+  nth: z.number().multipleOf(1).nonnegative().optional(),
 });
 
 const customDataSchema = z
@@ -83,7 +83,7 @@ const eventBaseSchema = z.object({
   screen: clipped(MAX_SCREEN_AND_LANGUAGE_CHARS).optional(),
   language: clipped(MAX_SCREEN_AND_LANGUAGE_CHARS).optional(),
   /** Client timestamp (ms); ignored when it drifts past the accepted skew. */
-  at: z.number().int().positive().optional(),
+  at: z.number().multipleOf(1).positive().optional(),
 });
 
 /**

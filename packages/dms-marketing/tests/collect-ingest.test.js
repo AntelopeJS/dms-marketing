@@ -348,6 +348,17 @@ test("over-long context is cut, not refused", () => {
   assert.equal(parsed.language.length, 16);
 });
 
+test("a clock or click index past 2^53 is still an integer, not a refusal", () => {
+  const at = 2 ** 53 + 2;
+  assert.equal(trackedEventSchema.parse(pageview(PAGE, { at })).at, at);
+  const click = {
+    kind: "click",
+    url: PAGE,
+    data: { x: 0.5, y: 0.5, nth: at },
+  };
+  assert.equal(trackedEventSchema.parse(click).data.nth, at);
+});
+
 test("a pageview keeps the sampling rate it declares, and nothing else", () => {
   assert.deepEqual(
     trackedEventSchema.parse(pageview(PAGE, { data: { sample: 0.25 } })).data,
