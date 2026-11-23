@@ -239,7 +239,7 @@ export function prepareEvents(
 
 function warnInvalidEvent(
   websiteId: string,
-  issue: { path: (string | number)[]; message: string } | undefined,
+  issue: { path: PropertyKey[]; message: string } | undefined,
 ): void {
   if (invalidEventLogGate.get(websiteId)) {
     return;

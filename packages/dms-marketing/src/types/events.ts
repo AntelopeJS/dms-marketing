@@ -43,7 +43,10 @@ const clipped = (max: number) =>
   z.string().transform((value) => value.slice(0, max));
 
 /** A field this kind does not carry: ignored rather than refused. */
-const ignored = z.unknown().transform((): undefined => undefined);
+const ignored = z
+  .unknown()
+  .optional()
+  .transform((): undefined => undefined);
 
 /** Absolute http(s) or site-relative: `javascript:`, `data:` and friends
  * name no page of the site. */
@@ -61,11 +64,11 @@ export const clickDataSchema = z.object({
   selector: z.string().max(MAX_CLICK_SELECTOR_LENGTH).optional(),
   ox: fraction.optional(),
   oy: fraction.optional(),
-  nth: z.number().int().nonnegative().optional(),
+  nth: z.number().multipleOf(1).nonnegative().optional(),
 });
 
 const customDataSchema = z
-  .record(z.unknown())
+  .record(z.string(), z.unknown())
   .refine((data) => JSON.stringify(data).length <= MAX_EVENT_DATA_BYTES);
 
 const eventBaseSchema = z.object({
@@ -80,7 +83,7 @@ const eventBaseSchema = z.object({
   screen: clipped(MAX_SCREEN_AND_LANGUAGE_CHARS).optional(),
   language: clipped(MAX_SCREEN_AND_LANGUAGE_CHARS).optional(),
   /** Client timestamp (ms); ignored when it drifts past the accepted skew. */
-  at: z.number().int().positive().optional(),
+  at: z.number().multipleOf(1).positive().optional(),
 });
 
 /**

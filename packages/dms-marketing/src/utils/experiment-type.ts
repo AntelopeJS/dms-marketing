@@ -48,7 +48,7 @@ export type ExperimentInput = z.output<typeof experimentSchema>;
 
 /** The two fields that tell a blank experiment apart; anything else reads as blank. */
 const blankProbe = z
-  .object({ key: z.unknown(), variations: z.unknown() })
+  .object({ key: z.unknown().optional(), variations: z.unknown().optional() })
   .catch({});
 
 /**
@@ -84,14 +84,17 @@ export function experimentIssueField(
     : undefined;
 }
 
-const experimentValueSchema = z.unknown().refine((value) => {
-  try {
-    experimentInputSchema.parse(value);
-    return true;
-  } catch {
-    return false;
-  }
-});
+const experimentValueSchema = z
+  .unknown()
+  .optional()
+  .refine((value) => {
+    try {
+      experimentInputSchema.parse(value);
+      return true;
+    } catch {
+      return false;
+    }
+  });
 
 /**
  * The A/B facet of a funnel as a form field — key, weighted arms and the

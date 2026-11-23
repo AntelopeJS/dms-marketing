@@ -66,7 +66,7 @@ const INVALID_STEPS_MESSAGE = "$page.marketing.errors.invalid_steps";
 const BUILDER_WINDOW_DAYS = 30;
 
 const previewSchema = z.object({
-  steps: z.unknown(),
+  steps: z.unknown().optional(),
   conversionWindowHours: z.number().positive().max(MAX_CONVERSION_WINDOW_HOURS),
 });
 

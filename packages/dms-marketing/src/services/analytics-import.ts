@@ -71,13 +71,13 @@ function importRowId(websiteId: string, importId: string): string {
 
 /** An import event as the caller sent it: only the fields read are named. */
 const importedEventSchema = z.object({
-  kind: z.unknown(),
-  at: z.unknown(),
-  url: z.unknown(),
-  referrer: z.unknown(),
-  title: z.unknown(),
-  name: z.unknown(),
-  data: z.unknown(),
+  kind: z.unknown().optional(),
+  at: z.unknown().optional(),
+  url: z.unknown().optional(),
+  referrer: z.unknown().optional(),
+  title: z.unknown().optional(),
+  name: z.unknown().optional(),
+  data: z.unknown().optional(),
 });
 
 type ImportedEvent = z.output<typeof importedEventSchema>;

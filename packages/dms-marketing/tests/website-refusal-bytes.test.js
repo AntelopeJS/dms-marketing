@@ -18,7 +18,7 @@ test("a website body zod refuses answers its issues in the bytes the forms read"
         [
           400,
           "application/json",
-          '[{"code":"invalid_type","expected":"string","received":"number","path":["name"],"message":"Expected string, received number"},{"code":"custom","message":"$page.marketing.errors.invalid_hostname","path":["domain"]},{"code":"invalid_type","expected":"boolean","received":"string","path":["snapshotsEnabled"],"message":"Expected boolean, received string"}]',
+          '[{"expected":"string","code":"invalid_type","path":["name"],"message":"Invalid input: expected string, received number"},{"code":"custom","path":["domain"],"message":"$page.marketing.errors.invalid_hostname"},{"expected":"boolean","code":"invalid_type","path":["snapshotsEnabled"],"message":"Invalid input: expected boolean, received string"}]',
         ],
       );
       return true;
