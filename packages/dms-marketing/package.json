@@ -26,8 +26,7 @@
     "dist",
     "!dist/.tsbuildinfo",
     "frontend-vue",
-    "skills",
-    "static"
+    "skills"
   ],
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -44,7 +43,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
-    "build": "pnpm --filter @antelopejs/interface-dms-marketing build && rimraf dist && tsc && tsc-alias",
+    "build": "pnpm --filter @antelopejs/interface-dms-marketing build && rimraf dist && tsc && tsc-alias && node scripts/build-static.mts",
     "test": "pnpm run test:backend && pnpm run test:layer",
     "test:backend": "([ -n \"$DMS_PREBUILT\" ] || pnpm run build) && ajs module test . && pnpm run test:journeys",
     "test:journeys": "ajs module test . $(printf -- '-f %s ' tests/*.journeys.js)",
@@ -53,7 +52,7 @@
     "frontend:dev": "cd playground && pnpm frontend:dev",
     "release": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --dir ../.. install --frozen-lockfile && pnpm run typecheck && pnpm --dir ../.. run lint && pnpm --dir ../.. run format:check && release-it",
     "prepack": "pnpm run build",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p static",
     "typecheck:layer": "env -u npm_config_shamefully_hoist ajs dms verify-source -q -m frontend-vue",
     "knip": "knip --dependencies",
     "knip:all": "knip"
@@ -84,6 +83,7 @@
     "@types/node": "^22.19.15",
     "@types/sanitize-html": "^2.16.2",
     "@types/semver": "^7.8.0",
+    "esbuild": "^0.28.2",
     "knip": "^6.34.0",
     "mongodb": "^6.21.0",
     "mongodb-memory-server-core": "^10.4.3",

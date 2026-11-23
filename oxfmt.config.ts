@@ -6,7 +6,6 @@ export default antelopeFmtPreset({
     "**/*.md",
     "**/*.vue",
     "packages/dms-marketing/frontend-vue/**",
-    "packages/dms-marketing/static/**",
     "e2e/journeys/**",
     "e2e/*.mjs",
     "packages/dms-marketing/tests/journeys/**",

@@ -1,29 +1,21 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
-/** dist/services → package root; `static` ships in the published files list. */
-const STATIC_ROOT = path.join(__dirname, "../../static");
+/** dist/services → dist/static, where `pnpm build` bundles the browser scripts from the package's `static/`. */
+const STATIC_ROOT = path.join(__dirname, "../static");
 
-/** The browser scripts the module serves, each kept as ordered parts under `static/<name>/`. */
+/** The browser scripts the module serves. */
 export type StaticScriptName = "snapshot" | "tracker";
 
 const scripts = new Map<StaticScriptName, string>();
 
-/**
- * A served script: its parts, joined in file-name order. The parts are cut
- * from one script at its section headers, so joining them restores the whole
- * and no part has to stay under the size limit with the rest.
- */
+/** A served script: the one self-contained bundle of its modules in `static/<name>/`. */
 export function staticScript(name: StaticScriptName): string {
   const cached = scripts.get(name);
   if (cached !== undefined) {
     return cached;
   }
-  const directory = path.join(STATIC_ROOT, name);
-  const script = readdirSync(directory)
-    .sort()
-    .map((part) => readFileSync(path.join(directory, part), "utf8"))
-    .join("");
+  const script = readFileSync(path.join(STATIC_ROOT, `${name}.js`), "utf8");
   scripts.set(name, script);
   return script;
 }
