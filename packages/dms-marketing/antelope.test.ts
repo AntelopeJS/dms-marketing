@@ -84,7 +84,7 @@ export default defineConfig({
       source: { type: "local", path: "node_modules/@antelopejs/mongodb" },
     },
     api: {
-      source: { type: "package", package: "@antelopejs/api", version: "1.7.5" },
+      source: { type: "package", package: "@antelopejs/api", version: "1.7.8" },
       config: {
         servers: [{ protocol: "http", host: "127.0.0.1", port: 0 }],
         publicBaseUrl: "http://127.0.0.1",
@@ -94,7 +94,7 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/auth-jwt",
-        version: "1.1.2",
+        version: "1.1.3",
       },
       config: { secret: JWT_SECRET },
     },
@@ -102,14 +102,14 @@ export default defineConfig({
       source: {
         type: "package",
         package: "@antelopejs/file-storage-local",
-        version: "0.2.1",
+        version: "0.2.2",
       },
     },
     nodemailer: {
       source: {
         type: "package",
         package: "@antelopejs/nodemailer",
-        version: "0.0.12",
+        version: "0.0.14",
       },
       config: { host: "127.0.0.1", port: 1, secure: false },
     },
