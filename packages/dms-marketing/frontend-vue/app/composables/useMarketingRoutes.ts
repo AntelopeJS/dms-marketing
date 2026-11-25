@@ -10,6 +10,7 @@
  *
  * @packageDocumentation
  */
+import type { LocationQuery } from '#dms/frontend-module'
 import { isString } from '../utils/guards'
 
 const MODULE_BASE = '/modules/marketing'
@@ -96,7 +97,7 @@ export function websitesLink(
 
 /** The setting a Websites page URL scrolls the open modal to, if any. */
 export function websiteSettingOf(
-  query: Record<string, string>,
+  query: LocationQuery,
 ): WebsiteSetting | undefined {
   return query.setting === 'snapshots' ? 'snapshots' : undefined
 }
@@ -117,7 +118,7 @@ export function settingsLink(): string {
  */
 export function withWebsite(
   link: string,
-  query: Record<string, string>,
+  query: LocationQuery,
 ): string {
   const website = query.website
   if (!isString(website) || !website) {

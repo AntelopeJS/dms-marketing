@@ -6,8 +6,10 @@ import type { KnipConfig } from "knip";
  * antelope harness config at the package root and the CommonJS suites under
  * `tests/` that drive the built `dist` (without them the only users of
  * `mongodb` and `mongodb-memory-server-core` are invisible);
- * `src/services/prune.ts`, whose prune steps the retention suite requires from
- * `dist`, which Knip does not map back onto `src`; and the controllers, pages
+ * `src/services/prune.ts` and `src/services/origin-guard.ts`, whose exports
+ * the retention suite and the journeys helper require from `dist`, which Knip
+ * does not map back onto `src`; `src/frontend-module.ts`, the `dmsFrontend`
+ * entry of package.json; and the controllers, pages
  * and module AntelopeJS discovers at runtime through their decorators and
  * RegisterModule, not through an import of the exported class; the two
  * entries of the browser scripts that `scripts/build-static.mts` bundles; and
@@ -24,6 +26,8 @@ const config: KnipConfig = Object.assign(
       "antelope.test.ts",
       "tests/**/*.test.js",
       "src/services/prune.ts",
+      "src/services/origin-guard.ts",
+      "src/frontend-module.ts",
       "src/data-api/{funnels,websites}.ts",
       "src/pages/module.ts",
       "src/pages/*/page.ts",

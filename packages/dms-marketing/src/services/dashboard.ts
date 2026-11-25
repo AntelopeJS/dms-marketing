@@ -33,7 +33,7 @@ import {
 } from "./rollups";
 
 /** The four volume KPIs of the overview, by the id the page sends. */
-export const KPI_METRICS = {
+const KPI_METRICS = {
   pageviews: (totals: RollupTotals) => totals.pageviews,
   sessions: (totals: RollupTotals) => totals.sessions,
   "new-visitors": (totals: RollupTotals) => totals.newVisitors,
@@ -356,14 +356,9 @@ export interface TopRow {
 }
 
 /** How a tab names its keys: as stored, as an i18n key, or for `Intl` on the client. */
-export type TopLabelKind =
-  | "raw"
-  | "channel"
-  | "country"
-  | "language"
-  | "device";
+type TopLabelKind = "raw" | "channel" | "country" | "language" | "device";
 
-export interface TopTabDefinition {
+interface TopTabDefinition {
   id: string;
   label: string;
   dimension: TopDimension;
@@ -381,7 +376,7 @@ export interface TopTabPayload {
 
 const TOP_LIST_LIMIT = 8;
 
-export function pagesLink(path?: string): string {
+function pagesLink(path?: string): string {
   const base = `${MARKETING_MODULE_PATH}/pages`;
   return path ? `${base}?path=${encodeURIComponent(path)}` : base;
 }
@@ -390,13 +385,13 @@ export function pagesLink(path?: string): string {
  * Acquisition, on one channel's tab of the campaigns table (the table opens
  * the tab its URL names) or whole.
  */
-export function acquisitionLink(channel?: string): string {
+function acquisitionLink(channel?: string): string {
   const base = `${MARKETING_MODULE_PATH}/acquisition`;
   return channel ? `${base}?tab=${encodeURIComponent(channel)}` : base;
 }
 
 /** The funnel builder, a new funnel starting on this custom event. */
-export function eventFunnelLink(name: string): string {
+function eventFunnelLink(name: string): string {
   const steps = JSON.stringify([{ kind: "custom", value: name }]);
   return `${MARKETING_MODULE_PATH}/funnel-builder?steps=${encodeURIComponent(steps)}`;
 }

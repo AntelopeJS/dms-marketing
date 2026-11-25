@@ -28,7 +28,7 @@ type JsonWalkStep = { visit: unknown } | { leave: object };
  * arrays and plain objects of the same, none of them reached through itself.
  * Walked with a stack, so a deeply nested body cannot overflow it.
  */
-export function isJsonValue(value: unknown): value is JsonValue {
+function isJsonValue(value: unknown): value is JsonValue {
   const stack: JsonWalkStep[] = [{ visit: value }];
   const ancestors = new Set<object>();
   for (let step = stack.pop(); step; step = stack.pop()) {

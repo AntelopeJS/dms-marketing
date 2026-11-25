@@ -5,7 +5,20 @@ import {
 } from "@/types/constants";
 import { z } from "zod";
 
-/** A click `data` as stored: every field is checked before it is read. */
+/**
+ * A click `data` as stored: every field is checked before it is read.
+ * `x`/`y` are viewport-normalized (0-1): where on the screen people click.
+ * `dx`/`dy` are document-normalized (pageX / document width, pageY / document
+ * height). `selector` is the nearest short CSS selector of the element hit.
+ *
+ * `ox`/`oy`/`nth` are the element anchor and are what a heatmap projects
+ * from: the offset inside the clicked element's box, plus its index among
+ * the selector's matches. Document fractions are the fallback, not the
+ * reference: they divide by a document box that on a page shorter than the
+ * visitor's window is the window itself, so the same element yields a
+ * different `dy` per window size. The tracker sends no anchor on clicks whose
+ * target was the document.
+ */
 export interface StoredClickData {
   x: number;
   y: number;

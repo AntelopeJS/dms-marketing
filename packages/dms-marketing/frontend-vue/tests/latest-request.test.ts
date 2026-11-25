@@ -7,7 +7,7 @@ describe('useLatestRequest loading states', () => {
     let resolve: ((value: { pages: { path: string }[] }) => void) | undefined
     const request = useLatestRequest(
       () =>
-        new Promise((done) => {
+        new Promise<{ pages: { path: string }[] }>((done) => {
           resolve = done
         }),
     )

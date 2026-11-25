@@ -60,7 +60,7 @@ interface ReadCall {
 
 let calls: ReadCall[]
 
-const PERIOD = {
+const PERIOD: PeriodState = {
   preset: 'last-7-days',
   comparison: 'none',
   range: {

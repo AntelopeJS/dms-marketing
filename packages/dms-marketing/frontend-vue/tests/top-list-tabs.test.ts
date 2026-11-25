@@ -72,7 +72,7 @@ async function render(state: ChartState): Promise<string> {
     eyebrow: 'Content',
     valueLabel: 'Views',
   })
-  app.config.globalProperties.formatPercentage = formatPercentage
+  app.mixin({ methods: { formatPercentage } })
   for (const [name, component] of Object.entries(STUBS)) {
     app.component(name, component)
   }

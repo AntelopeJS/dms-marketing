@@ -12,7 +12,10 @@ import {
 import { present } from './present'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import PagesExplorer from '../app/components/PagesExplorer.vue'
-import { MARKETING_CONTEXT_KEY } from '../app/composables/useMarketingContext'
+import {
+  type ContextWebsite,
+  MARKETING_CONTEXT_KEY,
+} from '../app/composables/useMarketingContext'
 import { setDmsRouteQuery } from './stubs/frontend-module'
 
 const OWN = { id: 'tenant-a', name: 'Alpha', current: true }
@@ -121,7 +124,7 @@ async function mountExplorer(): Promise<HTMLElement> {
     value: () => ({ matches: false }),
   })
   setDmsRouteQuery({ path: '/pricing' })
-  const website = {
+  const website: ContextWebsite = {
     id: 'acme-shop',
     name: 'Acme Shop',
     domain: 'shop.example.com',

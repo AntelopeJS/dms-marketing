@@ -63,17 +63,6 @@ export const CONTEXT_QUERY = [
 ].join("&");
 
 /**
- * Options every module block reads its data with. `realtimeTopic` is the
- * module's arrivals topic on every block of an analytics page: the page's
- * live gate reads it again when events come in.
- */
-export interface ScopedBlockOptions {
-  fetchUrl?: string;
-  periodScope?: string;
-  realtimeTopic?: string;
-}
-
-/**
  * What a block of an analytics page reads with: the context bar's period and
  * the module's arrivals topic. The topic makes a stock block read again on
  * each batch of events, through the page's Direct / Pause gate.

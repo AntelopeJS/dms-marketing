@@ -18,6 +18,7 @@ function sdk(publicOptions: Parameters<typeof dashboardTrackingOptions>[0]) {
     registerDynamicPage: vi.fn(),
     registerLayout: vi.fn(),
     registerErrorPage: vi.fn(),
+    registerAccessRedirect: vi.fn(),
     registerPlugin: vi.fn(),
     registerMiddleware: vi.fn(),
     provide: vi.fn(),

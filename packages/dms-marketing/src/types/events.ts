@@ -136,38 +136,7 @@ export const collectRequestSchema = z.object({
 
 export type TrackedEventInput = z.output<typeof trackedEventSchema>;
 
-/**
- * `data` payload of a "click" event. `x`/`y` are viewport-normalized (0-1):
- * where on the screen people click. `dx`/`dy` are document-normalized
- * (pageX / document width, pageY / document height). `selector` is the
- * nearest short CSS selector of the element hit.
- *
- * `ox`/`oy`/`nth` are the element anchor and are what a heatmap projects
- * from: the offset inside the clicked element's box, plus its index among
- * the selector's matches. Document fractions are the fallback, not the
- * reference — they divide by a document box that on a page shorter than the
- * visitor's window is the window itself, so the same element yields a
- * different `dy` per window size. The anchor is absent on clicks whose target
- * was the document.
- */
-export interface ClickEventData {
-  x: number;
-  y: number;
-  dx?: number;
-  dy?: number;
-  selector?: string;
-  ox?: number;
-  oy?: number;
-  nth?: number;
-}
-
 /** `data` payload of a "scroll" event: max depth reached on the page, 0-100. */
 export interface ScrollEventData {
   depth: number;
-}
-
-/** `data` payload of an "exposure" event: assigned experiment variation. */
-export interface ExposureEventData {
-  experiment: string;
-  variation: string;
 }
