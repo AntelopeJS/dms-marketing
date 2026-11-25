@@ -52,7 +52,7 @@
     "frontend:dev": "cd playground && pnpm frontend:dev",
     "prepack": "pnpm run build",
     "typecheck": "tsc --noEmit && tsc --noEmit -p static",
-    "typecheck:layer": "env -u npm_config_shamefully_hoist ajs dms verify-source -q -m frontend-vue",
+    "typecheck:layer": "env -u npm_config_shamefully_hoist ajs dms verify-source -q -m frontend-vue && ajs dms prepare-types -q -m frontend-vue --out frontend-vue/.dms-types && pnpm --dir frontend-vue exec tsc --noEmit -p tests",
     "knip": "knip --dependencies",
     "knip:all": "knip"
   },

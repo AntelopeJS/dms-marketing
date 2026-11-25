@@ -180,7 +180,7 @@ it('snapshot options present the JSON refusal once without changing the website'
       sampleRateLabel: null,
       trackerEnabled: true,
     },
-    locale: ref('en'),
+    locale: computed({ get: () => 'en', set: () => {} }),
     confirm: async () => true,
     t: (key) => key,
     emit,

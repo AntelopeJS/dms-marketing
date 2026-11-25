@@ -12,7 +12,10 @@ import { renderToString } from 'vue/server-renderer'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import PagesExplorer from '../app/components/PagesExplorer.vue'
 import WorkspaceScope from '../app/components/WorkspaceScope.vue'
-import { MARKETING_CONTEXT_KEY } from '../app/composables/useMarketingContext'
+import {
+  type ContextWebsite,
+  MARKETING_CONTEXT_KEY,
+} from '../app/composables/useMarketingContext'
 import { ALL_WORKSPACES } from '../app/utils/workspace-scope'
 
 const OWN = { id: 'tenant-a', name: 'Alpha', current: true }
@@ -87,7 +90,7 @@ async function renderExplorer(): Promise<string> {
     ref(init()),
   )
   vi.stubGlobal('formatPercentage', () => '100 %')
-  const website = {
+  const website: ContextWebsite = {
     id: 'acme-shop',
     name: 'Acme Shop',
     domain: 'shop.example.com',
