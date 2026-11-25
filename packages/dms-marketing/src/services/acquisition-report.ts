@@ -15,7 +15,7 @@ import {
 } from "./rollups";
 import { type QueryWindow, windowDays } from "./period";
 
-export interface ChannelRow {
+interface ChannelRow {
   id: MarketingChannel;
   sessions: number;
   share: number;
@@ -164,7 +164,7 @@ export function readCampaignsReport(
 }
 
 /** A row of the campaigns table, the shape `TableView.fromSource` lists. */
-export interface CampaignTableRow {
+interface CampaignTableRow {
   _id: string;
   campaign: string | null;
   source: string | null;

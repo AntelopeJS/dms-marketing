@@ -213,7 +213,7 @@ export function resolveChannel(
   return referrerDomain || REFERRAL_MEDIUMS.has(medium) ? "referral" : "direct";
 }
 
-export interface CampaignUtm {
+interface CampaignUtm {
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;

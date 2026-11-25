@@ -40,7 +40,7 @@ interface VariationResult {
 }
 
 /** Whether a verdict may be acted on yet, and what it still waits for. */
-export interface ExperimentDecision {
+interface ExperimentDecision {
   /** Days the split has served traffic, pauses left out. */
   days: number;
   minDays: number;

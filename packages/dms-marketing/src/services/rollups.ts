@@ -33,7 +33,7 @@ export interface RollupRead {
   compareDays: WebsiteStatistics[];
 }
 
-export const EMPTY_TOTALS: RollupTotals = {
+const EMPTY_TOTALS: RollupTotals = {
   pageviews: 0,
   sessions: 0,
   newVisitors: 0,

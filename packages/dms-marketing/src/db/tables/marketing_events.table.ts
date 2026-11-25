@@ -71,7 +71,7 @@ export class MarketingEvent extends Table {
   @Field("string")
   declare importId?: string;
 
-  /** Kind-specific payload: ClickEventData | ScrollEventData | ExposureEventData | custom. */
+  /** Kind-specific payload: StoredClickData, ScrollEventData, an exposure's experiment and variation, or custom. */
   @Field("any")
   declare data?: TrackedEventInput["data"];
 }

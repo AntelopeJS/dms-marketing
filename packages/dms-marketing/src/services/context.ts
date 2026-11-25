@@ -22,7 +22,7 @@ const NO_WEBSITE_MESSAGE = "$page.marketing.errors.no_website";
  * (`ImportAnalytics`): no newer than what its completed imports filled, so
  * nothing proves the tag collects.
  */
-export type WebsiteState = "live" | "imported" | "waiting" | "paused";
+type WebsiteState = "live" | "imported" | "waiting" | "paused";
 
 export interface ContextWebsite {
   id: string;

@@ -2,7 +2,7 @@
 const PATH_BASE = "http://step.invalid";
 
 /** A final `*` turns a page step into a prefix: `/blog/*`. */
-export const STEP_PREFIX_WILDCARD = "*";
+const STEP_PREFIX_WILDCARD = "*";
 
 const SCHEME_PATTERN = /^[a-z][a-z\d+.-]*:\/\//i;
 /** A host pasted without its scheme: a dotted name before the first slash. */
@@ -37,7 +37,7 @@ export function normalizeStepPath(raw: string): string {
 }
 
 /** Comparable form of a stored or normalized path: lowercase, no trailing slash. */
-export function pathKey(path: string): string {
+function pathKey(path: string): string {
   const lower = path.toLowerCase();
   return lower.length > 1 && lower.endsWith("/") ? lower.slice(0, -1) : lower;
 }

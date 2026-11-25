@@ -77,20 +77,20 @@ export type SampleRateQuery = Omit<ScrollDepthQuery, "url">;
 export type ClickCellQuery = ScrollDepthQuery;
 
 /** Grid indexes of a normalized point, `HEATMAP_DIVISIONS_PER_AXIS` per axis. */
-export interface ClickGridCell {
+interface ClickGridCell {
   gx: number;
   gy: number;
 }
 
 /** Clicks of one document-grid cell: those without a usable element anchor. */
-export interface DocumentClickCell extends ClickGridCell {
+interface DocumentClickCell extends ClickGridCell {
   weight: number;
   /** Epoch seconds of the cell's earliest click. */
   firstAt: number;
 }
 
 /** Clicks of one element cell: an anchor's selector, rank and offset grid cell. */
-export interface AnchoredClickCell extends ClickGridCell {
+interface AnchoredClickCell extends ClickGridCell {
   selector: string;
   nth: number;
   weight: number;

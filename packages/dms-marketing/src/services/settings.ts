@@ -258,7 +258,7 @@ const RETENTION_CUTS = [
   { id: "snapshotRetentionDays", key: "snapshotRetention" },
 ] as const;
 
-export type RetentionCutField = (typeof RETENTION_CUTS)[number]["id"];
+type RetentionCutField = (typeof RETENTION_CUTS)[number]["id"];
 
 /**
  * How much lowering one retention deletes, at the cutoff it would set:
@@ -279,7 +279,7 @@ const warnedCuts = new Map<string, number>();
  * Statistics are confirmed on their sessions, the figure the marketer
  * knows; on daily rollups when no session is left that old.
  */
-export const countRetentionCut: RetentionCutCounter = async (field, cutoff) => {
+const countRetentionCut: RetentionCutCounter = async (field, cutoff) => {
   if (field === "rawEventsRetentionDays") {
     return { count: await countRawEventsBefore(cutoff), what: "raw_events" };
   }

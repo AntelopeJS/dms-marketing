@@ -19,10 +19,10 @@ import {
   readRollups,
 } from "./rollups";
 
-export type FunnelKind = "funnel" | "ab";
+type FunnelKind = "funnel" | "ab";
 
 /** The challenger the report names: same rule here and in the report. */
-export interface ExperimentLeader {
+interface ExperimentLeader {
   key: string;
   /** Position among the arms, the control being 0: its letter. */
   index: number;
@@ -31,7 +31,7 @@ export interface ExperimentLeader {
   significant: boolean;
 }
 
-export interface ExperimentSummary {
+interface ExperimentSummary {
   key: string;
   status: string;
   variations: number;
@@ -127,12 +127,7 @@ function pickLeader(arms: ArmResult[]): number {
  * when the leader is not significant, `early` when it is but the decision
  * rule (a week, a conversions floor) is not met yet.
  */
-export type ExperimentVerdictKind =
-  | "winner"
-  | "loser"
-  | "flat"
-  | "early"
-  | "withheld";
+type ExperimentVerdictKind = "winner" | "loser" | "flat" | "early" | "withheld";
 
 export interface ExperimentVerdict {
   kind: ExperimentVerdictKind;
@@ -352,7 +347,7 @@ async function computeSummary(
   };
 }
 
-export interface FunnelSuggestion {
+interface FunnelSuggestion {
   value: string;
   count: number;
 }

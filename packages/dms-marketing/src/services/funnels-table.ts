@@ -22,7 +22,7 @@ const LETTER_A = 65;
 const KIND_ICONS = { funnel: "i-ph-funnel", ab: "i-ph-flask" } as const;
 
 /** A row of the funnels table, the shape `TableView.fromSource` lists. */
-export interface FunnelTableRow {
+interface FunnelTableRow {
   _id: string;
   name: string;
   /** Icon tile of the name: a funnel, or a flask for an A/B test. */

@@ -130,7 +130,7 @@ export async function websiteDeletionImpact(
 }
 
 /** The pageview the install check shows once the tag works. */
-export interface ConnectionVisit {
+interface ConnectionVisit {
   at: number;
   /** Path only: raw events keep no host. */
   url: string;

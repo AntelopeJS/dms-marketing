@@ -122,10 +122,14 @@ test("only data JSON can carry is a JSON value", () => {
   const loop = { a: [] };
   loop.a.push(loop);
   const shared = { n: 1 };
+  let deep = [];
+  for (let depth = 1; depth < 200_000; depth += 1) {
+    deep = [deep];
+  }
   const cases = [
     [{ a: [1, "b", null, true, { c: {} }] }, true],
     [{ x: shared, y: shared }, true],
-    [JSON.parse(`${"[".repeat(200_000)}${"]".repeat(200_000)}`), true],
+    [deep, true],
     [undefined, false],
     [{ a: undefined }, false],
     [{ at: new Date() }, false],
@@ -135,7 +139,10 @@ test("only data JSON can carry is a JSON value", () => {
     [loop, false],
   ];
   for (const [value, expected] of cases) {
-    assert.equal(require("../dist/utils/guards").isJsonValue(value), expected);
+    assert.equal(
+      require("../dist/utils/guards").isJsonObject({ value }),
+      expected,
+    );
   }
   assert.equal(require("../dist/utils/guards").isJsonObject([]), false);
   assert.equal(require("../dist/utils/guards").isJsonObject(null), false);
