@@ -50,7 +50,6 @@
     "test:layer": "cd frontend-vue && pnpm test",
     "dev": "ajs project run -w -p playground",
     "frontend:dev": "cd playground && pnpm frontend:dev",
-    "release": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --dir ../.. install --frozen-lockfile && pnpm run typecheck && pnpm --dir ../.. run lint && pnpm --dir ../.. run format:check && release-it",
     "prepack": "pnpm run build",
     "typecheck": "tsc --noEmit && tsc --noEmit -p static",
     "typecheck:layer": "env -u npm_config_shamefully_hoist ajs dms verify-source -q -m frontend-vue",

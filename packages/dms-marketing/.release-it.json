@@ -8,18 +8,6 @@
     "release": true,
     "releaseName": "@antelopejs/dms-marketing v${version}"
   },
-  "hooks": {
-    "before:init": [
-      "pnpm --filter @antelopejs/interface-dms-marketing build",
-      "pnpm --dir ../.. run lint",
-      "pnpm --dir ../.. run format:check"
-    ],
-    "after:bump": [
-      "node scripts/check-docs-module-version.mts --write",
-      "git add -u ../..",
-      "git add CHANGELOG.md"
-    ]
-  },
   "plugins": {
     "release-it-changelogen": {
       "disableVersion": true

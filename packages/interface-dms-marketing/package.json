@@ -46,7 +46,6 @@
   "scripts": {
     "build": "rimraf dist && tsc",
     "typecheck": "tsc --noEmit",
-    "release": "pnpm run typecheck && pnpm --dir ../.. run lint && pnpm --dir ../.. run format:check && pnpm run build && release-it",
     "prepack": "pnpm run build"
   },
   "devDependencies": {
