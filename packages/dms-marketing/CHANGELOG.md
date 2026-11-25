@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.11.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.11.0...v0.11.1)
+
+### 🩹 Fixes
+
+- **dms-marketing:** State liveHold.whileOnScreen on the live tables ([#204](https://github.com/AntelopeJS/dms-marketing/pull/204))
+
+### 🏡 Chore
+
+- **deps:** Update antelopejs modules ([#206](https://github.com/AntelopeJS/dms-marketing/pull/206))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.11.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.10.4...v0.11.0)
