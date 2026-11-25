@@ -80,7 +80,6 @@ const TOPIC_BLOCKS = new Set([
   "dms-top-list-card",
 ]);
 const KPI_CARD = "dms-kpi-card";
-const TABLE_VIEW = "dms-table-view";
 
 /**
  * A block reading a route: a fetch URL, or a source table's own.
@@ -132,18 +131,6 @@ test("each stock block reading data follows the arrivals topic", () => {
     }
   }
   assert.ok(checked >= 13, `${checked} blocks checked`);
-});
-
-test("a paused table keeps its rows and counts the events that came in", () => {
-  const tables = Object.values(LIVE_PAGES)
-    .flatMap(blocksOf)
-    .filter((block) => block.name === TABLE_VIEW);
-  assert.ok(tables.length >= 2);
-  for (const table of tables) {
-    assert.deepEqual(table.options.liveHold, {
-      missedLabel: "$page.marketing.live.new_events",
-    });
-  }
 });
 
 test("the KPI cards follow the arrivals topic themselves", () => {

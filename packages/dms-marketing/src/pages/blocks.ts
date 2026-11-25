@@ -89,6 +89,7 @@ export const LIVE_SCOPE = {
  */
 export const LIVE_TABLE_HOLD: NonNullable<TableViewOptions["liveHold"]> = {
   missedLabel: "$page.marketing.live.new_events",
+  whileOnScreen: false,
 };
 
 /**
