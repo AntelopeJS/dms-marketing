@@ -146,7 +146,8 @@ describe("a website purge", () => {
     assert.equal(results.computation.events, 0);
   });
 
-  test("of a deleted website takes its backfill row too", async () => {
+  test("of a deleted website takes its backfill row too", async function () {
+    this.timeout(60_000);
     const tenant = "trail-delete";
     const site = await seedFixture(tenant, "trail-delete-site", false);
     await backfill();

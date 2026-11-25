@@ -20,7 +20,7 @@
     "suppressions": "antelopejs-suppressions",
     "suppressions:update": "antelopejs-suppressions --update",
     "e2e": "playwright test -c e2e",
-    "lint:types": "pnpm --dir packages/dms-marketing exec ajs dms prepare-types -q -m frontend-vue --out frontend-vue/.dms-types"
+    "lint:types": "pnpm --dir packages/dms-marketing types:layer"
   },
   "devDependencies": {
     "@antelopejs/dms": ">=0.24.0 <0.25.0",
