@@ -1,0 +1,8 @@
+packages:
+  - "."
+  - "../interface-dms-marketing"
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - "@antelopejs/*"
+overrides:
+  vite: ">=8.3.4 <8.4.0"

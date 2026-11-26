@@ -1,3 +1,11 @@
+/**
+ * A request of a user of `tenantId`, its token verified and its tenant bound
+ * as the route's auth decorator does at runtime: dms 0.10 never reads the
+ * tenant of an unverified token.
+ *
+ * @packageDocumentation
+ */
+
 const assert = require("node:assert/strict");
 const { mock } = require("node:test");
 const test = it;
@@ -32,11 +40,6 @@ const realGetModel = models.GetModel;
 /** A request of the default tenant, as the JWT fallback reads it. */
 const DEFAULT_TENANT_CTX = { rawRequest: { headers: {} } };
 
-/**
- * A request of a user of `tenantId`, its token verified and its tenant bound
- * as the route's auth decorator does at runtime: dms 0.10 never reads the
- * tenant of an unverified token.
- */
 /** @param {string} tenantId */
 async function requestOf(tenantId) {
   const users = realGetModel(UserModel);

@@ -1,3 +1,23 @@
+/**
+ * The module's reads, through `useApiData`. What the pages render: a server
+ * render reads it and hands it to the browser with the page, the components
+ * showing one request share it, and a newer request replaces one still in
+ * flight (the answer for a site, page or period the user left never paints
+ * over the one on screen). The page preview and the funnel builder draw in
+ * the browser only (`server: false`); a dialog or the builder reads what it
+ * shows when it asks (`ReadOnDemand`). The page's refreshes
+ * (`refreshPageBlocks()`) and the events of its realtime topics read every
+ * one of them again but the context bar's, which reads through its own
+ * live refresh. Writes go through `useMarketingApi`.
+ *
+ * A read bound to the period waits for it: the server knows it only once the
+ * browser's time zone is known, and the browser once the context bar's
+ * selector has set up. Until then nothing is read and the block shows its
+ * skeleton, on both sides.
+ *
+ * @packageDocumentation
+ */
+
 import { computed, toValue, type MaybeRefOrGetter } from 'vue'
 import type { MarketingContextPayload } from './useMarketingContext'
 import { isExperiment } from './useExperiment'
@@ -20,24 +40,6 @@ import type {
   MarketingWebsiteDeletionImpact,
   MarketingWorkspaces,
 } from './useMarketingApi'
-
-/**
- * The module's reads, through `useApiData`. What the pages render: a server
- * render reads it and hands it to the browser with the page, the components
- * showing one request share it, and a newer request replaces one still in
- * flight (the answer for a site, page or period the user left never paints
- * over the one on screen). The page preview and the funnel builder draw in
- * the browser only (`server: false`); a dialog or the builder reads what it
- * shows when it asks (`ReadOnDemand`). The page's refreshes
- * (`refreshPageBlocks()`) and the events of its realtime topics read every
- * one of them again but the context bar's, which reads through its own
- * live refresh. Writes go through `useMarketingApi`.
- *
- * A read bound to the period waits for it: the server knows it only once the
- * browser's time zone is known, and the browser once the context bar's
- * selector has set up. Until then nothing is read and the block shows its
- * skeleton, on both sides.
- */
 
 /** Far above any real tenant's funnel count (the data-api caps at 100). */
 const FUNNEL_LIST_LIMIT = 100

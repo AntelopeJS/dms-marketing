@@ -1,12 +1,14 @@
-import { z } from "zod";
-import { DECLARED_ID_PATTERN } from "@/types/constants";
-import { isNumber, isString } from "@/utils/guards";
-
 /**
  * What the content declarations of the interface (EnsureWebsite,
  * EnsureFunnel, ImportAnalytics) share: the caller's ids, the tenant
  * validation and the error shape.
+ *
+ * @packageDocumentation
  */
+
+import { z } from "zod";
+import { DECLARED_ID_PATTERN } from "@/types/constants";
+import { isNumber, isString } from "@/utils/guards";
 
 /** Thrown on a declaration or import the module refuses. */
 export class MarketingDeclarationError extends Error {

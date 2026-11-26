@@ -1,14 +1,16 @@
-import { createSSRApp, h, onServerPrefetch, ref } from 'vue'
-import { bareStub } from './bare-stub'
-import { renderToString } from 'vue/server-renderer'
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-
 /**
  * The overview top lists as a server renders them: with their data, the
  * rows of the first tab (a watcher never runs there once data lands, so
  * the active tab cannot come from one); without, a skeleton the size of a
  * full card.
+ *
+ * @packageDocumentation
  */
+
+import { createSSRApp, h, onServerPrefetch, ref } from 'vue'
+import { bareStub } from './bare-stub'
+import { renderToString } from 'vue/server-renderer'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 
 interface ChartState {
   data: unknown

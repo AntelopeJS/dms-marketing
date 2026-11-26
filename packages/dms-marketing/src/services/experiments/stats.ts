@@ -1,14 +1,16 @@
+/**
+ * The inference math, pure and database-free: proportions in, verdicts out.
+ * Every "cannot say" answers null rather than a number — a p-value computed
+ * outside its approximation's validity is wrong, not approximate.
+ *
+ * @packageDocumentation
+ */
+
 import {
   EXPERIMENT_SIGNIFICANCE_LEVEL,
   EXPERIMENT_SRM_P_THRESHOLD,
   MIN_OUTCOMES_PER_CELL,
 } from "@/types/constants";
-
-/**
- * The inference math, pure and database-free: proportions in, verdicts out.
- * Every "cannot say" answers null rather than a number — a p-value computed
- * outside its approximation's validity is wrong, not approximate.
- */
 
 export interface ProportionTest {
   pValue: number | null;

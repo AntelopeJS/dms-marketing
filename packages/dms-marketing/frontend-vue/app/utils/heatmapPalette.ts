@@ -5,6 +5,8 @@
  * Literal colors on purpose: this is a data scale, not interface chrome. The
  * theme carries semantic tokens (primary, error, muted…) but no sequential
  * ramp, and "red means hot" derives from none of them.
+ *
+ * @packageDocumentation
  */
 
 export type HeatRgb = readonly [number, number, number]

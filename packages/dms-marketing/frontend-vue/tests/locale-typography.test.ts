@@ -1,12 +1,14 @@
+/**
+ * What vue-i18n and French typography expect of every message, checked on the
+ * files themselves so a new string cannot bring a broken one back.
+ *
+ * @packageDocumentation
+ */
+
 import { describe, expect, it } from 'vitest'
 import { isString } from '../app/utils/guards'
 import en from '../i18n/locales/marketing-en-GB.json'
 import fr from '../i18n/locales/marketing-fr-FR.json'
-
-/**
- * What vue-i18n and French typography expect of every message, checked on the
- * files themselves so a new string cannot bring a broken one back.
- */
 
 const NO_BREAK_SPACE = '\u00A0'
 const NARROW_NO_BREAK_SPACE = '\u202F'

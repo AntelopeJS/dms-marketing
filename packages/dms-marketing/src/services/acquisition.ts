@@ -1,12 +1,14 @@
-import { MARKETING_CHANNELS, type MarketingChannel } from "@/types";
-import { CAMPAIGN_KEY_SEPARATOR } from "@/types/constants";
-
 /**
  * Acquisition classification: the channel grouping and the composite
  * campaign key, both resolved when a session's rollup increment fires.
  * Neither is stored on the session — everything here derives from fields the
  * session already carries, so the mapping can change without a migration.
+ *
+ * @packageDocumentation
  */
+
+import { MARKETING_CHANNELS, type MarketingChannel } from "@/types";
+import { CAMPAIGN_KEY_SEPARATOR } from "@/types/constants";
 
 /**
  * Click-id parameters only an ad platform mints: their presence is the click's

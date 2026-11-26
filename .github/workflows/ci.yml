@@ -292,7 +292,16 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --filter dms-marketing-workspace --frozen-lockfile --ignore-scripts
-      - uses: actions/download-artifact@v4
+      - id: download
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          pattern: blob-report-*
+          path: e2e/blob-reports
+          merge-multiple: true
+      # The artifact service fails a download now and then, as in the 2026-11-26 nightly: one more attempt.
+      - if: steps.download.outcome == 'failure'
+        uses: actions/download-artifact@v4
         with:
           pattern: blob-report-*
           path: e2e/blob-reports

@@ -1,3 +1,11 @@
+/**
+ * The field rules of a website, shared by the dashboard routes and the
+ * declarations of the interface: a site declared from code is held to what
+ * the owner could have typed.
+ *
+ * @packageDocumentation
+ */
+
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { z } from "zod";
 import { WebsitesModel } from "@/db";
@@ -16,12 +24,6 @@ import {
 } from "./website-hosts";
 
 const INVALID_HOSTNAME_MESSAGE = "$page.marketing.errors.invalid_hostname";
-
-/**
- * The field rules of a website, shared by the dashboard routes and the
- * declarations of the interface: a site declared from code is held to what
- * the owner could have typed.
- */
 
 /** What the owner types, stored as the bare lowercase hostname. */
 export const hostnameSchema = z

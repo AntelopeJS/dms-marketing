@@ -4,5 +4,8 @@ packages:
 allowBuilds:
   lefthook: false
   mongodb-memory-server: false
+minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-  - "@antelopejs/interface-*"
+  - "@antelopejs/*"
+overrides:
+  vite: ">=8.3.4 <8.4.0"

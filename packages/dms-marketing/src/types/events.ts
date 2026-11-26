@@ -1,3 +1,14 @@
+/**
+ * Wire contract of the public collect endpoint. The shape follows the Umami
+ * tracker payload (url/referrer/title/screen/language + name/data), but
+ * events are batched: heatmap capture emits far more events than pageviews.
+ * The payload never carries a visitor id — identity is derived per request
+ * from a monthly salt (services/visitor-id), which keeps collection eligible
+ * for the audience-measurement consent exemptions.
+ *
+ * @packageDocumentation
+ */
+
 import { z } from "zod";
 import {
   MAX_CLICK_SELECTOR_LENGTH,
@@ -11,15 +22,6 @@ import {
   MAX_WEBSITE_ID_LENGTH,
   SCROLL_DEPTH_SCALE,
 } from "./constants";
-
-/**
- * Wire contract of the public collect endpoint. The shape follows the Umami
- * tracker payload (url/referrer/title/screen/language + name/data), but
- * events are batched: heatmap capture emits far more events than pageviews.
- * The payload never carries a visitor id — identity is derived per request
- * from a monthly salt (services/visitor-id), which keeps collection eligible
- * for the audience-measurement consent exemptions.
- */
 
 const EVENT_KINDS = [
   "pageview",
