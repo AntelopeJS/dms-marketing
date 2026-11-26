@@ -1,6 +1,30 @@
 # Changelog
 
 
+## v0.12.0
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.11.1...v0.12.0)
+
+### 🚀 Enhancements
+
+- **dms-marketing:** Move to dms 0.24, drop the release hooks, type-check the layer tests ([#207](https://github.com/AntelopeJS/dms-marketing/pull/207))
+
+### 🩹 Fixes
+
+- **dms-marketing:** Green the nightly on Windows and Stress ([#208](https://github.com/AntelopeJS/dms-marketing/pull/208))
+
+### 📦 Build
+
+- **deps:** Update the AntelopeJS module locks ([#201](https://github.com/AntelopeJS/dms-marketing/pull/201))
+
+#### ⚠️ Breaking Changes
+
+- **dms-marketing:** Move to dms 0.24, drop the release hooks, type-check the layer tests ([#207](https://github.com/AntelopeJS/dms-marketing/pull/207))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.11.1
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.11.0...v0.11.1)
