@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@antelopejs/dms':
         specifier: '>=0.24.0 <0.25.0'
-        version: 0.24.0(@antelopejs/core@1.24.6)(supports-color@8.1.1)(typescript@5.9.3)
+        version: 0.24.0(@antelopejs/core@1.24.8)(supports-color@8.1.1)(typescript@5.9.3)
       '@antelopejs/interface-api':
         specifier: '>=0.3.0 <0.4.0'
         version: 0.3.4(@antelopejs/interface-core@0.5.2)
@@ -35,10 +35,10 @@ importers:
     devDependencies:
       '@antelopejs/core':
         specifier: ~1.24.5
-        version: 1.24.6
+        version: 1.24.8
       '@antelopejs/dms-frontend':
         specifier: '>=0.11.8 <0.12.0'
-        version: 0.11.9(@antelopejs/core@1.24.6)
+        version: 0.11.9(@antelopejs/core@1.24.8)
       '@types/node':
         specifier: ^22.19.15
         version: 22.20.1
@@ -54,8 +54,8 @@ packages:
   2fa@0.1.2:
     resolution: {integrity: sha512-PbQttc6USc2TmZwOPE/zlNWTJTySLt50rWhUbZgPkZ5LAOLpgShT3yclbxwHPfHGUXEjfLrTo3Lunyx8onGnXw==}
 
-  '@antelopejs/core@1.24.6':
-    resolution: {integrity: sha512-8FnMvVFraABgHqdDRwdpJFg5IUSdiI9961/78S2rhYaDb4d5xFJrhKrVysN1PBCVwhK3ZXzyvEGrCnEdelsSpg==}
+  '@antelopejs/core@1.24.8':
+    resolution: {integrity: sha512-zEGT+Xlirpl3yFOgPFd6zCP30WNp83kQrRnZuwQRAvaUjvKtbQjL3YHoNolMOJxAwIzaeKuT6d5KXXyR8shNcA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
@@ -1209,7 +1209,7 @@ snapshots:
       qr-image: 3.2.0
       thirty-two: 0.0.2
 
-  '@antelopejs/core@1.24.6':
+  '@antelopejs/core@1.24.8':
     dependencies:
       '@antelopejs/interface-core': 0.5.2
       '@clack/prompts': 1.8.1
@@ -1219,14 +1219,16 @@ snapshots:
       jiti: 2.7.0
       mocha: 12.0.3
       picocolors: 1.1.1
+      picomatch: 4.0.7
       proper-lockfile: 4.1.2
       reflect-metadata: 0.2.2
       semver: 7.8.6
       typescript: 5.9.3
+      yaml: 2.9.1
 
-  '@antelopejs/dms-frontend@0.11.9(@antelopejs/core@1.24.6)':
+  '@antelopejs/dms-frontend@0.11.9(@antelopejs/core@1.24.8)':
     dependencies:
-      '@antelopejs/core': 1.24.6
+      '@antelopejs/core': 1.24.8
       '@intlify/message-compiler': 11.4.16
       chokidar: 4.0.3
       commander: 13.1.0
@@ -1240,7 +1242,7 @@ snapshots:
       '@oxc-parser/binding-linux-x64-gnu': 0.95.0
       '@oxc-parser/binding-win32-x64-msvc': 0.95.0
 
-  '@antelopejs/dms@0.24.0(@antelopejs/core@1.24.6)(supports-color@8.1.1)(typescript@5.9.3)':
+  '@antelopejs/dms@0.24.0(@antelopejs/core@1.24.8)(supports-color@8.1.1)(typescript@5.9.3)':
     dependencies:
       2fa: 0.1.2
       '@antelopejs/interface-api': 0.3.4(@antelopejs/interface-core@0.5.2)
@@ -1274,7 +1276,7 @@ snapshots:
       ua-parser-js: 2.0.10
       zod: 4.6.7
     optionalDependencies:
-      '@antelopejs/core': 1.24.6
+      '@antelopejs/core': 1.24.8
       '@antelopejs/interface-database-catalog': 0.1.1(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-dms-automation': 0.7.3(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-redis': 0.0.11(@antelopejs/interface-core@0.5.2)(supports-color@8.1.1)
