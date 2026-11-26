@@ -1,6 +1,22 @@
 # Changelog
 
 
+## v0.9.0
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.8.0...interface-v0.9.0)
+
+### 🚀 Enhancements
+
+- **dms-marketing:** Move to dms 0.24, drop the release hooks, type-check the layer tests ([#207](https://github.com/AntelopeJS/dms-marketing/pull/207))
+
+#### ⚠️ Breaking Changes
+
+- **dms-marketing:** Move to dms 0.24, drop the release hooks, type-check the layer tests ([#207](https://github.com/AntelopeJS/dms-marketing/pull/207))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.8.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.7.1...interface-v0.8.0)
