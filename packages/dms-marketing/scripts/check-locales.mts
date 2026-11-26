@@ -1,6 +1,3 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
-
 /**
  * Invariants between the frontend's locale catalogs and the sources that name
  * their keys: both locales carry the same keys, the surfaces' namespaces exist,
@@ -8,7 +5,12 @@ import { join, relative } from "node:path";
  * the backend emits resolves to a message in each locale. Keys built from a
  * template expression are resolved at runtime and are not checked. Prints the
  * violations only; exits 1 when there are any.
+ *
+ * @packageDocumentation
  */
+
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative } from "node:path";
 
 type Messages = { [key: string]: string | Messages };
 

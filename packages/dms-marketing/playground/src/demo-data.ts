@@ -1,3 +1,17 @@
+/**
+ * A realistic dataset for the redesigned dashboards: three websites of the
+ * default tenant (a busy shop, a quieter docs site, one still waiting for its
+ * first pageview), 120 days of daily rollups, 30 days of raw events behind
+ * funnels, an A/B test and a heatmap, and a snapshot to draw it on. Written
+ * once, when DMS provisions the default tenant, straight into the tables,
+ * because collect stamps events with the server clock and could never
+ * backfill history.
+ *
+ * Set DMS_MARKETING_DEMO=0 to start the playground without it.
+ *
+ * @packageDocumentation
+ */
+
 import { randomUUID } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import type { WriteValue } from "@antelopejs/interface-database/common";
@@ -10,18 +24,6 @@ import { Hook, RegisterHook } from "@antelopejs/interface-dms/hooks";
 import { seedRollups } from "./demo-rollups";
 import { DAY_MS, random, type Row, table, utcMidnight } from "./demo-shared";
 import { SNAPSHOT_HTML } from "./demo-snapshot";
-
-/**
- * A realistic dataset for the redesigned dashboards: three websites of the
- * default tenant (a busy shop, a quieter docs site, one still waiting for its
- * first pageview), 120 days of daily rollups, 30 days of raw events behind
- * funnels, an A/B test and a heatmap, and a snapshot to draw it on. Written
- * once, when DMS provisions the default tenant, straight into the tables,
- * because collect stamps events with the server clock and could never
- * backfill history.
- *
- * Set DMS_MARKETING_DEMO=0 to start the playground without it.
- */
 
 const SHOP_ID = "acme-shop";
 const DOCS_ID = "acme-docs";

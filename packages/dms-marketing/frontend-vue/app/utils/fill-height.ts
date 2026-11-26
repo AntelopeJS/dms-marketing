@@ -10,6 +10,8 @@
  * viewport, `scrollHeight` is the viewport's height, the empty space below
  * the element would read as content after it, and the element could never
  * grow with the window.
+ *
+ * @packageDocumentation
  */
 
 /** Below this the panes stop shrinking and the page scrolls instead. */

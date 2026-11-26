@@ -94,6 +94,9 @@ const SETTING_CONTROL_IDS: Record<WebsiteSetting, string> = {
 async function scrollToSetting(setting: WebsiteSetting): Promise<void> {
   await nextTick()
   requestAnimationFrame(() => {
+    if (!Object.hasOwn(SETTING_CONTROL_IDS, setting)) {
+      return
+    }
     document
       .getElementById(SETTING_CONTROL_IDS[setting])
       ?.scrollIntoView({ block: 'center', behavior: 'smooth' })

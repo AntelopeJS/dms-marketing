@@ -1,6 +1,3 @@
-import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
-import { unrollSnapshotScrollRoot } from '../utils/snapshotScrollRoot'
-
 /**
  * Geometry of a page snapshot rendered in a same-origin, script-less frame.
  *
@@ -15,7 +12,12 @@ import { unrollSnapshotScrollRoot } from '../utils/snapshotScrollRoot'
  * A capture of an app shell scrolling an inner panel is unrolled first (see
  * snapshotScrollRoot): the reading is then the whole content, not the
  * visitor's window.
+ *
+ * @packageDocumentation
  */
+
+import { computed, onBeforeUnmount, ref, watch, type Ref } from 'vue'
+import { unrollSnapshotScrollRoot } from '../utils/snapshotScrollRoot'
 
 /** Fallback document height when nothing measured it. */
 export const DEFAULT_RENDER_HEIGHT = 3200

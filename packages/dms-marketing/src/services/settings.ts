@@ -1,3 +1,13 @@
+/**
+ * Runtime settings service: the singleton document is pushed into the config
+ * layer on load and on every save, so every `getConfig()` call site picks up
+ * the Settings-page values. Also owns the generated visitor-hash secret.
+ * Which settings exist and their units come from `types/settings`; this file
+ * owns the merge rules and the unit conversion, once each way.
+ *
+ * @packageDocumentation
+ */
+
 import type { BannerContent } from "@antelopejs/interface-dms/base/banner";
 import { ButtonVariant } from "@antelopejs/interface-dms/base/types/button";
 import type { ComposedText } from "@antelopejs/interface-dms/base/types/composed-text";
@@ -37,14 +47,6 @@ import {
 } from "@/types/settings";
 import { isBoolean, isNumber, isString } from "@/utils/guards";
 import type { QueryParameter } from "./query-param";
-
-/**
- * Runtime settings service: the singleton document is pushed into the config
- * layer on load and on every save, so every `getConfig()` call site picks up
- * the Settings-page values. Also owns the generated visitor-hash secret.
- * Which settings exist and their units come from `types/settings`; this file
- * owns the merge rules and the unit conversion, once each way.
- */
 
 const SNAPSHOT_ABOVE_RAW_MESSAGE =
   "$page.marketing.errors.snapshot_retention_above_raw";
@@ -454,7 +456,7 @@ function isGlanceItem(
 }
 
 export function retentionGlance(item: QueryParameter): RetentionMeter | null {
-  if (!isGlanceItem(item)) {
+  if (!isGlanceItem(item) || !Object.hasOwn(GLANCE_ITEMS, item)) {
     return null;
   }
   const key = GLANCE_ITEMS[item];

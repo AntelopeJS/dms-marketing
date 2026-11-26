@@ -129,7 +129,10 @@ function assertTransition(
   current: ExperimentStatus,
   next: ExperimentStatus,
 ): void {
-  if (!STATUS_TRANSITIONS[current].includes(next)) {
+  if (
+    !Object.hasOwn(STATUS_TRANSITIONS, current) ||
+    !STATUS_TRANSITIONS[current].includes(next)
+  ) {
     throw badRequest(INVALID_TRANSITION_MESSAGE);
   }
 }

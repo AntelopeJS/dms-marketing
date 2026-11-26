@@ -1,6 +1,3 @@
-import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join, relative } from "node:path";
-
 /**
  * A config example installs the module through `source.version`, an npm version
  * spec resolved against the registry. A caret range on a `0.x` version stops
@@ -10,7 +7,12 @@ import { join, relative } from "node:path";
  * violations only; exits 1 when there are any. With `--write` it rewrites each
  * violation to a caret range of this package's version instead, which the
  * release runs right after the version bump.
+ *
+ * @packageDocumentation
  */
+
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, relative } from "node:path";
 
 const PACKAGE_ROOT = join(import.meta.dirname, "..");
 const WORKSPACE_ROOT = join(PACKAGE_ROOT, "..", "..");

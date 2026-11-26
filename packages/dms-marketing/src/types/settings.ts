@@ -1,3 +1,13 @@
+/**
+ * The runtime-editable settings, declared once: the settings row, the form,
+ * the endpoints and the merge helpers are all driven from this descriptor.
+ * A field's id carries its UI unit (`…Days`, `…Percent`) — what crosses the
+ * wire — and `unit` is the conversion to the stored canonical unit (ms, 0-1
+ * rate), applied in exactly one place each way (see services/settings).
+ *
+ * @packageDocumentation
+ */
+
 import type { DmsMarketingConfig } from "@/config";
 import {
   DEFAULT_HEATMAP_SAMPLE_RATIO,
@@ -7,14 +17,6 @@ import {
   MAX_STATISTICS_RETENTION_DAYS,
   MS_PER_DAY,
 } from "./constants";
-
-/**
- * The runtime-editable settings, declared once: the settings row, the form,
- * the endpoints and the merge helpers are all driven from this descriptor.
- * A field's id carries its UI unit (`…Days`, `…Percent`) — what crosses the
- * wire — and `unit` is the conversion to the stored canonical unit (ms, 0-1
- * rate), applied in exactly one place each way (see services/settings).
- */
 
 const PERCENT_UNIT = 1 / 100;
 

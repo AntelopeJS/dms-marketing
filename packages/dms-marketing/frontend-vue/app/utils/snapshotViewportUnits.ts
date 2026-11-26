@@ -13,6 +13,8 @@
  *
  * Horizontal units are left alone: the frame is laid out at the chosen
  * width, so `vw` already means what it should.
+ *
+ * @packageDocumentation
  */
 
 export interface SnapshotViewport {

@@ -1,7 +1,3 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import { basename, dirname, join, relative, sep } from "node:path";
-
 /**
  * Every `Dms*` and `dms-*` tag in the frontend's `.vue` files names a
  * component that is registered at runtime: one the installed `@antelopejs/dms`
@@ -9,7 +5,13 @@ import { basename, dirname, join, relative, sep } from "node:path";
  * `DmsMarketing*` components. Vue leaves an unknown tag unrendered without an
  * error, so a renamed DMS component would otherwise vanish from the screen.
  * Prints the unknown tags only; exits 1 when there are any.
+ *
+ * @packageDocumentation
  */
+
+import { readdirSync, readFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { basename, dirname, join, relative, sep } from "node:path";
 
 const PACKAGE = join(import.meta.dirname, "..");
 const FRONTEND = join(PACKAGE, "frontend-vue");

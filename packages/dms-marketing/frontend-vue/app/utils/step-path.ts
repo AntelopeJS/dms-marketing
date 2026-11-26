@@ -4,6 +4,8 @@
  * path, a query string, a fragment or a trailing slash come down to the path;
  * a final `*` stays, as a prefix wildcard. The builder shows the result under
  * the step when it differs from what was typed.
+ *
+ * @packageDocumentation
  */
 
 const STEP_PATH_BASE = 'http://step.invalid'

@@ -1,3 +1,12 @@
+/**
+ * Read-time funnel results — the per-arm experiment read included when the
+ * row carries one; definitions CRUD lives on the funnels DataController
+ * (data-api/funnels.ts). Results are computed over the raw event window so a
+ * definition edit re-reads history instead of losing it.
+ *
+ * @packageDocumentation
+ */
+
 import {
   Context,
   Controller,
@@ -107,12 +116,6 @@ interface WebsiteFunnels {
   comparison: ComparisonKind;
 }
 
-/**
- * Read-time funnel results — the per-arm experiment read included when the
- * row carries one; definitions CRUD lives on the funnels DataController
- * (data-api/funnels.ts). Results are computed over the raw event window so a
- * definition edit re-reads history instead of losing it.
- */
 /** Every funnel of the context's website, summarized over the request's period. */
 async function summarizeWebsiteFunnels(
   context: RequestContext,

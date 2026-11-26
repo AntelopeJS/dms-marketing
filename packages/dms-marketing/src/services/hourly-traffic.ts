@@ -1,3 +1,10 @@
+/**
+ * Hour-by-hour counts of a single day, read from the raw events: the daily
+ * rollups cannot draw the shape of one day.
+ *
+ * @packageDocumentation
+ */
+
 import { GetModel } from "@antelopejs/interface-database-decorators";
 import { getConfig } from "@/config";
 import { MarketingEventsModel } from "@/db";
@@ -5,11 +12,6 @@ import type { Website } from "@/db/tables/websites.table";
 import type { EventKind } from "@/types";
 import { MS_PER_DAY, MS_PER_HOUR } from "@/types/constants";
 import type { KpiMetric } from "./dashboard";
-
-/**
- * Hour-by-hour counts of a single day, read from the raw events: the daily
- * rollups cannot draw the shape of one day.
- */
 
 /** What an hour of raw events counts for a metric; new visitors are only known to the rollups. */
 const HOURLY_READS: Partial<
@@ -33,7 +35,9 @@ export async function hourlyValues(
   hours: number,
   metric: KpiMetric,
 ): Promise<number[] | null> {
-  const reading = HOURLY_READS[metric];
+  const reading = Object.hasOwn(HOURLY_READS, metric)
+    ? HOURLY_READS[metric]
+    : undefined;
   if (!reading || since < Date.now() - getConfig().rawEventsRetention) {
     return null;
   }

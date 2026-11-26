@@ -484,9 +484,10 @@ const TOP_DROP_SOURCES: Partial<Record<TopDimension, TopSource>> = {
 /** Empty as well as absent: a blank name would take a slot in a top-N map. */
 function collectTops(batch: RollupBatch): Record<TopDimension, string[]> {
   return byDimension<string[]>((dimension: TopDimension) =>
-    TOP_SOURCES[dimension](batch).filter((value): value is string =>
-      Boolean(value),
-    ),
+    (Object.hasOwn(TOP_SOURCES, dimension)
+      ? TOP_SOURCES[dimension](batch)
+      : []
+    ).filter((value): value is string => Boolean(value)),
   );
 }
 

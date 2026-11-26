@@ -14,6 +14,8 @@
  * which unlike `hidden` does not turn the box back into a scroll container),
  * and only a column flexbox has its items' basis touched — in a row, the
  * basis is a width.
+ *
+ * @packageDocumentation
  */
 
 export const SCROLL_ROOT_ATTRIBUTE = 'data-marketing-scroll-root'

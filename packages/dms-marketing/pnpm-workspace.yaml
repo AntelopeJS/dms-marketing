@@ -1,0 +1,6 @@
+packages:
+  - "."
+  - "../interface-dms-marketing"
+minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  - "@antelopejs/*"

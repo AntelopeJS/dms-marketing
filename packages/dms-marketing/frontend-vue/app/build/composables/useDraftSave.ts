@@ -1,3 +1,20 @@
+/**
+ * How `FunnelBuilder` leaves: saving the draft (its issues shown first, a
+ * started test's goal change confirmed), discarding it, and the links and
+ * guards around both.
+ *
+ * Saving re-scores a whole started test against the new goal when its steps or
+ * window differ from the saved ones. Several clicks in one tick would each
+ * create a funnel, so a save in flight refuses the next. The copy is settled
+ * before leaving, or the leave guard would ask. Discarding returns to what the
+ * page opened on; a Duplicate opened on its copy, which stays a change to save,
+ * so discarding drops the copy and leaves with nothing left to hold the
+ * navigation. `leave` takes `remount` for another builder URL, as the same page
+ * otherwise stays mounted on the funnel it opened with.
+ *
+ * @packageDocumentation
+ */
+
 import { computed } from 'vue'
 import {
   draftIssueList,
@@ -55,20 +72,6 @@ export interface DraftSaveOptions {
   websites: ReturnType<typeof useDraftLoad>['websites']
 }
 
-/**
- * How `FunnelBuilder` leaves: saving the draft (its issues shown first, a
- * started test's goal change confirmed), discarding it, and the links and
- * guards around both.
- *
- * Saving re-scores a whole started test against the new goal when its steps or
- * window differ from the saved ones. Several clicks in one tick would each
- * create a funnel, so a save in flight refuses the next. The copy is settled
- * before leaving, or the leave guard would ask. Discarding returns to what the
- * page opened on; a Duplicate opened on its copy, which stays a change to save,
- * so discarding drops the copy and leaves with nothing left to hold the
- * navigation. `leave` takes `remount` for another builder URL, as the same page
- * otherwise stays mounted on the funnel it opened with.
- */
 /** The draft's issues put under their fields; true when there was one. */
 async function showDraftIssues(options: DraftSaveOptions): Promise<boolean> {
   const {

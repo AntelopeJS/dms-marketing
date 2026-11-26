@@ -4,6 +4,8 @@
  * its document fraction instead of on its element (see PagePreview), which
  * is still a position, not a loss — so the warning waits for a share and a
  * count that say more than one removed button.
+ *
+ * @packageDocumentation
  */
 
 /** Share of the anchored clicks past which the warning shows. */

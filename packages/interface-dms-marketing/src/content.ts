@@ -1,5 +1,3 @@
-import { InterfaceFunction } from "@antelopejs/interface-core";
-
 /**
  * Marketing content declared from code: websites, funnels and page
  * snapshots a project ships (a demo, a template, a migration), and history
@@ -13,7 +11,11 @@ import { InterfaceFunction } from "@antelopejs/interface-core";
  * marketing tables and settings are ready and nothing waits.
  * These are trusted backend calls, not authorization. Every call requires an
  * explicit nonempty tenantId, without surrounding whitespace.
+ *
+ * @packageDocumentation
  */
+
+import { InterfaceFunction } from "@antelopejs/interface-core";
 
 /**
  * How a declaration call left the stored record. Content declared from code

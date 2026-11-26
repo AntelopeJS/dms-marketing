@@ -2,6 +2,8 @@
  * Reader's view of ImportClaim.tla for /statechart: one region for the claim
  * row, one for the import row, one for the website's imported history and one
  * per ImportAnalytics call.
+ *
+ * @packageDocumentation
  */
 
 /**

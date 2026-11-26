@@ -1,16 +1,18 @@
+/**
+ * Column-scoping wrappers for the ONE marketing table that cannot live in the
+ * per-tenant schema: websites, the global `websiteId → tenantId` bridge the
+ * anonymous collect path resolves against. Every other table gets its
+ * isolation structurally (tenant instance = boundary) and needs none of this.
+ *
+ * @packageDocumentation
+ */
+
 import type { RequestContext } from "@antelopejs/interface-api";
 import type { DataControllerCallback } from "@antelopejs/interface-data-api";
 import type { Parameters } from "@antelopejs/interface-data-api/components";
 import { TableViewRoutes } from "@antelopejs/interface-dms/base";
 import { getRequestTenantId } from "@antelopejs/interface-dms/request-tenant";
 import type { Website } from "@/db/tables/websites.table";
-
-/**
- * Column-scoping wrappers for the ONE marketing table that cannot live in the
- * per-tenant schema: websites, the global `websiteId → tenantId` bridge the
- * anonymous collect path resolves against. Every other table gets its
- * isolation structurally (tenant instance = boundary) and needs none of this.
- */
 
 /** Ownership gate of one table (row of the caller's tenant, or 404). */
 export type TenantGate = (ctx: RequestContext, id: string) => Promise<Website>;
