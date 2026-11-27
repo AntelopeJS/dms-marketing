@@ -70,8 +70,8 @@ importers:
         specifier: ~1.8.4
         version: 1.8.15(socks@2.8.10)
       '@antelopejs/tooling-configs':
-        specifier: ^0.10.7
-        version: 0.10.7(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))(playwright-core@1.65.1)
+        specifier: ^0.10.11
+        version: 0.10.11(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))(playwright-core@1.65.1)
       '@types/node':
         specifier: ^22.19.15
         version: 22.20.1
@@ -262,8 +262,8 @@ packages:
   '@antelopejs/mongodb@1.8.15':
     resolution: {integrity: sha512-0k9LiAmjz/hVMbtO3AyGNXmKKNB71nNr5lVjvgQA4637myyqR+FaQKDNWoIA0tLrM/ouWgk/a07fkI0a7D+UUg==}
 
-  '@antelopejs/tooling-configs@0.10.7':
-    resolution: {integrity: sha512-13abD0BhsR9RF6LQoYYKa+XBknlmcrZVB6iW3BwdfHKu6pPG4ClhAQCLJSSPYtbTMuvNU4imI+dVFSB78TdTnQ==}
+  '@antelopejs/tooling-configs@0.10.11':
+    resolution: {integrity: sha512-wuXbGANxwgmvjOjChFM2G58qLFYlzETN8rQdnGnj3vDGHQ2i9PFbWfCrKWn8npWFGlv4iBThPgn6JvgY1MYNlw==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
@@ -271,8 +271,8 @@ packages:
       eslint-plugin-perfectionist: '>=5.0.0'
       knip: '>=6.0.0'
       mongodb-memory-server: '>=10.0.0'
-      oxfmt: ^0.66.0 || ^0.77.0 || ^0.79.0
-      oxlint: 1.81.0 || 1.94.0
+      oxfmt: ^0.66.0 || ^0.77.0 || ^0.79.0 || ^0.80.0
+      oxlint: 1.81.0 || 1.94.0 || 1.95.0
       pixelmatch: '>=7.0.0'
       playwright-core: '>=1.56.0'
       sharp: '>=0.34.0'
@@ -1303,8 +1303,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@oxlint/plugins@1.94.0':
-    resolution: {integrity: sha512-YT6htikBOBQ00XDxZpRZLZ0anEDo7h9s4+YvjRU0/Ng/cLd0D6SZQ3tsms4g/GDer/z8UKlegC5iptEfyRXJcw==}
+  '@oxlint/plugins@1.95.0':
+    resolution: {integrity: sha512-wb81nObfxWVASxtMQknyL4A387XDVuSIgpL1/wlhWzGpWLAGMzEvI+xWXJ242Bk8qqAmgDwG6ejetKnLISTGGw==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
 
   '@phun-ky/typeof@2.0.3':
@@ -3533,7 +3533,7 @@ snapshots:
       '@antelopejs/interface-api': 0.3.5(@antelopejs/interface-core@0.5.3)
       '@antelopejs/interface-core': 0.5.3
       '@antelopejs/interface-database': 0.4.4(@antelopejs/interface-core@0.5.3)
-      randomstring: 1.3.1
+      randomstring: 1.3.2
       reflect-metadata: 0.2.2
 
   '@antelopejs/interface-database@0.4.4(@antelopejs/interface-core@0.5.3)':
@@ -3558,7 +3558,7 @@ snapshots:
       '@antelopejs/interface-database': 0.4.4(@antelopejs/interface-core@0.5.3)
       '@antelopejs/interface-database-decorators': 0.5.4(@antelopejs/interface-api@0.3.5(@antelopejs/interface-core@0.5.3))(@antelopejs/interface-core@0.5.3)(@antelopejs/interface-database@0.4.4(@antelopejs/interface-core@0.5.3))
       '@antelopejs/interface-file-storage': 0.1.6(@antelopejs/interface-core@0.5.3)
-      randomstring: 1.3.1
+      randomstring: 1.3.2
       zod: 4.6.5
 
   '@antelopejs/interface-email@0.2.1(@antelopejs/interface-core@0.5.3)':
@@ -3611,9 +3611,9 @@ snapshots:
       - snappy
       - socks
 
-  '@antelopejs/tooling-configs@0.10.7(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))(playwright-core@1.65.1)':
+  '@antelopejs/tooling-configs@0.10.11(knip@6.36.0)(oxfmt@0.66.0)(oxlint@1.81.0(oxlint-tsgolint@7.0.2001))(playwright-core@1.65.1)':
     dependencies:
-      '@oxlint/plugins': 1.94.0
+      '@oxlint/plugins': 1.95.0
       dts-bundle-generator: 9.5.1
       minimatch: 10.2.6
       semver: 7.8.5
@@ -4310,7 +4310,7 @@ snapshots:
   '@oxlint/binding-win32-x64-msvc@1.81.0':
     optional: true
 
-  '@oxlint/plugins@1.94.0': {}
+  '@oxlint/plugins@1.95.0': {}
 
   '@phun-ky/typeof@2.0.3': {}
 
