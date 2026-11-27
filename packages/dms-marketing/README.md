@@ -52,7 +52,7 @@ Behind a reverse proxy, set the DMS `auth.trustedProxies` option. See [Installat
 | `@antelopejs/interface-database`            | `>=0.4.0 <0.5.0`   | `0.4.4`     |
 | `@antelopejs/interface-database-decorators` | `>=0.5.0 <0.6.0`   | `0.5.4`     |
 | `@antelopejs/interface-dms`                 | `>=0.17.0 <0.18.0` | `0.17.0`    |
-| `@antelopejs/interface-dms-marketing`       | `^0.9.0`           | `0.9.0`     |
+| `@antelopejs/interface-dms-marketing`       | `^0.9.1`           | `0.9.1`     |
 
 <!-- antelopejs-docs-compat:end -->
 
