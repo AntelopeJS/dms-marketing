@@ -4,9 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  vite: '>=8.3.4 <8.4.0'
-
 importers:
 
   .:
@@ -40,8 +37,8 @@ importers:
         specifier: ~1.24.5
         version: 1.24.8
       '@antelopejs/dms-frontend':
-        specifier: '>=0.11.8 <0.12.0'
-        version: 0.11.9(@antelopejs/core@1.24.8)
+        specifier: '>=0.11.11 <0.12.0'
+        version: 0.11.11(@antelopejs/core@1.24.8)
       '@types/node':
         specifier: ^22.19.15
         version: 22.20.1
@@ -62,8 +59,8 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
-  '@antelopejs/dms-frontend@0.11.9':
-    resolution: {integrity: sha512-+PY0m+7MJ7wzTywHuVT23EDFUUvVeopXDdhdsRu8tVlhO6CFpDV6JHqzLfacRuno8juN0RNfL4nbD0UE9S1jcg==}
+  '@antelopejs/dms-frontend@0.11.11':
+    resolution: {integrity: sha512-DNqMpvOTdfZc19WG9Uh9iW1MWDItxDHSEHos3gEXtxn7/paKH5F7SH6wyQI7mJEGK3xp7YqEz4j5qWk9Rr6HfQ==}
     engines: {node: '>=20.19.0'}
     hasBin: true
     peerDependencies:
@@ -1229,7 +1226,7 @@ snapshots:
       typescript: 5.9.3
       yaml: 2.9.1
 
-  '@antelopejs/dms-frontend@0.11.9(@antelopejs/core@1.24.8)':
+  '@antelopejs/dms-frontend@0.11.11(@antelopejs/core@1.24.8)':
     dependencies:
       '@antelopejs/core': 1.24.8
       '@intlify/message-compiler': 11.4.16
