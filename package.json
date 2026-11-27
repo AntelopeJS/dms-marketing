@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm --filter @antelopejs/dms-marketing build",
-    "lint": "pnpm run lint:types && oxlint && pnpm --dir packages/dms-marketing/frontend-vue lint && node packages/dms-marketing/scripts/check-locales.mts && node packages/dms-marketing/scripts/check-dms-components.mts && node packages/dms-marketing/scripts/check-docs-module-version.mts",
+    "lint": "pnpm run lint:lock && pnpm run lint:types && oxlint && pnpm --dir packages/dms-marketing/frontend-vue lint && node packages/dms-marketing/scripts/check-locales.mts && node packages/dms-marketing/scripts/check-dms-components.mts && node packages/dms-marketing/scripts/check-docs-module-version.mts",
     "typecheck": "pnpm --filter @antelopejs/interface-dms-marketing build && pnpm --filter @antelopejs/dms-marketing typecheck && pnpm --dir packages/dms-marketing run typecheck:layer",
     "knip": "pnpm --dir packages/dms-marketing knip",
     "test": "pnpm --dir packages/dms-marketing test:layer",
@@ -20,6 +20,7 @@
     "suppressions": "antelopejs-suppressions",
     "suppressions:update": "antelopejs-suppressions --update",
     "e2e": "playwright test -c e2e",
+    "lint:lock": "pnpm --dir packages/dms-marketing install --frozen-lockfile --lockfile-only --reporter=silent",
     "lint:types": "pnpm --dir packages/dms-marketing types:layer"
   },
   "devDependencies": {
