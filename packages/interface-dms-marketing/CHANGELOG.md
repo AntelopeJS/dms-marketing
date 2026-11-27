@@ -1,6 +1,18 @@
 # Changelog
 
 
+## v0.9.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.9.0...interface-v0.9.1)
+
+### 🩹 Fixes
+
+- **ci:** Retry the e2e report download and adopt tooling-configs 0.10.7 ([#209](https://github.com/AntelopeJS/dms-marketing/pull/209))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.9.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/interface-v0.8.0...interface-v0.9.0)
