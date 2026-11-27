@@ -1,6 +1,24 @@
 # Changelog
 
 
+## v0.12.1
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.12.0...v0.12.1)
+
+### 🩹 Fixes
+
+- **ci:** Retry the e2e report download and adopt tooling-configs 0.10.7 ([#209](https://github.com/AntelopeJS/dms-marketing/pull/209))
+- **build:** Sync the module lockfile with the interface package ([#216](https://github.com/AntelopeJS/dms-marketing/pull/216))
+
+### 📦 Build
+
+- **deps:** Update the AntelopeJS module locks ([#214](https://github.com/AntelopeJS/dms-marketing/pull/214))
+- **deps:** Land the AntelopeJS module and core updates ([#215](https://github.com/AntelopeJS/dms-marketing/pull/215))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.12.0
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.11.1...v0.12.0)
