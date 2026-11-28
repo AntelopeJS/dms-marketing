@@ -1,6 +1,30 @@
 # Changelog
 
 
+## v0.12.2
+
+[compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.12.1...v0.12.2)
+
+### 🩹 Fixes
+
+- **deps:** Load interface-api once in the playground lockfile ([d85d6da](https://github.com/AntelopeJS/dms-marketing/commit/d85d6da3cbe7b15c98425e6803bc42feaa9e2d6d))
+
+### 📦 Build
+
+- **ci:** Sync tooling-configs 0.10.11 and clear the CI audit ([#217](https://github.com/AntelopeJS/dms-marketing/pull/217))
+- **deps:** Move to @antelopejs/dms 0.25.0 and tooling-configs 0.10.13 ([38ed91b](https://github.com/AntelopeJS/dms-marketing/commit/38ed91bad6590eca40ce067404a88f7bdb202339))
+- **deps:** Sync tooling-configs 0.10.14 ([#224](https://github.com/AntelopeJS/dms-marketing/pull/224))
+
+### 🏡 Chore
+
+- **deps:** Update dependency @antelopejs/mongodb to v1.8.15 ([#212](https://github.com/AntelopeJS/dms-marketing/pull/212))
+- **deps:** Update antelopejs tooling configs ([#219](https://github.com/AntelopeJS/dms-marketing/pull/219))
+- **deps:** Update non-major dependencies ([#220](https://github.com/AntelopeJS/dms-marketing/pull/220))
+
+### ❤️ Contributors
+
+- Antony Rizzitelli
+
 ## v0.12.1
 
 [compare changes](https://github.com/AntelopeJS/dms-marketing/compare/v0.12.0...v0.12.1)
