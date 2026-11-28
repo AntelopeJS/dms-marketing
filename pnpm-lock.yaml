@@ -12,11 +12,11 @@ importers:
   .:
     devDependencies:
       '@antelopejs/dms':
-        specifier: '>=0.24.0 <0.25.0'
-        version: 0.24.0(@playwright/test@1.65.1)(bare-buffer@3.7.3)(typescript@6.0.3)
+        specifier: '>=0.25.0 <0.26.0'
+        version: 0.25.0(@playwright/test@1.65.1)(bare-buffer@3.7.3)(typescript@6.0.3)
       '@antelopejs/tooling-configs':
-        specifier: ^0.10.11
-        version: 0.10.11(knip@6.48.0)(mongodb-memory-server@11.4.0(bare-buffer@3.7.3))(oxfmt@0.80.0)(oxlint@1.95.0(oxlint-tsgolint@7.0.2008))(pixelmatch@8.0.0)(playwright-core@1.65.1)(sharp@0.35.5(@types/node@22.20.5))
+        specifier: ^0.10.13
+        version: 0.10.13(knip@6.48.0)(mongodb-memory-server@11.4.0(bare-buffer@3.7.3))(oxfmt@0.80.0)(oxlint@1.95.0(oxlint-tsgolint@7.0.2008))(pixelmatch@8.0.0)(playwright-core@1.65.1)(sharp@0.35.5(@types/node@22.20.5))
       '@playwright/test':
         specifier: ~1.65.0
         version: 1.65.1
@@ -59,8 +59,8 @@ packages:
   2fa@0.1.2:
     resolution: {integrity: sha512-PbQttc6USc2TmZwOPE/zlNWTJTySLt50rWhUbZgPkZ5LAOLpgShT3yclbxwHPfHGUXEjfLrTo3Lunyx8onGnXw==}
 
-  '@antelopejs/dms@0.24.0':
-    resolution: {integrity: sha512-6Fd3Ir15o042Hk2EWWuXT/oBLl3Fft80jGYcPXtmf4NsiiBHUHwrbrhioDTrppKSBNruACmazHfp0hPGHWUCIA==}
+  '@antelopejs/dms@0.25.0':
+    resolution: {integrity: sha512-LcN+YBAD72aO46K022hU/dwFmFyHHpPGewIXzbB+3wq3mNb7PfltkKtW74KIHN0BDCXgdm9ht7lodyh/GCCdVA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     peerDependencies:
       '@antelopejs/core': ~1.24.5
@@ -119,15 +119,15 @@ packages:
     peerDependencies:
       '@antelopejs/interface-core': '>=0.5.1 <0.6.0'
 
-  '@antelopejs/interface-dms-builder@0.6.3':
-    resolution: {integrity: sha512-cBAYefCGv1wSbBLSaQzznesgREdgfbAm/nn01fPYMxXzIl6efnXVUgTjuPm/C0llSDZiVU3llCLoj76POSbMtQ==}
+  '@antelopejs/interface-dms-builder@0.6.4':
+    resolution: {integrity: sha512-0NltQd7+DSqegrOVjkBLfcOjCIG54T/PNVnLN+/sg6CLqSrBZ6cB1isl3LWpHSMNvvdAI0oXzRiUKtfkmTTCGQ==}
     peerDependencies:
       '@antelopejs/interface-core': '>=0.5.2 <0.6.0'
 
-  '@antelopejs/interface-dms@0.17.0':
-    resolution: {integrity: sha512-cv+OKwJk7W2HFME80ln245Ji1XjcKTY/LpAHI37W790nUk07rPwu1qMei3yVMT1Kt4XjdD8xlfOgjWA6J24K/g==}
+  '@antelopejs/interface-dms@0.17.3':
+    resolution: {integrity: sha512-f7s+EcqRxJOgCvm2zgetv61RF4JpEKP9TWw2aBY8RDWC8Fpcu+Zn0fZamMbGrkDPErhRGOl5FGFxcuD3jkGTWg==}
     peerDependencies:
-      '@antelopejs/interface-api': '>=0.3.4 <0.4.0'
+      '@antelopejs/interface-api': '>=0.3.5 <0.4.0'
       '@antelopejs/interface-api-util': '>=0.3.3 <0.4.0'
       '@antelopejs/interface-core': '>=0.5.2 <0.6.0'
       '@antelopejs/interface-data-api': '>=0.8.2 <0.9.0'
@@ -150,8 +150,8 @@ packages:
     peerDependencies:
       '@antelopejs/interface-core': '>=0.5.1 <0.6.0'
 
-  '@antelopejs/tooling-configs@0.10.11':
-    resolution: {integrity: sha512-wuXbGANxwgmvjOjChFM2G58qLFYlzETN8rQdnGnj3vDGHQ2i9PFbWfCrKWn8npWFGlv4iBThPgn6JvgY1MYNlw==}
+  '@antelopejs/tooling-configs@0.10.13':
+    resolution: {integrity: sha512-lQ4lYQA83Co4O+/6TBMGwmHL4E0QJoRhcWNYqTnolX9XQxaeAbdLnF4ajY7eh2t2piDWDyUZfi7JkFZGob545g==}
     engines: {node: '>=22.18.0'}
     hasBin: true
     peerDependencies:
@@ -235,8 +235,8 @@ packages:
       css-tree:
         optional: true
 
-  '@csstools/css-tokenizer@4.0.0':
-    resolution: {integrity: sha512-QxULHAm7cNu72w97JUNCBFODFaXpbDg+dP8b/oWFAZ2MTRppA3U00Y2L1HqaS4J6yBqxwa/Y3nMBaxVKbB/NsA==}
+  '@csstools/css-tokenizer@4.0.3':
+    resolution: {integrity: sha512-gdkFe/Z4KU1q8Y5S3GYScXGcOnO56dgWwIs5+97Ij1VIKISItOIUlCXUq4VLbdnRclF+SSQ49sLsn3KeV111AA==}
     engines: {node: '>=20.19.0'}
 
   '@emnapi/core@1.11.2':
@@ -1151,10 +1151,6 @@ packages:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
 
-  bare-buffer@3.7.1:
-    resolution: {integrity: sha512-cIjZnSO+y89ykVX9x96OVnA6tGORBn7vGJ/e3PCbBHMEyfMNG/ixzOS0lLa6saMlWcs69bSKjxFyDwjK152OMg==}
-    engines: {bare: '>=1.20.0'}
-
   bare-buffer@3.7.3:
     resolution: {integrity: sha512-77owW16RX6YgdOzddHtM0oGz8wsd0/F9k/0coz6TPmjUHnr/9FwWODVMNKwyYWM/a/ESdTum855nfQxnsKUygA==}
     engines: {bare: '>=1.20.0'}
@@ -1167,15 +1163,6 @@ packages:
       bare-abort-controller:
         optional: true
 
-  bare-fs@4.8.4:
-    resolution: {integrity: sha512-MPC2eyrpbk3A873sK4y6rk+Iv4o2enxTjHZ8zH3HO0mjrpm5XjnguY2XmfidIsDV6vnjpbMBKUAJpV0ISD2SsQ==}
-    engines: {bare: '>=1.28.0'}
-    peerDependencies:
-      bare-buffer: '*'
-    peerDependenciesMeta:
-      bare-buffer:
-        optional: true
-
   bare-fs@4.8.7:
     resolution: {integrity: sha512-bNBjq+x9Wezp3risJs7TaPH3jjVnyFmmSSxfpES8tp9xjvL4t6Bk9v2nC+xm5lfxJeDzChK7NBryK+JciM/pfQ==}
     engines: {bare: '>=1.28.0'}
@@ -1184,9 +1171,6 @@ packages:
     peerDependenciesMeta:
       bare-buffer:
         optional: true
-
-  bare-path@3.1.2:
-    resolution: {integrity: sha512-ZyKbsuuqK6Ag0K8pX6V5Txq6XeJRvY+wXucnFGRjiyVYP9YWDpIQugk/b+enRYrEYBJaqLzghRQpXPMR7341Nw==}
 
   bare-path@3.1.3:
     resolution: {integrity: sha512-8r+FVU/o4zcFmpCDqbqAYhHHbtXPP+cyZKo7DRGRWc7OLlNs4TMaSQEpXL/sIdzyEG0M7RHw4B7xYMGrTc+qrg==}
@@ -1204,9 +1188,6 @@ packages:
         optional: true
       bare-events:
         optional: true
-
-  bare-url@2.5.6:
-    resolution: {integrity: sha512-iqkXHkW65De+BT14nHLiBFbNuJ/DdMrZaVNJ1IXPctpK6b1olUJ5Qmy8QBvwROajTiGztso2n82kFEvCsNG7Rg==}
 
   bare-url@2.5.8:
     resolution: {integrity: sha512-G5KTe5Bj6z5pqIxcn3lWlIFIv0rkXbccx0T0Xuf7t4RapfSWvFlcVbrwYXxFZ00PC4lp57OCIk6uXP/r3GbpDw==}
@@ -1927,9 +1908,6 @@ packages:
   symbol-tree@3.2.4:
     resolution: {integrity: sha512-9QNk5KwDF+Bvz+PyObkmSYjI5ksVUYtjW7AU22r2NKcfLJcXp96hkDWU3+XndOsUb+AQ9QhfzfCT2O+CNWT5Tw==}
 
-  tar-stream@3.2.2:
-    resolution: {integrity: sha512-+8NeqHRjQWH9nYlwo2gamAMImZCVzI4UoEgDpWorBt9OEfppiZn+uSkskzQKPWIZyji/C8fpWO7u69G0DX0tbg==}
-
   tar-stream@3.3.0:
     resolution: {integrity: sha512-rQZZfW2Q4YDCFJyP8KFDG+gfMzcOHaMYq0gb9jzH2gsK0P5qXVpu+UoKE1qaZcs3/R6QVkJr2228nlZoM1V5PA==}
 
@@ -2077,7 +2055,7 @@ snapshots:
       qr-image: 3.2.0
       thirty-two: 0.0.2
 
-  '@antelopejs/dms@0.24.0(@playwright/test@1.65.1)(bare-buffer@3.7.3)(typescript@6.0.3)':
+  '@antelopejs/dms@0.25.0(@playwright/test@1.65.1)(bare-buffer@3.7.3)(typescript@6.0.3)':
     dependencies:
       2fa: 0.1.2
       '@antelopejs/interface-api': 0.3.5(@antelopejs/interface-core@0.5.2)
@@ -2086,11 +2064,11 @@ snapshots:
       '@antelopejs/interface-data-api': 0.8.2(@antelopejs/interface-api-util@0.3.3(@antelopejs/interface-api@0.3.5(@antelopejs/interface-core@0.5.2))(@antelopejs/interface-core@0.5.2))(@antelopejs/interface-api@0.3.5(@antelopejs/interface-core@0.5.2))(@antelopejs/interface-core@0.5.2)(@antelopejs/interface-database-decorators@0.5.4(@antelopejs/interface-api@0.3.5(@antelopejs/interface-core@0.5.2))(@antelopejs/interface-core@0.5.2)(@antelopejs/interface-database@0.4.3(@antelopejs/interface-core@0.5.2)))(@antelopejs/interface-database@0.4.3(@antelopejs/interface-core@0.5.2))
       '@antelopejs/interface-database': 0.4.3(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-database-decorators': 0.5.4(@antelopejs/interface-api@0.3.5(@antelopejs/interface-core@0.5.2))(@antelopejs/interface-core@0.5.2)(@antelopejs/interface-database@0.4.3(@antelopejs/interface-core@0.5.2))
-      '@antelopejs/interface-dms': 0.17.0(cbdc019e050e70f2f9d1e8b606c4e911)
-      '@antelopejs/interface-dms-builder': 0.6.3(@antelopejs/interface-core@0.5.2)
+      '@antelopejs/interface-dms': 0.17.3(cbdc019e050e70f2f9d1e8b606c4e911)
+      '@antelopejs/interface-dms-builder': 0.6.4(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-email': 0.2.1(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-file-storage': 0.1.9(@antelopejs/interface-core@0.5.2)
-      '@csstools/css-tokenizer': 4.0.0
+      '@csstools/css-tokenizer': 4.0.3
       '@types/jsonwebtoken': 9.0.10
       archiver: 7.0.1(bare-buffer@3.7.3)
       csv-stringify: 6.9.0
@@ -2168,11 +2146,11 @@ snapshots:
       '@antelopejs/interface-core': 0.5.2
     optional: true
 
-  '@antelopejs/interface-dms-builder@0.6.3(@antelopejs/interface-core@0.5.2)':
+  '@antelopejs/interface-dms-builder@0.6.4(@antelopejs/interface-core@0.5.2)':
     dependencies:
       '@antelopejs/interface-core': 0.5.2
 
-  '@antelopejs/interface-dms@0.17.0(cbdc019e050e70f2f9d1e8b606c4e911)':
+  '@antelopejs/interface-dms@0.17.3(cbdc019e050e70f2f9d1e8b606c4e911)':
     dependencies:
       '@antelopejs/interface-api': 0.3.5(@antelopejs/interface-core@0.5.2)
       '@antelopejs/interface-api-util': 0.3.3(@antelopejs/interface-api@0.3.5(@antelopejs/interface-core@0.5.2))(@antelopejs/interface-core@0.5.2)
@@ -2200,7 +2178,7 @@ snapshots:
       - supports-color
     optional: true
 
-  '@antelopejs/tooling-configs@0.10.11(knip@6.48.0)(mongodb-memory-server@11.4.0(bare-buffer@3.7.3))(oxfmt@0.80.0)(oxlint@1.95.0(oxlint-tsgolint@7.0.2008))(pixelmatch@8.0.0)(playwright-core@1.65.1)(sharp@0.35.5(@types/node@22.20.5))':
+  '@antelopejs/tooling-configs@0.10.13(knip@6.48.0)(mongodb-memory-server@11.4.0(bare-buffer@3.7.3))(oxfmt@0.80.0)(oxlint@1.95.0(oxlint-tsgolint@7.0.2008))(pixelmatch@8.0.0)(playwright-core@1.65.1)(sharp@0.35.5(@types/node@22.20.5))':
     dependencies:
       '@oxlint/plugins': 1.95.0
       dts-bundle-generator: 9.5.1
@@ -2240,10 +2218,10 @@ snapshots:
   '@asamuzakjp/css-color@5.1.11':
     dependencies:
       '@asamuzakjp/generational-cache': 1.0.1
-      '@csstools/css-calc': 3.4.3(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
-      '@csstools/css-color-parser': 4.2.7(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
-      '@csstools/css-parser-algorithms': 4.0.2(@csstools/css-tokenizer@4.0.0)
-      '@csstools/css-tokenizer': 4.0.0
+      '@csstools/css-calc': 3.4.3(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.3))(@csstools/css-tokenizer@4.0.3)
+      '@csstools/css-color-parser': 4.2.7(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.3))(@csstools/css-tokenizer@4.0.3)
+      '@csstools/css-parser-algorithms': 4.0.2(@csstools/css-tokenizer@4.0.3)
+      '@csstools/css-tokenizer': 4.0.3
 
   '@asamuzakjp/dom-selector@7.1.1':
     dependencies:
@@ -2263,27 +2241,27 @@ snapshots:
 
   '@csstools/color-helpers@6.1.2': {}
 
-  '@csstools/css-calc@3.4.3(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
+  '@csstools/css-calc@3.4.3(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.3))(@csstools/css-tokenizer@4.0.3)':
     dependencies:
-      '@csstools/css-parser-algorithms': 4.0.2(@csstools/css-tokenizer@4.0.0)
-      '@csstools/css-tokenizer': 4.0.0
+      '@csstools/css-parser-algorithms': 4.0.2(@csstools/css-tokenizer@4.0.3)
+      '@csstools/css-tokenizer': 4.0.3
 
-  '@csstools/css-color-parser@4.2.7(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)':
+  '@csstools/css-color-parser@4.2.7(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.3))(@csstools/css-tokenizer@4.0.3)':
     dependencies:
       '@csstools/color-helpers': 6.1.2
-      '@csstools/css-calc': 3.4.3(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.0))(@csstools/css-tokenizer@4.0.0)
-      '@csstools/css-parser-algorithms': 4.0.2(@csstools/css-tokenizer@4.0.0)
-      '@csstools/css-tokenizer': 4.0.0
+      '@csstools/css-calc': 3.4.3(@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.3))(@csstools/css-tokenizer@4.0.3)
+      '@csstools/css-parser-algorithms': 4.0.2(@csstools/css-tokenizer@4.0.3)
+      '@csstools/css-tokenizer': 4.0.3
 
-  '@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.0)':
+  '@csstools/css-parser-algorithms@4.0.2(@csstools/css-tokenizer@4.0.3)':
     dependencies:
-      '@csstools/css-tokenizer': 4.0.0
+      '@csstools/css-tokenizer': 4.0.3
 
   '@csstools/css-syntax-patches-for-csstree@1.1.16(css-tree@3.2.1)':
     optionalDependencies:
       css-tree: 3.2.1
 
-  '@csstools/css-tokenizer@4.0.0': {}
+  '@csstools/css-tokenizer@4.0.3': {}
 
   '@emnapi/core@1.11.2':
     dependencies:
@@ -2822,7 +2800,7 @@ snapshots:
       buffer-crc32: 1.0.0
       readable-stream: 4.8.0
       readdir-glob: 1.1.3
-      tar-stream: 3.2.2(bare-buffer@3.7.3)
+      tar-stream: 3.3.0(bare-buffer@3.7.3)
       zip-stream: 6.0.1
     transitivePeerDependencies:
       - bare-abort-controller
@@ -2841,24 +2819,9 @@ snapshots:
 
   balanced-match@4.0.4: {}
 
-  bare-buffer@3.7.1: {}
-
   bare-buffer@3.7.3: {}
 
   bare-events@2.9.2: {}
-
-  bare-fs@4.8.4(bare-buffer@3.7.3):
-    dependencies:
-      bare-events: 2.9.2
-      bare-path: 3.1.2
-      bare-stream: 2.13.4(bare-buffer@3.7.3)(bare-events@2.9.2)
-      bare-url: 2.5.6
-      fast-fifo: 1.3.2
-    optionalDependencies:
-      bare-buffer: 3.7.3
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - react-native-b4a
 
   bare-fs@4.8.7(bare-buffer@3.7.3):
     dependencies:
@@ -2873,8 +2836,6 @@ snapshots:
       - bare-abort-controller
       - react-native-b4a
 
-  bare-path@3.1.2: {}
-
   bare-path@3.1.3: {}
 
   bare-stream@2.13.4(bare-buffer@3.7.3)(bare-events@2.9.2):
@@ -2887,11 +2848,6 @@ snapshots:
       bare-events: 2.9.2
     transitivePeerDependencies:
       - react-native-b4a
-
-  bare-url@2.5.6:
-    dependencies:
-      bare-buffer: 3.7.1
-      bare-path: 3.1.2
 
   bare-url@2.5.8:
     dependencies:
@@ -3682,17 +3638,6 @@ snapshots:
   striptags@3.2.0: {}
 
   symbol-tree@3.2.4: {}
-
-  tar-stream@3.2.2(bare-buffer@3.7.3):
-    dependencies:
-      b4a: 1.9.0
-      bare-fs: 4.8.4(bare-buffer@3.7.3)
-      fast-fifo: 1.3.2
-      streamx: 2.28.1
-    transitivePeerDependencies:
-      - bare-abort-controller
-      - bare-buffer
-      - react-native-b4a
 
   tar-stream@3.3.0(bare-buffer@3.7.3):
     dependencies:
