@@ -79,7 +79,7 @@
     "@antelopejs/dms-frontend": ">=0.11.11 <0.12.0",
     "@antelopejs/interface-mongodb": ">=0.0.8 <0.1.0",
     "@antelopejs/mongodb": "~1.8.4",
-    "@antelopejs/tooling-configs": "^0.10.13",
+    "@antelopejs/tooling-configs": "^0.10.14",
     "@types/node": "^22.20.5",
     "@types/sanitize-html": "^2.16.2",
     "@types/semver": "^7.8.0",
