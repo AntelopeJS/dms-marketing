@@ -116,10 +116,7 @@ export function settingsLink(): string {
  * route query), unless the link names one itself. `useContextLink` adds the
  * period through the DMS `withPeriodQuery`.
  */
-export function withWebsite(
-  link: string,
-  query: LocationQuery,
-): string {
+export function withWebsite(link: string, query: LocationQuery): string {
   const website = query.website
   if (!isString(website) || !website) {
     return link
